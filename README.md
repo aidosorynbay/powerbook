@@ -14,7 +14,6 @@ pip install -r requirements-dev.txt
 ### Run (dev)
 
 ```bash
-cd /Users/r.khismet/Documents/powerbook
 uvicorn app.main:app --reload
 ```
 
