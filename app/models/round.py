@@ -270,6 +270,15 @@ class BookExchangePair(TimestampMixin, Base):
         index=True,
     )
 
+    giver_marked_given_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    receiver_marked_received_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     round: Mapped["Round"] = relationship(back_populates="exchange_pairs")
     giver: Mapped["User"] = relationship(
         back_populates="exchange_pairs_given",

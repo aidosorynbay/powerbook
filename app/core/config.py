@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/powerbook"
     db_echo: bool = False
 
+    # Auth / JWT
+    jwt_secret_key: str = "dev-secret-change-me"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_exp_minutes: int = 60 * 24 * 7  # 7 days
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
