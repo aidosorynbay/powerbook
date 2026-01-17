@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     api_prefix: str = "/api"
 
+    # Database
+    # Example: postgresql+psycopg://user:pass@localhost:5432/powerbook
+    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/powerbook"
+    db_echo: bool = False
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

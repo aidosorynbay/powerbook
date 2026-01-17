@@ -36,6 +36,20 @@ Then open:
 pytest
 ```
 
+### Migrations (Alembic)
+
+- Install deps:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+- Run migrations:
+
+```bash
+alembic upgrade head
+```
+
 ### Environment variables
 - Copy `env.example` → `.env` and edit as needed.
 
