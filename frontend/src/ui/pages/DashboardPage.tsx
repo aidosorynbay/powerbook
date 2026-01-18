@@ -175,7 +175,14 @@ export function DashboardPage() {
           <button
             className="btn primary"
             disabled={!canUseRound || busy}
-            onClick={() => run(() => api.rounds.logMinutes(round!.id, token!, date, minutes))}
+            onClick={async () => {
+              await run(() => api.rounds.logMinutes(round!.id, token!, date, minutes));
+              // Refresh calendar after saving
+              if (calendar) {
+                const c = await api.rounds.calendar(round!.id, token!);
+                setCalendar(c);
+              }
+            }}
           >
             Save
           </button>

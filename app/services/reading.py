@@ -21,11 +21,7 @@ class ReadingService:
         self.logs = ReadingLogRepository(db)
         self.rounds = RoundService(db)
 
-    @staticmethod
-    def minutes_to_score(minutes: int) -> int:
-        if minutes < 0:
-            return 0
-        return 1 if minutes >= 30 else 0
+
 
     def log_minutes(
         self,
@@ -41,8 +37,7 @@ class ReadingService:
         if participant.status in {RoundParticipantStatus.removed_by_admin}:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed")
 
-        score = self.minutes_to_score(minutes)
-        return self.logs.upsert_minutes(round_id=round_id, user_id=user_id, day=day, minutes=minutes, score=score)
+        return self.logs.upsert_minutes(round_id=round_id, user_id=user_id, day=day, minutes=minutes)
 
     def calendar_for_user(self, *, round_id: uuid.UUID, user_id: uuid.UUID) -> dict:
         rnd = self.rounds.rounds.get(round_id)
