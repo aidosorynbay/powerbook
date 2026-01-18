@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ApiError, GroupOut, RoundOut, api } from "../../lib/api";
 import { useAuth } from "../auth/AuthContext";
+import { format, isValid, parseISO } from "date-fns";
+import { Calendar } from "../shadcn/Calendar";
 
 function todayIso(): string {
   const d = new Date();
@@ -17,7 +19,9 @@ export function DashboardPage() {
   const [groupSlug, setGroupSlug] = useState("");
   const [group, setGroup] = useState<GroupOut | null>(null);
   const [round, setRound] = useState<RoundOut | null>(null);
-  const [date, setDate] = useState(todayIso());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => new Date());
+  const [dateText, setDateText] = useState<string>(() => todayIso());
+  const [showCalendar, setShowCalendar] = useState(false);
   const [minutes, setMinutes] = useState(30);
 
   const [toast, setToast] = useState<string | null>(null);
@@ -53,6 +57,10 @@ export function DashboardPage() {
     setRound(r);
     setCalendar(null);
     setLeaderboard(null);
+    const today = new Date();
+    setSelectedDate(today);
+    setDateText(format(today, "yyyy-MM-dd"));
+    setShowCalendar(false);
   }
 
   useEffect(() => {
@@ -157,29 +165,91 @@ export function DashboardPage() {
 
       <div className="card">
         <h2>Log minutes</h2>
-        <div className="row">
-          <div className="field">
+        <div className="row" style={{ alignItems: "flex-start" }}>
+          <div className="field" style={{ minWidth: 260 }}>
             <div className="label">Date</div>
-            <input value={date} onChange={(e) => setDate(e.target.value)} placeholder="YYYY-MM-DD" />
+            <div className="row" style={{ flexWrap: "nowrap" }}>
+              <input
+                value={dateText}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDateText(v);
+                  const parsed = parseISO(v);
+                  if (isValid(parsed)) {
+                    setSelectedDate(parsed);
+                  }
+                }}
+                placeholder="YYYY-MM-DD"
+                style={{ flex: 1, minWidth: 180 }}
+              />
+              <button className="btn" type="button" onClick={() => setShowCalendar((x) => !x)}>
+                {showCalendar ? "Hide" : "Pick"}
+              </button>
+            </div>
+            <div className="hint">You can type the date or pick it from the calendar.</div>
+
+            {showCalendar && (
+              <div style={{ position: "relative", marginTop: 10 }}>
+                <div style={{ position: "absolute", zIndex: 20 }}>
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(d) => {
+                      setSelectedDate(d);
+                      if (d) setDateText(format(d, "yyyy-MM-dd"));
+                      setShowCalendar(false);
+                    }}
+                    disabled={(d) => {
+                      if (!round) return false;
+                      const inSameMonth = d.getFullYear() === round.year && d.getMonth() + 1 === round.month;
+                      const notFuture = d <= new Date();
+                      return !inSameMonth || !notFuture;
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
-          <div className="field">
+
+          <div className="field" style={{ minWidth: 260 }}>
             <div className="label">Minutes</div>
             <input
               value={String(minutes)}
               onChange={(e) => setMinutes(parseInt(e.target.value || "0", 10))}
               placeholder="0..1440"
             />
+            <div className="hint">Rule: ≥30 minutes = 1 point/day.</div>
           </div>
         </div>
         <div className="row" style={{ marginTop: 12 }}>
           <button
             className="btn primary"
             disabled={!canUseRound || busy}
-            onClick={() => run(() => api.rounds.logMinutes(round!.id, token!, date, minutes))}
+            onClick={async () => {
+              if (!selectedDate) {
+                setError("Pick a date.");
+                return;
+              }
+              if (round) {
+                const inSameMonth = selectedDate.getFullYear() === round.year && selectedDate.getMonth() + 1 === round.month;
+                if (!inSameMonth) {
+                  setError("Selected date is outside the current round month.");
+                  return;
+                }
+              }
+              const iso = format(selectedDate, "yyyy-MM-dd");
+              await run(() => api.rounds.logMinutes(round!.id, token!, iso, minutes));
+
+              // refresh calendar after write
+              const c = await run(() => api.rounds.calendar(round!.id, token!));
+              setCalendar(c);
+            }}
           >
             Save
           </button>
-          <span className="hint">Rule: ≥30 minutes = 1 point/day.</span>
+          <span className="hint">
+            Date: <strong>{selectedDate ? format(selectedDate, "yyyy-MM-dd") : "—"}</strong>
+          </span>
         </div>
       </div>
 
