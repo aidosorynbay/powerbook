@@ -51,15 +51,15 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
         user_id: uuid.UUID,
         day: date,
         minutes: int,
-        score: int,
     ) -> ReadingLog:
         existing = self.get_for_user_date(round_id=round_id, user_id=user_id, day=day)
         if existing is None:
-            row = ReadingLog(round_id=round_id, user_id=user_id, date=day, minutes=minutes, score=score)
+            row = ReadingLog(round_id=round_id, user_id=user_id, date=day, minutes=minutes)
             self.db.add(row)
         else:
-            existing.minutes = minutes
-            existing.score = score
+            existing.minutes += minutes
+            if existing.minutes > 30:
+                existing.score = 1
             row = existing
 
         self.db.commit()
