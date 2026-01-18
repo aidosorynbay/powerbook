@@ -1,5 +1,9 @@
 ## FastAPI starter
 
+## Frontend (MVP)
+
+See `frontend/README.md`.
+
 ### Requirements
 - Python 3.11+ recommended
 

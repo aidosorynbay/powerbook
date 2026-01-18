@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -101,5 +101,11 @@ class GroupMember(TimestampMixin, Base):
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     group: Mapped["Group"] = relationship(back_populates="members")
-    user: Mapped["User"] = relationship(back_populates="group_memberships")
+    user: Mapped["User"] = relationship(
+        back_populates="group_memberships",
+        foreign_keys=[user_id],
+    )
+    invited_by: Mapped[Optional["User"]] = relationship(
+        foreign_keys=[invited_by_user_id],
+    )
 

@@ -42,6 +42,7 @@ class User(TimestampMixin, Base):
 
     group_memberships: Mapped[list["GroupMember"]] = relationship(
         back_populates="user",
+        foreign_keys="GroupMember.user_id",
         cascade="all, delete-orphan",
     )
 

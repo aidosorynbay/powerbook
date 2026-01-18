@@ -14,3 +14,12 @@ dist/
 build/
 *.egg-info/
 
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+frontend/.npm-cache/
+frontend/.npm-logs/
+frontend/.npm-prefix/
+

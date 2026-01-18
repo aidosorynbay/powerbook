@@ -18,9 +18,14 @@ class AuthService:
         if existing is not None:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
+        try:
+            password_hash = hash_password(password)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
         user = self.users.create(
             email=email,
-            password_hash=hash_password(password),
+            password_hash=password_hash,
             display_name=display_name,
         )
         token = create_access_token(subject=str(user.id))
