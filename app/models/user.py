@@ -29,7 +29,7 @@ class User(TimestampMixin, Base):
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     gender: Mapped[Gender | None] = mapped_column(
         Enum(Gender, name="gender"),
-        nullable=True,
+        nullable=False,
     )
 
     system_role: Mapped[SystemRole] = mapped_column(

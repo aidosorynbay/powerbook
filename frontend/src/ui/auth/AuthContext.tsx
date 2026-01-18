@@ -7,7 +7,7 @@ type AuthState = {
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, display_name: string) => Promise<void>;
+  register: (email: string, password: string, display_name: string, gender: "male" | "female" | "unknown") => Promise<void>;
   logout: () => void;
   refreshMe: () => Promise<void>;
 };
@@ -60,9 +60,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(me);
   }
 
-  async function register(email: string, password: string, display_name: string) {
+  async function register(email: string, password: string, display_name: string, gender: "male" | "female" | "unknown") {
     setError(null);
-    const t = await api.auth.register(email, password, display_name);
+    const t = await api.auth.register(email, password, display_name, gender);
     setToken(t.access_token);
     const me = await api.auth.me(t.access_token);
     setUser(me);

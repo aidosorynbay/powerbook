@@ -9,6 +9,7 @@ export function RegisterPage() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [gender, setGender] = useState<"male" | "female" | "unknown">("unknown");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -17,7 +18,7 @@ export function RegisterPage() {
     setBusy(true);
     setError(null);
     try {
-      await register(email, password, displayName);
+      await register(email, password, displayName, gender);
       nav("/app");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Register failed");
@@ -47,6 +48,18 @@ export function RegisterPage() {
               type="password"
               placeholder="min 6 chars"
             />
+          </div>
+          <div className="field" style={{ marginTop: 10 }}>
+            <div className="label">Gender</div>
+            <select
+              value={gender}
+              onChange={(e) => setGender(e.target.value as "male" | "female" | "unknown")}
+              required
+            >
+              <option value="unknown">Prefer not to say</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
           </div>
           <div className="row" style={{ marginTop: 12 }}>
             <button className="btn primary" disabled={busy}>

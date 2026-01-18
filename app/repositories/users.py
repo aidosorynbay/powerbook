@@ -5,6 +5,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.enums import Gender
 from app.models.user import User
 from app.repositories.base import BaseRepository
 
@@ -30,11 +31,13 @@ class UserRepository(BaseRepository[User]):
         email: str,
         password_hash: str,
         display_name: str,
+        gender: Gender,
     ) -> User:
         user = User(
             email=email,
             password_hash=password_hash,
             display_name=display_name,
+            gender=gender,
         )
         self.db.add(user)
         self.db.commit()

@@ -4,7 +4,7 @@ export type UserOut = {
     id: string;
     email: string;
     display_name: string;
-    gender: "male" | "female" | null;
+    gender: "male" | "female" | "unknown";
     system_role: "user" | "admin" | "superadmin";
     is_active: boolean;
     created_at: string;
@@ -95,10 +95,10 @@ function safeJson(text: string): any {
 
 export const api = {
     auth: {
-        register: (email: string, password: string, display_name: string) =>
+        register: (email: string, password: string, display_name: string, gender: "male" | "female" | "unknown") =>
             request<TokenResponse>("/auth/register", {
                 method: "POST",
-                body: { email, password, display_name },
+                body: { email, password, display_name, gender },
             }),
         login: (email: string, password: string) =>
             request<TokenResponse>("/auth/login", {

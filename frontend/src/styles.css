@@ -127,10 +127,10 @@ a{ color: inherit; text-decoration: none; }
   font-size: 12px;
   font-weight: 600;
 }
-input, button{
+input, button, select{
   font: inherit;
 }
-input{
+input, select{
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid var(--border);
@@ -138,9 +138,16 @@ input{
   color: var(--text);
   outline: none;
 }
-input:focus{
+input:focus, select:focus{
   border-color: rgba(124,92,255,0.65);
   box-shadow: 0 0 0 4px rgba(124,92,255,0.12);
+}
+select{
+  cursor: pointer;
+}
+select option{
+  background: rgba(15,19,32,0.95);
+  color: var(--text);
 }
 
 .btn{

@@ -18,6 +18,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> TokenRe
         email=str(payload.email),
         password=payload.password,
         display_name=payload.display_name,
+        gender=payload.gender,
     )
     return TokenResponse(access_token=token)
 
