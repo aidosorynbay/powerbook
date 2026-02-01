@@ -1,0 +1,26 @@
+.container {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--spacing-6);
+  padding-right: var(--spacing-6);
+}
+
+.sm {
+  max-width: 768px;
+}
+
+.md {
+  max-width: 1024px;
+}
+
+.lg {
+  max-width: var(--container-max-width);
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding-left: var(--spacing-4);
+    padding-right: var(--spacing-4);
+  }
+}

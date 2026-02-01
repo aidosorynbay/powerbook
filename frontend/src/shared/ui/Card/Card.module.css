@@ -1,0 +1,48 @@
+.card {
+  border-radius: var(--radius-xl);
+  transition: all var(--transition-base);
+}
+
+/* Padding variants */
+.padding-none {
+  padding: 0;
+}
+
+.padding-sm {
+  padding: var(--spacing-4);
+}
+
+.padding-md {
+  padding: var(--spacing-6);
+}
+
+.padding-lg {
+  padding: var(--spacing-8);
+}
+
+/* Card variants */
+.default {
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border-primary);
+}
+
+.elevated {
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-primary);
+  box-shadow: var(--shadow-lg);
+}
+
+.gradient {
+  background: linear-gradient(
+    135deg,
+    rgba(22, 27, 34, 0.8) 0%,
+    rgba(13, 17, 23, 0.9) 100%
+  );
+  border: 1px solid var(--color-border-primary);
+}
+
+.glass {
+  background: rgba(22, 27, 34, 0.5);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border-secondary);
+}

@@ -1,0 +1,45 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+/* Sizes */
+.sm {
+  padding: var(--spacing-1) var(--spacing-2);
+  font-size: var(--font-size-xs);
+}
+
+.md {
+  padding: var(--spacing-2) var(--spacing-4);
+  font-size: var(--font-size-sm);
+}
+
+/* Variants */
+.default {
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-primary);
+}
+
+.success {
+  background-color: var(--color-success-muted);
+  color: var(--color-success);
+  border: 1px solid transparent;
+}
+
+.accent {
+  background-color: var(--color-accent-primary-muted);
+  color: var(--color-accent-primary);
+  border: 1px solid transparent;
+}
+
+.outline {
+  background-color: transparent;
+  color: var(--color-accent-primary);
+  border: 1px solid var(--color-border-accent);
+}
