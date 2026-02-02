@@ -1,32 +1,58 @@
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
-import { HomePage } from '@/pages';
+import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth, I18nProvider, useI18n } from '@/shared/lib';
+import { HomePage, LoginPage, RegisterPage, DashboardPage } from '@/pages';
 import '@/app/styles/theme.css';
 
 function AppRoutes() {
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading } = useAuth();
+  const { t } = useI18n();
 
   const handleRegister = () => {
-    // Navigate to register page or open modal
     navigate('/register');
   };
 
   const handleLogin = () => {
-    // Navigate to login page or open modal
     navigate('/login');
   };
 
+  if (isLoading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'var(--color-text-secondary)'
+      }}>
+        {t('dashboard.loading')}
+      </div>
+    );
+  }
+
   return (
     <Routes>
-      <Route 
-        path="/" 
+      <Route
+        path="/"
         element={
-          <HomePage 
-            onRegisterClick={handleRegister}
-            onLoginClick={handleLogin}
-          />
-        } 
+          isAuthenticated ? (
+            <DashboardPage />
+          ) : (
+            <HomePage
+              onRegisterClick={handleRegister}
+              onLoginClick={handleLogin}
+            />
+          )
+        }
       />
-      {/* Add more routes as needed */}
+      <Route
+        path="/login"
+        element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
+      />
+      <Route
+        path="/register"
+        element={isAuthenticated ? <Navigate to="/" replace /> : <RegisterPage />}
+      />
     </Routes>
   );
 }
@@ -34,7 +60,11 @@ function AppRoutes() {
 export function App() {
   return (
     <BrowserRouter>
-      <AppRoutes />
+      <I18nProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </I18nProvider>
     </BrowserRouter>
   );
 }

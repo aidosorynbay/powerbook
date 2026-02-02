@@ -18,9 +18,15 @@
   color: var(--color-text-secondary);
 }
 
+.loading {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: var(--spacing-8);
+}
+
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr repeat(3, minmax(0, 200px));
   gap: var(--spacing-6);
 }
 
@@ -31,6 +37,73 @@
   gap: var(--spacing-4);
 }
 
+/* Current round card specific styles */
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: var(--spacing-2);
+}
+
+.cardLabel {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+}
+
+.badge {
+  padding: var(--spacing-1) var(--spacing-3);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+}
+
+.badge.badgeActive {
+  background: var(--color-success-muted);
+  color: var(--color-success);
+}
+
+.statRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  width: 100%;
+}
+
+.statLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.statValue {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+}
+
+.progressSection {
+  width: 100%;
+  margin-top: var(--spacing-2);
+}
+
+.progressLabel {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-2);
+}
+
+.progressValue {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-2);
+}
+
+/* Smaller stat cards */
 .iconWrapper {
   display: flex;
   align-items: center;
@@ -43,19 +116,19 @@
 }
 
 .value {
-  font-size: var(--font-size-5xl);
+  font-size: var(--font-size-4xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   line-height: var(--line-height-tight);
 }
 
 .label {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
 }
 
 /* Responsive */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -67,6 +140,10 @@
   }
 
   .value {
-    font-size: var(--font-size-4xl);
+    font-size: var(--font-size-3xl);
+  }
+
+  .statValue {
+    font-size: var(--font-size-3xl);
   }
 }

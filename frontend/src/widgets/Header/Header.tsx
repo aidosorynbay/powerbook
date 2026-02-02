@@ -1,3 +1,4 @@
+import { useAuth, useI18n, LOCALES } from '@/shared/lib';
 import { Logo, Button, Icon, Container } from '@/shared/ui';
 import styles from './Header.module.css';
 
@@ -7,29 +8,52 @@ interface HeaderProps {
 }
 
 export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
+  const { isAuthenticated, logout } = useAuth();
+  const { t, locale, setLocale } = useI18n();
+
   return (
     <header className={styles.header}>
       <Container>
         <div className={styles.inner}>
           <Logo size="md" />
-          
+
           <nav className={styles.nav}>
-            <a href="#about" className={styles.navLink}>О нас</a>
-            <a href="#reviews" className={styles.navLink}>Отзывы</a>
-            <a href="#faq" className={styles.navLink}>FAQ</a>
+            <a href="#about" className={styles.navLink}>{t('header.about')}</a>
+            <a href="#reviews" className={styles.navLink}>{t('header.reviews')}</a>
+            <a href="#faq" className={styles.navLink}>{t('header.faq')}</a>
             <a href="https://t.me/powerbook" className={styles.navLink} target="_blank" rel="noopener noreferrer">
               <Icon name="telegram" size="sm" />
-              <span>Telegram</span>
+              <span>{t('header.telegram')}</span>
             </a>
           </nav>
-          
+
           <div className={styles.actions}>
-            <button className={styles.loginBtn} onClick={onLoginClick}>
-              Вход
-            </button>
-            <Button variant="primary" size="sm" onClick={onRegisterClick}>
-              Регистрация
-            </Button>
+            <div className={styles.langSwitcher}>
+              {LOCALES.map((loc) => (
+                <button
+                  key={loc.code}
+                  className={`${styles.langBtn} ${locale === loc.code ? styles.langActive : ''}`}
+                  onClick={() => setLocale(loc.code)}
+                >
+                  {loc.label}
+                </button>
+              ))}
+            </div>
+
+            {isAuthenticated ? (
+              <button className={styles.loginBtn} onClick={logout}>
+                {t('header.logout')}
+              </button>
+            ) : (
+              <>
+                <button className={styles.loginBtn} onClick={onLoginClick}>
+                  {t('header.login')}
+                </button>
+                <Button variant="primary" size="sm" onClick={onRegisterClick}>
+                  {t('header.register')}
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </Container>

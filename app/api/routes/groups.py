@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
-from app.schemas.groups import GroupCreateRequest, GroupOut
+from app.schemas.groups import CurrentRoundStatusOut, GroupCreateRequest, GroupOut
 from app.schemas.rounds import RoundOut
 from app.services.groups import GroupService
 
@@ -44,4 +44,14 @@ def create_group(
 ) -> GroupOut:
     g = GroupService(db).create(name=payload.name, slug=payload.slug, owner_user_id=user.id)
     return GroupOut.model_validate(g)
+
+
+@router.get("/by-slug/{slug}/current-round-status", response_model=CurrentRoundStatusOut)
+def get_current_round_status(
+    slug: str,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> CurrentRoundStatusOut:
+    """Get current round for a group by slug, including user's participation status."""
+    return GroupService(db).get_current_round_status(slug=slug, user_id=user.id)
 

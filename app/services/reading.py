@@ -8,7 +8,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.enums import RoundParticipantStatus
-from app.models.round import ReadingLog
+from app.models.round import ReadingLog, RoundParticipant
+from app.models.user import User
 from app.repositories.participants import RoundParticipantRepository
 from app.repositories.reading_logs import ReadingLogRepository
 from app.services.rounds import RoundService
@@ -62,7 +63,19 @@ class ReadingService:
         return {"round_id": str(round_id), "total_minutes": total_minutes, "total_score": total_score, "days": days}
 
     def leaderboard(self, *, round_id: uuid.UUID) -> list[dict]:
-        stmt = (
+        # Get all active participants for the round with their user info
+        participants_stmt = (
+            select(RoundParticipant.user_id, User.display_name)
+            .join(User, RoundParticipant.user_id == User.id)
+            .where(
+                RoundParticipant.round_id == round_id,
+                RoundParticipant.status == RoundParticipantStatus.active,
+            )
+        )
+        participants = {row.user_id: row.display_name for row in self.db.execute(participants_stmt).all()}
+
+        # Get scores for participants
+        scores_stmt = (
             select(
                 ReadingLog.user_id.label("user_id"),
                 func.coalesce(func.sum(ReadingLog.score), 0).label("total_score"),
@@ -70,10 +83,20 @@ class ReadingService:
             )
             .where(ReadingLog.round_id == round_id)
             .group_by(ReadingLog.user_id)
-            .order_by(func.coalesce(func.sum(ReadingLog.score), 0).desc())
         )
-        rows = self.db.execute(stmt).all()
-        return [
-            {"user_id": str(r.user_id), "total_score": int(r.total_score), "days_read": int(r.days_read)} for r in rows
-        ]
+        scores = {row.user_id: (int(row.total_score), int(row.days_read)) for row in self.db.execute(scores_stmt).all()}
+
+        # Build leaderboard: all participants, sorted by score
+        leaderboard = []
+        for user_id, display_name in participants.items():
+            total_score, days_read = scores.get(user_id, (0, 0))
+            leaderboard.append({
+                "user_id": str(user_id),
+                "display_name": display_name,
+                "total_score": total_score,
+                "days_read": days_read,
+            })
+
+        leaderboard.sort(key=lambda x: (-x["total_score"], x["display_name"]))
+        return leaderboard
 

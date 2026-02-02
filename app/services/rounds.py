@@ -95,6 +95,10 @@ class RoundService:
         return existing
 
     def leave(self, *, round_id: uuid.UUID, user_id: uuid.UUID) -> RoundParticipant:
+        """
+        Leave a round. Only allowed before the registration deadline (10th of month).
+        After the deadline, users must complete the round.
+        """
         rnd = self.rounds.get(round_id)
         if rnd is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Round not found")
@@ -104,14 +108,15 @@ class RoundService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not a participant")
 
         if participant.status != RoundParticipantStatus.active:
-            return participant
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already left this round")
 
-        if self._is_before_deadline(rnd):
-            participant.status = RoundParticipantStatus.left_before_deadline
-        else:
-            # MVP choice: allow leaving but mark as penalty (still tracked)
-            participant.status = RoundParticipantStatus.penalty_left
+        if not self._is_before_deadline(rnd):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Cannot leave after day {rnd.registration_open_until_day}",
+            )
 
+        participant.status = RoundParticipantStatus.left_before_deadline
         self.db.commit()
         self.db.refresh(participant)
         return participant

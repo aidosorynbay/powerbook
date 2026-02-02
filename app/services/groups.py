@@ -11,7 +11,9 @@ from app.models.group import Group
 from app.models.round import Round
 from app.repositories.group_members import GroupMemberRepository
 from app.repositories.groups import GroupRepository
+from app.repositories.participants import RoundParticipantRepository
 from app.repositories.rounds import RoundRepository
+from app.schemas.groups import CurrentRoundStatusOut, ParticipationInfo, RoundInfo
 
 
 class GroupService:
@@ -20,6 +22,7 @@ class GroupService:
         self.groups = GroupRepository(db)
         self.members = GroupMemberRepository(db)
         self.rounds = RoundRepository(db)
+        self.participants = RoundParticipantRepository(db)
 
     def get_by_slug(self, *, slug: str) -> Group:
         g = self.groups.get_by_slug(slug)
@@ -50,4 +53,31 @@ class GroupService:
         # MVP definition: "current round" is the round for the current month (UTC).
         now = datetime.now(tz=ZoneInfo("UTC"))
         return self.rounds.get_by_group_year_month(group_id=group_id, year=now.year, month=now.month)
+
+    def get_current_round_status(self, *, slug: str, user_id: uuid.UUID) -> CurrentRoundStatusOut:
+        """Get current round for a group by slug, including user's participation status."""
+        group = self.get_by_slug(slug=slug)
+        rnd = self.get_current_round(group_id=group.id)
+
+        round_info: RoundInfo | None = None
+        participation: ParticipationInfo | None = None
+
+        if rnd is not None:
+            round_info = RoundInfo.model_validate(rnd)
+            participant = self.participants.get_for_user(round_id=rnd.id, user_id=user_id)
+            if participant is not None:
+                participation = ParticipationInfo(
+                    is_participant=True,
+                    status=participant.status,
+                    joined_at=participant.joined_at,
+                )
+            else:
+                participation = ParticipationInfo(is_participant=False)
+
+        return CurrentRoundStatusOut(
+            group_id=group.id,
+            group_name=group.name,
+            round=round_info,
+            participation=participation,
+        )
 
