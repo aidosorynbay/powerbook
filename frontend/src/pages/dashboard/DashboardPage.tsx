@@ -446,43 +446,16 @@ export function DashboardPage() {
                 )}
               </div>
 
-              {/* Correction period banner + countdown */}
-              {correctionsOpen && (
-                <div className={styles.lastDayBanner}>
-                  {t('dashboard.correctionPeriod')}
-                  {countdownMs !== null && (
-                    <div className={styles.countdownBanner}>
-                      {t('dashboard.correctionDeadline', { time: formatCountdown(countdownMs) })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Registration period: after 8 PM on last day */}
+              {/* Registration period: after 8 PM on last day — inline, no banner */}
               {inRegistrationWindow && (
-                <div className={styles.lastDayBanner}>
-                  {t('dashboard.correctionsEnded')}
-                  {countdownMs !== null && (
-                    <div className={styles.countdownBanner}>
-                      {t('dashboard.nextRoundCountdown', { time: formatCountdown(countdownMs) })}
-                    </div>
+                <div className={styles.nextRoundSection}>
+                  {roundStatus.next_round && roundStatus.next_round.status === 'registration_open' ? (
+                    <Button onClick={handleJoinNextRound} disabled={isJoiningNextRound}>
+                      {isJoiningNextRound ? t('dashboard.registeringNextRound') : t('dashboard.registerNextRound')}
+                    </Button>
+                  ) : (
+                    <p>{t('dashboard.nextRoundSoon')}</p>
                   )}
-                  <div className={styles.nextRoundSection}>
-                    {roundStatus.next_round && roundStatus.next_round.status === 'registration_open' ? (
-                      <Button onClick={handleJoinNextRound} disabled={isJoiningNextRound}>
-                        {isJoiningNextRound ? t('dashboard.registeringNextRound') : t('dashboard.registerNextRound')}
-                      </Button>
-                    ) : (
-                      <p>{t('dashboard.nextRoundSoon')}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Last day banner when NOT in a timed phase (fallback) */}
-              {isLastDay && lastDayPhase === 'normal' && (
-                <div className={styles.lastDayBanner}>
-                  {t('dashboard.lastDay')}
                 </div>
               )}
 
@@ -666,6 +639,20 @@ export function DashboardPage() {
                     <div className={styles.sectionTitle}>{t('dashboard.today')}</div>
                     <div className={styles.todayPanel}>
                       <div className={styles.todayDate}>{todayStr}</div>
+
+                      {/* Correction countdown — subtle, inside Today panel */}
+                      {correctionsOpen && countdownMs !== null && (
+                        <div className={styles.correctionNotice}>
+                          <span className={styles.correctionLabel}>{t('dashboard.correctionPeriod')}</span>
+                          <span className={styles.correctionTimer}>{formatCountdown(countdownMs)}</span>
+                        </div>
+                      )}
+
+                      {isLastDay && lastDayPhase === 'normal' && (
+                        <div className={styles.correctionNotice}>
+                          <span className={styles.correctionLabel}>{t('dashboard.lastDay')}</span>
+                        </div>
+                      )}
 
                       <div className={styles.todayField}>
                         <label className={styles.todayLabel}>{t('dashboard.logMinutes')}</label>

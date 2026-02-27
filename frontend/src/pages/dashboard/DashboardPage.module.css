@@ -498,31 +498,28 @@
   color: var(--color-text-secondary);
 }
 
-/* Last day banner */
-.lastDayBanner {
-  background: var(--color-warning-muted);
-  color: var(--color-warning);
-  border: 1px solid var(--color-warning);
+/* Correction notice (inside Today panel) */
+.correctionNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
   border-radius: var(--radius-md);
-  padding: var(--spacing-3) var(--spacing-4);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  text-align: center;
-  margin-bottom: var(--spacing-4);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
 }
 
-/* Countdown banner */
-.countdownBanner {
-  background: var(--color-danger-muted);
-  color: var(--color-danger);
-  border: 1px solid var(--color-danger);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-3) var(--spacing-4);
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  text-align: center;
-  margin-top: var(--spacing-2);
-  letter-spacing: 0.05em;
+.correctionLabel {
+  font-weight: var(--font-weight-medium);
+}
+
+.correctionTimer {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
 }
 
 /* Next round registration section */
