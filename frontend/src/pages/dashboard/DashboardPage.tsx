@@ -10,8 +10,10 @@ import {
   type LeaderboardEntry,
   type CalendarResponse,
 } from '@/shared/lib';
+import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
+import anim from '@/shared/styles/animations.module.css';
 import styles from './DashboardPage.module.css';
 
 function getStatusVariant(status: RoundStatus): 'success' | 'accent' | 'default' {
@@ -344,6 +346,10 @@ export function DashboardPage() {
   // Whether we're in the registration window (last day after 8 PM)
   const inRegistrationWindow = isLastDay && lastDayPhase === 'registration';
 
+  // Scroll reveal for sections
+  const { ref: sectionsRef, isVisible: sectionsVisible } = useScrollReveal<HTMLDivElement>();
+  const revealClass = `${anim.scrollReveal} ${sectionsVisible ? anim.scrollRevealVisible : ''}`;
+
   // Today's date string
   const todayStr = useMemo(() => {
     const now = new Date();
@@ -516,8 +522,8 @@ export function DashboardPage() {
                 </span>
               </div>
 
-              <div className={styles.sections}>
-                <div className={styles.section}>
+              <div ref={sectionsRef} className={styles.sections}>
+                <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay1}`}>
                   <div className={styles.sectionTitle}>{t('dashboard.leaderboard')}</div>
                   {leaderboard.length === 0 ? (
                     <div className={styles.emptyState}>{t('dashboard.noParticipants')}</div>
@@ -544,7 +550,7 @@ export function DashboardPage() {
 
                 {/* Right panel: viewed user's calendar OR own calendar */}
                 {viewUser ? (
-                  <div className={styles.section}>
+                  <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay2}`}>
                     <div className={styles.calendarHeaderRow}>
                       <div className={styles.sectionTitle}>
                         {t('dashboard.userCalendar', { name: viewUser.name })}
@@ -595,7 +601,7 @@ export function DashboardPage() {
                     ) : null}
                   </div>
                 ) : isParticipant && !inRegistrationWindow ? (
-                  <div className={styles.section}>
+                  <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay2}`}>
                     <div className={styles.calendarHeaderRow}>
                       <div className={styles.sectionTitle}>
                         {t('dashboard.myCalendar')}
@@ -656,7 +662,7 @@ export function DashboardPage() {
 
                 {/* Today panel — third column */}
                 {isParticipant && !inRegistrationWindow && (
-                  <div className={styles.section}>
+                  <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay3}`}>
                     <div className={styles.sectionTitle}>{t('dashboard.today')}</div>
                     <div className={styles.todayPanel}>
                       <div className={styles.todayDate}>{todayStr}</div>

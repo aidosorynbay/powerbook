@@ -148,3 +148,36 @@
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-accent);
 }
+
+/* Row hover effects */
+.tableRow {
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+@media (hover: hover) {
+  .tableRow:hover {
+    transform: translateX(4px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .pairRow {
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  }
+
+  .pairRow:hover {
+    transform: translateX(4px);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tableRow,
+  .pairRow {
+    transition: none;
+  }
+
+  .tableRow:hover,
+  .pairRow:hover {
+    transform: none;
+  }
+}

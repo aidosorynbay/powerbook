@@ -5,8 +5,10 @@ import {
   type LastCompletedRound,
   type RoundResultsResponse,
 } from '@/shared/lib';
+import { useScrollReveal } from '@/shared/hooks';
 import { Container, Badge, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
+import anim from '@/shared/styles/animations.module.css';
 import styles from './ResultsPage.module.css';
 
 export function ResultsPage() {
@@ -37,6 +39,9 @@ export function ResultsPage() {
     fetchData();
   }, [fetchData]);
 
+  const { ref, isVisible } = useScrollReveal<HTMLDivElement>();
+  const revealClass = `${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''}`;
+
   const monthName = results ? t(`month.${results.month}`) : '';
 
   return (
@@ -51,13 +56,13 @@ export function ResultsPage() {
           ) : !lastRound || !results ? (
             <div className={styles.empty}>{t('results.noResults')}</div>
           ) : (
-            <>
-              <div className={styles.title}>
+            <div ref={ref}>
+              <div className={`${styles.title} ${revealClass}`}>
                 {t('results.title')} — {monthName} {results.year}
               </div>
 
               <div className={styles.sections}>
-                <div className={styles.section}>
+                <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay1}`}>
                   <div className={styles.sectionTitle}>{t('dashboard.leaderboard')}</div>
                   <div className={styles.table}>
                     <div className={styles.tableHeader}>
@@ -88,7 +93,7 @@ export function ResultsPage() {
                 </div>
 
                 {results.pairs.length > 0 && (
-                  <div className={styles.section}>
+                  <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay2}`}>
                     <div className={styles.sectionTitle}>{t('results.pairs')}</div>
                     <div className={styles.pairs}>
                       {results.pairs.map((pair, idx) => (
@@ -102,7 +107,7 @@ export function ResultsPage() {
                   </div>
                 )}
               </div>
-            </>
+            </div>
           )}
         </Container>
       </main>
