@@ -38,31 +38,8 @@ export function Stats() {
                     <div className={styles.loading}>{t('dashboard.loading')}</div>
                 ) : (
                     <div className={styles.grid}>
-                        {/* Current round status */}
-                        <Card variant="gradient" padding="lg" className={`${styles.card} ${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''} ${anim.scrollRevealDelay1}`}>
-                            <div className={styles.cardHeader}>
-                                <span className={styles.cardLabel}>{t('stats.currentRound')}</span>
-                                <span className={`${styles.badge} ${stats.is_round_active ? styles.badgeActive : ''}`}>
-                                    {stats.is_round_active ? t('stats.active') : t('stats.inactive')}
-                                </span>
-                            </div>
-                            <div className={styles.statRow}>
-                                <span className={styles.statLabel}>{t('stats.participants')}</span>
-                                <span className={styles.statValue}>{formatNumber(stats.current_round_participants)}</span>
-                            </div>
-                            <div className={styles.statRow}>
-                                <span className={styles.statLabel}>{t('stats.daysRemaining')}</span>
-                                <span className={styles.statValue}>{stats.days_remaining}</span>
-                            </div>
-                            <div className={styles.progressSection}>
-                                <span className={styles.progressLabel}>{t('stats.roundProgress')}</span>
-                                <ProgressBar value={stats.round_progress_percent} />
-                                <span className={styles.progressValue}>{stats.round_progress_percent}% {t('stats.completed')}</span>
-                            </div>
-                        </Card>
-
                         {/* Total participants */}
-                        <Card variant="gradient" padding="lg" className={`${styles.card} ${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''} ${anim.scrollRevealDelay2}`}>
+                        <Card variant="gradient" padding="lg" className={`${styles.card} ${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''} ${anim.scrollRevealDelay1}`}>
                             <div className={styles.iconWrapper}>
                                 <Icon name="users" size="lg" />
                             </div>
@@ -71,7 +48,7 @@ export function Stats() {
                         </Card>
 
                         {/* Total hours read */}
-                        <Card variant="gradient" padding="lg" className={`${styles.card} ${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''} ${anim.scrollRevealDelay3}`}>
+                        <Card variant="gradient" padding="lg" className={`${styles.card} ${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''} ${anim.scrollRevealDelay2}`}>
                             <div className={styles.iconWrapper}>
                                 <Icon name="clock" size="lg" />
                             </div>
@@ -80,7 +57,7 @@ export function Stats() {
                         </Card>
 
                         {/* Total rounds */}
-                        <Card variant="gradient" padding="lg" className={`${styles.card} ${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''} ${anim.scrollRevealDelay4}`}>
+                        <Card variant="gradient" padding="lg" className={`${styles.card} ${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''} ${anim.scrollRevealDelay3}`}>
                             <div className={styles.iconWrapper}>
                                 <Icon name="refresh" size="lg" />
                             </div>
