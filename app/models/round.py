@@ -5,6 +5,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -13,6 +14,7 @@ from sqlalchemy import (
     Integer,
     SmallInteger,
     String,
+    Text,
     UniqueConstraint,
     Uuid,
     func,
@@ -173,6 +175,8 @@ class ReadingLog(TimestampMixin, Base):
     date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     score: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    book_finished: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
 
     round: Mapped["Round"] = relationship(back_populates="reading_logs")
     user: Mapped["User"] = relationship(back_populates="reading_logs")

@@ -1,0 +1,32 @@
+.scrollReveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 600ms cubic-bezier(0.16, 1, 0.3, 1),
+              transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.scrollRevealVisible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scrollRevealDelay1 { transition-delay: 100ms; }
+.scrollRevealDelay2 { transition-delay: 200ms; }
+.scrollRevealDelay3 { transition-delay: 300ms; }
+.scrollRevealDelay4 { transition-delay: 400ms; }
+
+@media (max-width: 768px) {
+  .scrollReveal {
+    transform: translateY(20px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrollReveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    will-change: auto;
+  }
+}

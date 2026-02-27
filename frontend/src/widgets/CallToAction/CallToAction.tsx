@@ -1,4 +1,6 @@
+import { useScrollReveal } from '@/shared/hooks';
 import { Container, Button, Icon } from '@/shared/ui';
+import anim from '@/shared/styles/animations.module.css';
 import styles from './CallToAction.module.css';
 
 interface CallToActionProps {
@@ -12,8 +14,10 @@ const features = [
 ];
 
 export function CallToAction({ onJoinClick }: CallToActionProps) {
+  const { ref, isVisible } = useScrollReveal<HTMLElement>();
+
   return (
-    <section className={styles.cta}>
+    <section ref={ref} className={`${styles.cta} ${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''}`}>
       <Container>
         <div className={styles.content}>
           <h2 className={styles.title}>Начни читать сегодня</h2>

@@ -15,3 +15,5 @@ export type { IconName } from './Icon';
 export { Logo } from './Logo';
 
 export { Container } from './Container';
+
+export { PageTransition } from './PageTransition';

@@ -1,4 +1,6 @@
+import { useScrollReveal } from '@/shared/hooks';
 import { Container, Badge } from '@/shared/ui';
+import anim from '@/shared/styles/animations.module.css';
 import styles from './Reward.module.css';
 
 interface RewardProps {
@@ -12,8 +14,10 @@ export function Reward({
   title = 'участников получают книгу бесплатно',
   description = 'Прочитай заданное количество страниц — получи реальную награду. Это не геймификация. Это дисциплина с результатом.',
 }: RewardProps) {
+  const { ref, isVisible } = useScrollReveal<HTMLElement>();
+
   return (
-    <section className={styles.reward}>
+    <section ref={ref} className={`${styles.reward} ${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''}`}>
       <Container>
         <div className={styles.card}>
           <Badge variant="outline" size="md">

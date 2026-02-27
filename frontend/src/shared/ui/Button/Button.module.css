@@ -42,6 +42,12 @@
 .primary:hover:not(:disabled) {
     background-color: var(--color-accent-primary-hover);
     box-shadow: var(--shadow-glow-accent);
+    transform: translateY(-1px);
+}
+
+.primary:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: none;
 }
 
 .secondary {
@@ -53,6 +59,11 @@
 .secondary:hover:not(:disabled) {
     background-color: var(--color-bg-card-hover);
     border-color: var(--color-border-secondary);
+    transform: translateY(-1px);
+}
+
+.secondary:active:not(:disabled) {
+    transform: translateY(0);
 }
 
 .outline {
@@ -63,6 +74,11 @@
 
 .outline:hover:not(:disabled) {
     background-color: var(--color-accent-primary-muted);
+    transform: translateY(-1px);
+}
+
+.outline:active:not(:disabled) {
+    transform: translateY(0);
 }
 
 .ghost {
@@ -85,4 +101,15 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .button {
+        transition: none;
+    }
+    .primary:hover:not(:disabled),
+    .secondary:hover:not(:disabled),
+    .outline:hover:not(:disabled) {
+        transform: none;
+    }
 }

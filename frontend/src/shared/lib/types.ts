@@ -43,6 +43,9 @@ export type CurrentRoundStatusResponse = {
   group_name: string;
   round: RoundInfo | null;
   participation: ParticipationInfo | null;
+  deadline_utc: string | null;
+  correction_deadline_utc: string | null;
+  next_round: RoundInfo | null;
 };
 
 // Leaderboard
@@ -58,6 +61,8 @@ export type CalendarDay = {
   date: string;
   minutes: number;
   score: number;
+  book_finished: boolean;
+  comment: string | null;
 };
 
 export type CalendarResponse = {
@@ -65,6 +70,46 @@ export type CalendarResponse = {
   total_minutes: number;
   total_score: number;
   days: CalendarDay[];
+};
+
+// Results
+export type RoundResultEntry = {
+  user_id: string;
+  display_name: string;
+  total_score: number;
+  rank: number;
+  group: 'winner' | 'loser';
+};
+
+export type ExchangePair = {
+  giver_name: string;
+  receiver_name: string;
+};
+
+export type RoundResultsResponse = {
+  round_id: string;
+  year: number;
+  month: number;
+  results: RoundResultEntry[];
+  pairs: ExchangePair[];
+};
+
+export type LastCompletedRound = {
+  id: string;
+  year: number;
+  month: number;
+} | null;
+
+// Archive
+export type ArchiveDay = {
+  date: string;
+  minutes: number;
+};
+
+export type YearlyArchiveResponse = {
+  year: number;
+  months: Record<string, ArchiveDay[]>;
+  participated_months: number[];
 };
 
 // Stats

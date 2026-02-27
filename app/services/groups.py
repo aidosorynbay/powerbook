@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -74,10 +75,42 @@ class GroupService:
             else:
                 participation = ParticipationInfo(is_participant=False)
 
+        tz = ZoneInfo("Asia/Almaty")  # GMT+5
+
+        deadline_utc: str | None = None
+        correction_deadline_utc: str | None = None
+        next_round_info: RoundInfo | None = None
+
+        if rnd is not None:
+            last_day = calendar.monthrange(rnd.year, rnd.month)[1]
+
+            # Midnight GMT+5 at end of last day = start of next day
+            if rnd.month == 12:
+                deadline_local = datetime(rnd.year + 1, 1, 1, tzinfo=tz)
+            else:
+                deadline_local = datetime(rnd.year, rnd.month + 1, 1, tzinfo=tz)
+            deadline_utc = deadline_local.astimezone(ZoneInfo("UTC")).isoformat()
+
+            # Correction deadline: 8 PM GMT+5 on last day
+            correction_local = datetime(rnd.year, rnd.month, last_day, 20, 0, 0, tzinfo=tz)
+            correction_deadline_utc = correction_local.astimezone(ZoneInfo("UTC")).isoformat()
+
+            # Next month's round
+            next_year = rnd.year + 1 if rnd.month == 12 else rnd.year
+            next_month = 1 if rnd.month == 12 else rnd.month + 1
+            next_rnd = self.rounds.get_by_group_year_month(
+                group_id=group.id, year=next_year, month=next_month,
+            )
+            if next_rnd is not None:
+                next_round_info = RoundInfo.model_validate(next_rnd)
+
         return CurrentRoundStatusOut(
             group_id=group.id,
             group_name=group.name,
             round=round_info,
             participation=participation,
+            deadline_utc=deadline_utc,
+            correction_deadline_utc=correction_deadline_utc,
+            next_round=next_round_info,
         )
 

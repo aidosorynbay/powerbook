@@ -10,10 +10,33 @@ from app.db.session import get_db
 from app.models.enums import RoundStatus
 from app.schemas.reading import LogMinutesRequest
 from app.schemas.rounds import ParticipantOut, RoundCreateRequest, RoundOut
+from app.services.groups import GroupService
 from app.services.reading import ReadingService
 from app.services.rounds import RoundService
 
 router = APIRouter(prefix="/rounds", tags=["rounds"])
+
+DEFAULT_GROUP_SLUG = "powerbook"
+
+
+@router.get("/archive/{year}")
+def yearly_archive(year: int, db: Session = Depends(get_db), user=Depends(get_current_user)) -> dict:
+    group = GroupService(db).get_by_slug(slug=DEFAULT_GROUP_SLUG)
+    return ReadingService(db).yearly_archive(user_id=user.id, year=year, group_id=group.id)
+
+
+@router.get("/last-completed")
+def last_completed_round(db: Session = Depends(get_db), _user=Depends(get_current_user)) -> dict | None:
+    group = GroupService(db).get_by_slug(slug=DEFAULT_GROUP_SLUG)
+    rnd = RoundService(db).get_last_completed(group_id=group.id)
+    if rnd is None:
+        return None
+    return {"id": str(rnd.id), "year": rnd.year, "month": rnd.month}
+
+
+@router.get("/{round_id}/results")
+def round_results(round_id: uuid.UUID, db: Session = Depends(get_db), _user=Depends(get_current_user)) -> dict:
+    return RoundService(db).get_round_results(round_id=round_id)
 
 
 @router.post("", response_model=RoundOut)
@@ -90,13 +113,26 @@ def log_minutes(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ) -> dict:
-    row = ReadingService(db).log_minutes(round_id=round_id, user_id=user.id, day=payload.date, minutes=payload.minutes)
-    return {"id": str(row.id), "date": row.date.isoformat(), "minutes": int(row.minutes), "score": int(row.score)}
+    row = ReadingService(db).log_minutes(
+        round_id=round_id, user_id=user.id, day=payload.date, minutes=payload.minutes,
+        book_finished=payload.book_finished, comment=payload.comment,
+    )
+    return {
+        "id": str(row.id), "date": row.date.isoformat(), "minutes": int(row.minutes),
+        "score": int(row.score), "book_finished": bool(row.book_finished), "comment": row.comment,
+    }
 
 
 @router.get("/{round_id}/calendar")
 def my_calendar(round_id: uuid.UUID, db: Session = Depends(get_db), user=Depends(get_current_user)) -> dict:
     return ReadingService(db).calendar_for_user(round_id=round_id, user_id=user.id)
+
+
+@router.get("/{round_id}/calendar/{user_id}")
+def user_calendar(
+    round_id: uuid.UUID, user_id: uuid.UUID, db: Session = Depends(get_db), _user=Depends(get_current_user)
+) -> dict:
+    return ReadingService(db).calendar_for_user(round_id=round_id, user_id=user_id)
 
 
 @router.get("/{round_id}/leaderboard")

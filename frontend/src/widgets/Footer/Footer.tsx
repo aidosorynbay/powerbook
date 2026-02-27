@@ -3,12 +3,10 @@ import styles from './Footer.module.css';
 
 const navigationLinks = [
   { label: 'О нас', href: '#about' },
-  { label: 'Отзывы', href: '#reviews' },
-  { label: 'FAQ', href: '#faq' },
 ];
 
 const contactLinks = [
-  { label: 'Telegram', href: 'https://t.me/powerbook', icon: 'telegram' as const },
+  { label: 'Telegram', href: 'https://t.me/+ZSmueLtmT8Y1MDBi', icon: 'telegram' as const },
   { label: 'Email', href: 'mailto:hello@powerbook.ru', icon: 'email' as const },
 ];
 

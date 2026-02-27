@@ -1,7 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, useI18n, apiPost, type TokenResponse } from '@/shared/lib';
-import { Button, Card, Container, Logo } from '@/shared/ui';
+import { Button, Card, Container, Logo, PageTransition } from '@/shared/ui';
 import styles from './RegisterPage.module.css';
 
 type Gender = 'male' | 'female' | 'unknown';
@@ -44,8 +44,9 @@ export function RegisterPage() {
   };
 
   return (
-    <div className={styles.page}>
-      <Container size="sm">
+    <PageTransition>
+      <div className={styles.page}>
+        <Container size="sm">
         <Card variant="glass" padding="lg" className={styles.card}>
           <div className={styles.header}>
             <div>
@@ -135,8 +136,9 @@ export function RegisterPage() {
             </Link>
           </div>
         </Card>
-      </Container>
-    </div>
+        </Container>
+      </div>
+    </PageTransition>
   );
 }
 

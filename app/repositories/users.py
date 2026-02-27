@@ -25,6 +25,12 @@ class UserRepository(BaseRepository[User]):
         stmt = select(User).offset(offset).limit(limit).order_by(User.created_at.desc())
         return list(self.db.execute(stmt).scalars().all())
 
+    def get_by_ids(self, user_ids: list[uuid.UUID]) -> dict[uuid.UUID, User]:
+        if not user_ids:
+            return {}
+        stmt = select(User).where(User.id.in_(user_ids))
+        return {u.id: u for u in self.db.execute(stmt).scalars().all()}
+
     def create(
         self,
         *,

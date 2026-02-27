@@ -1,44 +1,29 @@
 .logo {
   display: flex;
   align-items: center;
-  gap: var(--spacing-3);
-}
-
-.iconWrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--color-accent-primary);
-  border-radius: var(--radius-md);
-  color: var(--color-text-primary);
-}
-
-.sm .iconWrapper {
-  width: 28px;
-  height: 28px;
-  padding: 4px;
-}
-
-.md .iconWrapper {
-  width: 36px;
-  height: 36px;
-  padding: 6px;
-}
-
-.lg .iconWrapper {
-  width: 44px;
-  height: 44px;
-  padding: 8px;
+  gap: var(--spacing-2);
+  text-decoration: none;
 }
 
 .icon {
-  width: 100%;
-  height: 100%;
+  object-fit: contain;
+}
+
+.sm .icon {
+  height: 24px;
+}
+
+.md .icon {
+  height: 32px;
+}
+
+.lg .icon {
+  height: 40px;
 }
 
 .text {
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
+  color: var(--color-accent-primary);
   letter-spacing: var(--letter-spacing-tight);
 }
 

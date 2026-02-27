@@ -8,15 +8,15 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from app.models.enums import Gender, ResultGroup, RoundParticipantStatus, RoundStatus
-from app.models.round import BookExchangePair, ReadingLog, Round, RoundParticipant, RoundResult
-from app.models.user import User
+from app.models.round import BookExchangePair, Round, RoundParticipant, RoundResult
 from app.repositories.exchange_pairs import BookExchangePairRepository
 from app.repositories.participants import RoundParticipantRepository
 from app.repositories.reading_logs import ReadingLogRepository
+from app.repositories.results import RoundResultRepository
 from app.repositories.rounds import RoundRepository
 from app.repositories.users import UserRepository
 
@@ -29,6 +29,47 @@ class RoundService:
         self.reading_logs = ReadingLogRepository(db)
         self.users = UserRepository(db)
         self.pairs = BookExchangePairRepository(db)
+        self.results = RoundResultRepository(db)
+
+    def get_round(self, round_id: uuid.UUID) -> Round | None:
+        return self.rounds.get(round_id)
+
+    def get_last_completed(self, *, group_id: uuid.UUID) -> Round | None:
+        return self.rounds.get_last_completed(group_id=group_id)
+
+    def list_for_group(self, *, group_id: uuid.UUID, limit: int = 200) -> list[Round]:
+        return self.rounds.list_for_group(group_id=group_id, limit=limit)
+
+    def get_round_results(self, *, round_id: uuid.UUID) -> dict:
+        rnd = self.rounds.get(round_id)
+        if rnd is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Round not found")
+
+        rows = self.results.list_for_round_with_user_names(round_id=round_id)
+        results = [
+            {
+                "user_id": str(result.user_id),
+                "display_name": display_name,
+                "total_score": result.total_score,
+                "rank": result.rank,
+                "group": result.group.value,
+            }
+            for result, display_name in rows
+        ]
+
+        pair_rows = self.pairs.list_for_round_with_user_names(round_id=round_id)
+        pairs = [
+            {"giver_name": giver_name, "receiver_name": receiver_name}
+            for _pair, giver_name, receiver_name in pair_rows
+        ]
+
+        return {
+            "round_id": str(round_id),
+            "year": rnd.year,
+            "month": rnd.month,
+            "results": results,
+            "pairs": pairs,
+        }
 
     def create_round(
         self,
@@ -83,10 +124,7 @@ class RoundService:
         if existing is None:
             return self.participants.create(round_id=round_id, user_id=user_id)
 
-        # allow re-join only before deadline
         if existing.status in {RoundParticipantStatus.left_before_deadline, RoundParticipantStatus.removed_by_admin}:
-            if not self._is_before_deadline(rnd):
-                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Deadline passed")
             existing.status = RoundParticipantStatus.active
             self.db.commit()
             self.db.refresh(existing)
@@ -131,18 +169,12 @@ class RoundService:
         if not participants:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="No participants")
 
-        # aggregate scores per user in SQL
-        scores_stmt = (
-            select(ReadingLog.user_id, func.coalesce(func.sum(ReadingLog.score), 0).label("total_score"))
-            .where(ReadingLog.round_id == round_id)
-            .group_by(ReadingLog.user_id)
-        )
-        scores = {row.user_id: int(row.total_score) for row in self.db.execute(scores_stmt).all()}
+        # aggregate scores per user via repository
+        scores = self.reading_logs.aggregate_scores_by_user(round_id=round_id)
 
         # load users for gender matching
         user_ids = [p.user_id for p in participants]
-        users_stmt = select(User).where(User.id.in_(user_ids))
-        users = {u.id: u for u in self.db.execute(users_stmt).scalars().all()}
+        users = self.users.get_by_ids(user_ids)
 
         ranking = sorted(
             [(uid, scores.get(uid, 0)) for uid in user_ids],

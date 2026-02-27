@@ -81,8 +81,14 @@
 
 .sections {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: var(--spacing-6);
+}
+
+@media (max-width: 1024px) {
+  .sections {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 768px) {
@@ -163,9 +169,28 @@
   border-radius: var(--radius-md);
 }
 
+.leaderboardItem.clickable {
+  cursor: pointer;
+  transition: background var(--transition-fast),
+              transform var(--transition-fast),
+              border-color var(--transition-fast);
+  border-left: 3px solid transparent;
+}
+
+.leaderboardItem.clickable:hover {
+  background: var(--color-bg-elevated);
+  transform: translateX(4px);
+  border-left-color: var(--color-accent-primary);
+}
+
 .leaderboardItem.isMe {
   background: var(--color-accent-primary-muted);
   border: 1px solid var(--color-border-accent);
+}
+
+.leaderboardItem.isSelected {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-primary);
 }
 
 .rank {
@@ -204,6 +229,72 @@
   font-size: var(--font-size-sm);
 }
 
+/* Legend */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-3) var(--spacing-4);
+  margin-bottom: var(--spacing-4);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.legendDot {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.legendDot.legendGreen {
+  background: var(--color-success);
+}
+
+.legendDot.legendYellow {
+  background: var(--color-warning);
+}
+
+.legendDot.legendRed {
+  background: var(--color-danger);
+}
+
+.legendDot.legendFuture {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+}
+
+.legendDot.legendLastDay {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-bg-secondary),
+    var(--color-bg-secondary) 2px,
+    var(--color-bg-elevated) 2px,
+    var(--color-bg-elevated) 4px
+  );
+  border: 1px solid var(--color-border-primary);
+}
+
+.legendSymbol {
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.legendCommentDot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-primary);
+  flex-shrink: 0;
+}
+
 /* Calendar styles */
 .calendar {
   display: grid;
@@ -228,7 +319,9 @@
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
   cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
+  transition: background var(--transition-fast),
+              border-color var(--transition-fast),
+              transform var(--transition-fast);
   border: 1px solid transparent;
 }
 
@@ -237,9 +330,55 @@
   border-color: var(--color-border-primary);
 }
 
-.calendarDay.hasScore {
-  background: var(--color-success-muted);
-  border-color: var(--color-success);
+@media (hover: hover) {
+  .calendarDay:hover:not(.empty):not(.dayLastDay) {
+    transform: scale(1.1);
+    z-index: 1;
+  }
+}
+
+.calendarDay.dayGreen {
+  background: var(--color-success);
+  color: var(--color-bg-primary);
+}
+
+.calendarDay.dayYellow {
+  background: var(--color-warning);
+  color: var(--color-bg-primary);
+}
+
+.calendarDay.dayRed {
+  background: var(--color-danger);
+  color: var(--color-bg-primary);
+}
+
+.calendarDay.dayFuture {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
+}
+
+.calendarDay.dayLastDay {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-bg-secondary),
+    var(--color-bg-secondary) 4px,
+    var(--color-bg-elevated) 4px,
+    var(--color-bg-elevated) 8px
+  );
+  color: var(--color-text-muted);
+  cursor: default;
+  opacity: 0.7;
+}
+
+.calendarDay.dayLastDay:hover {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-bg-secondary),
+    var(--color-bg-secondary) 4px,
+    var(--color-bg-elevated) 4px,
+    var(--color-bg-elevated) 8px
+  );
+  border-color: transparent;
 }
 
 .calendarDay.empty {
@@ -262,8 +401,10 @@
   margin-top: 2px;
 }
 
-.calendarDay.hasScore .dayMinutes {
-  color: var(--color-success);
+.calendarDay.dayGreen .dayMinutes,
+.calendarDay.dayYellow .dayMinutes,
+.calendarDay.dayRed .dayMinutes {
+  color: inherit;
 }
 
 /* Log modal */
@@ -276,6 +417,7 @@
   justify-content: center;
   z-index: var(--z-index-modal);
   padding: var(--spacing-4);
+  animation: modalOverlayIn 200ms ease both;
 }
 
 .modalContent {
@@ -285,6 +427,23 @@
   width: 100%;
   max-width: 360px;
   border: 1px solid var(--color-border-primary);
+  animation: modalContentIn 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes modalOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalContentIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .modalTitle {
@@ -331,4 +490,165 @@
   justify-content: center;
   padding: var(--spacing-16);
   color: var(--color-text-secondary);
+}
+
+/* Last day banner */
+.lastDayBanner {
+  background: var(--color-warning-muted);
+  color: var(--color-warning);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-align: center;
+  margin-bottom: var(--spacing-4);
+}
+
+/* Countdown banner */
+.countdownBanner {
+  background: var(--color-danger-muted);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  text-align: center;
+  margin-top: var(--spacing-2);
+  letter-spacing: 0.05em;
+}
+
+/* Next round registration section */
+.nextRoundSection {
+  margin-top: var(--spacing-4);
+}
+
+.nextRoundSection p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Calendar day indicators */
+.calendarDay {
+  position: relative;
+}
+
+.dayStar {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 8px;
+  line-height: 1;
+}
+
+.dayCommentDot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 5px;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-primary);
+}
+
+.calendarDay.dayGreen .dayCommentDot,
+.calendarDay.dayYellow .dayCommentDot,
+.calendarDay.dayRed .dayCommentDot {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.dayFinishIcon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Today panel */
+.todayPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.todayDate {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.todayField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.todayLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.todayInput {
+  width: 100%;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-primary);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color var(--transition-fast);
+  font-size: var(--font-size-sm);
+}
+
+.todayInput:focus {
+  border-color: var(--color-border-accent);
+}
+
+.todayTextarea {
+  width: 100%;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-primary);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color var(--transition-fast);
+  font-size: var(--font-size-sm);
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+
+.todayTextarea:focus {
+  border-color: var(--color-border-accent);
+}
+
+.todayCheckbox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.todayCheckbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--color-accent-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leaderboardItem.clickable {
+    transition: none;
+  }
+  .leaderboardItem.clickable:hover {
+    transform: none;
+  }
+  .calendarDay {
+    transition: none;
+  }
+  .modal,
+  .modalContent {
+    animation: none;
+  }
 }

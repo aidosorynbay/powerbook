@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth, I18nProvider, useI18n } from '@/shared/lib';
-import { HomePage, LoginPage, RegisterPage, DashboardPage } from '@/pages';
+import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage } from '@/pages';
 import '@/app/styles/theme.css';
 
 function AppRoutes() {
@@ -35,15 +35,23 @@ function AppRoutes() {
       <Route
         path="/"
         element={
-          isAuthenticated ? (
-            <DashboardPage />
-          ) : (
-            <HomePage
-              onRegisterClick={handleRegister}
-              onLoginClick={handleLogin}
-            />
-          )
+          <HomePage
+            onRegisterClick={handleRegister}
+            onLoginClick={handleLogin}
+          />
         }
+      />
+      <Route
+        path="/round"
+        element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/archive"
+        element={isAuthenticated ? <ArchivePage /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/results"
+        element={isAuthenticated ? <ResultsPage /> : <Navigate to="/login" replace />}
       />
       <Route
         path="/login"

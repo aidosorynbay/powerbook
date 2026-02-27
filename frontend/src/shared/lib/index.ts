@@ -39,4 +39,10 @@ export type {
   CalendarDay,
   CalendarResponse,
   PublicStats,
+  ArchiveDay,
+  YearlyArchiveResponse,
+  RoundResultEntry,
+  ExchangePair,
+  RoundResultsResponse,
+  LastCompletedRound,
 } from './types';

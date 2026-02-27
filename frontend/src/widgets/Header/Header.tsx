@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useAuth, useI18n, LOCALES } from '@/shared/lib';
 import { Logo, Button, Icon, Container } from '@/shared/ui';
 import styles from './Header.module.css';
@@ -18,12 +19,16 @@ export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
           <Logo size="md" />
 
           <nav className={styles.nav}>
+            {isAuthenticated && (
+              <>
+                <Link to="/round" className={styles.navLink}>{t('header.currentRound')}</Link>
+                <Link to="/archive" className={styles.navLink}>{t('header.archive')}</Link>
+                <Link to="/results" className={styles.navLink}>{t('header.results')}</Link>
+              </>
+            )}
             <a href="#about" className={styles.navLink}>{t('header.about')}</a>
-            <a href="#reviews" className={styles.navLink}>{t('header.reviews')}</a>
-            <a href="#faq" className={styles.navLink}>{t('header.faq')}</a>
-            <a href="https://t.me/powerbook" className={styles.navLink} target="_blank" rel="noopener noreferrer">
+            <a href="https://t.me/+ZSmueLtmT8Y1MDBi" className={styles.navLink} target="_blank" rel="noopener noreferrer">
               <Icon name="telegram" size="sm" />
-              <span>{t('header.telegram')}</span>
             </a>
           </nav>
 

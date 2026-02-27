@@ -7,6 +7,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models.round import BookExchangePair
+from app.models.user import User
 from app.repositories.base import BaseRepository
 
 
@@ -29,6 +30,21 @@ class BookExchangePairRepository(BaseRepository[BookExchangePair]):
             )
         )
         return list(self.db.execute(stmt).scalars().all())
+
+    def list_for_round_with_user_names(self, *, round_id: uuid.UUID) -> list[tuple[BookExchangePair, str, str]]:
+        giver = User.__table__.alias("giver")
+        receiver = User.__table__.alias("receiver")
+        stmt = (
+            select(
+                BookExchangePair,
+                giver.c.display_name.label("giver_name"),
+                receiver.c.display_name.label("receiver_name"),
+            )
+            .join(giver, BookExchangePair.giver_user_id == giver.c.id)
+            .join(receiver, BookExchangePair.receiver_user_id == receiver.c.id)
+            .where(BookExchangePair.round_id == round_id)
+        )
+        return list(self.db.execute(stmt).all())
 
     def create(self, *, round_id: uuid.UUID, giver_user_id: uuid.UUID, receiver_user_id: uuid.UUID) -> BookExchangePair:
         pair = BookExchangePair(round_id=round_id, giver_user_id=giver_user_id, receiver_user_id=receiver_user_id)

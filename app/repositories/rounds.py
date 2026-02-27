@@ -5,6 +5,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.enums import RoundStatus
 from app.models.round import Round
 from app.repositories.base import BaseRepository
 
@@ -39,6 +40,15 @@ class RoundRepository(BaseRepository[Round]):
             .order_by(Round.year.desc(), Round.month.desc())
         )
         return list(self.db.execute(stmt).scalars().all())
+
+    def get_last_completed(self, *, group_id: uuid.UUID) -> Round | None:
+        stmt = (
+            select(Round)
+            .where(Round.group_id == group_id, Round.status == RoundStatus.results_published)
+            .order_by(Round.year.desc(), Round.month.desc())
+            .limit(1)
+        )
+        return self.db.execute(stmt).scalar_one_or_none()
 
     def create(
         self,

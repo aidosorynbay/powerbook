@@ -46,4 +46,7 @@ class CurrentRoundStatusOut(BaseModel):
     group_name: str
     round: RoundInfo | None = None
     participation: ParticipationInfo | None = None
+    deadline_utc: str | None = None
+    correction_deadline_utc: str | None = None
+    next_round: RoundInfo | None = None
 
