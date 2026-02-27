@@ -20,5 +20,7 @@ jobs:
             git fetch origin master
             git reset --hard origin/master
             docker compose -f docker-compose.prod.yml up --build -d
-            cd frontend && npm ci && npm run build
+            cd frontend
+            echo "VITE_API_BASE_URL=https://powerbook.kz/api" > .env.production
+            npm ci && npm run build
             echo "Deploy complete!"
