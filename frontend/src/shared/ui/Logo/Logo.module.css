@@ -38,3 +38,9 @@
 .lg .text {
   font-size: var(--font-size-xl);
 }
+
+@media (max-width: 600px) {
+  .text {
+    display: none;
+  }
+}

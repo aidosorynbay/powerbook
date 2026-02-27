@@ -109,3 +109,10 @@
     animation: none;
   }
 }
+
+@media (max-width: 768px) {
+  .page {
+    align-items: flex-start;
+    padding-top: var(--spacing-8);
+  }
+}

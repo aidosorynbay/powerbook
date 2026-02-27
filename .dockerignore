@@ -1,0 +1,16 @@
+frontend/
+.venv/
+.git/
+.github/
+.claude/
+screenshots/
+__pycache__/
+*.pyc
+.env
+.env.*
+docker-compose*.yml
+Dockerfile
+README.md
+pytest.ini
+requirements-dev.txt
+tests/

@@ -105,6 +105,12 @@
   }
 }
 
+@media (max-width: 900px) {
+  .page {
+    padding-bottom: 72px;
+  }
+}
+
 .monthBlock {
   background: var(--color-bg-card);
   border: 1px solid var(--color-border-primary);

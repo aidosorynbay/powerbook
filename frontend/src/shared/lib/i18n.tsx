@@ -16,6 +16,11 @@ const translations = {
     'header.currentRound': 'Текущий раунд',
     'header.archive': 'Архив',
 
+    // Bottom nav
+    'nav.round': 'Раунд',
+    'nav.archive': 'Архив',
+    'nav.results': 'Результаты',
+
     // Auth pages
     'login.title': 'Вход',
     'login.subtitle': 'Войдите, чтобы продолжить.',
@@ -176,6 +181,11 @@ const translations = {
     'header.currentRound': 'Ағымдағы раунд',
     'header.archive': 'Мұрағат',
 
+    // Bottom nav
+    'nav.round': 'Раунд',
+    'nav.archive': 'Мұрағат',
+    'nav.results': 'Нәтижелер',
+
     // Auth pages
     'login.title': 'Кіру',
     'login.subtitle': 'Жалғастыру үшін кіріңіз.',
@@ -335,6 +345,11 @@ const translations = {
     'header.logout': 'Log Out',
     'header.currentRound': 'Current Round',
     'header.archive': 'Archive',
+
+    // Bottom nav
+    'nav.round': 'Round',
+    'nav.archive': 'Archive',
+    'nav.results': 'Results',
 
     // Auth pages
     'login.title': 'Login',

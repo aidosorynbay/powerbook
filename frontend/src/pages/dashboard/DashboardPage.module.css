@@ -97,6 +97,12 @@
   }
 }
 
+@media (max-width: 900px) {
+  .page {
+    padding-bottom: 72px;
+  }
+}
+
 .section {
   background: var(--color-bg-card);
   border-radius: var(--radius-lg);

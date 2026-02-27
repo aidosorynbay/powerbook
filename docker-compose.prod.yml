@@ -1,0 +1,7 @@
+services:
+  backend:
+    build: .
+    container_name: powerbook-backend
+    network_mode: host
+    env_file: .env
+    restart: unless-stopped
