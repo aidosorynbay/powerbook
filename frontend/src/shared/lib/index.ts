@@ -18,6 +18,7 @@ export {
   apiFetch,
   apiPost,
   apiGet,
+  apiPut,
 } from './api';
 
 // Constants

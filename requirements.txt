@@ -15,3 +15,6 @@ bcrypt>=4.0,<5.0
 
 # Scheduler
 apscheduler>=3.10,<4.0
+
+# Admin panel
+sqladmin>=0.18,<1.0

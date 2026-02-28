@@ -46,9 +46,14 @@ export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
             </div>
 
             {isAuthenticated ? (
+              <>
+              <Link to="/profile" className={styles.loginBtn}>
+                {t('profile.title')}
+              </Link>
               <button className={styles.loginBtn} onClick={logout}>
                 {t('header.logout')}
               </button>
+              </>
             ) : (
               <>
                 <button className={styles.loginBtn} onClick={onLoginClick}>

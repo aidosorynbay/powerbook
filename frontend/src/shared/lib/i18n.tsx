@@ -168,6 +168,20 @@ const translations = {
     'hero.joinBtn': 'Присоединиться',
     'hero.learnMore': 'Узнать больше',
 
+    // Profile
+    'profile.title': 'Профиль',
+    'profile.subtitle': 'Измените свои данные.',
+    'profile.save': 'Сохранить',
+    'profile.saving': 'Сохраняем...',
+    'profile.saved': 'Сохранено!',
+    'profile.changePassword': 'Изменить пароль',
+    'profile.currentPassword': 'Текущий пароль',
+    'profile.newPassword': 'Новый пароль',
+    'profile.confirmPassword': 'Подтвердите пароль',
+    'profile.passwordChanged': 'Пароль изменён!',
+    'profile.passwordMismatch': 'Пароли не совпадают',
+    'profile.changingPassword': 'Меняем...',
+
     // Errors
     'error.network': 'Ошибка сети. Попробуйте ещё раз.',
     'error.validation': 'Ошибка валидации. Проверьте данные.',
@@ -337,6 +351,20 @@ const translations = {
     'hero.joinBtn': 'Қосылу',
     'hero.learnMore': 'Толығырақ',
 
+    // Profile
+    'profile.title': 'Профиль',
+    'profile.subtitle': 'Деректеріңізді өзгертіңіз.',
+    'profile.save': 'Сақтау',
+    'profile.saving': 'Сақталуда...',
+    'profile.saved': 'Сақталды!',
+    'profile.changePassword': 'Құпия сөзді өзгерту',
+    'profile.currentPassword': 'Ағымдағы құпия сөз',
+    'profile.newPassword': 'Жаңа құпия сөз',
+    'profile.confirmPassword': 'Құпия сөзді растаңыз',
+    'profile.passwordChanged': 'Құпия сөз өзгертілді!',
+    'profile.passwordMismatch': 'Құпия сөздер сәйкес келмейді',
+    'profile.changingPassword': 'Өзгертілуде...',
+
     // Errors
     'error.network': 'Желі қатесі. Қайтадан көріңіз.',
     'error.validation': 'Тексеру қатесі. Деректерді тексеріңіз.',
@@ -505,6 +533,20 @@ const translations = {
     'hero.subtitle2': 'Build a habit, compete with other readers.',
     'hero.joinBtn': 'Join Now',
     'hero.learnMore': 'Learn More',
+
+    // Profile
+    'profile.title': 'Profile',
+    'profile.subtitle': 'Update your information.',
+    'profile.save': 'Save',
+    'profile.saving': 'Saving...',
+    'profile.saved': 'Saved!',
+    'profile.changePassword': 'Change Password',
+    'profile.currentPassword': 'Current Password',
+    'profile.newPassword': 'New Password',
+    'profile.confirmPassword': 'Confirm Password',
+    'profile.passwordChanged': 'Password changed!',
+    'profile.passwordMismatch': 'Passwords do not match',
+    'profile.changingPassword': 'Changing...',
 
     // Errors
     'error.network': 'Network error. Please try again.',

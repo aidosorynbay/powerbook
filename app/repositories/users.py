@@ -52,3 +52,10 @@ class UserRepository(BaseRepository[User]):
         self.db.refresh(user)
         return user
 
+    def update(self, user: User, **fields: object) -> User:
+        for key, value in fields.items():
+            setattr(user, key, value)
+        self.db.commit()
+        self.db.refresh(user)
+        return user
+

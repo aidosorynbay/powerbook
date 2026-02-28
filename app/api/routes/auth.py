@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.security import hash_password, verify_password
 from app.db.session import get_db
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
+from app.models.user import User
+from app.repositories.users import UserRepository
+from app.schemas.auth import ChangePasswordRequest, LoginRequest, RegisterRequest, TokenResponse, UpdateProfileRequest
 from app.schemas.users import UserOut
 from app.services.auth import AuthService
 
@@ -33,4 +36,30 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
 @router.get("/me", response_model=UserOut)
 def me(current_user=Depends(get_current_user)) -> UserOut:
     return UserOut.model_validate(current_user)
+
+
+@router.put("/profile", response_model=UserOut)
+def update_profile(
+    payload: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UserOut:
+    fields = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if not fields:
+        return UserOut.model_validate(current_user)
+    user = UserRepository(db).update(current_user, **fields)
+    return UserOut.model_validate(user)
+
+
+@router.put("/change-password")
+def change_password(
+    payload: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+    new_hash = hash_password(payload.new_password)
+    UserRepository(db).update(current_user, password_hash=new_hash)
+    return {"detail": "Password changed"}
 

@@ -121,3 +121,19 @@ export async function apiGet<T>(
     requireAuth: options?.requireAuth,
   });
 }
+
+/**
+ * PUT request with JSON body.
+ */
+export async function apiPut<T, B = unknown>(
+  endpoint: string,
+  body: B,
+  options?: { requireAuth?: boolean }
+): Promise<{ data: T | null; error: string | null }> {
+  return apiFetch<T>(endpoint, {
+    method: 'PUT',
+    headers: getJsonHeaders(),
+    body: JSON.stringify(body),
+    requireAuth: options?.requireAuth,
+  });
+}
