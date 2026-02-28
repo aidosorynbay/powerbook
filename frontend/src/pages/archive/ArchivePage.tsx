@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useI18n, apiGet, type YearlyArchiveResponse } from '@/shared/lib';
-import { useScrollReveal } from '@/shared/hooks';
 import { Container, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
-import anim from '@/shared/styles/animations.module.css';
 import styles from './ArchivePage.module.css';
 
 function getDayColor(minutes: number, dateStr: string, participated: boolean): string {
@@ -89,9 +87,6 @@ export function ArchivePage() {
     t('weekday.thu'), t('weekday.fri'), t('weekday.sat'), t('weekday.sun')
   ], [t]);
 
-  const { ref, isVisible } = useScrollReveal<HTMLDivElement>();
-  const revealClass = `${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''}`;
-
   return (
     <PageTransition>
       <div className={styles.page}>
@@ -119,8 +114,8 @@ export function ArchivePage() {
           {isLoading ? (
             <div className={styles.loading}>{t('dashboard.loading')}</div>
           ) : (
-            <div ref={ref}>
-              <div className={`${styles.legend} ${revealClass}`}>
+            <div>
+              <div className={styles.legend}>
                 <span className={styles.legendItem}>
                   <span className={`${styles.legendDot} ${styles.green}`} />
                   30+ min
@@ -139,7 +134,7 @@ export function ArchivePage() {
                 </span>
               </div>
 
-              <div className={`${styles.monthsGrid} ${revealClass} ${anim.scrollRevealDelay1}`}>
+              <div className={styles.monthsGrid}>
                 {months.map(({ month, participated, grid }) => (
                   <div key={month} className={styles.monthBlock}>
                     <div className={styles.monthName}>{t(`month.${month}`)}</div>
