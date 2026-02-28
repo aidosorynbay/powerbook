@@ -18,3 +18,4 @@ apscheduler>=3.10,<4.0
 
 # Admin panel
 sqladmin>=0.18,<1.0
+itsdangerous>=2.0,<3.0
