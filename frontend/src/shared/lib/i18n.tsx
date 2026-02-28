@@ -126,6 +126,7 @@ const translations = {
     'results.placeLabel': 'Место',
     'results.progressMonth': 'Прогресс за месяц',
     'results.weekdayActivity': 'Активность по дням недели',
+    'results.notParticipated': 'Вы не участвовали в этом раунде. Присоединяйтесь к следующему!',
 
     // Archive
     'archive.title': 'Архив чтения',
@@ -182,6 +183,27 @@ const translations = {
     'hero.subtitle2': 'Формируй привычку, соревнуйся с другими читателями.',
     'hero.joinBtn': 'Присоединиться',
     'hero.learnMore': 'Узнать больше',
+
+    // Footer
+    'footer.description': 'Ежемесячный челлендж по чтению с реальными результатами. Читай каждый день, соревнуйся и выигрывай книги.',
+    'footer.navigation': 'Навигация',
+    'footer.contact': 'Связь',
+    'footer.privacy': 'Конфиденциальность',
+    'footer.terms': 'Условия',
+    'footer.copyright': '\u00A9 {year} PowerBook. Все права защищены.',
+
+    // Reward
+    'reward.badge': 'Награда каждый месяц',
+    'reward.title': 'участников получают книгу бесплатно',
+    'reward.description': 'Прочитай заданное количество страниц — получи реальную награду. Это не геймификация. Это дисциплина с результатом.',
+
+    // CTA
+    'cta.title': 'Начни читать сегодня',
+    'cta.subtitle': 'Присоединяйся к текущему кругу и формируй привычку читать каждый день',
+    'cta.joinButton': 'Присоединиться к кругу',
+    'cta.freeRegistration': 'Бесплатная регистрация',
+    'cta.startAnytime': 'Начни в любой момент',
+    'cta.noHiddenFees': 'Без скрытых платежей',
 
     // Profile
     'profile.title': 'Профиль',
@@ -324,6 +346,7 @@ const translations = {
     'results.placeLabel': 'Орын',
     'results.progressMonth': 'Ай бойынша прогресс',
     'results.weekdayActivity': 'Апта күндері бойынша белсенділік',
+    'results.notParticipated': 'Сіз бұл раундқа қатыспадыңыз. Келесіге қосылыңыз!',
 
     // Archive
     'archive.title': 'Оқу мұрағаты',
@@ -380,6 +403,27 @@ const translations = {
     'hero.subtitle2': 'Әдет қалыптастыр, басқа оқырмандармен жарыс.',
     'hero.joinBtn': 'Қосылу',
     'hero.learnMore': 'Толығырақ',
+
+    // Footer
+    'footer.description': 'Нақты нәтижелері бар айлық оқу челленджі. Күн сайын оқы, жарыс және кітаптар ұт.',
+    'footer.navigation': 'Навигация',
+    'footer.contact': 'Байланыс',
+    'footer.privacy': 'Құпиялылық',
+    'footer.terms': 'Шарттар',
+    'footer.copyright': '\u00A9 {year} PowerBook. Барлық құқықтар қорғалған.',
+
+    // Reward
+    'reward.badge': 'Ай сайын сыйлық',
+    'reward.title': 'қатысушылар кітапты тегін алады',
+    'reward.description': 'Берілген бет санын оқы — нақты сыйлық ал. Бұл ойын емес. Бұл нәтижесі бар тәртіп.',
+
+    // CTA
+    'cta.title': 'Бүгін оқуды баста',
+    'cta.subtitle': 'Ағымдағы раундқа қосылып, күн сайын оқу әдетін қалыптастыр',
+    'cta.joinButton': 'Раундқа қосылу',
+    'cta.freeRegistration': 'Тегін тіркелу',
+    'cta.startAnytime': 'Кез келген уақытта баста',
+    'cta.noHiddenFees': 'Жасырын төлемдер жоқ',
 
     // Profile
     'profile.title': 'Профиль',
@@ -522,6 +566,7 @@ const translations = {
     'results.placeLabel': 'Place',
     'results.progressMonth': 'Monthly progress',
     'results.weekdayActivity': 'Activity by weekday',
+    'results.notParticipated': "You didn't participate in this round. Join the next one!",
 
     // Archive
     'archive.title': 'Reading Archive',
@@ -578,6 +623,27 @@ const translations = {
     'hero.subtitle2': 'Build a habit, compete with other readers.',
     'hero.joinBtn': 'Join Now',
     'hero.learnMore': 'Learn More',
+
+    // Footer
+    'footer.description': 'Monthly reading challenge with real results. Read every day, compete and win books.',
+    'footer.navigation': 'Navigation',
+    'footer.contact': 'Contact',
+    'footer.privacy': 'Privacy',
+    'footer.terms': 'Terms',
+    'footer.copyright': '\u00A9 {year} PowerBook. All rights reserved.',
+
+    // Reward
+    'reward.badge': 'Monthly reward',
+    'reward.title': 'of participants get a free book',
+    'reward.description': 'Read the required number of pages — get a real reward. No gamification. Just discipline with results.',
+
+    // CTA
+    'cta.title': 'Start reading today',
+    'cta.subtitle': 'Join the current round and build a habit of reading every day',
+    'cta.joinButton': 'Join the round',
+    'cta.freeRegistration': 'Free registration',
+    'cta.startAnytime': 'Start anytime',
+    'cta.noHiddenFees': 'No hidden fees',
 
     // Profile
     'profile.title': 'Profile',

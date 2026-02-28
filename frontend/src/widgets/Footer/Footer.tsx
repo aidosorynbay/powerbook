@@ -1,21 +1,9 @@
+import { useI18n } from '@/shared/lib';
 import { Container, Logo, Icon } from '@/shared/ui';
 import styles from './Footer.module.css';
 
-const navigationLinks = [
-  { label: 'О нас', href: '#about' },
-];
-
-const contactLinks = [
-  { label: 'Telegram', href: 'https://t.me/+ZSmueLtmT8Y1MDBi', icon: 'telegram' as const },
-  { label: 'Email', href: 'mailto:hello@powerbook.ru', icon: 'email' as const },
-];
-
-const legalLinks = [
-  { label: 'Конфиденциальность', href: '/privacy' },
-  { label: 'Условия', href: '/terms' },
-];
-
 export function Footer() {
+  const { t } = useI18n();
   const currentYear = new Date().getFullYear();
 
   return (
@@ -25,55 +13,56 @@ export function Footer() {
           <div className={styles.brand}>
             <Logo size="md" />
             <p className={styles.description}>
-              Ежемесячный челлендж по чтению с реальными результатами.
-              Читай каждый день, соревнуйся и выигрывай книги.
+              {t('footer.description')}
             </p>
           </div>
-          
+
           <div className={styles.column}>
-            <h4 className={styles.columnTitle}>Навигация</h4>
+            <h4 className={styles.columnTitle}>{t('footer.navigation')}</h4>
             <nav className={styles.nav}>
-              {navigationLinks.map((link) => (
-                <a key={link.href} href={link.href} className={styles.link}>
-                  {link.label}
-                </a>
-              ))}
+              <a href="#about" className={styles.link}>
+                {t('header.about')}
+              </a>
             </nav>
           </div>
-          
+
           <div className={styles.column}>
-            <h4 className={styles.columnTitle}>Связь</h4>
+            <h4 className={styles.columnTitle}>{t('footer.contact')}</h4>
             <nav className={styles.nav}>
-              {contactLinks.map((link) => (
-                <a 
-                  key={link.href} 
-                  href={link.href} 
-                  className={styles.link}
-                  target={link.href.startsWith('http') ? '_blank' : undefined}
-                  rel={link.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                >
-                  <Icon name={link.icon} size="sm" />
-                  <span>{link.label}</span>
-                </a>
-              ))}
+              <a
+                href="https://t.me/+ZSmueLtmT8Y1MDBi"
+                className={styles.link}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Icon name="telegram" size="sm" />
+                <span>Telegram</span>
+              </a>
+              <a href="mailto:hello@powerbook.ru" className={styles.link}>
+                <Icon name="email" size="sm" />
+                <span>Email</span>
+              </a>
             </nav>
           </div>
         </div>
-        
+
         <div className={styles.bottom}>
           <span className={styles.copyright}>
-            © {currentYear} PowerBook. Все права защищены.
+            {t('footer.copyright', { year: currentYear })}
           </span>
-          
+
           <nav className={styles.legal}>
-            {legalLinks.map((link, index) => (
-              <span key={link.href} className={styles.legalItem}>
-                <a href={link.href} className={styles.legalLink}>
-                  {link.label}
-                </a>
-                {index < legalLinks.length - 1 && <span className={styles.separator} />}
-              </span>
-            ))}
+            <span className={styles.legalItem}>
+              <a href="/privacy" className={styles.legalLink}>
+                {t('footer.privacy')}
+              </a>
+              <span className={styles.separator} />
+            </span>
+            <span className={styles.legalItem}>
+              <a href="/terms" className={styles.legalLink}>
+                {t('footer.terms')}
+              </a>
+            </span>
           </nav>
         </div>
       </Container>

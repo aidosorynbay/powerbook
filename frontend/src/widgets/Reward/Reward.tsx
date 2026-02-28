@@ -1,19 +1,11 @@
+import { useI18n } from '@/shared/lib';
 import { useScrollReveal } from '@/shared/hooks';
 import { Container, Badge } from '@/shared/ui';
 import anim from '@/shared/styles/animations.module.css';
 import styles from './Reward.module.css';
 
-interface RewardProps {
-  percentage?: number;
-  title?: string;
-  description?: string;
-}
-
-export function Reward({
-  percentage = 50,
-  title = 'участников получают книгу бесплатно',
-  description = 'Прочитай заданное количество страниц — получи реальную награду. Это не геймификация. Это дисциплина с результатом.',
-}: RewardProps) {
+export function Reward() {
+  const { t } = useI18n();
   const { ref, isVisible } = useScrollReveal<HTMLElement>();
 
   return (
@@ -21,14 +13,14 @@ export function Reward({
       <Container>
         <div className={styles.card}>
           <Badge variant="outline" size="md">
-            Награда каждый месяц
+            {t('reward.badge')}
           </Badge>
-          
-          <span className={styles.percentage}>{percentage}%</span>
-          
-          <h3 className={styles.title}>{title}</h3>
-          
-          <p className={styles.description}>{description}</p>
+
+          <span className={styles.percentage}>50%</span>
+
+          <h3 className={styles.title}>{t('reward.title')}</h3>
+
+          <p className={styles.description}>{t('reward.description')}</p>
         </div>
       </Container>
     </section>

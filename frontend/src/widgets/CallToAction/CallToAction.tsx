@@ -1,3 +1,4 @@
+import { useI18n } from '@/shared/lib';
 import { useScrollReveal } from '@/shared/hooks';
 import { Container, Button, Icon } from '@/shared/ui';
 import anim from '@/shared/styles/animations.module.css';
@@ -7,25 +8,26 @@ interface CallToActionProps {
   onJoinClick?: () => void;
 }
 
-const features = [
-  'Бесплатная регистрация',
-  'Начни в любой момент',
-  'Без скрытых платежей',
-];
-
 export function CallToAction({ onJoinClick }: CallToActionProps) {
+  const { t } = useI18n();
   const { ref, isVisible } = useScrollReveal<HTMLElement>();
+
+  const features = [
+    t('cta.freeRegistration'),
+    t('cta.startAnytime'),
+    t('cta.noHiddenFees'),
+  ];
 
   return (
     <section ref={ref} className={`${styles.cta} ${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''}`}>
       <Container>
         <div className={styles.content}>
-          <h2 className={styles.title}>Начни читать сегодня</h2>
-          
+          <h2 className={styles.title}>{t('cta.title')}</h2>
+
           <p className={styles.subtitle}>
-            Присоединяйся к текущему кругу и формируй привычку читать каждый день
+            {t('cta.subtitle')}
           </p>
-          
+
           <Button
             variant="primary"
             size="lg"
@@ -33,9 +35,9 @@ export function CallToAction({ onJoinClick }: CallToActionProps) {
             onClick={onJoinClick}
             className={styles.button}
           >
-            Присоединиться к кругу
+            {t('cta.joinButton')}
           </Button>
-          
+
           <div className={styles.features}>
             {features.map((feature, index) => (
               <span key={index} className={styles.feature}>

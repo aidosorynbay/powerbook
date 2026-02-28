@@ -158,12 +158,21 @@ export function ResultsPage() {
     );
     if (round) {
       setLastRound(round);
-      const [resResult, calResult] = await Promise.all([
-        apiGet<RoundResultsResponse>(`/rounds/${round.id}/results`, { requireAuth: true }),
-        apiGet<CalendarResponse>(`/rounds/${round.id}/calendar`, { requireAuth: true }),
-      ]);
-      if (resResult.data) setResults(resResult.data);
-      if (calResult.data) setCalendar(calResult.data);
+      const { data: res } = await apiGet<RoundResultsResponse>(
+        `/rounds/${round.id}/results`,
+        { requireAuth: true }
+      );
+      if (res) {
+        setResults(res);
+        // Only fetch calendar if user participated
+        if (res.my_result) {
+          const { data: cal } = await apiGet<CalendarResponse>(
+            `/rounds/${round.id}/calendar`,
+            { requireAuth: true }
+          );
+          if (cal) setCalendar(cal);
+        }
+      }
     }
     setIsLoading(false);
   }, []);
@@ -206,6 +215,13 @@ export function ResultsPage() {
                 <div className={styles.sections}>
                   {/* Left column */}
                   <div className={styles.leftCol}>
+                    {/* Not participated message */}
+                    {!myResult && (
+                      <div className={styles.notParticipated}>
+                        {t('results.notParticipated')}
+                      </div>
+                    )}
+
                     {/* Congrats / Exchange card */}
                     {myResult && (
                       <div className={styles.congratsCard}>
@@ -261,7 +277,7 @@ export function ResultsPage() {
                     )}
 
                     {/* Progress chart */}
-                    {calendar && calendar.days.length > 0 && (
+                    {myResult && calendar && calendar.days.length > 0 && (
                       <div className={styles.chartSection}>
                         <div className={styles.chartTitle}>{t('results.progressMonth')}</div>
                         <ProgressChart days={calendar.days} />
@@ -269,7 +285,7 @@ export function ResultsPage() {
                     )}
 
                     {/* Weekday activity chart */}
-                    {calendar && calendar.days.length > 0 && (
+                    {myResult && calendar && calendar.days.length > 0 && (
                       <div className={styles.chartSection}>
                         <div className={styles.chartTitle}>{t('results.weekdayActivity')}</div>
                         <WeekdayChart days={calendar.days} weekdayLabels={weekdayLabels} />
