@@ -15,6 +15,7 @@ export function RegisterPage() {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [gender, setGender] = useState<Gender>('unknown');
+  const [telegramId, setTelegramId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +29,7 @@ export function RegisterPage() {
       password,
       display_name: displayName,
       gender,
+      telegram_id: telegramId.replace(/^@/, '') || null,
     });
 
     if (apiError) {
@@ -122,6 +124,21 @@ export function RegisterPage() {
                 <option value="male">{t('register.genderMale')}</option>
                 <option value="female">{t('register.genderFemale')}</option>
               </select>
+            </div>
+
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="telegramId">
+                {t('register.telegram')}
+              </label>
+              <input
+                id="telegramId"
+                className={styles.input}
+                type="text"
+                placeholder="@username"
+                value={telegramId}
+                onChange={(e) => setTelegramId(e.target.value)}
+              />
+              <div className={styles.hint}>{t('register.telegramHint')}</div>
             </div>
 
             <Button type="submit" fullWidth disabled={isSubmitting}>

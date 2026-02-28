@@ -73,14 +73,14 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
         self, *, round_id: uuid.UUID
     ) -> list[dict]:
         participants_stmt = (
-            select(RoundParticipant.user_id, User.display_name)
+            select(RoundParticipant.user_id, User.display_name, User.telegram_id)
             .join(User, RoundParticipant.user_id == User.id)
             .where(
                 RoundParticipant.round_id == round_id,
                 RoundParticipant.status == RoundParticipantStatus.active,
             )
         )
-        participants = {row.user_id: row.display_name for row in self.db.execute(participants_stmt).all()}
+        participants = {row.user_id: (row.display_name, row.telegram_id) for row in self.db.execute(participants_stmt).all()}
 
         scores_stmt = (
             select(
@@ -94,11 +94,12 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
         scores = {row.user_id: (int(row.total_score), int(row.days_read)) for row in self.db.execute(scores_stmt).all()}
 
         result = []
-        for user_id, display_name in participants.items():
+        for user_id, (display_name, telegram_id) in participants.items():
             total_score, days_read = scores.get(user_id, (0, 0))
             result.append({
                 "user_id": str(user_id),
                 "display_name": display_name,
+                "telegram_id": telegram_id,
                 "total_score": total_score,
                 "days_read": days_read,
             })

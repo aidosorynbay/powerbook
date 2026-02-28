@@ -80,6 +80,7 @@ class GroupService:
         deadline_utc: str | None = None
         correction_deadline_utc: str | None = None
         next_round_info: RoundInfo | None = None
+        next_round_participation: ParticipationInfo | None = None
 
         if rnd is not None:
             last_day = calendar.monthrange(rnd.year, rnd.month)[1]
@@ -103,6 +104,15 @@ class GroupService:
             )
             if next_rnd is not None:
                 next_round_info = RoundInfo.model_validate(next_rnd)
+                next_participant = self.participants.get_for_user(round_id=next_rnd.id, user_id=user_id)
+                if next_participant is not None:
+                    next_round_participation = ParticipationInfo(
+                        is_participant=True,
+                        status=next_participant.status,
+                        joined_at=next_participant.joined_at,
+                    )
+                else:
+                    next_round_participation = ParticipationInfo(is_participant=False)
 
         return CurrentRoundStatusOut(
             group_id=group.id,
@@ -112,5 +122,6 @@ class GroupService:
             deadline_utc=deadline_utc,
             correction_deadline_utc=correction_deadline_utc,
             next_round=next_round_info,
+            next_round_participation=next_round_participation,
         )
 

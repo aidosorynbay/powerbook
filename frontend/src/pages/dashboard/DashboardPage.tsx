@@ -74,6 +74,7 @@ export function DashboardPage() {
   const [lastDayPhase, setLastDayPhase] = useState<LastDayPhase>('normal');
   const [countdownMs, setCountdownMs] = useState<number | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastDayPhaseRef = useRef<LastDayPhase>('normal');
 
   // User calendar panel (clicking leaderboard entry — shown inline, not modal)
   const [viewUser, setViewUser] = useState<{ id: string; name: string } | null>(null);
@@ -171,13 +172,20 @@ export function DashboardPage() {
 
       if (isLastDay && now < correctionMs) {
         // Phase 1: correction period (last day, before 8 PM)
+        lastDayPhaseRef.current = 'correction';
         setLastDayPhase('correction');
         setCountdownMs(correctionMs - now);
       } else if (isLastDay && now >= correctionMs && now < roundMs) {
         // Phase 2: registration period (last day, 8 PM to midnight)
+        if (lastDayPhaseRef.current !== 'registration') {
+          // Phase just changed — refetch to pick up newly created next_round
+          fetchRoundStatus();
+        }
+        lastDayPhaseRef.current = 'registration';
         setLastDayPhase('registration');
         setCountdownMs(roundMs - now);
       } else {
+        lastDayPhaseRef.current = 'normal';
         setLastDayPhase('normal');
         setCountdownMs(null);
       }
@@ -423,7 +431,26 @@ export function DashboardPage() {
             </div>
           </div>
 
-          {!roundStatus?.round ? (
+          {/* Full-screen takeover: registration window after 8 PM on last day */}
+          {inRegistrationWindow ? (
+            <div className={styles.nextRoundTakeover}>
+              <div className={styles.nextRoundTakeoverTitle}>{t('dashboard.untilNextRound')}</div>
+              {countdownMs !== null && (
+                <div className={styles.nextRoundTakeoverTimer}>{formatCountdown(countdownMs)}</div>
+              )}
+              {roundStatus?.next_round && roundStatus.next_round.status === 'registration_open' ? (
+                roundStatus.next_round_participation?.is_participant ? (
+                  <p className={styles.nextRoundTakeoverRegistered}>{t('dashboard.registeredNextRound')}</p>
+                ) : (
+                  <Button onClick={handleJoinNextRound} disabled={isJoiningNextRound}>
+                    {isJoiningNextRound ? t('dashboard.registeringNextRound') : t('dashboard.registerNextRound')}
+                  </Button>
+                )
+              ) : (
+                <p className={styles.nextRoundTakeoverHint}>{t('dashboard.nextRoundSoon')}</p>
+              )}
+            </div>
+          ) : !roundStatus?.round ? (
             <div className={styles.noRound}>
               <div className={styles.noRoundTitle}>{t('dashboard.noRoundTitle')}</div>
               <p>{t('dashboard.noRoundText')}</p>
@@ -445,19 +472,6 @@ export function DashboardPage() {
                   </div>
                 )}
               </div>
-
-              {/* Registration period: after 8 PM on last day — inline, no banner */}
-              {inRegistrationWindow && (
-                <div className={styles.nextRoundSection}>
-                  {roundStatus.next_round && roundStatus.next_round.status === 'registration_open' ? (
-                    <Button onClick={handleJoinNextRound} disabled={isJoiningNextRound}>
-                      {isJoiningNextRound ? t('dashboard.registeringNextRound') : t('dashboard.registerNextRound')}
-                    </Button>
-                  ) : (
-                    <p>{t('dashboard.nextRoundSoon')}</p>
-                  )}
-                </div>
-              )}
 
               {canJoin && (
                 <div className={styles.joinSection}>
@@ -512,7 +526,21 @@ export function DashboardPage() {
                             onClick={() => selectUser(entry.user_id, entry.display_name)}
                           >
                             <div className={styles.rank}>{idx + 1}</div>
-                            <div className={styles.participantName}>{entry.display_name}</div>
+                            <div className={styles.participantName}>
+                              {entry.telegram_id ? (
+                                <a
+                                  href={`https://t.me/${entry.telegram_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={styles.telegramLink}
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  @{entry.telegram_id}
+                                </a>
+                              ) : (
+                                entry.display_name
+                              )}
+                            </div>
                             <div className={styles.participantScore}>{entry.total_score} {t('dashboard.daysShort')}</div>
                           </div>
                         );

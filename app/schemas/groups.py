@@ -49,4 +49,5 @@ class CurrentRoundStatusOut(BaseModel):
     deadline_utc: str | None = None
     correction_deadline_utc: str | None = None
     next_round: RoundInfo | None = None
+    next_round_participation: ParticipationInfo | None = None
 

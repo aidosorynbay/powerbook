@@ -38,6 +38,8 @@ class User(TimestampMixin, Base):
         default=SystemRole.user,
     )
 
+    telegram_id: Mapped[str | None] = mapped_column(String(120), nullable=True, default=None)
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     group_memberships: Mapped[list["GroupMember"]] = relationship(

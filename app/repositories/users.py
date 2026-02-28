@@ -38,12 +38,14 @@ class UserRepository(BaseRepository[User]):
         password_hash: str,
         display_name: str,
         gender: Gender,
+        telegram_id: str | None = None,
     ) -> User:
         user = User(
             email=email,
             password_hash=password_hash,
             display_name=display_name,
             gender=gender,
+            telegram_id=telegram_id,
         )
         self.db.add(user)
         self.db.commit()

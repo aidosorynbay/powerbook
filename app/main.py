@@ -87,11 +87,54 @@ def _tick_round_lifecycle() -> None:
                     except Exception:
                         logger.exception("Failed to create next round after %s", rnd.id)
                 elif (today.year == rnd.year and today.month == rnd.month
-                      and today.day == last_day and now.hour >= 0):
-                    # We're on the last day — the deadline is midnight (end of this day)
-                    # Check if it's actually past midnight (i.e., the next day has started)
-                    # This is handled by the "past the month" check above
-                    pass
+                      and today.day == last_day and now.hour >= 20):
+                    # 8 PM GMT+5 on last day: close round and create next
+                    try:
+                        svc.compute_and_publish_results(round_id=rnd.id)
+                        logger.info("Auto-published results for round %s at 8PM on last day", rnd.id)
+                    except Exception:
+                        logger.exception("Failed to publish results for round %s at 8PM", rnd.id)
+                        continue
+
+                    # Auto-create next month's round
+                    if rnd.month == 12:
+                        next_year, next_month = rnd.year + 1, 1
+                    else:
+                        next_year, next_month = rnd.year, rnd.month + 1
+
+                    existing_next = db.execute(
+                        select(Round).where(
+                            Round.group_id == rnd.group_id,
+                            Round.year == next_year,
+                            Round.month == next_month,
+                        )
+                    ).scalar_one_or_none()
+
+                    if existing_next is None:
+                        try:
+                            svc.create_round(
+                                group_id=rnd.group_id,
+                                year=next_year,
+                                month=next_month,
+                                timezone=rnd.timezone,
+                                registration_open_until_day=rnd.registration_open_until_day,
+                            )
+                            new_rnd = db.execute(
+                                select(Round).where(
+                                    Round.group_id == rnd.group_id,
+                                    Round.year == next_year,
+                                    Round.month == next_month,
+                                )
+                            ).scalar_one()
+                            svc.set_status(
+                                round_id=new_rnd.id,
+                                status_=RoundStatus.registration_open,
+                            )
+                            logger.info("Auto-created round %d-%02d at 8PM", next_year, next_month)
+                        except Exception:
+                            logger.exception("Failed to create next round after %s at 8PM", rnd.id)
+                    else:
+                        logger.info("Next round %d-%02d already exists, skipping", next_year, next_month)
 
     except Exception:
         logger.exception("Round lifecycle tick failed")

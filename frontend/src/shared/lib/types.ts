@@ -14,6 +14,7 @@ export type User = {
   email: string;
   display_name: string;
   gender: string | null;
+  telegram_id: string | null;
   system_role: string;
   is_active: boolean;
   created_at: string;
@@ -46,12 +47,14 @@ export type CurrentRoundStatusResponse = {
   deadline_utc: string | null;
   correction_deadline_utc: string | null;
   next_round: RoundInfo | null;
+  next_round_participation: ParticipationInfo | null;
 };
 
 // Leaderboard
 export type LeaderboardEntry = {
   user_id: string;
   display_name: string;
+  telegram_id: string | null;
   total_score: number;
   days_read: number;
 };

@@ -222,6 +222,15 @@
   font-size: var(--font-size-sm);
 }
 
+.telegramLink {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.telegramLink:hover {
+  text-decoration: underline;
+}
+
 .participantScore {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
@@ -531,6 +540,56 @@
   margin: 0;
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+}
+
+/* Full-screen centered takeover for registration window */
+.nextRoundTakeover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 40vh;
+  gap: var(--spacing-6);
+  padding-top: var(--spacing-4);
+}
+
+.nextRoundTakeoverTitle {
+  font-size: 2.5rem;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-accent);
+}
+
+.nextRoundTakeoverTimer {
+  font-size: 4rem;
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent);
+  line-height: 1;
+}
+
+.nextRoundTakeoverHint {
+  margin: 0;
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+}
+
+.nextRoundTakeoverRegistered {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-success, #22c55e);
+}
+
+@media (max-width: 600px) {
+  .nextRoundTakeoverTitle {
+    font-size: 1.75rem;
+  }
+  .nextRoundTakeoverTimer {
+    font-size: 2.75rem;
+  }
 }
 
 /* Calendar day indicators */

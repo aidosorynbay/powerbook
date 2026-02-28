@@ -13,6 +13,7 @@ class UserOut(BaseModel):
     email: EmailStr
     display_name: str
     gender: Gender | None
+    telegram_id: str | None = None
     system_role: SystemRole
     is_active: bool
     created_at: datetime

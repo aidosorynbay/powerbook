@@ -14,7 +14,7 @@ class AuthService:
         self.db = db
         self.users = UserRepository(db)
 
-    def register(self, *, email: str, password: str, display_name: str, gender: Gender) -> tuple[User, str]:
+    def register(self, *, email: str, password: str, display_name: str, gender: Gender, telegram_id: str | None = None) -> tuple[User, str]:
         existing = self.users.get_by_email(email)
         if existing is not None:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
@@ -29,6 +29,7 @@ class AuthService:
             password_hash=password_hash,
             display_name=display_name,
             gender=gender,
+            telegram_id=telegram_id,
         )
         token = create_access_token(subject=str(user.id))
         return user, token
