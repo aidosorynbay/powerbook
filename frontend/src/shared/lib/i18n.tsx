@@ -177,8 +177,8 @@ const translations = {
     'stats.totalRounds': 'проведённых кругов',
 
     // Hero
-    'hero.titleLine1': 'Читай каждый день.',
-    'hero.titleLine2': 'Выигрывай книги.',
+    'hero.titleLine1': 'Понемногу, но постоянно.',
+    'hero.titleLine2': 'Делаем учение брэндом.',
     'hero.subtitle1': 'Ежемесячный челлендж по чтению с реальными результатами.',
     'hero.subtitle2': 'Формируй привычку, соревнуйся с другими читателями.',
     'hero.joinBtn': 'Присоединиться',
@@ -397,8 +397,8 @@ const translations = {
     'stats.totalRounds': 'өткізілген раундтар',
 
     // Hero
-    'hero.titleLine1': 'Күн сайын оқы.',
-    'hero.titleLine2': 'Кітаптар ұт.',
+    'hero.titleLine1': 'Аз-аздан үздіксіз.',
+    'hero.titleLine2': 'Кітап оқуды брэндке айналдырайық.',
     'hero.subtitle1': 'Нағыз нәтижелері бар айлық оқу челленджі.',
     'hero.subtitle2': 'Әдет қалыптастыр, басқа оқырмандармен жарыс.',
     'hero.joinBtn': 'Қосылу',
@@ -617,8 +617,8 @@ const translations = {
     'stats.totalRounds': 'rounds completed',
 
     // Hero
-    'hero.titleLine1': 'Read every day.',
-    'hero.titleLine2': 'Win books.',
+    'hero.titleLine1': 'Small but consistent.',
+    'hero.titleLine2': 'Let’s make learning a brand.',
     'hero.subtitle1': 'Monthly reading challenge with real results.',
     'hero.subtitle2': 'Build a habit, compete with other readers.',
     'hero.joinBtn': 'Join Now',

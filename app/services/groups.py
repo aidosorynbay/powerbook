@@ -52,7 +52,7 @@ class GroupService:
 
     def get_current_round(self, *, group_id: uuid.UUID) -> Round | None:
         # MVP definition: "current round" is the round for the current month (UTC).
-        now = datetime.now(tz=ZoneInfo("UTC"))
+        now = datetime.now(tz=ZoneInfo("Asia/Almaty"))
         return self.rounds.get_by_group_year_month(group_id=group_id, year=now.year, month=now.month)
 
     def get_current_round_status(self, *, slug: str, user_id: uuid.UUID) -> CurrentRoundStatusOut:
