@@ -35,8 +35,8 @@ def last_completed_round(db: Session = Depends(get_db), _user=Depends(get_curren
 
 
 @router.get("/{round_id}/results")
-def round_results(round_id: uuid.UUID, db: Session = Depends(get_db), _user=Depends(get_current_user)) -> dict:
-    return RoundService(db).get_round_results(round_id=round_id)
+def round_results(round_id: uuid.UUID, db: Session = Depends(get_db), user=Depends(get_current_user)) -> dict:
+    return RoundService(db).get_round_results(round_id=round_id, user_id=user.id)
 
 
 @router.post("", response_model=RoundOut)

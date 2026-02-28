@@ -69,6 +69,13 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
         )
         return {row.user_id: int(row.total_score) for row in self.db.execute(stmt).all()}
 
+    def total_minutes_for_user(self, *, round_id: uuid.UUID, user_id: uuid.UUID) -> int:
+        stmt = (
+            select(func.coalesce(func.sum(ReadingLog.minutes), 0))
+            .where(ReadingLog.round_id == round_id, ReadingLog.user_id == user_id)
+        )
+        return int(self.db.execute(stmt).scalar())
+
     def leaderboard_data(
         self, *, round_id: uuid.UUID
     ) -> list[dict]:

@@ -79,6 +79,7 @@ export type CalendarResponse = {
 export type RoundResultEntry = {
   user_id: string;
   display_name: string;
+  telegram_id: string | null;
   total_score: number;
   rank: number;
   group: 'winner' | 'loser';
@@ -89,12 +90,27 @@ export type ExchangePair = {
   receiver_name: string;
 };
 
+export type MyResult = {
+  rank: number;
+  total_score: number;
+  total_minutes: number;
+  group: 'winner' | 'loser';
+};
+
+export type MyExchange = {
+  partner_name: string;
+  partner_telegram_id: string | null;
+  role: 'giver' | 'receiver';
+};
+
 export type RoundResultsResponse = {
   round_id: string;
   year: number;
   month: number;
   results: RoundResultEntry[];
   pairs: ExchangePair[];
+  my_result: MyResult | null;
+  my_exchange: MyExchange | null;
 };
 
 export type LastCompletedRound = {

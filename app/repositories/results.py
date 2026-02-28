@@ -18,9 +18,9 @@ class RoundResultRepository(BaseRepository[RoundResult]):
         stmt = select(RoundResult).where(RoundResult.round_id == round_id).order_by(RoundResult.rank.asc())
         return list(self.db.execute(stmt).scalars().all())
 
-    def list_for_round_with_user_names(self, *, round_id: uuid.UUID) -> list[tuple[RoundResult, str]]:
+    def list_for_round_with_user_names(self, *, round_id: uuid.UUID) -> list[tuple[RoundResult, str, str | None]]:
         stmt = (
-            select(RoundResult, User.display_name)
+            select(RoundResult, User.display_name, User.telegram_id)
             .join(User, RoundResult.user_id == User.id)
             .where(RoundResult.round_id == round_id)
             .order_by(RoundResult.rank.asc())

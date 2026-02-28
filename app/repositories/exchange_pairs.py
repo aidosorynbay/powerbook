@@ -46,6 +46,41 @@ class BookExchangePairRepository(BaseRepository[BookExchangePair]):
         )
         return list(self.db.execute(stmt).all())
 
+    def get_user_pair_for_round(
+        self, *, round_id: uuid.UUID, user_id: uuid.UUID
+    ) -> tuple[BookExchangePair, str, str | None] | None:
+        """Get a user's exchange pair for a round, with partner name and telegram_id."""
+        giver = User.__table__.alias("giver")
+        receiver = User.__table__.alias("receiver")
+
+        # Check as giver (loser gives to winner)
+        stmt_giver = (
+            select(
+                BookExchangePair,
+                receiver.c.display_name.label("partner_name"),
+                receiver.c.telegram_id.label("partner_telegram_id"),
+            )
+            .join(receiver, BookExchangePair.receiver_user_id == receiver.c.id)
+            .join(giver, BookExchangePair.giver_user_id == giver.c.id)
+            .where(BookExchangePair.round_id == round_id, BookExchangePair.giver_user_id == user_id)
+        )
+        row = self.db.execute(stmt_giver).first()
+        if row:
+            return row
+
+        # Check as receiver (winner receives from loser)
+        stmt_receiver = (
+            select(
+                BookExchangePair,
+                giver.c.display_name.label("partner_name"),
+                giver.c.telegram_id.label("partner_telegram_id"),
+            )
+            .join(giver, BookExchangePair.giver_user_id == giver.c.id)
+            .join(receiver, BookExchangePair.receiver_user_id == receiver.c.id)
+            .where(BookExchangePair.round_id == round_id, BookExchangePair.receiver_user_id == user_id)
+        )
+        return self.db.execute(stmt_receiver).first()
+
     def create(self, *, round_id: uuid.UUID, giver_user_id: uuid.UUID, receiver_user_id: uuid.UUID) -> BookExchangePair:
         pair = BookExchangePair(round_id=round_id, giver_user_id=giver_user_id, receiver_user_id=receiver_user_id)
         self.db.add(pair)

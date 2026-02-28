@@ -40,7 +40,7 @@ class RoundService:
     def list_for_group(self, *, group_id: uuid.UUID, limit: int = 200) -> list[Round]:
         return self.rounds.list_for_group(group_id=group_id, limit=limit)
 
-    def get_round_results(self, *, round_id: uuid.UUID) -> dict:
+    def get_round_results(self, *, round_id: uuid.UUID, user_id: uuid.UUID | None = None) -> dict:
         rnd = self.rounds.get(round_id)
         if rnd is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Round not found")
@@ -50,11 +50,12 @@ class RoundService:
             {
                 "user_id": str(result.user_id),
                 "display_name": display_name,
+                "telegram_id": telegram_id,
                 "total_score": result.total_score,
                 "rank": result.rank,
                 "group": result.group.value,
             }
-            for result, display_name in rows
+            for result, display_name, telegram_id in rows
         ]
 
         pair_rows = self.pairs.list_for_round_with_user_names(round_id=round_id)
@@ -63,12 +64,41 @@ class RoundService:
             for _pair, giver_name, receiver_name in pair_rows
         ]
 
+        # Current user's personal result and exchange info
+        my_result = None
+        my_exchange = None
+        if user_id is not None:
+            for r in results:
+                if r["user_id"] == str(user_id):
+                    total_minutes = self.reading_logs.total_minutes_for_user(
+                        round_id=round_id, user_id=user_id
+                    )
+                    my_result = {
+                        "rank": r["rank"],
+                        "total_score": r["total_score"],
+                        "total_minutes": total_minutes,
+                        "group": r["group"],
+                    }
+                    break
+
+            pair_row = self.pairs.get_user_pair_for_round(round_id=round_id, user_id=user_id)
+            if pair_row is not None:
+                pair_obj, partner_name, partner_telegram_id = pair_row
+                role = "giver" if pair_obj.giver_user_id == user_id else "receiver"
+                my_exchange = {
+                    "partner_name": partner_name,
+                    "partner_telegram_id": partner_telegram_id,
+                    "role": role,
+                }
+
         return {
             "round_id": str(round_id),
             "year": rnd.year,
             "month": rnd.month,
             "results": results,
             "pairs": pairs,
+            "my_result": my_result,
+            "my_exchange": my_exchange,
         }
 
     def create_round(
