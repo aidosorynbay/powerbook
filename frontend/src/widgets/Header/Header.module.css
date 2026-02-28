@@ -110,7 +110,20 @@
 }
 
 @media (max-width: 600px) {
-  .actions {
+  .inner {
     gap: var(--spacing-2);
+  }
+
+  .inner > *:first-child {
+    flex-shrink: 0;
+  }
+
+  .actions {
+    gap: var(--spacing-1);
+  }
+
+  .loginBtn {
+    padding: var(--spacing-1) var(--spacing-2);
+    font-size: var(--font-size-xs);
   }
 }
