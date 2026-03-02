@@ -473,18 +473,6 @@ export function DashboardPage() {
                 )}
               </div>
 
-              {canJoin && (
-                <div className={styles.joinSection}>
-                  <div className={styles.joinTitle}>{t('dashboard.joinTitle')}</div>
-                  <div className={styles.joinSubtitle}>
-                    {t('dashboard.joinSubtitle')}
-                  </div>
-                  <Button onClick={handleJoin} disabled={isJoining}>
-                    {isJoining ? t('dashboard.joining') : t('dashboard.joinBtn')}
-                  </Button>
-                </div>
-              )}
-
               {/* Color & symbol legend */}
               <div className={styles.legend}>
                 <span className={styles.legendItem}>
@@ -512,40 +500,70 @@ export function DashboardPage() {
               <div ref={sectionsRef} className={styles.sections}>
                 <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay1}`}>
                   <div className={styles.sectionTitle}>{t('dashboard.leaderboard')}</div>
+                  {canJoin && (
+                    <div className={styles.joinInline}>
+                      <span className={styles.joinInlineText}>{t('dashboard.joinSubtitle')}</span>
+                      <Button size="sm" onClick={handleJoin} disabled={isJoining}>
+                        {isJoining ? t('dashboard.joining') : t('dashboard.joinBtn')}
+                      </Button>
+                    </div>
+                  )}
                   {leaderboard.length === 0 ? (
                     <div className={styles.emptyState}>{t('dashboard.noParticipants')}</div>
                   ) : (
-                    <div className={styles.leaderboard}>
-                      {leaderboard.map((entry, idx) => {
-                        const isSelf = entry.user_id === user?.id;
-                        const isSelected = entry.user_id === viewUser?.id;
+                    <>
+                      {/* Pinned: current user's row */}
+                      {(() => {
+                        const myIdx = leaderboard.findIndex(e => e.user_id === user?.id);
+                        if (myIdx === -1) return null;
+                        const entry = leaderboard[myIdx];
                         return (
                           <div
-                            key={entry.user_id}
-                            className={`${styles.leaderboardItem} ${styles.clickable} ${isSelf ? styles.isMe : ''} ${isSelected ? styles.isSelected : ''}`}
+                            className={`${styles.leaderboardItem} ${styles.clickable} ${styles.isMe}`}
                             onClick={() => selectUser(entry.user_id, entry.display_name)}
                           >
-                            <div className={styles.rank}>{idx + 1}</div>
+                            <div className={styles.rank}>{myIdx + 1}</div>
                             <div className={styles.participantName}>
                               {entry.telegram_id ? (
-                                <a
-                                  href={`https://t.me/${entry.telegram_id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={styles.telegramLink}
-                                  onClick={e => e.stopPropagation()}
-                                >
-                                  @{entry.telegram_id}
-                                </a>
-                              ) : (
-                                entry.display_name
-                              )}
+                                <a href={`https://t.me/${entry.telegram_id}`} target="_blank" rel="noopener noreferrer" className={styles.telegramLink} onClick={e => e.stopPropagation()}>@{entry.telegram_id}</a>
+                              ) : entry.display_name}
                             </div>
                             <div className={styles.participantScore}>{entry.total_score} {t('dashboard.daysShort')}</div>
                           </div>
                         );
-                      })}
-                    </div>
+                      })()}
+                      <div className={styles.leaderboard}>
+                        {leaderboard.map((entry, idx) => {
+                          const isSelf = entry.user_id === user?.id;
+                          const isSelected = entry.user_id === viewUser?.id;
+                          return (
+                            <div
+                              key={entry.user_id}
+                              className={`${styles.leaderboardItem} ${styles.clickable} ${isSelf ? styles.isMe : ''} ${isSelected ? styles.isSelected : ''}`}
+                              onClick={() => selectUser(entry.user_id, entry.display_name)}
+                            >
+                              <div className={styles.rank}>{idx + 1}</div>
+                              <div className={styles.participantName}>
+                                {entry.telegram_id ? (
+                                  <a
+                                    href={`https://t.me/${entry.telegram_id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={styles.telegramLink}
+                                    onClick={e => e.stopPropagation()}
+                                  >
+                                    @{entry.telegram_id}
+                                  </a>
+                                ) : (
+                                  entry.display_name
+                                )}
+                              </div>
+                              <div className={styles.participantScore}>{entry.total_score} {t('dashboard.daysShort')}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
                   )}
                 </div>
 
@@ -561,9 +579,7 @@ export function DashboardPage() {
                           </Badge>
                         )}
                       </div>
-                      <Button variant="ghost" size="sm" onClick={clearViewUser}>
-                        {isParticipant ? t('dashboard.myCalendar') : t('dashboard.cancel')}
-                      </Button>
+                      <button className={styles.closeBtn} onClick={clearViewUser} aria-label="Close">&times;</button>
                     </div>
 
                     {isLoadingUserCal ? (
@@ -601,6 +617,49 @@ export function DashboardPage() {
                       </div>
                     ) : null}
                   </div>
+                ) : !isParticipant ? (
+                  <>
+                    {/* How it works — for non-participants */}
+                    <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay2}`}>
+                      <div className={styles.sectionTitle}>{t('dashboard.howItWorks')}</div>
+                      <div className={styles.steps}>
+                        <div className={styles.step}>
+                          <div className={styles.stepNum}>1</div>
+                          <span>{t('dashboard.step1')}</span>
+                        </div>
+                        <div className={styles.step}>
+                          <div className={styles.stepNum}>2</div>
+                          <span>{t('dashboard.step2')}</span>
+                        </div>
+                        <div className={styles.step}>
+                          <div className={styles.stepNum}>3</div>
+                          <span>{t('dashboard.step3')}</span>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Round stats — for non-participants */}
+                    <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay3}`}>
+                      <div className={styles.sectionTitle}>{t('dashboard.roundStats')}</div>
+                      <div className={styles.miniStats}>
+                        <div className={styles.miniStat}>
+                          <div className={styles.miniStatValue}>{leaderboard.length}</div>
+                          <div className={styles.miniStatLabel}>{t('dashboard.statParticipants')}</div>
+                        </div>
+                        <div className={styles.miniStat}>
+                          <div className={styles.miniStatValue}>
+                            {roundStatus?.round ? new Date(roundStatus.round.year, roundStatus.round.month, 0).getDate() - new Date().getDate() : 0}
+                          </div>
+                          <div className={styles.miniStatLabel}>{t('dashboard.statDaysLeft')}</div>
+                        </div>
+                        <div className={styles.miniStat}>
+                          <div className={styles.miniStatValue}>
+                            {roundStatus?.round ? Math.round((new Date().getDate() / new Date(roundStatus.round.year, roundStatus.round.month, 0).getDate()) * 100) : 0}%
+                          </div>
+                          <div className={styles.miniStatLabel}>{t('dashboard.statProgress')}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 ) : isParticipant && !inRegistrationWindow ? (
                   <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay2}`}>
                     <div className={styles.calendarHeaderRow}>

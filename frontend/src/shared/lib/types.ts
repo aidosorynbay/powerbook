@@ -11,7 +11,8 @@ export type TokenResponse = {
 
 export type User = {
   id: string;
-  email: string;
+  username: string;
+  email: string | null;
   display_name: string;
   gender: string | null;
   telegram_id: string | null;

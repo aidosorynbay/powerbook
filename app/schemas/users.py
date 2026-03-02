@@ -3,14 +3,15 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 from app.models.enums import Gender, SystemRole
 
 
 class UserOut(BaseModel):
     id: uuid.UUID
-    email: EmailStr
+    username: str
+    email: str | None = None
     display_name: str
     gender: Gender | None
     telegram_id: str | None = None

@@ -11,7 +11,7 @@ export function RegisterPage() {
   const { login } = useAuth();
   const { t } = useI18n();
 
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [gender, setGender] = useState<Gender>('unknown');
@@ -25,7 +25,7 @@ export function RegisterPage() {
     setIsSubmitting(true);
 
     const { data, error: apiError } = await apiPost<TokenResponse>('/auth/register', {
-      email,
+      username,
       password,
       display_name: displayName,
       gender,
@@ -79,18 +79,22 @@ export function RegisterPage() {
             </div>
 
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="email">
-                {t('register.email')}
+              <label className={styles.label} htmlFor="username">
+                {t('register.username')}
               </label>
               <input
-                id="email"
+                id="username"
                 className={styles.input}
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                minLength={3}
+                maxLength={60}
+                pattern="[a-zA-Z0-9._\-]+"
                 required
               />
+              <div className={styles.hint}>{t('register.usernameHint')}</div>
             </div>
 
             <div className={styles.field}>

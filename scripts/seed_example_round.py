@@ -37,28 +37,28 @@ def main() -> None:
         now = datetime.now(tz=ZoneInfo("UTC"))
 
         # 1. Create admin user if not exists
-        admin_email = "admin@powerbook.local"
-        admin = db.execute(select(User).where(User.email == admin_email)).scalar_one_or_none()
+        admin_username = "admin"
+        admin = db.execute(select(User).where(User.username == admin_username)).scalar_one_or_none()
 
         if admin is None:
             admin = User(
-                email=admin_email,
+                username=admin_username,
+                email="admin@powerbook.local",
                 password_hash=hash_password("admin123"),
                 display_name="Admin",
-                gender=Gender.male,  # DB enum only has male/female
+                gender=Gender.male,
                 system_role=SystemRole.admin,
                 is_active=True,
             )
             db.add(admin)
             db.commit()
             db.refresh(admin)
-            print(f"Created admin user: {admin_email} (password: admin123)")
+            print(f"Created admin user: {admin_username} (password: admin123)")
         else:
-            # Ensure admin role
             if admin.system_role != SystemRole.admin:
                 admin.system_role = SystemRole.admin
                 db.commit()
-            print(f"Admin user already exists: {admin_email}")
+            print(f"Admin user already exists: {admin_username}")
 
         # 2. Create 'powerbook' group if not exists
         group = db.execute(select(Group).where(Group.slug == "powerbook")).scalar_one_or_none()

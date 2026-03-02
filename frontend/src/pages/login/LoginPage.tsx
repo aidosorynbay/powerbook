@@ -9,7 +9,7 @@ export function LoginPage() {
   const { login } = useAuth();
   const { t } = useI18n();
 
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +19,7 @@ export function LoginPage() {
     setError(null);
     setIsSubmitting(true);
 
-    const { data, error: apiError } = await apiPost<TokenResponse>('/auth/login', { email, password });
+    const { data, error: apiError } = await apiPost<TokenResponse>('/auth/login', { login: username, password });
 
     if (apiError) {
       // Translate known error keys
@@ -54,16 +54,16 @@ export function LoginPage() {
 
           <form className={styles.form} onSubmit={onSubmit}>
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="email">
-                {t('login.email')}
+              <label className={styles.label} htmlFor="username">
+                {t('login.username')}
               </label>
               <input
-                id="email"
+                id="username"
                 className={styles.input}
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
               />
             </div>

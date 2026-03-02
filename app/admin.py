@@ -15,7 +15,7 @@ from app.models.user import User
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
         form = await request.form()
-        email = form.get("username", "")
+        username = form.get("username", "")
         password = form.get("password", "")
 
         SessionLocal = get_session_factory()
@@ -23,7 +23,8 @@ class AdminAuth(AuthenticationBackend):
         try:
             from sqlalchemy import select
 
-            user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
+            from app.repositories.users import UserRepository
+            user = UserRepository(db).get_by_login(str(username))
             if user is None or not user.is_active:
                 return False
             if user.system_role not in {SystemRole.admin, SystemRole.superadmin}:
@@ -47,9 +48,9 @@ class AdminAuth(AuthenticationBackend):
 
 
 class UserAdmin(ModelView, model=User):
-    column_list = [User.id, User.email, User.display_name, User.telegram_id, User.gender, User.system_role, User.is_active, User.created_at]
-    column_searchable_list = [User.email, User.display_name, User.telegram_id]
-    column_sortable_list = [User.email, User.display_name, User.created_at]
+    column_list = [User.id, User.username, User.display_name, User.telegram_id, User.gender, User.system_role, User.is_active, User.created_at]
+    column_searchable_list = [User.username, User.display_name, User.telegram_id]
+    column_sortable_list = [User.username, User.display_name, User.created_at]
     form_excluded_columns = [
         User.password_hash,
         User.group_memberships, User.round_participations, User.reading_logs,

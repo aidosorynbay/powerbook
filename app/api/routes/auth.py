@@ -18,7 +18,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register", response_model=TokenResponse)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> TokenResponse:
     _, token = AuthService(db).register(
-        email=str(payload.email),
+        username=payload.username,
         password=payload.password,
         display_name=payload.display_name,
         gender=payload.gender,
@@ -29,7 +29,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> TokenRe
 
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
-    token = AuthService(db).login(email=str(payload.email), password=payload.password)
+    token = AuthService(db).login(login=payload.login, password=payload.password)
     return TokenResponse(access_token=token)
 
 
@@ -47,7 +47,16 @@ def update_profile(
     fields = {k: v for k, v in payload.model_dump().items() if v is not None}
     if not fields:
         return UserOut.model_validate(current_user)
-    user = UserRepository(db).update(current_user, **fields)
+    repo = UserRepository(db)
+    if "username" in fields and fields["username"] != current_user.username:
+        existing = repo.get_by_username(fields["username"])
+        if existing and existing.id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
+    if "email" in fields and fields["email"] != current_user.email:
+        existing = repo.get_by_email(fields["email"])
+        if existing and existing.id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already taken")
+    user = repo.update(current_user, **fields)
     return UserOut.model_validate(user)
 
 

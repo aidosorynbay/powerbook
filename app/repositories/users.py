@@ -17,9 +17,20 @@ class UserRepository(BaseRepository[User]):
     def get(self, user_id: uuid.UUID) -> User | None:
         return self.db.get(User, user_id)
 
+    def get_by_username(self, username: str) -> User | None:
+        stmt = select(User).where(User.username == username)
+        return self.db.execute(stmt).scalar_one_or_none()
+
     def get_by_email(self, email: str) -> User | None:
         stmt = select(User).where(User.email == email)
         return self.db.execute(stmt).scalar_one_or_none()
+
+    def get_by_login(self, login: str) -> User | None:
+        """Look up by username first, then email."""
+        user = self.get_by_username(login)
+        if user is None and "@" in login:
+            user = self.get_by_email(login)
+        return user
 
     def list(self, *, offset: int = 0, limit: int = 50) -> list[User]:
         stmt = select(User).offset(offset).limit(limit).order_by(User.created_at.desc())
@@ -34,14 +45,14 @@ class UserRepository(BaseRepository[User]):
     def create(
         self,
         *,
-        email: str,
+        username: str,
         password_hash: str,
         display_name: str,
         gender: Gender,
         telegram_id: str | None = None,
     ) -> User:
         user = User(
-            email=email,
+            username=username,
             password_hash=password_hash,
             display_name=display_name,
             gender=gender,

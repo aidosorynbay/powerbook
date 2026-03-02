@@ -23,7 +23,8 @@ class User(TimestampMixin, Base):
         primary_key=True,
         default=uuid.uuid4,
     )
-    email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
+    username: Mapped[str] = mapped_column(String(60), unique=True, index=True, nullable=False)
+    email: Mapped[str | None] = mapped_column(String(320), unique=True, index=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
 
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)

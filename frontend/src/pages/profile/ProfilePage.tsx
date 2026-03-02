@@ -11,6 +11,8 @@ export function ProfilePage() {
   const { t } = useI18n();
 
   // Profile form
+  const [username, setUsername] = useState(user?.username ?? '');
+  const [email, setEmail] = useState(user?.email ?? '');
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
   const [telegramId, setTelegramId] = useState(user?.telegram_id ?? '');
   const [gender, setGender] = useState<Gender>((user?.gender as Gender) ?? 'unknown');
@@ -33,6 +35,8 @@ export function ProfilePage() {
     setIsSaving(true);
 
     const { error } = await apiPut<User>('/auth/profile', {
+      username,
+      email: email || null,
       display_name: displayName,
       telegram_id: telegramId.replace(/^@/, '') || null,
       gender,
@@ -94,6 +98,36 @@ export function ProfilePage() {
             {profileSuccess && <div className={styles.success}>{profileSuccess}</div>}
 
             <form className={styles.form} onSubmit={onSaveProfile}>
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="username">{t('profile.username')}</label>
+                <input
+                  id="username"
+                  className={styles.input}
+                  type="text"
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  minLength={3}
+                  maxLength={60}
+                  pattern="[a-zA-Z0-9._\-]+"
+                  required
+                />
+                <div className={styles.hint}>{t('register.usernameHint')}</div>
+              </div>
+
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="email">{t('profile.email')}</label>
+                <input
+                  id="email"
+                  className={styles.input}
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="user@example.com"
+                />
+              </div>
+
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="displayName">
                   {t('register.name')}
