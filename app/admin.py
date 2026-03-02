@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from sqladmin import Admin, ModelView
+from sqladmin import Admin, ModelView, action
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
+from starlette.responses import HTMLResponse, RedirectResponse
 
-from app.core.security import verify_password
+from app.core.security import hash_password, verify_password
 from app.db.session import get_engine, get_session_factory
 from app.models.enums import SystemRole
 from app.models.group import Group, GroupMember
@@ -59,6 +60,37 @@ class UserAdmin(ModelView, model=User):
     name = "User"
     name_plural = "Users"
     icon = "fa-solid fa-users"
+
+    @action(name="reset_password", label="Reset Password", confirmation_message="Generate a random password for selected users?")
+    async def reset_password(self, request: Request) -> HTMLResponse:
+        import secrets
+        pks = request.query_params.getlist("pks")
+        passwords: list[str] = []
+        if pks:
+            SessionLocal = get_session_factory()
+            db = SessionLocal()
+            try:
+                from sqlalchemy import select
+                for pk in pks:
+                    user = db.execute(select(User).where(User.id == pk)).scalar_one_or_none()
+                    if user:
+                        temp_pw = secrets.token_urlsafe(6)
+                        user.password_hash = hash_password(temp_pw)
+                        passwords.append(f"<tr><td><b>{user.username}</b></td><td><code>{temp_pw}</code></td></tr>")
+                db.commit()
+            finally:
+                db.close()
+        back_url = request.url_for("admin:list", identity=self.identity)
+        rows = "".join(passwords)
+        return HTMLResponse(
+            f"<html><body style='font-family:sans-serif;padding:40px;max-width:500px;margin:auto'>"
+            f"<h2>Passwords Reset</h2>"
+            f"<table style='width:100%;border-collapse:collapse'>"
+            f"<tr><th align='left'>Username</th><th align='left'>New Password</th></tr>"
+            f"{rows}</table>"
+            f"<br><a href='{back_url}'>Back to Users</a>"
+            f"</body></html>"
+        )
 
 
 class GroupAdmin(ModelView, model=Group):
