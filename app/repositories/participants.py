@@ -5,6 +5,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.enums import RoundParticipantStatus
 from app.models.round import RoundParticipant
 from app.repositories.base import BaseRepository
 
@@ -24,7 +25,10 @@ class RoundParticipantRepository(BaseRepository[RoundParticipant]):
         return self.db.execute(stmt).scalar_one_or_none()
 
     def list_for_round(self, *, round_id: uuid.UUID) -> list[RoundParticipant]:
-        stmt = select(RoundParticipant).where(RoundParticipant.round_id == round_id)
+        stmt = select(RoundParticipant).where(
+            RoundParticipant.round_id == round_id,
+            RoundParticipant.status == RoundParticipantStatus.active,
+        )
         return list(self.db.execute(stmt).scalars().all())
 
     def create(self, *, round_id: uuid.UUID, user_id: uuid.UUID) -> RoundParticipant:
