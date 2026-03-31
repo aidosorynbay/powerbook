@@ -191,6 +191,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-2);
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: var(--spacing-1);
 }
 
 .leaderboardItem {
@@ -248,6 +251,45 @@
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
+}
+
+.leaderboardItemSelected {
+  border: 2px solid var(--color-accent-primary);
+  background: var(--color-accent-primary-muted);
+}
+
+.leaderboardItem {
+  cursor: pointer;
+}
+
+/* Viewing another user banner */
+.viewingBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-primary);
+}
+
+.viewingBackBtn {
+  background: none;
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--radius-full);
+  color: var(--color-accent-primary);
+  font-size: var(--font-size-xs);
+  padding: var(--spacing-1) var(--spacing-3);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.viewingBackBtn:hover {
+  background: var(--color-accent-primary-muted);
 }
 
 /* Hover effects */

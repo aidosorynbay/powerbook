@@ -134,8 +134,9 @@ const translations = {
     'results.place': '{rank} место',
     'results.placeLabel': 'Место',
     'results.progressMonth': 'Прогресс за месяц',
-    'results.weekdayActivity': 'Активность по дням недели',
+    'results.weekdayActivity': 'Средняя активность по дням недели',
     'results.notParticipated': 'Вы не участвовали в этом раунде. Присоединяйтесь к следующему!',
+    'results.backToMine': 'Мои результаты',
 
     // Archive
     'archive.title': 'Архив чтения',
@@ -365,8 +366,9 @@ const translations = {
     'results.place': '{rank} орын',
     'results.placeLabel': 'Орын',
     'results.progressMonth': 'Ай бойынша прогресс',
-    'results.weekdayActivity': 'Апта күндері бойынша белсенділік',
+    'results.weekdayActivity': 'Апта күндері бойынша орташа белсенділік',
     'results.notParticipated': 'Сіз бұл раундқа қатыспадыңыз. Келесіге қосылыңыз!',
+    'results.backToMine': 'Менің нәтижелерім',
 
     // Archive
     'archive.title': 'Оқу мұрағаты',
@@ -596,8 +598,9 @@ const translations = {
     'results.place': '{rank} place',
     'results.placeLabel': 'Place',
     'results.progressMonth': 'Monthly progress',
-    'results.weekdayActivity': 'Activity by weekday',
+    'results.weekdayActivity': 'Average activity by weekday',
     'results.notParticipated': "You didn't participate in this round. Join the next one!",
+    'results.backToMine': 'My results',
 
     // Archive
     'archive.title': 'Reading Archive',

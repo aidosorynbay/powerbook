@@ -57,6 +57,17 @@ export function DashboardPage() {
 
   const [roundStatus, setRoundStatus] = useState<CurrentRoundStatusResponse | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+
+  // Standard competition ranking: same score → same rank, next rank skips
+  const leaderboardRanks = useMemo(() => {
+    const ranks: number[] = [];
+    let rank = 1;
+    for (let i = 0; i < leaderboard.length; i++) {
+      if (i > 0 && leaderboard[i].total_score < leaderboard[i - 1].total_score) rank = i + 1;
+      ranks.push(rank);
+    }
+    return ranks;
+  }, [leaderboard]);
   const [calendar, setCalendar] = useState<CalendarResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
@@ -522,7 +533,7 @@ export function DashboardPage() {
                             className={`${styles.leaderboardItem} ${styles.clickable} ${styles.isMe}`}
                             onClick={() => selectUser(entry.user_id, entry.display_name)}
                           >
-                            <div className={styles.rank}>{myIdx + 1}</div>
+                            <div className={styles.rank}>{leaderboardRanks[myIdx]}</div>
                             <div className={styles.participantName}>
                               {entry.telegram_id ? (
                                 <a href={`https://t.me/${entry.telegram_id}`} target="_blank" rel="noopener noreferrer" className={styles.telegramLink} onClick={e => e.stopPropagation()}>@{entry.telegram_id}</a>
@@ -542,7 +553,7 @@ export function DashboardPage() {
                               className={`${styles.leaderboardItem} ${styles.clickable} ${isSelf ? styles.isMe : ''} ${isSelected ? styles.isSelected : ''}`}
                               onClick={() => selectUser(entry.user_id, entry.display_name)}
                             >
-                              <div className={styles.rank}>{idx + 1}</div>
+                              <div className={styles.rank}>{leaderboardRanks[idx]}</div>
                               <div className={styles.participantName}>
                                 {entry.telegram_id ? (
                                   <a

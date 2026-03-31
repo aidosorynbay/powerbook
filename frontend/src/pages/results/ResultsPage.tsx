@@ -5,6 +5,7 @@ import {
   apiGet,
   type LastCompletedRound,
   type RoundResultsResponse,
+  type RoundResultEntry,
   type CalendarResponse,
   type CalendarDay,
 } from '@/shared/lib';
@@ -34,7 +35,6 @@ function ProgressChart({ days }: { days: CalendarDay[] }) {
     return `${x},${y}`;
   }).join(' ');
 
-  // Area fill under line
   const firstX = PX;
   const lastX = PX + chartW;
   const areaPath = `M ${firstX},${PY + chartH} ` +
@@ -45,12 +45,10 @@ function ProgressChart({ days }: { days: CalendarDay[] }) {
     }).join(' ') +
     ` L ${lastX},${PY + chartH} Z`;
 
-  // Show every ~5th day label to avoid crowding
   const step = days.length > 20 ? 5 : days.length > 10 ? 3 : 2;
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className={styles.chart}>
-      {/* Y axis ticks */}
       {yTicks.map(v => {
         const y = PY + chartH - (v / maxMin) * chartH;
         return (
@@ -60,17 +58,13 @@ function ProgressChart({ days }: { days: CalendarDay[] }) {
           </g>
         );
       })}
-      {/* Area */}
       <path d={areaPath} fill="var(--color-accent-primary)" opacity="0.15" />
-      {/* Line */}
       <polyline points={points} fill="none" stroke="var(--color-accent-primary)" strokeWidth="2" strokeLinejoin="round" />
-      {/* Dots */}
       {days.map((d, i) => {
         const x = PX + (i / Math.max(days.length - 1, 1)) * chartW;
         const y = PY + chartH - (d.minutes / maxMin) * chartH;
         return <circle key={i} cx={x} cy={y} r="2.5" fill="var(--color-accent-primary)" />;
       })}
-      {/* X axis labels */}
       {days.map((d, i) => {
         if (i % step !== 0 && i !== days.length - 1) return null;
         const x = PX + (i / Math.max(days.length - 1, 1)) * chartW;
@@ -91,12 +85,11 @@ function WeekdayChart({ days, weekdayLabels }: { days: CalendarDay[]; weekdayLab
   const chartW = W - PX * 2;
   const chartH = H - PY * 2;
 
-  // Aggregate minutes by weekday (0=Mon ... 6=Sun)
   const totals = [0, 0, 0, 0, 0, 0, 0];
   const counts = [0, 0, 0, 0, 0, 0, 0];
   days.forEach(d => {
     const dt = new Date(d.date);
-    const dow = (dt.getDay() + 6) % 7; // JS Sunday=0 → shift so Mon=0
+    const dow = (dt.getDay() + 6) % 7;
     totals[dow] += d.minutes;
     counts[dow]++;
   });
@@ -108,7 +101,6 @@ function WeekdayChart({ days, weekdayLabels }: { days: CalendarDay[]; weekdayLab
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className={styles.chart}>
-      {/* Y grid lines */}
       {[0, Math.round(maxVal / 2), maxVal].map(v => {
         const y = PY + chartH - (v / maxVal) * chartH;
         return (
@@ -118,7 +110,6 @@ function WeekdayChart({ days, weekdayLabels }: { days: CalendarDay[]; weekdayLab
           </g>
         );
       })}
-      {/* Bars */}
       {avgs.map((v, i) => {
         const x = PX + i * gap + (gap - barW) / 2;
         const barH = (v / maxVal) * chartH;
@@ -126,11 +117,9 @@ function WeekdayChart({ days, weekdayLabels }: { days: CalendarDay[]; weekdayLab
         return (
           <g key={i}>
             <rect x={x} y={y} width={barW} height={barH} rx="4" fill="var(--color-accent-primary)" opacity="0.85" />
-            {/* Value on top */}
             {v > 0 && (
               <text x={x + barW / 2} y={y - 4} textAnchor="middle" fill="var(--color-text-muted)" fontSize="9">{v}</text>
             )}
-            {/* Weekday label */}
             <text x={x + barW / 2} y={H - 2} textAnchor="middle" fill="var(--color-text-muted)" fontSize="10">
               {weekdayLabels[i]}
             </text>
@@ -147,8 +136,21 @@ export function ResultsPage() {
 
   const [lastRound, setLastRound] = useState<LastCompletedRound>(null);
   const [results, setResults] = useState<RoundResultsResponse | null>(null);
-  const [calendar, setCalendar] = useState<CalendarResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [selectedEntry, setSelectedEntry] = useState<RoundResultEntry | null>(null);
+  const [viewedCalendar, setViewedCalendar] = useState<CalendarResponse | null>(null);
+  const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
+
+  const fetchCalendar = useCallback(async (roundId: string, userId: string) => {
+    setIsLoadingCalendar(true);
+    const { data } = await apiGet<CalendarResponse>(
+      `/rounds/${roundId}/calendar/${userId}`,
+      { requireAuth: true }
+    );
+    setViewedCalendar(data);
+    setIsLoadingCalendar(false);
+  }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -164,27 +166,36 @@ export function ResultsPage() {
       );
       if (res) {
         setResults(res);
-        // Only fetch calendar if user participated
-        if (res.my_result) {
-          const { data: cal } = await apiGet<CalendarResponse>(
-            `/rounds/${round.id}/calendar`,
-            { requireAuth: true }
-          );
-          if (cal) setCalendar(cal);
+        // Default: select current user if they participated
+        if (res.my_result && user) {
+          const myEntry = res.results.find(r => r.user_id === user.id) ?? null;
+          setSelectedEntry(myEntry);
+          if (myEntry) await fetchCalendar(round.id, myEntry.user_id);
         }
       }
     }
     setIsLoading(false);
-  }, []);
+  }, [user, fetchCalendar]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  const handleSelectEntry = useCallback(async (entry: RoundResultEntry) => {
+    if (entry.user_id === selectedEntry?.user_id) return;
+    setSelectedEntry(entry);
+    if (lastRound) await fetchCalendar(lastRound.id, entry.user_id);
+  }, [selectedEntry, lastRound, fetchCalendar]);
+
   const monthName = results ? t(`month.${results.month}`) : '';
-  const myResult = results?.my_result;
   const myExchange = results?.my_exchange;
-  const isWinner = myResult?.group === 'winner';
+
+  const isSelf = user && selectedEntry?.user_id === user.id;
+  const isSelectedWinner = selectedEntry?.group === 'winner';
+
+  const selectedDisplayName = selectedEntry
+    ? (selectedEntry.telegram_id ? `@${selectedEntry.telegram_id}` : selectedEntry.display_name)
+    : null;
 
   const weekdayLabels = useMemo(() => [
     t('weekday.mon'), t('weekday.tue'), t('weekday.wed'), t('weekday.thu'),
@@ -216,23 +227,41 @@ export function ResultsPage() {
                   {/* Left column */}
                   <div className={styles.leftCol}>
                     {/* Not participated message */}
-                    {!myResult && (
+                    {!results.my_result && !selectedEntry && (
                       <div className={styles.notParticipated}>
                         {t('results.notParticipated')}
                       </div>
                     )}
 
-                    {/* Congrats / Exchange card */}
-                    {myResult && (
+                    {/* Viewing another user banner */}
+                    {selectedEntry && !isSelf && (
+                      <div className={styles.viewingBanner}>
+                        <span>{selectedDisplayName}</span>
+                        {results.my_result && user && (
+                          <button
+                            className={styles.viewingBackBtn}
+                            onClick={() => {
+                              const myEntry = results.results.find(r => r.user_id === user.id) ?? null;
+                              if (myEntry) handleSelectEntry(myEntry);
+                            }}
+                          >
+                            {t('results.backToMine')}
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Congrats / Exchange card — only for self */}
+                    {isSelf && results.my_result && (
                       <div className={styles.congratsCard}>
                         <div className={styles.congratsIcon}>
-                          {isWinner ? '\uD83C\uDFC6' : '\uD83D\uDCD6'}
+                          {isSelectedWinner ? '\uD83C\uDFC6' : '\uD83D\uDCD6'}
                         </div>
                         <div className={styles.congratsTitle}>
-                          {isWinner ? t('results.congratsWinner') : t('results.congratsLoser')}
+                          {isSelectedWinner ? t('results.congratsWinner') : t('results.congratsLoser')}
                         </div>
                         <div className={styles.congratsText}>
-                          {isWinner ? t('results.congratsWinnerText') : t('results.congratsLoserText')}
+                          {isSelectedWinner ? t('results.congratsWinnerText') : t('results.congratsLoserText')}
                         </div>
                         {myExchange && (
                           <div className={styles.congratsPartner}>
@@ -248,48 +277,50 @@ export function ResultsPage() {
                       </div>
                     )}
 
-                    {/* Personal stats */}
-                    {myResult && (
+                    {/* Stats for selected user */}
+                    {selectedEntry && (
                       <div className={styles.statsSection}>
                         <div className={styles.statsSectionTitle}>
-                          {t('results.yourStats')}
+                          {isSelf ? t('results.yourStats') : selectedDisplayName}
                           <span className={styles.rankBadge}>
-                            {t('results.place', { rank: myResult.rank })}
+                            {t('results.place', { rank: selectedEntry.rank })}
                           </span>
                         </div>
                         <div className={styles.statsRow}>
                           <div className={styles.statCard}>
                             <div className={styles.statValue}>
-                              {myResult.total_minutes.toLocaleString()}
+                              {(viewedCalendar?.total_minutes ?? 0).toLocaleString()}
                             </div>
                             <div className={styles.statLabel}>{t('results.minutes')}</div>
                           </div>
                           <div className={styles.statCard}>
-                            <div className={styles.statValue}>{myResult.total_score}</div>
+                            <div className={styles.statValue}>{selectedEntry.total_score}</div>
                             <div className={styles.statLabel}>{t('results.days')}</div>
                           </div>
                           <div className={styles.statCard}>
-                            <div className={styles.statValue}>#{myResult.rank}</div>
+                            <div className={styles.statValue}>#{selectedEntry.rank}</div>
                             <div className={styles.statLabel}>{t('results.placeLabel')}</div>
                           </div>
                         </div>
                       </div>
                     )}
 
-                    {/* Progress chart */}
-                    {myResult && calendar && calendar.days.length > 0 && (
-                      <div className={styles.chartSection}>
-                        <div className={styles.chartTitle}>{t('results.progressMonth')}</div>
-                        <ProgressChart days={calendar.days} />
-                      </div>
+                    {/* Charts */}
+                    {selectedEntry && !isLoadingCalendar && viewedCalendar && viewedCalendar.days.length > 0 && (
+                      <>
+                        <div className={styles.chartSection}>
+                          <div className={styles.chartTitle}>{t('results.progressMonth')}</div>
+                          <ProgressChart days={viewedCalendar.days} />
+                        </div>
+                        <div className={styles.chartSection}>
+                          <div className={styles.chartTitle}>{t('results.weekdayActivity')}</div>
+                          <WeekdayChart days={viewedCalendar.days} weekdayLabels={weekdayLabels} />
+                        </div>
+                      </>
                     )}
 
-                    {/* Weekday activity chart */}
-                    {myResult && calendar && calendar.days.length > 0 && (
-                      <div className={styles.chartSection}>
-                        <div className={styles.chartTitle}>{t('results.weekdayActivity')}</div>
-                        <WeekdayChart days={calendar.days} weekdayLabels={weekdayLabels} />
-                      </div>
+                    {isLoadingCalendar && (
+                      <div className={styles.loading}>{t('dashboard.loading')}</div>
                     )}
                   </div>
 
@@ -301,14 +332,16 @@ export function ResultsPage() {
                     </div>
                     <div className={styles.leaderboardList}>
                       {results.results.map((entry) => {
-                        const isSelf = user && entry.user_id === user.id;
+                        const isSelfEntry = user && entry.user_id === user.id;
+                        const isSelected = entry.user_id === selectedEntry?.user_id;
                         const displayName = entry.telegram_id
                           ? `@${entry.telegram_id}`
                           : entry.display_name;
                         return (
                           <div
                             key={entry.user_id}
-                            className={`${styles.leaderboardItem} ${isSelf ? styles.leaderboardItemSelf : ''}`}
+                            className={`${styles.leaderboardItem} ${isSelfEntry ? styles.leaderboardItemSelf : ''} ${isSelected ? styles.leaderboardItemSelected : ''}`}
+                            onClick={() => handleSelectEntry(entry)}
                           >
                             <span className={styles.leaderboardRank}>#{entry.rank}</span>
                             <TrophyIcon rank={entry.rank} />

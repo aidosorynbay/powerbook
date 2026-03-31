@@ -222,9 +222,12 @@ class RoundService:
         winners_set = {uid for uid, _ in ranking[:winners_n]}
 
         results: list[RoundResult] = []
-        for idx, (uid, total) in enumerate(ranking, start=1):
+        rank = 1
+        for i, (uid, total) in enumerate(ranking):
+            if i > 0 and total < ranking[i - 1][1]:
+                rank = i + 1  # standard competition ranking: skip to actual position
             grp = ResultGroup.winner if uid in winners_set else ResultGroup.loser
-            results.append(RoundResult(round_id=round_id, user_id=uid, total_score=total, rank=idx, group=grp))
+            results.append(RoundResult(round_id=round_id, user_id=uid, total_score=total, rank=rank, group=grp))
         self.db.add_all(results)
 
         # book exchange pairs: losers give -> winners receive
