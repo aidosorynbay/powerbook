@@ -14,10 +14,14 @@ class AuthService:
         self.db = db
         self.users = UserRepository(db)
 
-    def register(self, *, username: str, password: str, display_name: str, gender: Gender, telegram_id: str | None = None) -> tuple[User, str]:
+    def register(self, *, username: str, password: str, display_name: str, gender: Gender, telegram_id: str) -> tuple[User, str]:
         existing = self.users.get_by_username(username)
         if existing is not None:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
+
+        existing_tg = self.users.get_by_telegram_id(telegram_id)
+        if existing_tg is not None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Telegram ID already linked to another account")
 
         try:
             password_hash = hash_password(password)

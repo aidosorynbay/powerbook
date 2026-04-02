@@ -24,7 +24,7 @@ const translations = {
     // Auth pages
     'login.title': 'Вход',
     'login.subtitle': 'Войдите, чтобы продолжить.',
-    'login.username': 'Имя пользователя или Email',
+    'login.username': 'Имя пользователя или Telegram',
     'login.password': 'Пароль',
     'login.submit': 'Войти',
     'login.submitting': 'Входим…',
@@ -274,7 +274,7 @@ const translations = {
     // Auth pages
     'login.title': 'Кіру',
     'login.subtitle': 'Жалғастыру үшін кіріңіз.',
-    'login.username': 'Пайдаланушы аты немесе Email',
+    'login.username': 'Пайдаланушы аты немесе Telegram',
     'login.password': 'Құпия сөз',
     'login.submit': 'Кіру',
     'login.submitting': 'Кіру...',
@@ -524,7 +524,7 @@ const translations = {
     // Auth pages
     'login.title': 'Login',
     'login.subtitle': 'Sign in to continue.',
-    'login.username': 'Username or Email',
+    'login.username': 'Username or Telegram',
     'login.password': 'Password',
     'login.submit': 'Sign In',
     'login.submitting': 'Signing in…',

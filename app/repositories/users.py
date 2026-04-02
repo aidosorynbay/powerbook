@@ -30,8 +30,10 @@ class UserRepository(BaseRepository[User]):
         return self.db.execute(stmt).scalar_one_or_none()
 
     def get_by_login(self, login: str) -> User | None:
-        """Look up by username first, then email."""
+        """Look up by username first, then telegram_id, then email."""
         user = self.get_by_username(login)
+        if user is None:
+            user = self.get_by_telegram_id(login)
         if user is None and "@" in login:
             user = self.get_by_email(login)
         return user

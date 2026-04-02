@@ -29,7 +29,7 @@ export function RegisterPage() {
       password,
       display_name: displayName,
       gender,
-      telegram_id: telegramId.replace(/^@/, '') || null,
+      telegram_id: telegramId.replace(/^@/, ''),
     });
 
     if (apiError) {
@@ -141,6 +141,7 @@ export function RegisterPage() {
                 placeholder="@username"
                 value={telegramId}
                 onChange={(e) => setTelegramId(e.target.value)}
+                required
               />
               <div className={styles.hint}>{t('register.telegramHint')}</div>
             </div>
