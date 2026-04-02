@@ -88,7 +88,9 @@ export type RoundResultEntry = {
 
 export type ExchangePair = {
   giver_name: string;
+  giver_telegram_id: string | null;
   receiver_name: string;
+  receiver_telegram_id: string | null;
 };
 
 export type MyResult = {

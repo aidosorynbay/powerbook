@@ -328,9 +328,87 @@
   height: auto;
 }
 
+/* Book Exchange Pairs */
+.pairsSection {
+  margin-top: var(--spacing-6);
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-primary);
+  overflow: hidden;
+}
+
+.pairsToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4) var(--spacing-6);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  text-align: left;
+}
+
+.pairsToggle:hover {
+  background: var(--color-bg-secondary);
+}
+
+.pairsToggleIcon {
+  font-size: var(--font-size-xl);
+}
+
+.pairsChevron {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.pairsToggleHint {
+  margin-left: auto;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-muted);
+}
+
+.pairsList {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-2);
+  padding: 0 var(--spacing-6) var(--spacing-6);
+}
+
+.pairItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.pairName {
+  font-weight: var(--font-weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pairArrow {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .sections {
+    grid-template-columns: 1fr;
+  }
+
+  .pairsList {
     grid-template-columns: 1fr;
   }
 

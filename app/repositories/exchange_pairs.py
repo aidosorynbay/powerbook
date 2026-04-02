@@ -31,14 +31,16 @@ class BookExchangePairRepository(BaseRepository[BookExchangePair]):
         )
         return list(self.db.execute(stmt).scalars().all())
 
-    def list_for_round_with_user_names(self, *, round_id: uuid.UUID) -> list[tuple[BookExchangePair, str, str]]:
+    def list_for_round_with_user_names(self, *, round_id: uuid.UUID) -> list[tuple]:
         giver = User.__table__.alias("giver")
         receiver = User.__table__.alias("receiver")
         stmt = (
             select(
                 BookExchangePair,
                 giver.c.display_name.label("giver_name"),
+                giver.c.telegram_id.label("giver_telegram_id"),
                 receiver.c.display_name.label("receiver_name"),
+                receiver.c.telegram_id.label("receiver_telegram_id"),
             )
             .join(giver, BookExchangePair.giver_user_id == giver.c.id)
             .join(receiver, BookExchangePair.receiver_user_id == receiver.c.id)

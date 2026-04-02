@@ -60,8 +60,13 @@ class RoundService:
 
         pair_rows = self.pairs.list_for_round_with_user_names(round_id=round_id)
         pairs = [
-            {"giver_name": giver_name, "receiver_name": receiver_name}
-            for _pair, giver_name, receiver_name in pair_rows
+            {
+                "giver_name": giver_name,
+                "giver_telegram_id": giver_tid,
+                "receiver_name": receiver_name,
+                "receiver_telegram_id": receiver_tid,
+            }
+            for _pair, giver_name, giver_tid, receiver_name, receiver_tid in pair_rows
         ]
 
         # Current user's personal result and exchange info

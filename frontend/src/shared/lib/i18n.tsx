@@ -137,8 +137,6 @@ const translations = {
     'results.score': 'Дней',
     'results.winner': 'Победитель',
     'results.loser': 'Проигравший',
-    'results.pairs': 'Обмен книгами',
-    'results.givesTo': 'дарит книгу →',
     'results.congratsWinner': 'Поздравляем!',
     'results.congratsWinnerText': 'Вы выиграли в этом раунде и получаете книгу на выбор! 🎉',
     'results.congratsLoser': 'Раунд завершён',
@@ -155,6 +153,10 @@ const translations = {
     'results.weekdayActivity': 'Средняя активность по дням недели',
     'results.notParticipated': 'Вы не участвовали в этом раунде. Присоединяйтесь к следующему!',
     'results.backToMine': 'Мои результаты',
+    'results.bookExchange': 'Обмен книгами',
+    'results.showPairs': 'Показать все пары',
+    'results.hidePairs': 'Скрыть пары',
+    'results.givesTo': 'дарит',
 
     // Archive
     'archive.title': 'Архив чтения',
@@ -387,8 +389,6 @@ const translations = {
     'results.score': 'Күн',
     'results.winner': 'Жеңімпаз',
     'results.loser': 'Жеңілген',
-    'results.pairs': 'Кітап алмасу',
-    'results.givesTo': 'кітап сыйлайды →',
     'results.congratsWinner': 'Құттықтаймыз!',
     'results.congratsWinnerText': 'Сіз бұл раундта жеңіп, кітап таңдай аласыз! 🎉',
     'results.congratsLoser': 'Раунд аяқталды',
@@ -405,6 +405,10 @@ const translations = {
     'results.weekdayActivity': 'Апта күндері бойынша орташа белсенділік',
     'results.notParticipated': 'Сіз бұл раундқа қатыспадыңыз. Келесіге қосылыңыз!',
     'results.backToMine': 'Менің нәтижелерім',
+    'results.bookExchange': 'Кітап алмасу',
+    'results.showPairs': 'Барлық жұптарды көрсету',
+    'results.hidePairs': 'Жұптарды жасыру',
+    'results.givesTo': 'сыйлайды',
 
     // Archive
     'archive.title': 'Оқу мұрағаты',
@@ -637,8 +641,6 @@ const translations = {
     'results.score': 'Days',
     'results.winner': 'Winner',
     'results.loser': 'Loser',
-    'results.pairs': 'Book Exchange',
-    'results.givesTo': 'gives book to →',
     'results.congratsWinner': 'Congratulations!',
     'results.congratsWinnerText': 'You won this round and get to choose a book! 🎉',
     'results.congratsLoser': 'Round finished',
@@ -655,6 +657,10 @@ const translations = {
     'results.weekdayActivity': 'Average activity by weekday',
     'results.notParticipated': "You didn't participate in this round. Join the next one!",
     'results.backToMine': 'My results',
+    'results.bookExchange': 'Book Exchange',
+    'results.showPairs': 'Show all pairs',
+    'results.hidePairs': 'Hide pairs',
+    'results.givesTo': 'gives to',
 
     // Archive
     'archive.title': 'Reading Archive',

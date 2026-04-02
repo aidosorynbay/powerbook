@@ -141,6 +141,7 @@ export function ResultsPage() {
   const [selectedEntry, setSelectedEntry] = useState<RoundResultEntry | null>(null);
   const [viewedCalendar, setViewedCalendar] = useState<CalendarResponse | null>(null);
   const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
+  const [showPairs, setShowPairs] = useState(false);
 
   const fetchCalendar = useCallback(async (roundId: string, userId: string) => {
     setIsLoadingCalendar(true);
@@ -355,6 +356,42 @@ export function ResultsPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Book Exchange Pairs */}
+                {results.pairs.length > 0 && (
+                  <div className={styles.pairsSection}>
+                    <button
+                      className={styles.pairsToggle}
+                      onClick={() => setShowPairs(v => !v)}
+                    >
+                      <span className={styles.pairsToggleIcon}>{'\uD83D\uDCDA'}</span>
+                      <span>{t('results.bookExchange')}</span>
+                      <span className={styles.pairsChevron}>{showPairs ? '\u25B2' : '\u25BC'}</span>
+                      <span className={styles.pairsToggleHint}>
+                        {showPairs ? t('results.hidePairs') : t('results.showPairs')}
+                      </span>
+                    </button>
+                    {showPairs && (
+                      <div className={styles.pairsList}>
+                        {results.pairs.map((pair, i) => {
+                          const giverDisplay = pair.giver_telegram_id
+                            ? `@${pair.giver_telegram_id}`
+                            : pair.giver_name;
+                          const receiverDisplay = pair.receiver_telegram_id
+                            ? `@${pair.receiver_telegram_id}`
+                            : pair.receiver_name;
+                          return (
+                            <div key={i} className={styles.pairItem}>
+                              <span className={styles.pairName}>{giverDisplay}</span>
+                              <span className={styles.pairArrow}>{'\u2192'} {t('results.givesTo')}</span>
+                              <span className={styles.pairName}>{receiverDisplay}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </Container>
