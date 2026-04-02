@@ -25,6 +25,10 @@ class UserRepository(BaseRepository[User]):
         stmt = select(User).where(User.email == email)
         return self.db.execute(stmt).scalar_one_or_none()
 
+    def get_by_telegram_id(self, telegram_id: str) -> User | None:
+        stmt = select(User).where(User.telegram_id == telegram_id)
+        return self.db.execute(stmt).scalar_one_or_none()
+
     def get_by_login(self, login: str) -> User | None:
         """Look up by username first, then email."""
         user = self.get_by_username(login)

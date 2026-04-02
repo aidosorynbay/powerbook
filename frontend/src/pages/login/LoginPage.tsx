@@ -94,6 +94,11 @@ export function LoginPage() {
               {t('login.goRegister')}
             </Link>
           </div>
+          <div className={styles.footer} style={{ justifyContent: 'center' }}>
+            <Link className={styles.link} to="/forgot-password">
+              {t('login.forgotPassword')}
+            </Link>
+          </div>
         </Card>
         </Container>
       </div>

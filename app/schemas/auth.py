@@ -66,3 +66,23 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+
+class TelegramResetRequest(BaseModel):
+    # Fields sent by Telegram Login Widget
+    id: int
+    first_name: str | None = None
+    last_name: str | None = None
+    username: str | None = None
+    photo_url: str | None = None
+    auth_date: int
+    hash: str
+    # New password chosen by user
+    new_password: str = Field(min_length=6, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_bcrypt_limit(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("Password must be at most 72 bytes (bcrypt limit).")
+        return v
+

@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_token_exp_minutes: int = 60 * 24 * 7  # 7 days
 
+    # Telegram bot (login widget / password reset)
+    telegram_bot_token: str = ""
+    telegram_bot_username: str = "PowerbookKZBot"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

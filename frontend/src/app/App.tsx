@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth, I18nProvider, useI18n } from '@/shared/lib';
-import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage } from '@/pages';
+import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, ForgotPasswordPage } from '@/pages';
 import { BottomNav } from '@/widgets';
 import '@/app/styles/theme.css';
 
@@ -62,6 +62,10 @@ function AppRoutes() {
         <Route
           path="/login"
           element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
+        />
+        <Route
+          path="/forgot-password"
+          element={isAuthenticated ? <Navigate to="/" replace /> : <ForgotPasswordPage />}
         />
         <Route
           path="/register"
