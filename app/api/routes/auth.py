@@ -23,7 +23,7 @@ TELEGRAM_AUTH_MAX_AGE = 600  # 10 minutes
 def _verify_telegram_auth(data: dict, bot_token: str) -> bool:
     """Verify Telegram Login Widget data using HMAC-SHA256."""
     check_hash = data.get("hash", "")
-    data_check = {k: v for k, v in data.items() if k not in ("hash", "new_password")}
+    data_check = {k: v for k, v in data.items() if k not in ("hash", "new_password") and v is not None}
     data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(data_check.items()))
     secret_key = hashlib.sha256(bot_token.encode()).digest()
     computed = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
