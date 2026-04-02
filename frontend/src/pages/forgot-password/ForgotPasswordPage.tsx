@@ -31,7 +31,7 @@ export function ForgotPasswordPage() {
   useEffect(() => {
     if (step !== 'verify') return;
 
-    (window as Record<string, unknown>).onTelegramAuth = (user: TelegramUser) => {
+    (window as unknown as Record<string, unknown>).onTelegramAuth = (user: TelegramUser) => {
       setTgUser(user);
       setStep('set-password');
     };
@@ -47,7 +47,7 @@ export function ForgotPasswordPage() {
     widgetRef.current?.appendChild(script);
 
     return () => {
-      delete (window as Record<string, unknown>).onTelegramAuth;
+      delete (window as unknown as Record<string, unknown>).onTelegramAuth;
     };
   }, [step]);
 
