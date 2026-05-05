@@ -45,6 +45,10 @@ def _tick_round_lifecycle() -> None:
                 if today.year == rnd.year and today.month == rnd.month and today.day > rnd.registration_open_until_day:
                     svc.set_status(round_id=rnd.id, status_=RoundStatus.locked)
                     logger.info("Auto-locked round %s (past day %d)", rnd.id, rnd.registration_open_until_day)
+                elif today.year > rnd.year or today.month > rnd.month:
+                    # Round's month has passed entirely while still registration_open — lock it now
+                    svc.set_status(round_id=rnd.id, status_=RoundStatus.locked)
+                    logger.info("Auto-locked stale round %s (month already passed)", rnd.id)
 
             # Auto-close: locked and past midnight GMT+5 on last day of month
             if rnd.status == RoundStatus.locked:
