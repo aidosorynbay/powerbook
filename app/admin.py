@@ -7,7 +7,7 @@ from starlette.responses import HTMLResponse, RedirectResponse
 
 from app.core.security import hash_password, verify_password
 from app.db.session import get_engine, get_session_factory
-from app.models.enums import SystemRole
+from app.models.enums import RoundStatus, SystemRole
 from app.models.group import Group, GroupMember
 from app.models.round import BookExchangePair, ReadingLog, Round, RoundParticipant, RoundResult
 from app.models.user import User
@@ -114,6 +114,108 @@ class RoundAdmin(ModelView, model=Round):
     name = "Round"
     name_plural = "Rounds"
     icon = "fa-solid fa-calendar"
+
+    @action(
+        name="close_and_publish",
+        label="Close & Publish Results",
+        confirmation_message="Close selected rounds and publish results? This will compute rankings and book exchange pairs.",
+    )
+    async def close_and_publish(self, request: Request) -> HTMLResponse:
+        from sqlalchemy import select
+        from app.services.rounds import RoundService
+
+        pks = request.query_params.getlist("pks")
+        results: list[str] = []
+        SessionLocal = get_session_factory()
+        db = SessionLocal()
+        try:
+            svc = RoundService(db)
+            for pk in pks:
+                rnd = db.execute(select(Round).where(Round.id == pk)).scalar_one_or_none()
+                if rnd is None:
+                    results.append(f"<tr><td>{pk[:8]}…</td><td>Not found</td></tr>")
+                    continue
+                label = f"{rnd.year}-{rnd.month:02d} ({rnd.status.value})"
+                if rnd.status == RoundStatus.results_published:
+                    results.append(f"<tr><td>{label}</td><td>Already published</td></tr>")
+                    continue
+                try:
+                    stats = svc.compute_and_publish_results(round_id=rnd.id)
+                    results.append(
+                        f"<tr><td>{label}</td>"
+                        f"<td>Published — {stats['participants']} participants, "
+                        f"{stats['winners']} winners, {stats['losers']} losers, "
+                        f"{stats['pairs']} pairs</td></tr>"
+                    )
+                except Exception as exc:
+                    db.rollback()
+                    results.append(f"<tr><td>{label}</td><td>Error: {exc}</td></tr>")
+        finally:
+            db.close()
+
+        back_url = request.url_for("admin:list", identity=self.identity)
+        rows = "".join(results)
+        return HTMLResponse(
+            f"<html><body style='font-family:sans-serif;padding:40px;max-width:600px;margin:auto'>"
+            f"<h2>Close & Publish Results</h2>"
+            f"<table style='width:100%;border-collapse:collapse'>"
+            f"<tr><th align='left'>Round</th><th align='left'>Result</th></tr>"
+            f"{rows}</table>"
+            f"<br><a href='{back_url}'>Back to Rounds</a>"
+            f"</body></html>"
+        )
+
+    @action(
+        name="create_next_round",
+        label="Create Next Month Round",
+        confirmation_message="Create a new round for the next month (with registration_open status) based on selected rounds?",
+    )
+    async def create_next_round(self, request: Request) -> HTMLResponse:
+        from sqlalchemy import select
+        from app.services.rounds import RoundService
+
+        pks = request.query_params.getlist("pks")
+        results: list[str] = []
+        SessionLocal = get_session_factory()
+        db = SessionLocal()
+        try:
+            svc = RoundService(db)
+            for pk in pks:
+                rnd = db.execute(select(Round).where(Round.id == pk)).scalar_one_or_none()
+                if rnd is None:
+                    results.append(f"<tr><td>{pk[:8]}…</td><td>Not found</td></tr>")
+                    continue
+                label = f"{rnd.year}-{rnd.month:02d}"
+                next_year = rnd.year + 1 if rnd.month == 12 else rnd.year
+                next_month = 1 if rnd.month == 12 else rnd.month + 1
+                next_label = f"{next_year}-{next_month:02d}"
+                try:
+                    new_rnd = svc.create_round(
+                        group_id=rnd.group_id,
+                        year=next_year,
+                        month=next_month,
+                        timezone=rnd.timezone,
+                        registration_open_until_day=rnd.registration_open_until_day,
+                    )
+                    svc.set_status(round_id=new_rnd.id, status_=RoundStatus.registration_open)
+                    results.append(f"<tr><td>{label}</td><td>Created {next_label} (registration_open)</td></tr>")
+                except Exception as exc:
+                    db.rollback()
+                    results.append(f"<tr><td>{label}</td><td>Error: {exc}</td></tr>")
+        finally:
+            db.close()
+
+        back_url = request.url_for("admin:list", identity=self.identity)
+        rows = "".join(results)
+        return HTMLResponse(
+            f"<html><body style='font-family:sans-serif;padding:40px;max-width:600px;margin:auto'>"
+            f"<h2>Create Next Month Round</h2>"
+            f"<table style='width:100%;border-collapse:collapse'>"
+            f"<tr><th align='left'>Source Round</th><th align='left'>Result</th></tr>"
+            f"{rows}</table>"
+            f"<br><a href='{back_url}'>Back to Rounds</a>"
+            f"</body></html>"
+        )
 
 
 class RoundParticipantAdmin(ModelView, model=RoundParticipant):
