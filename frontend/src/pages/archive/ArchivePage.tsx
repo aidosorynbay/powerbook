@@ -6,11 +6,14 @@ import { Header, Footer } from '@/widgets';
 import styles from './ArchivePage.module.css';
 
 const INTENSITY_CAP_MINUTES = 120;
-const SHARED_INTENSITY_CAP_COUNT = 40;
 
-function sharedDayIntensity(count: number): number {
+function sharedDayIntensity(count: number, maxCount: number): number {
   if (count <= 0) return 0;
-  return 0.35 + 0.65 * Math.min(count / SHARED_INTENSITY_CAP_COUNT, 1);
+  // Square root curve so mid-range days are still visually distinct instead
+  // of everything slamming into full intensity once counts get into the
+  // hundreds (which is normal for this community's busiest years).
+  const ratio = Math.sqrt(count / Math.max(maxCount, 1));
+  return 0.28 + 0.6 * Math.min(ratio, 1);
 }
 
 type DayCell = {
@@ -147,6 +150,15 @@ export function ArchivePage() {
     }
     return result;
   }, [year]);
+
+  const maxSharedCount = useMemo(() => {
+    if (!roster) return 1;
+    let max = 1;
+    for (const entries of Object.values(roster.days)) {
+      if (entries.length > max) max = entries.length;
+    }
+    return max;
+  }, [roster]);
 
   const weekdays = useMemo(() => [
     t('weekday.mon'), t('weekday.tue'), t('weekday.wed'),
@@ -295,7 +307,7 @@ export function ArchivePage() {
                           <div
                             key={cell.date}
                             className={`${styles.dayCell} ${count > 0 ? styles.circleDayActive : styles.future} ${clickable ? styles.dayCellClickable : ''}`}
-                            style={count > 0 ? ({ '--intensity': sharedDayIntensity(count) } as CSSProperties) : undefined}
+                            style={count > 0 ? ({ '--intensity': sharedDayIntensity(count, maxSharedCount) } as CSSProperties) : undefined}
                             title={`${cell.date}: ${count} ${t('archive.participantsShort')}`}
                             onClick={clickable ? () => setRosterModalDate(cell.date) : undefined}
                           >

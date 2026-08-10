@@ -39,6 +39,9 @@ class UpdateProfileRequest(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=120)
     telegram_id: str | None = Field(default=None, max_length=120)
     gender: Gender | None = None
+    avatar_data: str | None = Field(default=None, max_length=400000)
+    recommendation_text: str | None = Field(default=None, max_length=280)
+    reading_music_url: str | None = Field(default=None, max_length=500)
 
     @field_validator("username")
     @classmethod

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { toPng } from 'html-to-image';
 import {
   useI18n,
@@ -292,7 +293,7 @@ export function InsightsPage() {
         <Footer />
       </div>
 
-      {showWrapped && (
+      {showWrapped && createPortal(
         <div className={styles.wrappedOverlay} onClick={() => setShowWrapped(false)}>
           <div className={styles.wrappedModal} onClick={(e) => e.stopPropagation()}>
             {isLoadingWrapped || !wrapped ? (
@@ -311,7 +312,8 @@ export function InsightsPage() {
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </PageTransition>
   );

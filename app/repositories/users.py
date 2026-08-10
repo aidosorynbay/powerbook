@@ -42,6 +42,12 @@ class UserRepository(BaseRepository[User]):
         stmt = select(User).offset(offset).limit(limit).order_by(User.created_at.desc())
         return list(self.db.execute(stmt).scalars().all())
 
+    def list_real_users(self) -> list[User]:
+        """Everyone with a real account (excludes historical-archive ghost
+        placeholders) — used for the public directory."""
+        stmt = select(User).where(User.is_claimable.is_(False)).order_by(User.display_name.asc())
+        return list(self.db.execute(stmt).scalars().all())
+
     def get_by_ids(self, user_ids: list[uuid.UUID]) -> dict[uuid.UUID, User]:
         if not user_ids:
             return {}

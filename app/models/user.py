@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Enum, String, Uuid
+from sqlalchemy import Boolean, Enum, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -47,6 +47,11 @@ class User(TimestampMixin, Base):
     # (old circle usernames that couldn't be matched to a real registration).
     # Real users can claim these via /claims to fold that history into their profile.
     is_claimable: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
+
+    # Social profile extras
+    avatar_data: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    recommendation_text: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    reading_music_url: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
 
     group_memberships: Mapped[list["GroupMember"]] = relationship(
         back_populates="user",

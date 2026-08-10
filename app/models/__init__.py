@@ -1,3 +1,4 @@
+from app.models.buddy import ReadingBuddy
 from app.models.claim import UsernameClaim
 from app.models.group import Group, GroupMember
 from app.models.reaction import ReadingLogReaction
@@ -15,4 +16,5 @@ __all__ = [
     "BookExchangePair",
     "ReadingLogReaction",
     "UsernameClaim",
+    "ReadingBuddy",
 ]

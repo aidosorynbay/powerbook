@@ -663,12 +663,12 @@ class InsightsService:
         claim_map = self.repo.all_approved_claims()  # ghost_id -> claimant_id
 
         def resolve(uid: uuid.UUID) -> uuid.UUID | None:
-            if uid in claim_map:
-                return claim_map[uid]
-            info = users.get(uid)
-            if info and not info[2]:  # real (non-ghost) account
-                return uid
-            return None  # unclaimed archive ghost — don't surface it publicly
+            # Claimed ghosts merge into the real account that claimed them.
+            # Everyone else — real account or still-unclaimed archive ghost —
+            # is shown under their own identity. Historical achievement is
+            # real regardless of whether someone has claimed the handle yet;
+            # claiming only affects whose *personal* stats it merges into.
+            return claim_map.get(uid, uid)
 
         def merge_sum(raw: dict[uuid.UUID, int]) -> dict[uuid.UUID, int]:
             merged: dict[uuid.UUID, int] = defaultdict(int)

@@ -19,6 +19,9 @@ class UserOut(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    avatar_data: str | None = None
+    recommendation_text: str | None = None
+    reading_music_url: str | None = None
 
     model_config = {"from_attributes": True}
 

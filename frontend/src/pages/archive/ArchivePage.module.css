@@ -388,11 +388,11 @@
 /* Shared/group day cells */
 .circleDayActive {
   --intensity: 1;
-  --accent-light: color-mix(in oklab, var(--color-accent-primary) 40%, var(--color-bg-card) 60%);
-  --accent-dark: color-mix(in oklab, var(--color-accent-primary) 75%, black 25%);
+  --accent-light: color-mix(in oklab, var(--color-accent-primary) 22%, var(--color-bg-card) 78%);
+  --accent-dark: color-mix(in oklab, var(--color-accent-primary) 82%, black 18%);
   background: color-mix(in oklab, var(--accent-light) calc((1 - var(--intensity)) * 100%), var(--accent-dark) calc(var(--intensity) * 100%));
-  border-color: var(--color-border-accent);
-  color: color-mix(in oklab, var(--color-text-primary) calc((1 - var(--intensity)) * 100%), white calc(var(--intensity) * 100%));
+  border-color: color-mix(in oklab, var(--color-border-primary) calc((1 - var(--intensity)) * 100%), var(--color-border-accent) calc(var(--intensity) * 100%));
+  color: color-mix(in oklab, var(--color-text-primary) calc((1 - var(--intensity)) * 60%), white calc(var(--intensity) * 60%));
 }
 
 .circleDayCount {
@@ -400,9 +400,9 @@
   bottom: 1px;
   right: 1px;
   font-size: 7px;
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
-  background: var(--color-bg-primary);
+  background: rgba(13, 17, 23, 0.55);
   border-radius: 3px;
   padding: 0 3px;
   line-height: 1.4;
