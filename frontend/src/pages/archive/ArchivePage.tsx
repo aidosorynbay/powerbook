@@ -9,11 +9,13 @@ const INTENSITY_CAP_MINUTES = 120;
 
 function sharedDayIntensity(count: number, maxCount: number): number {
   if (count <= 0) return 0;
-  // Square root curve so mid-range days are still visually distinct instead
-  // of everything slamming into full intensity once counts get into the
-  // hundreds (which is normal for this community's busiest years).
-  const ratio = Math.sqrt(count / Math.max(maxCount, 1));
-  return 0.12 + 0.88 * Math.min(ratio, 1);
+  // Power curve (exponent > 1) compresses low/mid-range days toward the
+  // subtle end and reserves the bright glow for genuine peaks — a sqrt
+  // curve does the opposite (pushes everything up), which is why the
+  // earlier version looked like a solid wall of color.
+  const ratio = count / Math.max(maxCount, 1);
+  const eased = Math.pow(ratio, 1.6);
+  return 0.08 + 0.92 * Math.min(eased, 1);
 }
 
 type DayCell = {
