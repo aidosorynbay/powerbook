@@ -10,6 +10,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.enums import RoundParticipantStatus
+from app.repositories.claims import ClaimsRepository
 from app.repositories.insights import InsightsRepository
 from app.repositories.results import RoundResultRepository
 from app.repositories.rounds import RoundRepository
@@ -28,10 +29,10 @@ from app.schemas.insights import (
 
 MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-# Curated, publicly-documented reading picks. Kept small and sourced from each
-# person's own public lists (Gates Notes, publicly reported Obama summer
-# lists, Musk's frequently-cited all-time favorites) - update as those lists
-# change. This is a "for fun" comparison, not a claim of endorsement.
+# Curated, publicly-documented reading picks, each sourced from the person's
+# own public lists/interviews (Gates Notes, Year of Books, well-reported book
+# club picks, frequently-cited all-time favorites). "For fun" comparison, not
+# a claim of endorsement — grow this list freely, it's just data.
 CELEBRITY_READING_LISTS: list[dict] = [
     {
         "name": "Bill Gates",
@@ -61,6 +62,82 @@ CELEBRITY_READING_LISTS: list[dict] = [
             "the hitchhiker's guide to the galaxy",
             "foundation",
             "superintelligence",
+        ],
+    },
+    {
+        "name": "Mark Zuckerberg",
+        "role": "Co-founder, Meta",
+        "books": [
+            "sapiens",
+            "the three-body problem",
+            "the rational optimist",
+        ],
+    },
+    {
+        "name": "Warren Buffett",
+        "role": "CEO, Berkshire Hathaway",
+        "books": [
+            "business adventures",
+            "the intelligent investor",
+            "poor charlie's almanack",
+        ],
+    },
+    {
+        "name": "Ray Dalio",
+        "role": "Founder, Bridgewater Associates",
+        "books": [
+            "the power of habit",
+            "steve jobs",
+            "einstein: his life and universe",
+        ],
+    },
+    {
+        "name": "Naval Ravikant",
+        "role": "Entrepreneur & Investor",
+        "books": [
+            "the selfish gene",
+            "sapiens",
+            "antifragile",
+            "man's search for meaning",
+            "influence",
+        ],
+    },
+    {
+        "name": "Oprah Winfrey",
+        "role": "Media Executive & Book Club Founder",
+        "books": [
+            "anna karenina",
+            "a new earth",
+            "the poisonwood bible",
+            "beloved",
+        ],
+    },
+    {
+        "name": "Reese Witherspoon",
+        "role": "Actor & Founder, Hello Sunshine Book Club",
+        "books": [
+            "little fires everywhere",
+            "where the crawdads sing",
+            "daisy jones & the six",
+        ],
+    },
+    {
+        "name": "LeBron James",
+        "role": "NBA Player",
+        "books": [
+            "decoded",
+            "the godfather",
+            "the alchemist",
+            "the tipping point",
+        ],
+    },
+    {
+        "name": "Emma Watson",
+        "role": "Actor & Activist",
+        "books": [
+            "the remains of the day",
+            "siddhartha",
+            "a thousand splendid suns",
         ],
     },
 ]
@@ -99,23 +176,28 @@ class InsightsService:
     def __init__(self, db: Session) -> None:
         self.db = db
         self.repo = InsightsRepository(db)
+        self.claims = ClaimsRepository(db)
         self.rounds = RoundRepository(db)
         self.results = RoundResultRepository(db)
+
+    def _effective_ids(self, user_id: uuid.UUID) -> list[uuid.UUID]:
+        return self.claims.effective_user_ids(user_id=user_id)
 
     # ---------- all-time profile ----------
 
     def all_time_profile(self, *, user_id: uuid.UUID) -> AllTimeProfileOut:
-        dates = self.repo.all_logged_dates(user_id=user_id)
+        ids = self._effective_ids(user_id)
+        dates = self.repo.all_logged_dates(user_ids=ids)
         longest, current = _longest_and_current_streak(sorted(set(dates)))
 
-        total_minutes = self.repo.total_minutes_all_time(user_id=user_id)
-        total_days_logged = self.repo.total_days_logged(user_id=user_id)
-        rounds_participated = self.repo.rounds_participated_count(user_id=user_id)
-        first_round = self.repo.first_round_for_user(user_id=user_id)
-        books = self.repo.finished_book_titles_for_user(user_id=user_id)
+        total_minutes = self.repo.total_minutes_all_time(user_ids=ids)
+        total_days_logged = self.repo.total_days_logged(user_ids=ids)
+        rounds_participated = self.repo.rounds_participated_count(user_ids=ids)
+        first_round = self.repo.first_round_for_user(user_ids=ids)
+        books = self.repo.finished_book_titles_for_user(user_ids=ids)
 
         possible_days = 0
-        for rnd_id in self._participated_round_ids(user_id):
+        for rnd_id in self._participated_round_ids(ids):
             rnd = self.repo.round_by_id(round_id=rnd_id)
             if rnd:
                 possible_days += calendar.monthrange(rnd.year, rnd.month)[1]
@@ -133,18 +215,19 @@ class InsightsService:
             books_finished=len(books),
         )
 
-    def _participated_round_ids(self, user_id: uuid.UUID) -> list[uuid.UUID]:
+    def _participated_round_ids(self, user_ids: list[uuid.UUID]) -> list[uuid.UUID]:
         from sqlalchemy import select
 
         from app.models.round import RoundParticipant
 
-        stmt = select(RoundParticipant.round_id).where(RoundParticipant.user_id == user_id)
+        stmt = select(RoundParticipant.round_id).where(RoundParticipant.user_id.in_(user_ids)).distinct()
         return [row[0] for row in self.db.execute(stmt).all()]
 
     # ---------- percentile ----------
 
     def percentile(self, *, user_id: uuid.UUID, round_id: uuid.UUID | None) -> PercentileOut:
-        rnd = self.repo.round_by_id(round_id=round_id) if round_id else self.repo.last_participated_round(user_id=user_id)
+        ids = self._effective_ids(user_id)
+        rnd = self.repo.round_by_id(round_id=round_id) if round_id else self.repo.last_participated_round(user_ids=ids)
         if rnd is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No round found")
 
@@ -153,7 +236,8 @@ class InsightsService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Results not published for this round")
 
         total = len(results)
-        mine = next((r for r, _, _ in results if r.user_id == user_id), None)
+        ids_set = set(ids)
+        mine = next((r for r, _, _ in results if r.user_id in ids_set), None)
         if mine is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You did not participate in this round")
 
@@ -172,7 +256,8 @@ class InsightsService:
     # ---------- archetype ----------
 
     def archetype(self, *, user_id: uuid.UUID) -> ArchetypeOut:
-        daily = self.repo.daily_minutes_all_time(user_id=user_id)
+        ids = self._effective_ids(user_id)
+        daily = self.repo.daily_minutes_all_time(user_ids=ids)
         active = [(d, m) for d, m in daily if m > 0]
 
         if len(active) < 10:
@@ -226,7 +311,8 @@ class InsightsService:
     # ---------- bookshelf ----------
 
     def bookshelf(self, *, user_id: uuid.UUID) -> list[BookshelfEntryOut]:
-        rows = self.repo.finished_books_for_user(user_id=user_id)
+        ids = self._effective_ids(user_id)
+        rows = self.repo.finished_books_for_user(user_ids=ids)
         return [
             BookshelfEntryOut(title=comment, date=d.isoformat(), round_label=self.repo.round_label(rnd))
             for comment, d, rnd in rows
@@ -241,10 +327,11 @@ class InsightsService:
     # ---------- reading twins ----------
 
     def reading_twins(self, *, user_id: uuid.UUID, limit: int = 5) -> list[ReadingTwinOut]:
-        mine = self.repo.finished_book_titles_for_user(user_id=user_id)
+        ids = self._effective_ids(user_id)
+        mine = self.repo.finished_book_titles_for_user(user_ids=ids)
         if not mine:
             return []
-        others = self.repo.all_users_finished_books(exclude_user_id=user_id)
+        others = self.repo.all_users_finished_books(exclude_user_ids=ids)
 
         scored = []
         for other_id, other_books in others.items():
@@ -277,11 +364,16 @@ class InsightsService:
     # ---------- celebrity match ----------
 
     def celebrity_match(self, *, user_id: uuid.UUID) -> list[CelebrityMatchOut]:
-        mine = self.repo.finished_book_titles_for_user(user_id=user_id)
+        ids = self._effective_ids(user_id)
+        mine = self.repo.finished_book_titles_for_user(user_ids=ids)
         out = []
         for entry in CELEBRITY_READING_LISTS:
             celeb_books = set(entry["books"])
             shared = mine & celeb_books
+            if not shared:
+                # Only surface a celebrity when there's a genuine overlap —
+                # no fixed always-on trio anymore.
+                continue
             union = mine | celeb_books
             pct = int(round((len(shared) / len(union)) * 100)) if union else 0
             out.append(
@@ -293,7 +385,7 @@ class InsightsService:
                 )
             )
         out.sort(key=lambda c: -c.match_percent)
-        return out
+        return out[:6]
 
     # ---------- badges ----------
 
@@ -359,12 +451,15 @@ class InsightsService:
     # ---------- leagues (computed, not stored) ----------
 
     def league(self, *, user_id: uuid.UUID, round_id: uuid.UUID | None) -> LeagueTierOut:
-        rnd = self.repo.round_by_id(round_id=round_id) if round_id else self.repo.last_participated_round(user_id=user_id)
+        ids = self._effective_ids(user_id)
+        rnd = self.repo.round_by_id(round_id=round_id) if round_id else self.repo.last_participated_round(user_ids=ids)
         if rnd is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No round found")
 
         scores = self.repo.scores_for_round(round_id=rnd.id)
-        if user_id not in scores:
+        ids_set = set(ids)
+        mine_id = next((uid for uid in scores if uid in ids_set), None)
+        if mine_id is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You did not participate in this round")
 
         ranked = sorted(scores.items(), key=lambda x: -x[1])
@@ -379,7 +474,7 @@ class InsightsService:
             else:
                 tiers[uid] = ("Bronze", 3)
 
-        my_tier, my_rank = tiers[user_id]
+        my_tier, my_rank = tiers[mine_id]
         members = []
         for uid, (tier, _) in tiers.items():
             if tier != my_tier:
@@ -393,14 +488,15 @@ class InsightsService:
             round_id=str(rnd.id),
             tier=my_tier,
             tier_rank=my_rank,
-            your_score=scores[user_id],
+            your_score=scores[mine_id],
             members=members[:30],
         )
 
     # ---------- wrapped ----------
 
     def wrapped(self, *, user_id: uuid.UUID, year: int) -> WrappedOut:
-        by_month = self.repo.minutes_by_month_for_year(user_id=user_id, year=year)
+        ids = self._effective_ids(user_id)
+        by_month = self.repo.minutes_by_month_for_year(user_ids=ids, year=year)
         total_minutes = sum(by_month.values())
         best_month, best_minutes = (None, 0)
         if by_month:
@@ -411,7 +507,7 @@ class InsightsService:
         arch = self.archetype(user_id=user_id)
 
         best_pct = None
-        for rnd_id in self._participated_round_ids(user_id):
+        for rnd_id in self._participated_round_ids(ids):
             rnd = self.repo.round_by_id(round_id=rnd_id)
             if rnd is None or rnd.year != year:
                 continue
@@ -422,7 +518,7 @@ class InsightsService:
                 continue
 
         books_this_year = sum(
-            1 for _, d, rnd in self.repo.finished_books_for_user(user_id=user_id) if rnd.year == year
+            1 for _, d, rnd in self.repo.finished_books_for_user(user_ids=ids) if rnd.year == year
         )
 
         return WrappedOut(

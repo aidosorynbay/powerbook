@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, useI18n, apiPost, type TokenResponse } from '@/shared/lib';
 import { Button, Card, Container, Logo, PageTransition } from '@/shared/ui';
+import { ClaimPicker } from '@/widgets';
 import styles from './RegisterPage.module.css';
 
 type Gender = 'male' | 'female' | 'unknown';
@@ -18,6 +19,7 @@ export function RegisterPage() {
   const [telegramId, setTelegramId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState<'form' | 'claim'>('form');
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -40,10 +42,38 @@ export function RegisterPage() {
 
     if (data) {
       login(data.access_token);
-      navigate('/');
+      setStep('claim');
     }
     setIsSubmitting(false);
   };
+
+  if (step === 'claim') {
+    return (
+      <PageTransition>
+        <div className={styles.page}>
+          <Container size="sm">
+            <Card variant="glass" padding="lg" className={styles.card}>
+              <div className={styles.header}>
+                <div>
+                  <div className={styles.title}>{t('register.claimTitle')}</div>
+                  <div className={styles.subtitle}>{t('register.claimSubtitle')}</div>
+                </div>
+                <Link to="/" aria-label="Go to home">
+                  <Logo size="md" />
+                </Link>
+              </div>
+
+              <ClaimPicker />
+
+              <Button type="button" fullWidth onClick={() => navigate('/')} className={styles.claimContinueBtn}>
+                {t('register.claimContinue')}
+              </Button>
+            </Card>
+          </Container>
+        </div>
+      </PageTransition>
+    );
+  }
 
   return (
     <PageTransition>
@@ -163,4 +193,3 @@ export function RegisterPage() {
     </PageTransition>
   );
 }
-

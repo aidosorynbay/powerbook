@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.models.enums import RoundParticipantStatus, RoundStatus
 from app.models.round import ReadingLog
+from app.repositories.claims import ClaimsRepository
 from app.repositories.reading_logs import ReadingLogRepository
 from app.services.rounds import RoundService
 
@@ -22,6 +23,7 @@ class ReadingService:
         self.db = db
         self.logs = ReadingLogRepository(db)
         self.rounds = RoundService(db)
+        self.claims = ClaimsRepository(db)
 
     def log_minutes(
         self,
@@ -100,19 +102,24 @@ class ReadingService:
         return {"round_id": str(round_id), "total_minutes": total_minutes, "total_score": total_score, "days": days}
 
     def yearly_archive(self, *, user_id: uuid.UUID, year: int, group_id: uuid.UUID) -> dict:
+        # Fold in any archive usernames this user has claimed as their own —
+        # the calendar should show their full reading history, not just what
+        # was logged under their current account.
+        effective_ids = self.claims.effective_user_ids(user_id=user_id)
+
         all_rounds = self.rounds.list_for_group(group_id=group_id, limit=200)
         year_rounds = [r for r in all_rounds if r.year == year]
 
         round_ids = [r.id for r in year_rounds]
-        logs = self.logs.list_for_user_rounds(round_ids=round_ids, user_id=user_id)
+        logs = self.logs.list_for_user_rounds(round_ids=round_ids, user_ids=effective_ids)
         logs_by_date: dict[date, int] = {}
         for log in logs:
             logs_by_date[log.date] = int(log.minutes)
 
-        # Determine which months the user participated in
+        # Determine which months the user (or a claimed identity) participated in
         participated_months: list[int] = []
         for rnd in year_rounds:
-            participant = self.rounds.participants.get_for_user(round_id=rnd.id, user_id=user_id)
+            participant = self.rounds.participants.get_for_any_user(round_id=rnd.id, user_ids=effective_ids)
             if participant is not None:
                 participated_months.append(rnd.month)
 
@@ -132,4 +139,3 @@ class ReadingService:
         data = self.logs.leaderboard_data(round_id=round_id)
         data.sort(key=lambda x: (-x["total_score"], x["display_name"]))
         return data
-

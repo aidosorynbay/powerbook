@@ -1,3 +1,4 @@
+from app.models.claim import UsernameClaim
 from app.models.group import Group, GroupMember
 from app.models.reaction import ReadingLogReaction
 from app.models.round import BookExchangePair, ReadingLog, Round, RoundParticipant, RoundResult
@@ -13,4 +14,5 @@ __all__ = [
     "RoundResult",
     "BookExchangePair",
     "ReadingLogReaction",
+    "UsernameClaim",
 ]

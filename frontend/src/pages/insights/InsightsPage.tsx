@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   useI18n,
   apiGet,
@@ -12,7 +12,7 @@ import {
   type LeagueTier,
 } from '@/shared/lib';
 import { Card, Container, PageTransition, Badge, ProgressBar } from '@/shared/ui';
-import { Header, Footer } from '@/widgets';
+import { Header, Footer, ClaimPicker } from '@/widgets';
 import styles from './InsightsPage.module.css';
 
 function StatTile({ value, label, accent }: { value: string | number; label: string; accent?: boolean }) {
@@ -39,36 +39,32 @@ export function InsightsPage() {
   const [showAllBadges, setShowAllBadges] = useState(false);
   const [showAllBooks, setShowAllBooks] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setIsLoading(true);
-      const [p, a, bs, pop, tw, cel, bd, lg] = await Promise.all([
-        apiGet<AllTimeProfile>('/insights/profile', { requireAuth: true }),
-        apiGet<Archetype>('/insights/archetype', { requireAuth: true }),
-        apiGet<BookshelfEntry[]>('/insights/bookshelf', { requireAuth: true }),
-        apiGet<PopularBook[]>('/insights/popular-books?limit=8', { requireAuth: true }),
-        apiGet<ReadingTwin[]>('/insights/twins?limit=5', { requireAuth: true }),
-        apiGet<CelebrityMatch[]>('/insights/celebrity-match', { requireAuth: true }),
-        apiGet<BadgeData[]>('/insights/badges', { requireAuth: true }),
-        apiGet<LeagueTier>('/insights/league', { requireAuth: true }),
-      ]);
-      if (cancelled) return;
-      if (p.data) setProfile(p.data);
-      if (a.data) setArchetype(a.data);
-      if (bs.data) setBookshelf(bs.data.slice().reverse());
-      if (pop.data) setPopular(pop.data);
-      if (tw.data) setTwins(tw.data);
-      if (cel.data) setCelebrities(cel.data);
-      if (bd.data) setBadges(bd.data);
-      if (lg.data) setLeague(lg.data);
-      setIsLoading(false);
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    const [p, a, bs, pop, tw, cel, bd, lg] = await Promise.all([
+      apiGet<AllTimeProfile>('/insights/profile', { requireAuth: true }),
+      apiGet<Archetype>('/insights/archetype', { requireAuth: true }),
+      apiGet<BookshelfEntry[]>('/insights/bookshelf', { requireAuth: true }),
+      apiGet<PopularBook[]>('/insights/popular-books?limit=8', { requireAuth: true }),
+      apiGet<ReadingTwin[]>('/insights/twins?limit=5', { requireAuth: true }),
+      apiGet<CelebrityMatch[]>('/insights/celebrity-match', { requireAuth: true }),
+      apiGet<BadgeData[]>('/insights/badges', { requireAuth: true }),
+      apiGet<LeagueTier>('/insights/league', { requireAuth: true }),
+    ]);
+    if (p.data) setProfile(p.data);
+    if (a.data) setArchetype(a.data);
+    if (bs.data) setBookshelf(bs.data.slice().reverse());
+    if (pop.data) setPopular(pop.data);
+    if (tw.data) setTwins(tw.data);
+    if (cel.data) setCelebrities(cel.data);
+    if (bd.data) setBadges(bd.data);
+    if (lg.data) setLeague(lg.data);
+    setIsLoading(false);
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const earnedBadges = badges.filter((b) => b.earned);
   const nextBadges = badges.filter((b) => !b.earned).slice(0, showAllBadges ? undefined : 3);
@@ -100,6 +96,12 @@ export function InsightsPage() {
                     />
                   </div>
                 )}
+
+                <section className={styles.section}>
+                  <h2 className={styles.sectionTitle}>{t('claims.title')}</h2>
+                  <p className={styles.sectionHint}>{t('claims.subtitle')}</p>
+                  <ClaimPicker onChange={load} />
+                </section>
 
                 {profile?.first_round_label && (
                   <div className={styles.sinceLine}>
@@ -225,21 +227,23 @@ export function InsightsPage() {
                   </section>
                 )}
 
-                <section className={styles.section}>
-                  <h2 className={styles.sectionTitle}>{t('insights.celebrityMatch')}</h2>
-                  <p className={styles.sectionHint}>{t('insights.celebrityMatchHint')}</p>
-                  <div className={styles.twinGrid}>
-                    {celebrities.map((c) => (
-                      <Card key={c.name} variant="default" padding="md" className={styles.twinCard}>
-                        <div className={styles.twinHeader}>
-                          <span className={styles.twinName}>{c.name}</span>
-                          <span className={styles.twinPercent}>{c.match_percent}%</span>
-                        </div>
-                        <div className={styles.twinBooks}>{c.role}</div>
-                      </Card>
-                    ))}
-                  </div>
-                </section>
+                {celebrities.length > 0 && (
+                  <section className={styles.section}>
+                    <h2 className={styles.sectionTitle}>{t('insights.celebrityMatch')}</h2>
+                    <p className={styles.sectionHint}>{t('insights.celebrityMatchHint')}</p>
+                    <div className={styles.twinGrid}>
+                      {celebrities.map((c) => (
+                        <Card key={c.name} variant="default" padding="md" className={styles.twinCard}>
+                          <div className={styles.twinHeader}>
+                            <span className={styles.twinName}>{c.name}</span>
+                            <span className={styles.twinPercent}>{c.match_percent}%</span>
+                          </div>
+                          <div className={styles.twinBooks}>{c.role}</div>
+                        </Card>
+                      ))}
+                    </div>
+                  </section>
+                )}
               </>
             )}
           </Container>

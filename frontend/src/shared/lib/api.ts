@@ -137,3 +137,16 @@ export async function apiPut<T, B = unknown>(
     requireAuth: options?.requireAuth,
   });
 }
+
+/**
+ * DELETE request.
+ */
+export async function apiDelete<T>(
+  endpoint: string,
+  options?: { requireAuth?: boolean }
+): Promise<{ data: T | null; error: string | null }> {
+  return apiFetch<T>(endpoint, {
+    method: 'DELETE',
+    requireAuth: options?.requireAuth,
+  });
+}

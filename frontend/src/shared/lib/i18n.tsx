@@ -67,6 +67,9 @@ const translations = {
     'register.submitting': 'Создаём…',
     'register.hasAccount': 'Уже есть аккаунт?',
     'register.goLogin': 'Войти',
+    'register.claimTitle': 'Читал(а) раньше?',
+    'register.claimSubtitle': 'Если участвовал(а) в кругах PowerBook до регистрации на сайте — найди свой старый ник, и вся история подтянется в профиль.',
+    'register.claimContinue': 'Продолжить',
 
     // Dashboard
     'dashboard.greeting': 'Привет, {name}!',
@@ -280,6 +283,18 @@ const translations = {
     'league.silver': 'Серебряная лига',
     'league.bronze': 'Бронзовая лига',
 
+    // Username claims
+    'claims.title': 'Узнаёшь себя в архиве?',
+    'claims.subtitle': 'Если раньше читал(а) в круге под другим ником — привяжи его, и история подтянется сюда. Один ник на круг.',
+    'claims.searchPlaceholder': 'Введи старый ник или имя...',
+    'claims.searching': 'Ищем...',
+    'claims.noResults': 'Ничего не нашлось',
+    'claims.claimBtn': 'Это я',
+    'claims.claiming': 'Привязываем...',
+    'claims.claimed': 'Привязано',
+    'claims.myClaimsLabel': 'Твои привязки',
+    'claims.unclaim': 'Отменить',
+
     // Errors
     'error.network': 'Ошибка сети. Попробуйте ещё раз.',
     'error.validation': 'Ошибка валидации. Проверьте данные.',
@@ -348,6 +363,9 @@ const translations = {
     'register.submitting': 'Жасалуда...',
     'register.hasAccount': 'Аккаунт бар ма?',
     'register.goLogin': 'Кіру',
+    'register.claimTitle': 'Бұрын оқыдың ба?',
+    'register.claimSubtitle': 'Сайтқа тіркелгенге дейін PowerBook раундтарына қатысқан болсаң — ескі нигіңді тауып ал, барлық тарих профиліңе қосылады.',
+    'register.claimContinue': 'Жалғастыру',
 
     // Dashboard
     'dashboard.greeting': 'Сәлем, {name}!',
@@ -561,6 +579,18 @@ const translations = {
     'league.silver': 'Күміс лига',
     'league.bronze': 'Қола лига',
 
+    // Username claims
+    'claims.title': 'Мұрағатта өзіңді танисың ба?',
+    'claims.subtitle': 'Бұрын раундта басқа никпен оқыған болсаң — соны байлан, тарих осында қосылады. Бір раундқа — бір ник.',
+    'claims.searchPlaceholder': 'Ескі никті немесе атыңды енгіз...',
+    'claims.searching': 'Іздеп жатырмыз...',
+    'claims.noResults': 'Ештеңе табылмады',
+    'claims.claimBtn': 'Бұл мен',
+    'claims.claiming': 'Байланыстырылуда...',
+    'claims.claimed': 'Байланыстырылды',
+    'claims.myClaimsLabel': 'Сенің байланыстарың',
+    'claims.unclaim': 'Болдырмау',
+
     // Errors
     'error.network': 'Желі қатесі. Қайтадан көріңіз.',
     'error.validation': 'Тексеру қатесі. Деректерді тексеріңіз.',
@@ -629,6 +659,9 @@ const translations = {
     'register.submitting': 'Creating…',
     'register.hasAccount': 'Already have an account?',
     'register.goLogin': 'Sign In',
+    'register.claimTitle': 'Read with us before?',
+    'register.claimSubtitle': "If you took part in PowerBook circles before signing up on the site, find your old username and your history will carry over to your profile.",
+    'register.claimContinue': 'Continue',
 
     // Dashboard
     'dashboard.greeting': 'Hi, {name}!',
@@ -841,6 +874,18 @@ const translations = {
     'league.gold': 'Gold League',
     'league.silver': 'Silver League',
     'league.bronze': 'Bronze League',
+
+    // Username claims
+    'claims.title': 'Recognize yourself in the archive?',
+    'claims.subtitle': "If you read under a different username in an older circle, link it here and that history rolls into your profile. One username per circle.",
+    'claims.searchPlaceholder': 'Enter your old username or name...',
+    'claims.searching': 'Searching...',
+    'claims.noResults': 'No matches',
+    'claims.claimBtn': "That's me",
+    'claims.claiming': 'Linking...',
+    'claims.claimed': 'Linked',
+    'claims.myClaimsLabel': 'Your linked usernames',
+    'claims.unclaim': 'Undo',
 
     // Errors
     'error.network': 'Network error. Please try again.',

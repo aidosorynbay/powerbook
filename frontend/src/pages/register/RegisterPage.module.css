@@ -95,6 +95,10 @@
   opacity: 0.9;
 }
 
+.claimContinueBtn {
+  margin-top: var(--spacing-6);
+}
+
 /* Mount animation */
 @keyframes cardReveal {
   from {

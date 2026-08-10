@@ -7,7 +7,8 @@ from starlette.responses import HTMLResponse, RedirectResponse
 
 from app.core.security import hash_password, verify_password
 from app.db.session import get_engine, get_session_factory
-from app.models.enums import RoundStatus, SystemRole
+from app.models.claim import UsernameClaim
+from app.models.enums import ClaimStatus, RoundStatus, SystemRole
 from app.models.group import Group, GroupMember
 from app.models.round import BookExchangePair, ReadingLog, Round, RoundParticipant, RoundResult
 from app.models.user import User
@@ -49,7 +50,7 @@ class AdminAuth(AuthenticationBackend):
 
 
 class UserAdmin(ModelView, model=User):
-    column_list = [User.id, User.username, User.display_name, User.telegram_id, User.gender, User.system_role, User.is_active, User.created_at]
+    column_list = [User.id, User.username, User.display_name, User.telegram_id, User.gender, User.system_role, User.is_claimable, User.is_active, User.created_at]
     column_searchable_list = [User.username, User.display_name, User.telegram_id]
     column_sortable_list = [User.username, User.display_name, User.created_at]
     form_excluded_columns = [
@@ -248,6 +249,63 @@ class BookExchangePairAdmin(ModelView, model=BookExchangePair):
     icon = "fa-solid fa-book-open"
 
 
+class UsernameClaimAdmin(ModelView, model=UsernameClaim):
+    """
+    Every self-serve 'this old username is me' claim lands here, newest
+    first — this is the review/notification surface for the founder.
+    Revoke instantly undoes it (claims never touch the original historical
+    rows, so nothing needs to be repaired).
+    """
+    column_list = [
+        UsernameClaim.id, UsernameClaim.claimant_user_id, UsernameClaim.ghost_user_id,
+        UsernameClaim.status, UsernameClaim.note, UsernameClaim.created_at,
+        UsernameClaim.reviewed_by_user_id, UsernameClaim.reviewed_at,
+    ]
+    column_default_sort = [(UsernameClaim.created_at, True)]
+    column_sortable_list = [UsernameClaim.created_at, UsernameClaim.status]
+    form_excluded_columns = [UsernameClaim.claimant, UsernameClaim.ghost, UsernameClaim.reviewed_by]
+    name = "Username Claim"
+    name_plural = "Username Claims"
+    icon = "fa-solid fa-user-tag"
+
+    @action(name="revoke_claims", label="Revoke", confirmation_message="Revoke selected claims? This instantly removes the merged history from the claimant's stats.")
+    async def revoke_claims(self, request: Request) -> HTMLResponse:
+        from datetime import datetime, timezone
+
+        from sqlalchemy import select
+
+        pks = request.query_params.getlist("pks")
+        results: list[str] = []
+        SessionLocal = get_session_factory()
+        db = SessionLocal()
+        try:
+            admin_id = request.session.get("admin_user")
+            for pk in pks:
+                claim = db.execute(select(UsernameClaim).where(UsernameClaim.id == pk)).scalar_one_or_none()
+                if claim is None:
+                    results.append(f"<tr><td>{pk[:8]}…</td><td>Not found</td></tr>")
+                    continue
+                claim.status = ClaimStatus.revoked
+                claim.reviewed_by_user_id = admin_id
+                claim.reviewed_at = datetime.now(timezone.utc)
+                results.append(f"<tr><td>{pk[:8]}…</td><td>Revoked</td></tr>")
+            db.commit()
+        finally:
+            db.close()
+
+        back_url = request.url_for("admin:list", identity=self.identity)
+        rows = "".join(results)
+        return HTMLResponse(
+            f"<html><body style='font-family:sans-serif;padding:40px;max-width:600px;margin:auto'>"
+            f"<h2>Revoke Claims</h2>"
+            f"<table style='width:100%;border-collapse:collapse'>"
+            f"<tr><th align='left'>Claim</th><th align='left'>Result</th></tr>"
+            f"{rows}</table>"
+            f"<br><a href='{back_url}'>Back to Claims</a>"
+            f"</body></html>"
+        )
+
+
 def setup_admin(app):
     auth_backend = AdminAuth(secret_key="sqladmin-powerbook-secret")
     admin = Admin(app, get_engine(), authentication_backend=auth_backend)
@@ -259,4 +317,5 @@ def setup_admin(app):
     admin.add_view(ReadingLogAdmin)
     admin.add_view(RoundResultAdmin)
     admin.add_view(BookExchangePairAdmin)
+    admin.add_view(UsernameClaimAdmin)
     return admin

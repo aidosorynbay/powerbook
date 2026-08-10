@@ -19,6 +19,7 @@ export {
   apiPost,
   apiGet,
   apiPut,
+  apiDelete,
 } from './api';
 
 // Constants
@@ -58,4 +59,6 @@ export type {
   LeagueTier,
   Wrapped,
   ReactionSummary,
+  ClaimCandidate,
+  MyClaim,
 } from './types';

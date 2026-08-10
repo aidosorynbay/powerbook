@@ -43,6 +43,11 @@ class User(TimestampMixin, Base):
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    # True for placeholder accounts created by the historical archive import
+    # (old circle usernames that couldn't be matched to a real registration).
+    # Real users can claim these via /claims to fold that history into their profile.
+    is_claimable: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
+
     group_memberships: Mapped[list["GroupMember"]] = relationship(
         back_populates="user",
         foreign_keys="GroupMember.user_id",
@@ -75,4 +80,3 @@ class User(TimestampMixin, Base):
         foreign_keys="BookExchangePair.receiver_user_id",
         cascade="all, delete-orphan",
     )
-

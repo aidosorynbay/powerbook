@@ -51,13 +51,13 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
         self,
         *,
         round_ids: list[uuid.UUID],
-        user_id: uuid.UUID,
+        user_ids: list[uuid.UUID],
     ) -> list[ReadingLog]:
-        if not round_ids:
+        if not round_ids or not user_ids:
             return []
         stmt = (
             select(ReadingLog)
-            .where(ReadingLog.round_id.in_(round_ids), ReadingLog.user_id == user_id)
+            .where(ReadingLog.round_id.in_(round_ids), ReadingLog.user_id.in_(user_ids))
             .order_by(ReadingLog.date.asc())
         )
         return list(self.db.execute(stmt).scalars().all())

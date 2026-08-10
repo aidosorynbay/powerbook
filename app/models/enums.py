@@ -46,3 +46,7 @@ class ResultGroup(str, Enum):
     winner = "winner"
     loser = "loser"
 
+
+class ClaimStatus(str, Enum):
+    approved = "approved"
+    revoked = "revoked"

@@ -24,6 +24,17 @@ class RoundParticipantRepository(BaseRepository[RoundParticipant]):
         )
         return self.db.execute(stmt).scalar_one_or_none()
 
+    def get_for_any_user(self, *, round_id: uuid.UUID, user_ids: list[uuid.UUID]) -> RoundParticipant | None:
+        """Like get_for_user, but matches if any of the given identities
+        (self + claimed archive usernames) participated in this round."""
+        if not user_ids:
+            return None
+        stmt = select(RoundParticipant).where(
+            RoundParticipant.round_id == round_id,
+            RoundParticipant.user_id.in_(user_ids),
+        )
+        return self.db.execute(stmt).scalars().first()
+
     def list_for_round(self, *, round_id: uuid.UUID) -> list[RoundParticipant]:
         stmt = select(RoundParticipant).where(
             RoundParticipant.round_id == round_id,
@@ -37,4 +48,3 @@ class RoundParticipantRepository(BaseRepository[RoundParticipant]):
         self.db.commit()
         self.db.refresh(participant)
         return participant
-

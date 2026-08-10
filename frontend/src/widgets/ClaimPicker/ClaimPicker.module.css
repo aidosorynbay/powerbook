@@ -1,0 +1,137 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.input {
+  width: 100%;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-border-accent);
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: var(--font-size-xs);
+}
+
+.hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.resultRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+}
+
+.resultInfo {
+  min-width: 0;
+}
+
+.resultName {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resultUsername {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-regular);
+}
+
+.resultRounds {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  margin-top: 2px;
+}
+
+.myClaims {
+  margin-top: 4px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.myClaimsLabel {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: 8px;
+}
+
+.myClaimRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.myClaimRow:last-child {
+  border-bottom: none;
+}
+
+.myClaimInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.myClaimName {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.myClaimRounds {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.unclaimBtn {
+  background: none;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  padding: 5px 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.unclaimBtn:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}

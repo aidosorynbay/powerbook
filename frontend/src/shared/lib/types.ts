@@ -238,3 +238,22 @@ export type ReactionSummary = {
   count: number;
   reacted_by_me: boolean;
 };
+
+// Username claims (archive identity merge)
+export type ClaimCandidate = {
+  user_id: string;
+  username: string;
+  display_name: string;
+  rounds: string[];
+};
+
+export type MyClaim = {
+  id: string;
+  ghost_user_id: string;
+  ghost_username: string;
+  ghost_display_name: string;
+  status: string;
+  note: string | null;
+  created_at: string;
+  rounds: string[];
+};
