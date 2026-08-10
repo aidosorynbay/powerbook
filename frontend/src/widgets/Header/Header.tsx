@@ -24,6 +24,7 @@ export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
                 <Link to="/round" className={styles.navLink}>{t('header.currentRound')}</Link>
                 <Link to="/archive" className={styles.navLink}>{t('header.archive')}</Link>
                 <Link to="/results" className={styles.navLink}>{t('header.results')}</Link>
+                <Link to="/insights" className={styles.navLink}>{t('nav.insights')}</Link>
               </>
             )}
             <a href="#about" className={styles.navLink}>{t('header.about')}</a>

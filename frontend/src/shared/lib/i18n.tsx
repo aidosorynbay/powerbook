@@ -165,6 +165,7 @@ const translations = {
     // Archive
     'archive.title': 'Архив чтения',
     'archive.noData': 'Нет данных за этот год',
+    'archive.noComment': 'Без комментария',
 
     // Round status
     'status.draft': 'Черновик',
@@ -461,6 +462,7 @@ const translations = {
     // Archive
     'archive.title': 'Оқу мұрағаты',
     'archive.noData': 'Бұл жылға деректер жоқ',
+    'archive.noComment': 'Түсініктеме жоқ',
 
     // Round status
     'status.draft': 'Жоба',
@@ -757,6 +759,7 @@ const translations = {
     // Archive
     'archive.title': 'Reading Archive',
     'archive.noData': 'No data for this year',
+    'archive.noComment': 'No comment',
 
     // Round status
     'status.draft': 'Draft',

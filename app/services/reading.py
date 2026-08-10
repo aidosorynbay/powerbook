@@ -112,9 +112,9 @@ class ReadingService:
 
         round_ids = [r.id for r in year_rounds]
         logs = self.logs.list_for_user_rounds(round_ids=round_ids, user_ids=effective_ids)
-        logs_by_date: dict[date, int] = {}
+        logs_by_date: dict[date, ReadingLog] = {}
         for log in logs:
-            logs_by_date[log.date] = int(log.minutes)
+            logs_by_date[log.date] = log
 
         # Determine which months the user (or a claimed identity) participated in
         participated_months: list[int] = []
@@ -129,8 +129,13 @@ class ReadingService:
             days = []
             for d in range(1, days_in_month + 1):
                 dt = date(year, month, d)
-                minutes = logs_by_date.get(dt, 0)
-                days.append({"date": dt.isoformat(), "minutes": minutes})
+                log = logs_by_date.get(dt)
+                days.append({
+                    "date": dt.isoformat(),
+                    "minutes": int(log.minutes) if log else 0,
+                    "comment": log.comment if log else None,
+                    "book_finished": bool(log.book_finished) if log else False,
+                })
             months[month] = days
 
         return {"year": year, "months": months, "participated_months": participated_months}

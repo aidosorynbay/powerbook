@@ -126,6 +126,8 @@ export type LastCompletedRound = {
 export type ArchiveDay = {
   date: string;
   minutes: number;
+  comment: string | null;
+  book_finished: boolean;
 };
 
 export type YearlyArchiveResponse = {
