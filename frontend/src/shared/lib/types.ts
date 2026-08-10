@@ -241,6 +241,8 @@ export type Wrapped = {
   books_finished: number;
   percentile_best: number | null;
   archetype: Archetype;
+  minutes_by_month: number[];
+  rounds_participated: number;
 };
 
 export type ReactionSummary = {

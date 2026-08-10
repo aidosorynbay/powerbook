@@ -329,3 +329,36 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Wrapped card modal */
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.wrappedOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-index-modal);
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.wrappedModal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.wrappedActions {
+  display: flex;
+  gap: 10px;
+}

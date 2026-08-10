@@ -121,7 +121,11 @@ const translations = {
     'dashboard.step1': 'Читай каждый день минимум 30 минут',
     'dashboard.step2': 'Набирай очки — 1 день = 1 балл',
     'dashboard.step3': 'Топ 50% получают книгу в подарок',
-    'dashboard.joinHook': 'Начни сегодня — и становись лучше с каждым прочитанным днём 📖',
+    'dashboard.joinHook1': 'Начни сегодня — и становись лучше с каждым прочитанным днём 📖',
+    'dashboard.joinHook2': '30 минут в день — и через месяц ты другой человек 🚀',
+    'dashboard.joinHook3': 'Лучшие читатели начинали с одной страницы. Твоя очередь 📚',
+    'dashboard.joinHook4': 'Не жди понедельника — начни прямо сейчас ⏳',
+    'dashboard.joinHook5': 'Каждая прочитанная страница — это вклад в будущего тебя ✨',
     'dashboard.roundStats': 'Раунд в цифрах',
     'dashboard.statParticipants': 'Участников',
     'dashboard.statDaysLeft': 'Дней осталось',
@@ -177,6 +181,7 @@ const translations = {
     'archive.personal': 'Личное',
     'archive.shared': 'Общее',
     'archive.sharedLegend': 'Число участников, отметившихся в этот день',
+    'archive.participantsShort': 'участников',
 
     // Round status
     'status.draft': 'Черновик',
@@ -318,6 +323,18 @@ const translations = {
     'hallOfFame.category.best_day': 'Рекорд за один день',
     'hallOfFame.category.best_month': 'Рекорд за один круг',
 
+    // Wrapped
+    'wrapped.button': 'Моя карточка года 🎁',
+    'wrapped.title': 'Wrapped',
+    'wrapped.hoursRead': 'часов прочитано',
+    'wrapped.longestStreak': 'лучшая серия',
+    'wrapped.circles': 'кругов',
+    'wrapped.booksFinished': 'книг',
+    'wrapped.topPercentile': 'топ по кругу',
+    'wrapped.download': 'Скачать картинку',
+    'wrapped.downloading': 'Готовим...',
+    'wrapped.close': 'Закрыть',
+
     // About
     'about.kicker': 'Наша история',
     'about.title': 'От гугл-таблицы до платформы',
@@ -449,7 +466,11 @@ const translations = {
     'dashboard.step1': 'Күн сайын кемінде 30 минут оқы',
     'dashboard.step2': 'Ұпай жина — 1 күн = 1 балл',
     'dashboard.step3': 'Үздік 50% кітап сыйлыққа алады',
-    'dashboard.joinHook': 'Бүгін баста — әр оқыған күн сайын жақсара бер 📖',
+    'dashboard.joinHook1': 'Бүгін баста — әр оқыған күн сайын жақсара бер 📖',
+    'dashboard.joinHook2': 'Күніне 30 минут — бір айдан кейін сен басқасың 🚀',
+    'dashboard.joinHook3': 'Үздік оқырмандар бір беттен бастаған. Кезек сенде 📚',
+    'dashboard.joinHook4': 'Дүйсенбіні күтпе — дәл қазір баста ⏳',
+    'dashboard.joinHook5': 'Әр оқылған бет — болашақ өзіңе үлес ✨',
     'dashboard.roundStats': 'Раунд сандарда',
     'dashboard.statParticipants': 'Қатысушылар',
     'dashboard.statDaysLeft': 'Қалған күндер',
@@ -505,6 +526,7 @@ const translations = {
     'archive.personal': 'Жеке',
     'archive.shared': 'Ортақ',
     'archive.sharedLegend': 'Осы күні белгі қойған қатысушылар саны',
+    'archive.participantsShort': 'қатысушы',
 
     // Round status
     'status.draft': 'Жоба',
@@ -777,7 +799,11 @@ const translations = {
     'dashboard.step1': 'Read at least 30 minutes every day',
     'dashboard.step2': 'Earn points — 1 day = 1 point',
     'dashboard.step3': 'Top 50% win a free book',
-    'dashboard.joinHook': 'Start today — get a little better with every day you read 📖',
+    'dashboard.joinHook1': 'Start today — get a little better with every day you read 📖',
+    'dashboard.joinHook2': '30 minutes a day — a different person in a month 🚀',
+    'dashboard.joinHook3': 'Every great reader started with one page. Your turn 📚',
+    'dashboard.joinHook4': "Don't wait for Monday — start right now ⏳",
+    'dashboard.joinHook5': 'Every page you read is an investment in future you ✨',
     'dashboard.roundStats': 'Round stats',
     'dashboard.statParticipants': 'Participants',
     'dashboard.statDaysLeft': 'Days left',
@@ -833,6 +859,7 @@ const translations = {
     'archive.personal': 'Personal',
     'archive.shared': 'Shared',
     'archive.sharedLegend': 'Number of participants who logged that day',
+    'archive.participantsShort': 'participants',
 
     // Round status
     'status.draft': 'Draft',

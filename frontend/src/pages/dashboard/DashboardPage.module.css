@@ -836,14 +836,25 @@
 }
 
 .circleDayActive {
-  background: var(--color-accent-primary-muted);
+  --intensity: 1;
+  --accent-light: color-mix(in oklab, var(--color-accent-primary) 40%, var(--color-bg-card) 60%);
+  --accent-dark: color-mix(in oklab, var(--color-accent-primary) 75%, black 25%);
+  background: color-mix(in oklab, var(--accent-light) calc((1 - var(--intensity)) * 100%), var(--accent-dark) calc(var(--intensity) * 100%));
   border-color: var(--color-border-accent);
+  color: color-mix(in oklab, var(--color-text-primary) calc((1 - var(--intensity)) * 100%), white calc(var(--intensity) * 100%));
 }
 
 .circleDayCount {
-  font-size: 9px;
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  font-size: 7px;
   font-weight: var(--font-weight-bold);
-  color: var(--color-accent-primary);
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  border-radius: 3px;
+  padding: 0 3px;
+  line-height: 1.4;
 }
 
 /* Roster modal */

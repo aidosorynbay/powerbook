@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { toPng } from 'html-to-image';
 import {
   useI18n,
+  useAuth,
   apiGet,
+  type Wrapped,
   type AllTimeProfile,
   type Archetype,
   type BookshelfEntry,
@@ -11,8 +14,8 @@ import {
   type BadgeData,
   type LeagueTier,
 } from '@/shared/lib';
-import { Card, Container, PageTransition, Badge, ProgressBar } from '@/shared/ui';
-import { Header, Footer, ClaimPicker } from '@/widgets';
+import { Card, Container, PageTransition, Badge, ProgressBar, Button } from '@/shared/ui';
+import { Header, Footer, ClaimPicker, WrappedCard } from '@/widgets';
 import styles from './InsightsPage.module.css';
 
 function StatTile({ value, label, accent }: { value: string | number; label: string; accent?: boolean }) {
@@ -26,6 +29,7 @@ function StatTile({ value, label, accent }: { value: string | number; label: str
 
 export function InsightsPage() {
   const { t } = useI18n();
+  const { user } = useAuth();
 
   const [profile, setProfile] = useState<AllTimeProfile | null>(null);
   const [archetype, setArchetype] = useState<Archetype | null>(null);
@@ -38,6 +42,35 @@ export function InsightsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showAllBadges, setShowAllBadges] = useState(false);
   const [showAllBooks, setShowAllBooks] = useState(false);
+  const [wrapped, setWrapped] = useState<Wrapped | null>(null);
+  const [showWrapped, setShowWrapped] = useState(false);
+  const [isLoadingWrapped, setIsLoadingWrapped] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const wrappedCardRef = useRef<HTMLDivElement>(null);
+
+  const openWrapped = async () => {
+    setShowWrapped(true);
+    if (wrapped) return;
+    setIsLoadingWrapped(true);
+    const year = new Date().getFullYear();
+    const { data } = await apiGet<Wrapped>(`/insights/wrapped?year=${year}`, { requireAuth: true });
+    if (data) setWrapped(data);
+    setIsLoadingWrapped(false);
+  };
+
+  const downloadWrapped = async () => {
+    if (!wrappedCardRef.current) return;
+    setIsDownloading(true);
+    try {
+      const dataUrl = await toPng(wrappedCardRef.current, { pixelRatio: 3 });
+      const link = document.createElement('a');
+      link.download = `powerbook-wrapped-${wrapped?.year ?? ''}.png`;
+      link.href = dataUrl;
+      link.click();
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -76,8 +109,15 @@ export function InsightsPage() {
         <Header />
         <main className={styles.main}>
           <Container>
-            <h1 className={styles.title}>{t('insights.title')}</h1>
-            <p className={styles.subtitle}>{t('insights.subtitle')}</p>
+            <div className={styles.titleRow}>
+              <div>
+                <h1 className={styles.title}>{t('insights.title')}</h1>
+                <p className={styles.subtitle}>{t('insights.subtitle')}</p>
+              </div>
+              <Button variant="primary" size="sm" onClick={openWrapped}>
+                {t('wrapped.button')}
+              </Button>
+            </div>
 
             {isLoading ? (
               <div className={styles.loading}>{t('dashboard.loading')}</div>
@@ -251,6 +291,28 @@ export function InsightsPage() {
         </main>
         <Footer />
       </div>
+
+      {showWrapped && (
+        <div className={styles.wrappedOverlay} onClick={() => setShowWrapped(false)}>
+          <div className={styles.wrappedModal} onClick={(e) => e.stopPropagation()}>
+            {isLoadingWrapped || !wrapped ? (
+              <div className={styles.loading}>{t('dashboard.loading')}</div>
+            ) : (
+              <>
+                <WrappedCard ref={wrappedCardRef} wrapped={wrapped} displayName={user?.display_name ?? ''} />
+                <div className={styles.wrappedActions}>
+                  <Button variant="ghost" onClick={() => setShowWrapped(false)}>
+                    {t('wrapped.close')}
+                  </Button>
+                  <Button variant="primary" onClick={downloadWrapped} disabled={isDownloading}>
+                    {isDownloading ? t('wrapped.downloading') : t('wrapped.download')}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </PageTransition>
   );
 }

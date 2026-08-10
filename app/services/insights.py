@@ -621,6 +621,14 @@ class InsightsService:
             1 for _, d, rnd in self.repo.finished_books_for_user(user_ids=ids) if rnd.year == year
         )
 
+        rounds_this_year = 0
+        for rnd_id in self._participated_round_ids(ids):
+            rnd = self.repo.round_by_id(round_id=rnd_id)
+            if rnd is not None and rnd.year == year:
+                rounds_this_year += 1
+
+        minutes_by_month = [by_month.get(m, 0) for m in range(1, 13)]
+
         return WrappedOut(
             year=year,
             total_minutes=total_minutes,
@@ -631,6 +639,8 @@ class InsightsService:
             books_finished=books_this_year,
             percentile_best=best_pct,
             archetype=arch,
+            minutes_by_month=minutes_by_month,
+            rounds_participated=rounds_this_year,
         )
 
     # ---------- hall of fame (public) ----------

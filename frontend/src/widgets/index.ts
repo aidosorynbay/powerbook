@@ -7,3 +7,4 @@ export { CallToAction } from './CallToAction';
 export { Footer } from './Footer';
 export { BottomNav } from './BottomNav';
 export { ClaimPicker } from './ClaimPicker';
+export { WrappedCard } from './WrappedCard';

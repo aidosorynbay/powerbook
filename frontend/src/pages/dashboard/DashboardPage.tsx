@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import {
   useAuth,
@@ -441,6 +441,7 @@ export function DashboardPage() {
 
   // Scroll reveal for sections
   const { ref: sectionsRef, isVisible: sectionsVisible } = useScrollReveal<HTMLDivElement>();
+  const joinHookKey = useMemo(() => `dashboard.joinHook${1 + Math.floor(Math.random() * 5)}`, []);
   const revealClass = `${anim.scrollReveal} ${sectionsVisible ? anim.scrollRevealVisible : ''}`;
 
   // Today's date string
@@ -809,7 +810,7 @@ export function DashboardPage() {
                         </div>
                       </div>
                       {canJoin && (
-                        <div className={styles.roundHook}>{t('dashboard.joinHook')}</div>
+                        <div className={styles.roundHook}>{t(joinHookKey)}</div>
                       )}
                     </div>
                   </>
@@ -887,11 +888,13 @@ export function DashboardPage() {
                         }
                         const count = roster?.days[cell.date]?.length ?? 0;
                         const clickable = count > 0;
+                        const intensity = count > 0 ? 0.35 + 0.65 * Math.min(count / 15, 1) : 0;
                         return (
                           <div
                             key={`circle-${cell.date}`}
                             className={`${styles.calendarDay} ${styles.circleDay} ${count > 0 ? styles.circleDayActive : ''}`}
-                            style={clickable ? { cursor: 'pointer' } : undefined}
+                            style={clickable ? ({ cursor: 'pointer', '--intensity': intensity } as CSSProperties) : undefined}
+                            title={`${cell.date}: ${count}`}
                             onClick={clickable ? () => openRosterModal(cell.date) : undefined}
                           >
                             <span className={styles.dayNumber}>{cell.day}</span>

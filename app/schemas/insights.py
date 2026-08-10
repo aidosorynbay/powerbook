@@ -85,6 +85,8 @@ class WrappedOut(BaseModel):
     books_finished: int
     percentile_best: int | None
     archetype: ArchetypeOut
+    minutes_by_month: list[int]
+    rounds_participated: int
 
 
 class HallOfFameEntryOut(BaseModel):

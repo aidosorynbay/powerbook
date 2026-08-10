@@ -1,0 +1,181 @@
+.card {
+  position: relative;
+  width: 375px;
+  height: 667px;
+  overflow: hidden;
+  border-radius: var(--radius-2xl);
+  background: #0D1117;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 24px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(242, 100, 48, 0.35) 0%, transparent 55%),
+    radial-gradient(circle at 100% 100%, rgba(242, 100, 48, 0.18) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  color: var(--color-text-primary);
+}
+
+.wordmark {
+  font-size: 15px;
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-text-primary);
+}
+
+.yearTag {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent-primary);
+  background: rgba(242, 100, 48, 0.14);
+  border: 1px solid var(--color-border-accent);
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+}
+
+.name {
+  position: relative;
+  margin-top: 22px;
+  font-size: 15px;
+  color: var(--color-text-secondary);
+}
+
+.archetypeTag {
+  position: relative;
+  margin-top: 6px;
+  font-size: 20px;
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-tight);
+  text-align: center;
+}
+
+.hero {
+  position: relative;
+  margin-top: 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.heroValue {
+  font-size: 96px;
+  font-weight: var(--font-weight-extrabold);
+  line-height: 0.9;
+  color: var(--color-accent-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.heroLabel {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.funFact {
+  position: relative;
+  margin-top: 16px;
+  padding: 0 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  text-align: center;
+  max-width: 300px;
+}
+
+.chart {
+  position: relative;
+  margin-top: 22px;
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  width: 100%;
+  height: 64px;
+}
+
+.chartCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.chartBarTrack {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.chartBar {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, var(--color-accent-primary) 0%, rgba(242, 100, 48, 0.35) 100%);
+}
+
+.chartLabel {
+  margin-top: 5px;
+  font-size: 9px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.statsGrid {
+  position: relative;
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+
+.stat {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  text-align: center;
+}
+
+.statValue {
+  font-size: 22px;
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.statLabel {
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--color-text-muted);
+}
+
+.footer {
+  position: relative;
+  margin-top: auto;
+  padding-top: 20px;
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  letter-spacing: var(--letter-spacing-wide);
+}

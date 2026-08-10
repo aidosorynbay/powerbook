@@ -6,6 +6,12 @@ import { Header, Footer } from '@/widgets';
 import styles from './ArchivePage.module.css';
 
 const INTENSITY_CAP_MINUTES = 120;
+const SHARED_INTENSITY_CAP_COUNT = 40;
+
+function sharedDayIntensity(count: number): number {
+  if (count <= 0) return 0;
+  return 0.35 + 0.65 * Math.min(count / SHARED_INTENSITY_CAP_COUNT, 1);
+}
 
 type DayCell = {
   day: number;
@@ -289,6 +295,8 @@ export function ArchivePage() {
                           <div
                             key={cell.date}
                             className={`${styles.dayCell} ${count > 0 ? styles.circleDayActive : styles.future} ${clickable ? styles.dayCellClickable : ''}`}
+                            style={count > 0 ? ({ '--intensity': sharedDayIntensity(count) } as CSSProperties) : undefined}
+                            title={`${cell.date}: ${count} ${t('archive.participantsShort')}`}
                             onClick={clickable ? () => setRosterModalDate(cell.date) : undefined}
                           >
                             <span className={styles.dayNum}>{cell.day}</span>
