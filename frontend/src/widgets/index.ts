@@ -1,5 +1,6 @@
 export { Header } from './Header';
 export { Hero } from './Hero';
+export { About } from './About';
 export { Stats } from './Stats';
 export { Reward } from './Reward';
 export { CallToAction } from './CallToAction';

@@ -47,33 +47,117 @@
   text-align: center;
 }
 
-.categoriesGrid {
+/* Badge tiles */
+.badgeGrid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  max-width: 720px;
+  margin: 0 auto;
 }
 
-@media (max-width: 700px) {
-  .categoriesGrid {
-    grid-template-columns: 1fr;
+@media (max-width: 600px) {
+  .badgeGrid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
-.categoryCard {
+.badgeTile {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-accent);
+  border-radius: var(--radius-lg);
+  padding: 20px 12px;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.categoryTitle {
+.badgeTile:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.badgeTile:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.badgeIcon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.badgeTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-snug);
+}
+
+.badgeLeader {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Detail modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-index-modal);
+  padding: var(--spacing-4);
+  animation: modalOverlayIn 200ms ease both;
+}
+
+.modalContent {
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-6);
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid var(--color-border-primary);
+  animation: modalContentIn 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes modalOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalContentIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal,
+  .modalContent {
+    animation: none;
+  }
+}
+
+.modalTitle {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
-  margin: 0 0 16px;
-}
-
-.empty {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-4);
 }
 
 .entryList {

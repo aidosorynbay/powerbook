@@ -309,6 +309,15 @@ const translations = {
     'hallOfFame.category.best_day': 'Рекорд за один день',
     'hallOfFame.category.best_month': 'Рекорд за один круг',
 
+    // About
+    'about.kicker': 'Наша история',
+    'about.title': 'От гугл-таблицы до платформы',
+    'about.p1': 'В феврале 2021 года трое друзей — Айс, Нурбол и Мадияр — решили читать понемногу, но каждый день, и не бросать. Никакого приложения — только общий гугл-документ и договорённость друг с другом.',
+    'about.p2': 'Идея прижилась. К марафону присоединялись новые читатели каждый месяц, и то, что начиналось как таблица на троих, выросло в сообщество из 1000+ человек, вместе прочитавших больше 52 000 часов за 64 круга.',
+    'about.p3': 'В 2026 году мы перенесли всю историю — каждый круг, каждый комментарий, каждую прочитанную книгу — на powerbook.kz, чтобы ничего из этого не потерялось.',
+    'about.timeline2021': 'Первый круг. Три читателя, одна таблица, обещание не бросать.',
+    'about.timeline2026': '1000+ читателей, 64 круга и вся история — теперь на одной платформе.',
+
     // Errors
     'error.network': 'Ошибка сети. Попробуйте ещё раз.',
     'error.validation': 'Ошибка валидации. Проверьте данные.',
@@ -619,6 +628,15 @@ const translations = {
     'hallOfFame.category.best_day': 'Бір күндегі рекорд',
     'hallOfFame.category.best_month': 'Бір раундтағы рекорд',
 
+    // About
+    'about.kicker': 'Біздің тарихымыз',
+    'about.title': 'Google-кестеден платформаға дейін',
+    'about.p1': '2021 жылдың ақпанында үш дос — Айс, Нұрбол және Мадияр — аз-аздан, бірақ күн сайын оқуды, тастамауды шешті. Ешқандай қосымша жоқ — тек ортақ Google-құжат және өзара келісім.',
+    'about.p2': 'Идея тамыр жайды. Марафонға әр ай сайын жаңа оқырмандар қосылды, және үшеуге арналған кестеден басталған нәрсе 1000+ адамнан тұратын, 64 раундта бірге 52 000-нан астам сағат оқыған қауымдастыққа айналды.',
+    'about.p3': '2026 жылы біз бүкіл тарихты — әр раундты, әр түсініктемені, әр оқылған кітапты — powerbook.kz-ке көшірдік, ештеңе жоғалмас үшін.',
+    'about.timeline2021': 'Алғашқы раунд. Үш оқырман, бір кесте, тастамау туралы уәде.',
+    'about.timeline2026': '1000+ оқырман, 64 раунд және бүкіл тарих — енді бір платформада.',
+
     // Errors
     'error.network': 'Желі қатесі. Қайтадан көріңіз.',
     'error.validation': 'Тексеру қатесі. Деректерді тексеріңіз.',
@@ -928,6 +946,15 @@ const translations = {
     'hallOfFame.category.books': 'Most books finished',
     'hallOfFame.category.best_day': 'Best single day',
     'hallOfFame.category.best_month': 'Best single circle',
+
+    // About
+    'about.kicker': 'Our story',
+    'about.title': 'From a spreadsheet to a platform',
+    'about.p1': "In February 2021, three friends — Ais, Nurbol, and Madiyar — decided to read a little every day and not quit. No app, just a shared Google doc and a promise to each other.",
+    'about.p2': "The idea stuck. New readers joined the marathon every month, and what started as a spreadsheet for three grew into a community of 1,000+ people who've read over 52,000 hours together across 64 circles.",
+    'about.p3': 'In 2026, we moved the entire history — every circle, every comment, every finished book — onto powerbook.kz, so none of it would be lost.',
+    'about.timeline2021': 'The first circle. Three readers, one spreadsheet, a promise not to quit.',
+    'about.timeline2026': '1,000+ readers, 64 circles, and the whole history — now on one platform.',
 
     // Errors
     'error.network': 'Network error. Please try again.',
