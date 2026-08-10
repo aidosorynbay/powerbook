@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import { useI18n, apiGet, type YearlyArchiveResponse } from '@/shared/lib';
 import { Container, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
@@ -209,7 +210,7 @@ export function ArchivePage() {
         <Footer />
       </div>
 
-      {selectedDay && (
+      {selectedDay && createPortal(
         <div className={styles.modal} onClick={() => setSelectedDay(null)}>
           <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
             <div className={styles.modalTitle}>{formattedSelectedDate}</div>
@@ -227,7 +228,8 @@ export function ArchivePage() {
               <div className={styles.modalNoComment}>{t('archive.noComment')}</div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </PageTransition>
   );

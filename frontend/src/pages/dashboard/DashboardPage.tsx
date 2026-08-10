@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   useAuth,
   useI18n,
@@ -799,7 +800,7 @@ export function DashboardPage() {
       <Footer />
 
       {/* Log minutes modal */}
-      {selectedDate && (
+      {selectedDate && createPortal(
         <div className={styles.modal} onClick={closeLogModal}>
           <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
             <div className={styles.modalTitle}>
@@ -846,11 +847,12 @@ export function DashboardPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Leave round confirmation modal */}
-      {showLeaveModal && (
+      {showLeaveModal && createPortal(
         <div className={styles.modal} onClick={closeLeaveModal}>
           <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
             <div className={styles.modalTitle}>{t('dashboard.leaveConfirm')}</div>
@@ -863,7 +865,8 @@ export function DashboardPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       </div>
     </PageTransition>
