@@ -894,3 +894,56 @@
   font-size: var(--font-size-sm);
   font-variant-numeric: tabular-nums;
 }
+
+/* Round overview: donut + participants, for non-participants */
+.roundOverview {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-6);
+  padding: var(--spacing-4) 0;
+}
+
+.roundOverviewRing {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+}
+
+.roundOverviewRingLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.roundOverviewSide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.roundOverviewBig {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.roundOverviewLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.roundHook {
+  margin-top: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--color-accent-primary-muted);
+  border: 1px solid var(--color-border-accent);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+}

@@ -37,6 +37,27 @@ function getDayColorClass(minutes: number, dateStr: string, isLastDay: boolean, 
   return s.dayRed;
 }
 
+function RoundProgressRing({ daysElapsed, daysTotal }: { daysElapsed: number; daysTotal: number }) {
+  const R = 42;
+  const C = 2 * Math.PI * R;
+  const pct = daysTotal > 0 ? Math.min(Math.max(daysElapsed / daysTotal, 0), 1) : 0;
+  const daysLeft = Math.max(daysTotal - daysElapsed, 0);
+  return (
+    <svg width="110" height="110" viewBox="0 0 110 110">
+      <circle cx="55" cy="55" r={R} fill="none" stroke="var(--color-bg-secondary)" strokeWidth="10" />
+      <circle
+        cx="55" cy="55" r={R} fill="none"
+        stroke="var(--color-accent-primary)" strokeWidth="10" strokeLinecap="round"
+        strokeDasharray={`${C * pct} ${C}`}
+        transform="rotate(-90 55 55)"
+      />
+      <text x="55" y="61" textAnchor="middle" fontSize="26" fontWeight="800" fill="var(--color-text-primary)">
+        {daysLeft}
+      </text>
+    </svg>
+  );
+}
+
 function formatCountdown(ms: number): string {
   if (ms <= 0) return '0:00:00';
   const totalSeconds = Math.floor(ms / 1000);
@@ -165,6 +186,16 @@ export function DashboardPage() {
     const { year, month } = roundStatus.round;
     return new Date(year, month, 0).getDate();
   }, [roundStatus?.round]);
+
+  const roundDaysElapsed = useMemo(() => {
+    if (!roundStatus?.round) return 0;
+    const { year, month } = roundStatus.round;
+    const now = new Date();
+    if (now.getFullYear() === year && now.getMonth() + 1 === month) {
+      return now.getDate();
+    }
+    return now > new Date(year, month - 1, 1) ? lastDayOfMonth : 0;
+  }, [roundStatus?.round, lastDayOfMonth]);
 
   // Is today the last day of the round's month?
   const isLastDay = useMemo(() => {
@@ -557,7 +588,75 @@ export function DashboardPage() {
               </div>
 
               <div ref={sectionsRef} className={styles.sections}>
-                <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay1}`}>
+                {/* Today panel — first, so logging today's reading is the primary action */}
+                {isParticipant && !inRegistrationWindow && (
+                  <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay1}`}>
+                    <div className={styles.sectionTitle}>{t('dashboard.today')}</div>
+                    <div className={styles.todayPanel}>
+                      <div className={styles.todayDate}>{todayStr}</div>
+
+                      {/* Correction countdown — subtle, inside Today panel */}
+                      {correctionsOpen && countdownMs !== null && (
+                        <div className={styles.correctionNotice}>
+                          <span className={styles.correctionLabel}>{t('dashboard.correctionPeriod')}</span>
+                          <span className={styles.correctionTimer}>{formatCountdown(countdownMs)}</span>
+                        </div>
+                      )}
+
+                      {isLastDay && lastDayPhase === 'normal' && (
+                        <div className={styles.correctionNotice}>
+                          <span className={styles.correctionLabel}>{t('dashboard.lastDay')}</span>
+                        </div>
+                      )}
+
+                      <div className={styles.todayField}>
+                        <label className={styles.todayLabel}>{t('dashboard.logMinutes')}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="1440"
+                          className={styles.todayInput}
+                          value={todayMinutes}
+                          onChange={e => setTodayMinutes(e.target.value)}
+                          placeholder="30"
+                        />
+                      </div>
+
+                      <label className={styles.todayCheckbox}>
+                        <input
+                          type="checkbox"
+                          checked={todayBookFinished}
+                          onChange={e => setTodayBookFinished(e.target.checked)}
+                        />
+                        {t('dashboard.bookFinished')}
+                      </label>
+
+                      <div className={styles.todayField}>
+                        <label className={styles.todayLabel}>{t('dashboard.addComment')}</label>
+                        <textarea
+                          className={styles.todayTextarea}
+                          value={todayComment}
+                          onChange={e => setTodayComment(e.target.value)}
+                          placeholder={t('dashboard.commentPlaceholder')}
+                        />
+                      </div>
+
+                      <label className={styles.todayCheckbox}>
+                        <input
+                          type="checkbox"
+                          checked={todayCommentPrivate}
+                          onChange={e => setTodayCommentPrivate(e.target.checked)}
+                        />
+                        {t('dashboard.hideComment')}
+                      </label>
+
+                      <Button onClick={handleSaveToday} disabled={isSavingToday}>
+                        {isSavingToday ? t('dashboard.saving') : t('dashboard.save')}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay2}`}>
                   <div className={styles.sectionTitle}>{t('dashboard.leaderboard')}</div>
                   {canJoin && (
                     <div className={styles.joinInline}>
@@ -699,24 +798,19 @@ export function DashboardPage() {
                     {/* Round stats — for non-participants */}
                     <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay3}`}>
                       <div className={styles.sectionTitle}>{t('dashboard.roundStats')}</div>
-                      <div className={styles.miniStats}>
-                        <div className={styles.miniStat}>
-                          <div className={styles.miniStatValue}>{leaderboard.length}</div>
-                          <div className={styles.miniStatLabel}>{t('dashboard.statParticipants')}</div>
+                      <div className={styles.roundOverview}>
+                        <div className={styles.roundOverviewRing}>
+                          <RoundProgressRing daysElapsed={roundDaysElapsed} daysTotal={lastDayOfMonth} />
+                          <span className={styles.roundOverviewRingLabel}>{t('dashboard.statDaysLeft')}</span>
                         </div>
-                        <div className={styles.miniStat}>
-                          <div className={styles.miniStatValue}>
-                            {roundStatus?.round ? new Date(roundStatus.round.year, roundStatus.round.month, 0).getDate() - new Date().getDate() : 0}
-                          </div>
-                          <div className={styles.miniStatLabel}>{t('dashboard.statDaysLeft')}</div>
-                        </div>
-                        <div className={styles.miniStat}>
-                          <div className={styles.miniStatValue}>
-                            {roundStatus?.round ? Math.round((new Date().getDate() / new Date(roundStatus.round.year, roundStatus.round.month, 0).getDate()) * 100) : 0}%
-                          </div>
-                          <div className={styles.miniStatLabel}>{t('dashboard.statProgress')}</div>
+                        <div className={styles.roundOverviewSide}>
+                          <span className={styles.roundOverviewBig}>{leaderboard.length}</span>
+                          <span className={styles.roundOverviewLabel}>{t('dashboard.statParticipants')}</span>
                         </div>
                       </div>
+                      {canJoin && (
+                        <div className={styles.roundHook}>{t('dashboard.joinHook')}</div>
+                      )}
                     </div>
                   </>
                 ) : isParticipant && !inRegistrationWindow ? (
@@ -809,74 +903,6 @@ export function DashboardPage() {
                   </div>
                 )}
 
-                {/* Today panel — third column */}
-                {isParticipant && !inRegistrationWindow && (
-                  <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay3}`}>
-                    <div className={styles.sectionTitle}>{t('dashboard.today')}</div>
-                    <div className={styles.todayPanel}>
-                      <div className={styles.todayDate}>{todayStr}</div>
-
-                      {/* Correction countdown — subtle, inside Today panel */}
-                      {correctionsOpen && countdownMs !== null && (
-                        <div className={styles.correctionNotice}>
-                          <span className={styles.correctionLabel}>{t('dashboard.correctionPeriod')}</span>
-                          <span className={styles.correctionTimer}>{formatCountdown(countdownMs)}</span>
-                        </div>
-                      )}
-
-                      {isLastDay && lastDayPhase === 'normal' && (
-                        <div className={styles.correctionNotice}>
-                          <span className={styles.correctionLabel}>{t('dashboard.lastDay')}</span>
-                        </div>
-                      )}
-
-                      <div className={styles.todayField}>
-                        <label className={styles.todayLabel}>{t('dashboard.logMinutes')}</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="1440"
-                          className={styles.todayInput}
-                          value={todayMinutes}
-                          onChange={e => setTodayMinutes(e.target.value)}
-                          placeholder="30"
-                        />
-                      </div>
-
-                      <label className={styles.todayCheckbox}>
-                        <input
-                          type="checkbox"
-                          checked={todayBookFinished}
-                          onChange={e => setTodayBookFinished(e.target.checked)}
-                        />
-                        {t('dashboard.bookFinished')}
-                      </label>
-
-                      <div className={styles.todayField}>
-                        <label className={styles.todayLabel}>{t('dashboard.addComment')}</label>
-                        <textarea
-                          className={styles.todayTextarea}
-                          value={todayComment}
-                          onChange={e => setTodayComment(e.target.value)}
-                          placeholder={t('dashboard.commentPlaceholder')}
-                        />
-                      </div>
-
-                      <label className={styles.todayCheckbox}>
-                        <input
-                          type="checkbox"
-                          checked={todayCommentPrivate}
-                          onChange={e => setTodayCommentPrivate(e.target.checked)}
-                        />
-                        {t('dashboard.hideComment')}
-                      </label>
-
-                      <Button onClick={handleSaveToday} disabled={isSavingToday}>
-                        {isSavingToday ? t('dashboard.saving') : t('dashboard.save')}
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </div>
             </>
           )}

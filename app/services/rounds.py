@@ -65,8 +65,9 @@ class RoundService:
                 "giver_telegram_id": giver_tid,
                 "receiver_name": receiver_name,
                 "receiver_telegram_id": receiver_tid,
+                "confirmed": bool(pair.giver_marked_given_at or pair.receiver_marked_received_at),
             }
-            for _pair, giver_name, giver_tid, receiver_name, receiver_tid in pair_rows
+            for pair, giver_name, giver_tid, receiver_name, receiver_tid in pair_rows
         ]
 
         # Current user's personal result and exchange info
@@ -91,9 +92,12 @@ class RoundService:
                 pair_obj, partner_name, partner_telegram_id = pair_row
                 role = "giver" if pair_obj.giver_user_id == user_id else "receiver"
                 my_exchange = {
+                    "pair_id": str(pair_obj.id),
                     "partner_name": partner_name,
                     "partner_telegram_id": partner_telegram_id,
                     "role": role,
+                    "given_confirmed": bool(pair_obj.giver_marked_given_at),
+                    "received_confirmed": bool(pair_obj.receiver_marked_received_at),
                 }
 
         return {

@@ -3,6 +3,7 @@ import {
   useI18n,
   useAuth,
   apiGet,
+  apiPost,
   type LastCompletedRound,
   type RoundResultsResponse,
   type RoundResultEntry,
@@ -190,6 +191,18 @@ export function ResultsPage() {
 
   const monthName = results ? t(`month.${results.month}`) : '';
   const myExchange = results?.my_exchange;
+  const [isMarkingExchange, setIsMarkingExchange] = useState(false);
+
+  const handleMarkExchange = async () => {
+    if (!myExchange) return;
+    setIsMarkingExchange(true);
+    const endpoint = myExchange.role === 'giver' ? 'mark_given' : 'mark_received';
+    const { data } = await apiPost(`/exchange/${myExchange.pair_id}/${endpoint}`, {}, { requireAuth: true });
+    if (data) {
+      await fetchData();
+    }
+    setIsMarkingExchange(false);
+  };
 
   const isSelf = user && selectedEntry?.user_id === user.id;
   const isSelectedWinner = selectedEntry?.group === 'winner';
@@ -274,6 +287,17 @@ export function ResultsPage() {
                               {formatPartner(myExchange.partner_name, myExchange.partner_telegram_id)}
                             </span>
                           </div>
+                        )}
+                        {myExchange && (
+                          <label className={styles.exchangeCheckbox}>
+                            <input
+                              type="checkbox"
+                              checked={myExchange.role === 'giver' ? myExchange.given_confirmed : myExchange.received_confirmed}
+                              disabled={isMarkingExchange || (myExchange.role === 'giver' ? myExchange.given_confirmed : myExchange.received_confirmed)}
+                              onChange={handleMarkExchange}
+                            />
+                            {myExchange.role === 'giver' ? t('results.markGiven') : t('results.markReceived')}
+                          </label>
                         )}
                       </div>
                     )}
@@ -373,6 +397,9 @@ export function ResultsPage() {
                     </button>
                     {showPairs && (
                       <div className={styles.pairsList}>
+                        <div className={styles.pairsLegend}>
+                          {'\uD83C\uDF81'} {t('results.giftConfirmedHint')}
+                        </div>
                         {results.pairs.map((pair, i) => {
                           const giverDisplay = pair.giver_telegram_id
                             ? `@${pair.giver_telegram_id}`
@@ -385,6 +412,11 @@ export function ResultsPage() {
                               <span className={styles.pairName}>{giverDisplay}</span>
                               <span className={styles.pairArrow}>{'\u2192'} {t('results.givesTo')}</span>
                               <span className={styles.pairName}>{receiverDisplay}</span>
+                              {pair.confirmed && (
+                                <span className={styles.pairGift} title={t('results.giftConfirmedHint')}>
+                                  {'\uD83C\uDF81'}
+                                </span>
+                              )}
                             </div>
                           );
                         })}

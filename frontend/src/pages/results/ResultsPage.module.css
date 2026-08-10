@@ -402,6 +402,34 @@
   font-size: var(--font-size-xs);
 }
 
+.pairGift {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: var(--font-size-sm);
+}
+
+.pairsLegend {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  margin-bottom: var(--spacing-2);
+}
+
+.exchangeCheckbox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.exchangeCheckbox input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent-primary);
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .sections {

@@ -92,6 +92,7 @@ export type ExchangePair = {
   giver_telegram_id: string | null;
   receiver_name: string;
   receiver_telegram_id: string | null;
+  confirmed: boolean;
 };
 
 export type MyResult = {
@@ -102,9 +103,12 @@ export type MyResult = {
 };
 
 export type MyExchange = {
+  pair_id: string;
   partner_name: string;
   partner_telegram_id: string | null;
   role: 'giver' | 'receiver';
+  given_confirmed: boolean;
+  received_confirmed: boolean;
 };
 
 export type RoundResultsResponse = {

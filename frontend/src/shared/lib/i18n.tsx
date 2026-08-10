@@ -121,6 +121,7 @@ const translations = {
     'dashboard.step1': 'Читай каждый день минимум 30 минут',
     'dashboard.step2': 'Набирай очки — 1 день = 1 балл',
     'dashboard.step3': 'Топ 50% получают книгу в подарок',
+    'dashboard.joinHook': 'Начни сегодня — и становись лучше с каждым прочитанным днём 📖',
     'dashboard.roundStats': 'Раунд в цифрах',
     'dashboard.statParticipants': 'Участников',
     'dashboard.statDaysLeft': 'Дней осталось',
@@ -165,6 +166,9 @@ const translations = {
     'results.showPairs': 'Показать все пары',
     'results.hidePairs': 'Скрыть пары',
     'results.givesTo': 'дарит',
+    'results.markGiven': 'Я подарил(а) книгу',
+    'results.markReceived': 'Я получил(а) книгу',
+    'results.giftConfirmedHint': 'Подарок подтверждён хотя бы одной стороной',
 
     // Archive
     'archive.title': 'Архив чтения',
@@ -442,6 +446,7 @@ const translations = {
     'dashboard.step1': 'Күн сайын кемінде 30 минут оқы',
     'dashboard.step2': 'Ұпай жина — 1 күн = 1 балл',
     'dashboard.step3': 'Үздік 50% кітап сыйлыққа алады',
+    'dashboard.joinHook': 'Бүгін баста — әр оқыған күн сайын жақсара бер 📖',
     'dashboard.roundStats': 'Раунд сандарда',
     'dashboard.statParticipants': 'Қатысушылар',
     'dashboard.statDaysLeft': 'Қалған күндер',
@@ -486,6 +491,9 @@ const translations = {
     'results.showPairs': 'Барлық жұптарды көрсету',
     'results.hidePairs': 'Жұптарды жасыру',
     'results.givesTo': 'сыйлайды',
+    'results.markGiven': 'Мен кітапты сыйладым',
+    'results.markReceived': 'Мен кітапты алдым',
+    'results.giftConfirmedHint': 'Сыйлық кем дегенде бір жақтан расталды',
 
     // Archive
     'archive.title': 'Оқу мұрағаты',
@@ -763,6 +771,7 @@ const translations = {
     'dashboard.step1': 'Read at least 30 minutes every day',
     'dashboard.step2': 'Earn points — 1 day = 1 point',
     'dashboard.step3': 'Top 50% win a free book',
+    'dashboard.joinHook': 'Start today — get a little better with every day you read 📖',
     'dashboard.roundStats': 'Round stats',
     'dashboard.statParticipants': 'Participants',
     'dashboard.statDaysLeft': 'Days left',
@@ -807,6 +816,9 @@ const translations = {
     'results.showPairs': 'Show all pairs',
     'results.hidePairs': 'Hide pairs',
     'results.givesTo': 'gives to',
+    'results.markGiven': 'I gave the book',
+    'results.markReceived': 'I received the book',
+    'results.giftConfirmedHint': 'Confirmed by at least one side of the pair',
 
     // Archive
     'archive.title': 'Reading Archive',
