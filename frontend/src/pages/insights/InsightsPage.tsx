@@ -119,7 +119,7 @@ export function InsightsPage() {
 
                 {league && (
                   <section className={styles.section}>
-                    <h2 className={styles.sectionTitle}>{t('insights.league')} · {league.round_id ? t(`league.${league.tier.toLowerCase()}`) : ''}</h2>
+                    <h2 className={styles.sectionTitle}>{t('insights.league')} · {league.round_label}</h2>
                     <Card variant="default" padding="md">
                       <div className={styles.leagueHeader}>
                         <Badge variant={league.tier === 'Gold' ? 'accent' : league.tier === 'Silver' ? 'default' : 'outline'}>

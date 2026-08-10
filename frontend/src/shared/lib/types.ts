@@ -218,6 +218,7 @@ export type LeagueMember = {
 
 export type LeagueTier = {
   round_id: string;
+  round_label: string;
   tier: string;
   tier_rank: number;
   your_score: number;
@@ -258,4 +259,23 @@ export type MyClaim = {
   note: string | null;
   created_at: string;
   rounds: string[];
+};
+
+// Hall of fame (public leaderboard)
+export type HallOfFameEntry = {
+  display_name: string;
+  telegram_id: string | null;
+  value: number;
+  badge_title: string | null;
+};
+
+export type HallOfFameCategory = {
+  key: string;
+  title: string;
+  unit: string;
+  entries: HallOfFameEntry[];
+};
+
+export type HallOfFame = {
+  categories: HallOfFameCategory[];
 };

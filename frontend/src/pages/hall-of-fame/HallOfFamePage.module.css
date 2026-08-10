@@ -1,0 +1,134 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  padding: 32px 0 96px;
+}
+
+.hero {
+  text-align: center;
+  max-width: 480px;
+  margin: 0 auto 32px;
+}
+
+.heroIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-primary-muted);
+  color: var(--color-accent-primary);
+  margin-bottom: 16px;
+}
+
+.title {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: var(--letter-spacing-tight);
+  margin: 0 0 8px;
+  color: var(--color-text-primary);
+}
+
+.subtitle {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  margin: 0;
+}
+
+.loading {
+  color: var(--color-text-secondary);
+  padding: 48px 0;
+  text-align: center;
+}
+
+.categoriesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 700px) {
+  .categoriesGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.categoryCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.categoryTitle {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 16px;
+}
+
+.empty {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.entryList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.entryRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border-secondary);
+}
+
+.entryRow:last-child {
+  border-bottom: none;
+}
+
+.entryRank {
+  flex-shrink: 0;
+  width: 28px;
+  text-align: center;
+  font-size: var(--font-size-lg);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.entryInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.entryName {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entryBadge {
+  color: var(--color-accent-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.entryValue {
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}

@@ -7,3 +7,4 @@ export { ArchivePage } from './archive';
 export { ResultsPage } from './results';
 export { ProfilePage } from './profile';
 export { InsightsPage } from './insights';
+export { HallOfFamePage } from './hall-of-fame';

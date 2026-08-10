@@ -20,6 +20,9 @@ from app.schemas.insights import (
     BadgeOut,
     BookshelfEntryOut,
     CelebrityMatchOut,
+    HallOfFameCategoryOut,
+    HallOfFameEntryOut,
+    HallOfFameOut,
     LeagueTierOut,
     PercentileOut,
     PopularBookOut,
@@ -450,19 +453,38 @@ class InsightsService:
 
     # ---------- leagues (computed, not stored) ----------
 
+    def _current_round(self):
+        from app.core.constants import DEFAULT_GROUP_SLUG
+        from app.services.groups import GroupService
+
+        group_service = GroupService(self.db)
+        group = group_service.get_by_slug(slug=DEFAULT_GROUP_SLUG)
+        return group_service.get_current_round(group_id=group.id)
+
     def league(self, *, user_id: uuid.UUID, round_id: uuid.UUID | None) -> LeagueTierOut:
+        from app.repositories.participants import RoundParticipantRepository
+
         ids = self._effective_ids(user_id)
-        rnd = self.repo.round_by_id(round_id=round_id) if round_id else self.repo.last_participated_round(user_ids=ids)
+        # Leagues are a live, this-month mechanic — always the actual current
+        # circle, never "whichever round you last happened to participate in".
+        rnd = self.repo.round_by_id(round_id=round_id) if round_id else self._current_round()
         if rnd is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No round found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active circle this month")
+
+        participants = RoundParticipantRepository(self.db).list_for_round(round_id=rnd.id)
+        ids_set = set(ids)
+        mine_participant = next((p for p in participants if p.user_id in ids_set), None)
+        if mine_participant is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You are not participating in this circle")
 
         scores = self.repo.scores_for_round(round_id=rnd.id)
-        ids_set = set(ids)
-        mine_id = next((uid for uid in scores if uid in ids_set), None)
-        if mine_id is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You did not participate in this round")
-
-        ranked = sorted(scores.items(), key=lambda x: -x[1])
+        # Rank everyone actually enrolled in the circle, not just people who
+        # already logged a day — otherwise early risers this month look like
+        # the only participants and tiers are computed off a tiny sample.
+        ranked = sorted(
+            ((p.user_id, scores.get(p.user_id, 0)) for p in participants),
+            key=lambda x: -x[1],
+        )
         n = len(ranked)
         tier_size = max(1, n // 3)
         tiers = {}
@@ -474,6 +496,7 @@ class InsightsService:
             else:
                 tiers[uid] = ("Bronze", 3)
 
+        mine_id = mine_participant.user_id
         my_tier, my_rank = tiers[mine_id]
         members = []
         for uid, (tier, _) in tiers.items():
@@ -481,14 +504,15 @@ class InsightsService:
                 continue
             info = self.repo.display_name_and_telegram(user_id=uid)
             if info:
-                members.append({"display_name": info[0], "telegram_id": info[1], "score": scores[uid]})
+                members.append({"display_name": info[0], "telegram_id": info[1], "score": scores.get(uid, 0)})
         members.sort(key=lambda m: -m["score"])
 
         return LeagueTierOut(
             round_id=str(rnd.id),
+            round_label=self.repo.round_label(rnd),
             tier=my_tier,
             tier_rank=my_rank,
-            your_score=scores[mine_id],
+            your_score=scores.get(mine_id, 0),
             members=members[:30],
         )
 
@@ -531,4 +555,130 @@ class InsightsService:
             books_finished=books_this_year,
             percentile_best=best_pct,
             archetype=arch,
+        )
+
+    # ---------- hall of fame (public) ----------
+
+    HOUR_MILESTONES = [10, 50, 100, 500, 1000]
+    STREAK_MILESTONES = [7, 30, 100, 365]
+    ROUND_MILESTONES = [1, 10, 25, 50]
+    BOOK_MILESTONES = [1, 5, 10, 25, 50]
+
+    @staticmethod
+    def _highest_tier(value: int, milestones: list[int]) -> int | None:
+        tier = None
+        for m in milestones:
+            if value >= m:
+                tier = m
+        return tier
+
+    def hall_of_fame(self) -> HallOfFameOut:
+        users = self.repo.all_users_with_flags()  # id -> (name, tg, is_claimable)
+        claim_map = self.repo.all_approved_claims()  # ghost_id -> claimant_id
+
+        def resolve(uid: uuid.UUID) -> uuid.UUID | None:
+            if uid in claim_map:
+                return claim_map[uid]
+            info = users.get(uid)
+            if info and not info[2]:  # real (non-ghost) account
+                return uid
+            return None  # unclaimed archive ghost — don't surface it publicly
+
+        def merge_sum(raw: dict[uuid.UUID, int]) -> dict[uuid.UUID, int]:
+            merged: dict[uuid.UUID, int] = defaultdict(int)
+            for uid, v in raw.items():
+                target = resolve(uid)
+                if target is not None:
+                    merged[target] += v
+            return dict(merged)
+
+        minutes_merged = merge_sum(self.repo.minutes_by_all_users())
+        rounds_merged = merge_sum(self.repo.rounds_count_by_all_users())
+        books_merged = merge_sum(self.repo.books_count_by_all_users())
+
+        dates_raw = self.repo.logged_dates_by_all_users()
+        dates_merged: dict[uuid.UUID, list] = defaultdict(list)
+        for uid, dlist in dates_raw.items():
+            target = resolve(uid)
+            if target is not None:
+                dates_merged[target].extend(dlist)
+        streak_merged = {
+            uid: _longest_and_current_streak(sorted(set(dlist)))[0] for uid, dlist in dates_merged.items()
+        }
+
+        def top_entries(merged: dict[uuid.UUID, int], milestones: list[int], badge_label: str, n: int = 5) -> list[HallOfFameEntryOut]:
+            ranked = sorted(merged.items(), key=lambda x: -x[1])[:n]
+            out = []
+            for uid, value in ranked:
+                if value <= 0:
+                    continue
+                info = users.get(uid)
+                tier = self._highest_tier(value, milestones)
+                out.append(
+                    HallOfFameEntryOut(
+                        display_name=info[0] if info else "?",
+                        telegram_id=info[1] if info else None,
+                        value=value,
+                        badge_title=(badge_label.format(tier) if tier else None),
+                    )
+                )
+            return out
+
+        hours_entries = top_entries(
+            {uid: v // 60 for uid, v in minutes_merged.items()}, self.HOUR_MILESTONES, "{}+ hours read"
+        )
+        streak_entries = top_entries(streak_merged, self.STREAK_MILESTONES, "{}-day streak")
+        rounds_entries = top_entries(rounds_merged, self.ROUND_MILESTONES, "{} circles completed")
+        books_entries = top_entries(books_merged, self.BOOK_MILESTONES, "{} books finished")
+
+        # Single-record categories: best single day, best single circle —
+        # each person's own personal record, ranked against everyone else's.
+        rounds_lookup = {r.id: self.repo.round_label(r) for r in self.repo.all_rounds()}
+        rows = self.repo.all_reading_rows()  # (user_id, date, minutes, round_id)
+
+        best_day: dict[uuid.UUID, tuple[int, object]] = {}
+        month_sums: dict[tuple[uuid.UUID, uuid.UUID], int] = defaultdict(int)
+        for uid, d, minutes, round_id in rows:
+            target = resolve(uid)
+            if target is None:
+                continue
+            if minutes > best_day.get(target, (0, None))[0]:
+                best_day[target] = (minutes, d)
+            month_sums[(target, round_id)] += minutes
+
+        best_month: dict[uuid.UUID, tuple[int, uuid.UUID]] = {}
+        for (target, round_id), total in month_sums.items():
+            if total > best_month.get(target, (0, None))[0]:
+                best_month[target] = (total, round_id)
+
+        def top_record_entries(records: dict[uuid.UUID, tuple], label_fn, n: int = 5) -> list[HallOfFameEntryOut]:
+            ranked = sorted(records.items(), key=lambda x: -x[1][0])[:n]
+            out = []
+            for uid, rec in ranked:
+                value = rec[0]
+                if value <= 0:
+                    continue
+                info = users.get(uid)
+                out.append(
+                    HallOfFameEntryOut(
+                        display_name=info[0] if info else "?",
+                        telegram_id=info[1] if info else None,
+                        value=value,
+                        badge_title=label_fn(rec),
+                    )
+                )
+            return out
+
+        best_day_entries = top_record_entries(best_day, lambda rec: rec[1].isoformat() if rec[1] else None)
+        best_month_entries = top_record_entries(best_month, lambda rec: rounds_lookup.get(rec[1]))
+
+        return HallOfFameOut(
+            categories=[
+                HallOfFameCategoryOut(key="hours", title="Most hours read", unit="h", entries=hours_entries),
+                HallOfFameCategoryOut(key="streak", title="Longest streak", unit="days", entries=streak_entries),
+                HallOfFameCategoryOut(key="rounds", title="Most circles completed", unit="circles", entries=rounds_entries),
+                HallOfFameCategoryOut(key="books", title="Most books finished", unit="books", entries=books_entries),
+                HallOfFameCategoryOut(key="best_day", title="Best single day", unit="min", entries=best_day_entries),
+                HallOfFameCategoryOut(key="best_month", title="Best single circle", unit="min", entries=best_month_entries),
+            ]
         )

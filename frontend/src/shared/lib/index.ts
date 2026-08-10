@@ -61,4 +61,7 @@ export type {
   ReactionSummary,
   ClaimCandidate,
   MyClaim,
+  HallOfFameEntry,
+  HallOfFameCategory,
+  HallOfFame,
 } from './types';

@@ -8,6 +8,7 @@ const tabs = [
   { path: '/archive', icon: 'refresh' as const, label: 'nav.archive' },
   { path: '/results', icon: 'check' as const, label: 'nav.results' },
   { path: '/insights', icon: 'star' as const, label: 'nav.insights' },
+  { path: '/hall-of-fame', icon: 'trophy' as const, label: 'nav.hallOfFame' },
 ];
 
 export function BottomNav() {

@@ -1,0 +1,1 @@
+export { HallOfFamePage } from './HallOfFamePage';

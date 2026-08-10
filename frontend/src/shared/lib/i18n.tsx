@@ -15,12 +15,14 @@ const translations = {
     'header.logout': 'Выйти',
     'header.currentRound': 'Текущий раунд',
     'header.archive': 'Архив',
+    'header.hallOfFame': 'Зал славы',
 
     // Bottom nav
     'nav.round': 'Раунд',
     'nav.archive': 'Архив',
     'nav.results': 'Результаты',
     'nav.insights': 'Профиль+',
+    'nav.hallOfFame': 'Топ',
 
     // Auth pages
     'login.title': 'Вход',
@@ -296,6 +298,17 @@ const translations = {
     'claims.myClaimsLabel': 'Твои привязки',
     'claims.unclaim': 'Отменить',
 
+    // Hall of fame
+    'hallOfFame.title': 'Зал славы',
+    'hallOfFame.subtitle': 'Легендарные результаты сообщества PowerBook — видно всем',
+    'hallOfFame.empty': 'Пока никто не набрал',
+    'hallOfFame.category.hours': 'Больше всех часов',
+    'hallOfFame.category.streak': 'Самая длинная серия',
+    'hallOfFame.category.rounds': 'Больше всего кругов',
+    'hallOfFame.category.books': 'Больше всех книг',
+    'hallOfFame.category.best_day': 'Рекорд за один день',
+    'hallOfFame.category.best_month': 'Рекорд за один круг',
+
     // Errors
     'error.network': 'Ошибка сети. Попробуйте ещё раз.',
     'error.validation': 'Ошибка валидации. Проверьте данные.',
@@ -312,12 +325,14 @@ const translations = {
     'header.logout': 'Шығу',
     'header.currentRound': 'Ағымдағы раунд',
     'header.archive': 'Мұрағат',
+    'header.hallOfFame': 'Даңқ залы',
 
     // Bottom nav
     'nav.round': 'Раунд',
     'nav.archive': 'Мұрағат',
     'nav.results': 'Нәтижелер',
     'nav.insights': 'Профиль+',
+    'nav.hallOfFame': 'Топ',
 
     // Auth pages
     'login.title': 'Кіру',
@@ -593,6 +608,17 @@ const translations = {
     'claims.myClaimsLabel': 'Сенің байланыстарың',
     'claims.unclaim': 'Болдырмау',
 
+    // Hall of fame
+    'hallOfFame.title': 'Даңқ залы',
+    'hallOfFame.subtitle': 'PowerBook қауымдастығының аңызға айналған нәтижелері — бәріне көрінеді',
+    'hallOfFame.empty': 'Әзірге ешкім жинаған жоқ',
+    'hallOfFame.category.hours': 'Ең көп сағат',
+    'hallOfFame.category.streak': 'Ең ұзақ серия',
+    'hallOfFame.category.rounds': 'Ең көп раунд',
+    'hallOfFame.category.books': 'Ең көп кітап',
+    'hallOfFame.category.best_day': 'Бір күндегі рекорд',
+    'hallOfFame.category.best_month': 'Бір раундтағы рекорд',
+
     // Errors
     'error.network': 'Желі қатесі. Қайтадан көріңіз.',
     'error.validation': 'Тексеру қатесі. Деректерді тексеріңіз.',
@@ -609,12 +635,14 @@ const translations = {
     'header.logout': 'Log Out',
     'header.currentRound': 'Current Round',
     'header.archive': 'Archive',
+    'header.hallOfFame': 'Hall of Fame',
 
     // Bottom nav
     'nav.round': 'Round',
     'nav.archive': 'Archive',
     'nav.results': 'Results',
     'nav.insights': 'Insights',
+    'nav.hallOfFame': 'Top',
 
     // Auth pages
     'login.title': 'Login',
@@ -889,6 +917,17 @@ const translations = {
     'claims.claimed': 'Linked',
     'claims.myClaimsLabel': 'Your linked usernames',
     'claims.unclaim': 'Undo',
+
+    // Hall of fame
+    'hallOfFame.title': 'Hall of Fame',
+    'hallOfFame.subtitle': "The PowerBook community's legendary achievements — visible to everyone",
+    'hallOfFame.empty': 'No one has reached this yet',
+    'hallOfFame.category.hours': 'Most hours read',
+    'hallOfFame.category.streak': 'Longest streak',
+    'hallOfFame.category.rounds': 'Most circles completed',
+    'hallOfFame.category.books': 'Most books finished',
+    'hallOfFame.category.best_day': 'Best single day',
+    'hallOfFame.category.best_month': 'Best single circle',
 
     // Errors
     'error.network': 'Network error. Please try again.',

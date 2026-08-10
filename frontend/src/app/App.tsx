@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth, I18nProvider, useI18n } from '@/shared/lib';
-import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, ForgotPasswordPage } from '@/pages';
+import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, ForgotPasswordPage } from '@/pages';
 import { BottomNav } from '@/widgets';
 import '@/app/styles/theme.css';
 
@@ -59,6 +59,7 @@ function AppRoutes() {
           path="/insights"
           element={isAuthenticated ? <InsightsPage /> : <Navigate to="/login" replace />}
         />
+        <Route path="/hall-of-fame" element={<HallOfFamePage />} />
         <Route
           path="/profile"
           element={isAuthenticated ? <ProfilePage /> : <Navigate to="/login" replace />}

@@ -10,7 +10,8 @@ export type IconName =
   | 'clock'
   | 'refresh'
   | 'check'
-  | 'star';
+  | 'star'
+  | 'trophy';
 
 interface IconProps extends SVGAttributes<SVGElement> {
   name: IconName;
@@ -90,6 +91,13 @@ const icons: Record<IconName, JSX.Element> = {
       strokeLinejoin="round"
       fill="none"
     />
+  ),
+  'trophy': (
+    <>
+      <path d="M7 4h10v5a5 5 0 01-10 0V4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
+      <path d="M7 5H4a2 2 0 002 4h1M17 5h3a2 2 0 01-2 4h-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+      <path d="M12 14v3M9 20h6M10 17h4v3h-4v-3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
+    </>
   ),
 };
 

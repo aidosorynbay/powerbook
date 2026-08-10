@@ -67,6 +67,7 @@ class BadgeOut(BaseModel):
 
 class LeagueTierOut(BaseModel):
     round_id: str
+    round_label: str
     tier: str
     tier_rank: int
     your_score: int
@@ -83,3 +84,21 @@ class WrappedOut(BaseModel):
     books_finished: int
     percentile_best: int | None
     archetype: ArchetypeOut
+
+
+class HallOfFameEntryOut(BaseModel):
+    display_name: str
+    telegram_id: str | None
+    value: int
+    badge_title: str | None
+
+
+class HallOfFameCategoryOut(BaseModel):
+    key: str
+    title: str
+    unit: str
+    entries: list[HallOfFameEntryOut]
+
+
+class HallOfFameOut(BaseModel):
+    categories: list[HallOfFameCategoryOut]

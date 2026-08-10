@@ -27,6 +27,7 @@ export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
                 <Link to="/insights" className={styles.navLink}>{t('nav.insights')}</Link>
               </>
             )}
+            <Link to="/hall-of-fame" className={styles.navLink}>{t('header.hallOfFame')}</Link>
             <a href="#about" className={styles.navLink}>{t('header.about')}</a>
             <a href="https://t.me/+ZSmueLtmT8Y1MDBi" className={styles.navLink} target="_blank" rel="noopener noreferrer">
               <Icon name="telegram" size="sm" />

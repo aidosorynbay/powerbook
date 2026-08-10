@@ -6,7 +6,8 @@ from collections import defaultdict
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.enums import RoundParticipantStatus
+from app.models.claim import UsernameClaim
+from app.models.enums import ClaimStatus, RoundParticipantStatus
 from app.models.round import ReadingLog, Round, RoundParticipant, RoundResult
 from app.models.user import User
 from app.repositories.base import BaseRepository
@@ -137,3 +138,50 @@ class InsightsRepository(BaseRepository[None]):
     def round_label(self, rnd: Round) -> str:
         months = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         return f"{months[rnd.month]} {rnd.year}"
+
+    # ---------- hall of fame (public, platform-wide) ----------
+
+    def all_users_with_flags(self) -> dict[uuid.UUID, tuple[str, str | None, bool]]:
+        """id -> (display_name, telegram_id, is_claimable)"""
+        stmt = select(User.id, User.display_name, User.telegram_id, User.is_claimable)
+        return {row[0]: (row[1], row[2], row[3]) for row in self.db.execute(stmt).all()}
+
+    def minutes_by_all_users(self) -> dict[uuid.UUID, int]:
+        stmt = select(ReadingLog.user_id, func.coalesce(func.sum(ReadingLog.minutes), 0)).group_by(ReadingLog.user_id)
+        return {row[0]: int(row[1]) for row in self.db.execute(stmt).all()}
+
+    def rounds_count_by_all_users(self) -> dict[uuid.UUID, int]:
+        stmt = select(
+            RoundParticipant.user_id, func.count(func.distinct(RoundParticipant.round_id))
+        ).group_by(RoundParticipant.user_id)
+        return {row[0]: int(row[1]) for row in self.db.execute(stmt).all()}
+
+    def books_count_by_all_users(self) -> dict[uuid.UUID, int]:
+        stmt = (
+            select(ReadingLog.user_id, func.count(func.distinct(ReadingLog.comment)))
+            .where(ReadingLog.book_finished.is_(True), ReadingLog.comment.is_not(None))
+            .group_by(ReadingLog.user_id)
+        )
+        return {row[0]: int(row[1]) for row in self.db.execute(stmt).all()}
+
+    def logged_dates_by_all_users(self) -> dict[uuid.UUID, list]:
+        stmt = select(ReadingLog.user_id, ReadingLog.date).where(ReadingLog.score == 1)
+        out: dict[uuid.UUID, list] = defaultdict(list)
+        for uid, d in self.db.execute(stmt).all():
+            out[uid].append(d)
+        return dict(out)
+
+    def all_approved_claims(self) -> dict[uuid.UUID, uuid.UUID]:
+        """ghost_user_id -> claimant_user_id, approved only"""
+        stmt = select(UsernameClaim.ghost_user_id, UsernameClaim.claimant_user_id).where(
+            UsernameClaim.status == ClaimStatus.approved
+        )
+        return {row[0]: row[1] for row in self.db.execute(stmt).all()}
+
+    def all_reading_rows(self) -> list[tuple[uuid.UUID, object, int, uuid.UUID]]:
+        """(user_id, date, minutes, round_id) for every logged day, platform-wide."""
+        stmt = select(ReadingLog.user_id, ReadingLog.date, ReadingLog.minutes, ReadingLog.round_id)
+        return [(row[0], row[1], row[2], row[3]) for row in self.db.execute(stmt).all()]
+
+    def all_rounds(self) -> list[Round]:
+        return list(self.db.execute(select(Round)).scalars().all())

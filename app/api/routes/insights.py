@@ -13,6 +13,7 @@ from app.schemas.insights import (
     BadgeOut,
     BookshelfEntryOut,
     CelebrityMatchOut,
+    HallOfFameOut,
     LeagueTierOut,
     PercentileOut,
     PopularBookOut,
@@ -92,3 +93,9 @@ def get_wrapped(
     user=Depends(get_current_user),
 ) -> WrappedOut:
     return InsightsService(db).wrapped(user_id=user.id, year=year)
+
+
+@router.get("/hall-of-fame", response_model=HallOfFameOut)
+def get_hall_of_fame(db: Session = Depends(get_db)) -> HallOfFameOut:
+    """Public leaderboard of all-time top readers — no login required."""
+    return InsightsService(db).hall_of_fame()
