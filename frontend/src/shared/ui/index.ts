@@ -17,3 +17,5 @@ export { Logo } from './Logo';
 export { Container } from './Container';
 
 export { PageTransition } from './PageTransition';
+
+export { Avatar } from './Avatar';

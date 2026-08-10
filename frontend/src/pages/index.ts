@@ -8,3 +8,5 @@ export { ResultsPage } from './results';
 export { ProfilePage } from './profile';
 export { InsightsPage } from './insights';
 export { HallOfFamePage } from './hall-of-fame';
+export { DirectoryPage } from './directory';
+export { PublicProfilePage } from './reader';

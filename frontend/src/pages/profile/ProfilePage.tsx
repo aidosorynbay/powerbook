@@ -1,7 +1,16 @@
-import { FormEvent, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth, useI18n, apiPut, type User } from '@/shared/lib';
-import { Button, Card, Container, Logo, PageTransition } from '@/shared/ui';
+import {
+  useAuth,
+  useI18n,
+  apiPut,
+  apiGet,
+  apiDelete,
+  resizeImageToDataUrl,
+  type User,
+  type Buddy,
+} from '@/shared/lib';
+import { Button, Card, Container, Logo, PageTransition, Avatar } from '@/shared/ui';
 import styles from './ProfilePage.module.css';
 
 type Gender = 'male' | 'female' | 'unknown';
@@ -16,6 +25,9 @@ export function ProfilePage() {
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
   const [telegramId, setTelegramId] = useState(user?.telegram_id ?? '');
   const [gender, setGender] = useState<Gender>((user?.gender as Gender) ?? 'unknown');
+  const [avatarData, setAvatarData] = useState<string | null>(user?.avatar_data ?? null);
+  const [recommendationText, setRecommendationText] = useState(user?.recommendation_text ?? '');
+  const [readingMusicUrl, setReadingMusicUrl] = useState(user?.reading_music_url ?? '');
   const [isSaving, setIsSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
@@ -27,6 +39,33 @@ export function ProfilePage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+
+  // Reading buddies
+  const [buddies, setBuddies] = useState<Buddy[]>([]);
+
+  useEffect(() => {
+    async function loadBuddies() {
+      const { data } = await apiGet<Buddy[]>('/social/buddies/mine', { requireAuth: true });
+      if (data) setBuddies(data);
+    }
+    loadBuddies();
+  }, []);
+
+  const removeBuddy = async (buddyId: string) => {
+    await apiDelete(`/social/buddies/${buddyId}`, { requireAuth: true });
+    setBuddies((prev) => prev.filter((b) => b.user_id !== buddyId));
+  };
+
+  const onAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await resizeImageToDataUrl(file);
+      setAvatarData(dataUrl);
+    } catch {
+      setProfileError(t('error.validation'));
+    }
+  };
 
   const onSaveProfile = async (e: FormEvent) => {
     e.preventDefault();
@@ -40,6 +79,9 @@ export function ProfilePage() {
       display_name: displayName,
       telegram_id: telegramId.replace(/^@/, '') || null,
       gender,
+      avatar_data: avatarData ?? '',
+      recommendation_text: recommendationText,
+      reading_music_url: readingMusicUrl,
     }, { requireAuth: true });
 
     if (error) {
@@ -98,6 +140,14 @@ export function ProfilePage() {
             {profileSuccess && <div className={styles.success}>{profileSuccess}</div>}
 
             <form className={styles.form} onSubmit={onSaveProfile}>
+              <div className={styles.avatarField}>
+                <Avatar src={avatarData} name={displayName || username} size="xl" />
+                <label className={styles.avatarUploadBtn}>
+                  {t('profile.changeAvatar')}
+                  <input type="file" accept="image/*" onChange={onAvatarChange} hidden />
+                </label>
+              </div>
+
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="username">{t('profile.username')}</label>
                 <input
@@ -174,10 +224,63 @@ export function ProfilePage() {
                 </select>
               </div>
 
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="recommendation">
+                  {t('profile.recommendationLabel')}
+                </label>
+                <textarea
+                  id="recommendation"
+                  className={styles.textarea}
+                  value={recommendationText}
+                  onChange={(e) => setRecommendationText(e.target.value)}
+                  placeholder={t('profile.recommendationPlaceholder')}
+                  maxLength={280}
+                />
+              </div>
+
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="readingMusic">
+                  {t('profile.readingMusicLabel')}
+                </label>
+                <input
+                  id="readingMusic"
+                  className={styles.input}
+                  type="url"
+                  value={readingMusicUrl}
+                  onChange={(e) => setReadingMusicUrl(e.target.value)}
+                  placeholder="https://open.spotify.com/..."
+                />
+                <div className={styles.hint}>{t('profile.readingMusicHint')}</div>
+              </div>
+
               <Button type="submit" fullWidth disabled={isSaving}>
                 {isSaving ? t('profile.saving') : t('profile.save')}
               </Button>
             </form>
+
+            <hr className={styles.divider} />
+
+            <div className={styles.sectionTitle}>{t('profile.myBuddies')}</div>
+            {buddies.length === 0 ? (
+              <div className={styles.hint}>{t('profile.noBuddies')}</div>
+            ) : (
+              <div className={styles.buddyList}>
+                {buddies.map((b) => (
+                  <div key={b.user_id} className={styles.buddyRow}>
+                    <Link to={`/readers/${b.user_id}`} className={styles.buddyLink}>
+                      <Avatar src={b.avatar_data} name={b.display_name} size="sm" />
+                      <span>{b.display_name}</span>
+                    </Link>
+                    <button className={styles.buddyRemoveBtn} onClick={() => removeBuddy(b.user_id)}>
+                      &times;
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Link className={styles.link} to="/readers">
+              {t('profile.viewDirectory')}
+            </Link>
 
             <hr className={styles.divider} />
 

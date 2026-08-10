@@ -20,6 +20,9 @@ export type User = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  avatar_data: string | null;
+  recommendation_text: string | null;
+  reading_music_url: string | null;
 };
 
 // Rounds
@@ -307,4 +310,42 @@ export type RosterResponse = {
 export type YearlyRosterResponse = {
   year: number;
   days: Record<string, RosterEntry[]>;
+};
+
+// Social: directory, public profiles, reading buddies
+export type DirectoryEntry = {
+  user_id: string;
+  username: string;
+  display_name: string;
+  telegram_id: string | null;
+  avatar_data: string | null;
+  archetype_title: string | null;
+  recommendation_text: string | null;
+};
+
+export type PublicProfile = {
+  user_id: string;
+  username: string;
+  display_name: string;
+  telegram_id: string | null;
+  avatar_data: string | null;
+  recommendation_text: string | null;
+  reading_music_url: string | null;
+  archetype_title: string | null;
+  total_hours: number;
+  longest_streak_days: number;
+  rounds_participated: number;
+  books_finished: number;
+  badges_earned: number;
+  is_buddy: boolean;
+  is_self: boolean;
+};
+
+export type Buddy = {
+  user_id: string;
+  username: string;
+  display_name: string;
+  telegram_id: string | null;
+  avatar_data: string | null;
+  archetype_title: string | null;
 };

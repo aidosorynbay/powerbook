@@ -1,0 +1,154 @@
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useI18n, apiGet, apiPost, apiDelete, type PublicProfile } from '@/shared/lib';
+import { Container, PageTransition, Avatar, Button, Card } from '@/shared/ui';
+import { Header, Footer } from '@/widgets';
+import styles from './PublicProfilePage.module.css';
+
+function getMusicEmbedUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes('open.spotify.com')) {
+      const path = u.pathname.replace(/^\/(intl-\w+\/)?/, '/');
+      return `https://open.spotify.com/embed${path}`;
+    }
+    if (u.hostname.includes('youtu.be')) {
+      const id = u.pathname.slice(1);
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+    if (u.hostname.includes('youtube.com')) {
+      const id = u.searchParams.get('v');
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function PublicProfilePage() {
+  const { userId } = useParams<{ userId: string }>();
+  const { t } = useI18n();
+  const [profile, setProfile] = useState<PublicProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isTogglingBuddy, setIsTogglingBuddy] = useState(false);
+
+  const load = async () => {
+    if (!userId) return;
+    setIsLoading(true);
+    const { data } = await apiGet<PublicProfile>(`/social/profile/${userId}`, { requireAuth: true });
+    if (data) setProfile(data);
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  const toggleBuddy = async () => {
+    if (!profile) return;
+    setIsTogglingBuddy(true);
+    if (profile.is_buddy) {
+      await apiDelete(`/social/buddies/${profile.user_id}`, { requireAuth: true });
+    } else {
+      await apiPost(`/social/buddies/${profile.user_id}`, {}, { requireAuth: true });
+    }
+    await load();
+    setIsTogglingBuddy(false);
+  };
+
+  const embedUrl = profile?.reading_music_url ? getMusicEmbedUrl(profile.reading_music_url) : null;
+
+  return (
+    <PageTransition>
+      <div className={styles.page}>
+        <Header />
+        <main className={styles.main}>
+          <Container size="sm">
+            {isLoading || !profile ? (
+              <div className={styles.loading}>{t('dashboard.loading')}</div>
+            ) : (
+              <>
+                <div className={styles.hero}>
+                  <Avatar src={profile.avatar_data} name={profile.display_name} size="xl" />
+                  <div className={styles.name}>{profile.display_name}</div>
+                  {profile.archetype_title && (
+                    <div className={styles.archetype}>{profile.archetype_title}</div>
+                  )}
+
+                  <div className={styles.actions}>
+                    {!profile.is_self && (
+                      <Button
+                        variant={profile.is_buddy ? 'secondary' : 'primary'}
+                        size="sm"
+                        onClick={toggleBuddy}
+                        disabled={isTogglingBuddy}
+                      >
+                        {profile.is_buddy ? t('profile.removeBuddy') : t('profile.addBuddy')}
+                      </Button>
+                    )}
+                    {profile.telegram_id && (
+                      <a
+                        href={`https://t.me/${profile.telegram_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.telegramBtn}
+                      >
+                        {t('profile.chatTelegram')}
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {profile.recommendation_text && (
+                  <Card variant="glass" padding="lg" className={styles.recCard}>
+                    <div className={styles.recKicker}>{t('profile.recommends')}</div>
+                    <div className={styles.recText}>&ldquo;{profile.recommendation_text}&rdquo;</div>
+                  </Card>
+                )}
+
+                {embedUrl && (
+                  <div className={styles.musicSection}>
+                    <div className={styles.musicKicker}>{t('profile.readingMusic')}</div>
+                    <iframe
+                      className={styles.musicEmbed}
+                      src={embedUrl}
+                      title="Reading music"
+                      frameBorder="0"
+                      allow="autoplay; encrypted-media; clipboard-write; fullscreen; picture-in-picture"
+                    />
+                  </div>
+                )}
+
+                <div className={styles.statGrid}>
+                  <div className={styles.stat}>
+                    <div className={styles.statValue}>{profile.total_hours}</div>
+                    <div className={styles.statLabel}>{t('insights.totalHours')}</div>
+                  </div>
+                  <div className={styles.stat}>
+                    <div className={styles.statValue}>{profile.longest_streak_days}</div>
+                    <div className={styles.statLabel}>{t('insights.longestStreak')}</div>
+                  </div>
+                  <div className={styles.stat}>
+                    <div className={styles.statValue}>{profile.rounds_participated}</div>
+                    <div className={styles.statLabel}>{t('insights.circles')}</div>
+                  </div>
+                  <div className={styles.stat}>
+                    <div className={styles.statValue}>{profile.books_finished}</div>
+                    <div className={styles.statLabel}>{t('insights.booksFinished')}</div>
+                  </div>
+                  <div className={styles.stat}>
+                    <div className={styles.statValue}>{profile.badges_earned}</div>
+                    <div className={styles.statLabel}>{t('profile.badgesEarned')}</div>
+                  </div>
+                </div>
+              </>
+            )}
+          </Container>
+        </main>
+        <Footer />
+      </div>
+    </PageTransition>
+  );
+}

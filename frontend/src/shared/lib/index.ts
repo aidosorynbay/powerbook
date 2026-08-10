@@ -22,6 +22,9 @@ export {
   apiDelete,
 } from './api';
 
+// Image utilities
+export { resizeImageToDataUrl } from './imageResize';
+
 // Constants
 export {
   DEFAULT_GROUP_SLUG,
@@ -67,4 +70,7 @@ export type {
   RosterEntry,
   RosterResponse,
   YearlyRosterResponse,
+  DirectoryEntry,
+  PublicProfile,
+  Buddy,
 } from './types';
