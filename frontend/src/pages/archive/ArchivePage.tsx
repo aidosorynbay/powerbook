@@ -144,9 +144,9 @@ export function ArchivePage() {
               <div className={styles.legend}>
                 <span className={styles.legendItem}>
                   <span className={styles.legendGradient}>
-                    <span className={styles.legendDot} style={{ '--intensity': 0.35 } as CSSProperties} />
-                    <span className={styles.legendDot} style={{ '--intensity': 0.6 } as CSSProperties} />
-                    <span className={styles.legendDot} style={{ '--intensity': 1 } as CSSProperties} />
+                    <span className={`${styles.legendDot} ${styles.green}`} style={{ '--intensity': 0.35 } as CSSProperties} />
+                    <span className={`${styles.legendDot} ${styles.green}`} style={{ '--intensity': 0.65 } as CSSProperties} />
+                    <span className={`${styles.legendDot} ${styles.green}`} style={{ '--intensity': 1 } as CSSProperties} />
                   </span>
                   30+ min
                 </span>

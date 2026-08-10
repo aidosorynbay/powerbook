@@ -241,8 +241,10 @@
 /* Day color states */
 .green {
   --intensity: 1;
-  background: color-mix(in oklab, var(--color-bg-card) calc((1 - var(--intensity)) * 100%), var(--color-success) calc(var(--intensity) * 100%));
-  color: var(--color-bg-primary);
+  --green-light: color-mix(in oklab, var(--color-success) 55%, white 45%);
+  --green-dark: color-mix(in oklab, var(--color-success) 60%, black 35%);
+  background: color-mix(in oklab, var(--green-light) calc((1 - var(--intensity)) * 100%), var(--green-dark) calc(var(--intensity) * 100%));
+  color: color-mix(in oklab, var(--color-bg-primary) calc((1 - var(--intensity)) * 100%), white calc(var(--intensity) * 100%));
 }
 
 .yellow {
