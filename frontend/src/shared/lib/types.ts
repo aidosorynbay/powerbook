@@ -144,3 +144,97 @@ export type PublicStats = {
   round_progress_percent: number;
   is_round_active: boolean;
 };
+
+// Insights
+export type AllTimeProfile = {
+  total_minutes: number;
+  total_hours: number;
+  total_days_logged: number;
+  current_streak_days: number;
+  longest_streak_days: number;
+  consistency_percent: number;
+  rounds_participated: number;
+  first_round_label: string | null;
+  books_finished: number;
+};
+
+export type PercentileInfo = {
+  round_id: string;
+  round_label: string;
+  your_score: number;
+  percentile: number;
+  rank: number;
+  total_participants: number;
+};
+
+export type Archetype = {
+  key: string;
+  title: string;
+  description: string;
+};
+
+export type BookshelfEntry = {
+  title: string;
+  date: string;
+  round_label: string;
+};
+
+export type PopularBook = {
+  title: string;
+  finish_count: number;
+};
+
+export type ReadingTwin = {
+  user_id: string;
+  display_name: string;
+  telegram_id: string | null;
+  shared_books: string[];
+  match_percent: number;
+};
+
+export type CelebrityMatch = {
+  name: string;
+  role: string;
+  shared_books: string[];
+  match_percent: number;
+};
+
+export type Badge = {
+  key: string;
+  title: string;
+  description: string;
+  earned: boolean;
+  progress_current: number;
+  progress_target: number;
+};
+
+export type LeagueMember = {
+  display_name: string;
+  telegram_id: string | null;
+  score: number;
+};
+
+export type LeagueTier = {
+  round_id: string;
+  tier: string;
+  tier_rank: number;
+  your_score: number;
+  members: LeagueMember[];
+};
+
+export type Wrapped = {
+  year: number;
+  total_minutes: number;
+  total_hours: number;
+  best_month_label: string | null;
+  best_month_minutes: number;
+  longest_streak_days: number;
+  books_finished: number;
+  percentile_best: number | null;
+  archetype: Archetype;
+};
+
+export type ReactionSummary = {
+  count: number;
+  reacted_by_me: boolean;
+};

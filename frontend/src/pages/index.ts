@@ -6,3 +6,4 @@ export { DashboardPage } from './dashboard';
 export { ArchivePage } from './archive';
 export { ResultsPage } from './results';
 export { ProfilePage } from './profile';
+export { InsightsPage } from './insights';

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, require_admin
 from app.db.session import get_db
 from app.models.enums import RoundStatus
-from app.schemas.reading import LogMinutesRequest
+from app.schemas.reading import LogMinutesRequest, ReactionOut
 from app.schemas.rounds import ParticipantOut, RoundCreateRequest, RoundOut
 from app.services.groups import GroupService
 from app.services.reading import ReadingService
@@ -123,6 +123,31 @@ def log_minutes(
     }
 
 
+@router.post("/{round_id}/reading_logs/{reading_log_id}/react", response_model=ReactionOut)
+def react_to_reading_log(
+    round_id: uuid.UUID,
+    reading_log_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> ReactionOut:
+    """Single-tap toggle kudos on a reading log entry (Strava-style)."""
+    service = ReadingService(db)
+    service.logs.toggle_reaction(reading_log_id=reading_log_id, user_id=user.id)
+    summary = service.logs.reaction_summary(reading_log_id=reading_log_id, user_id=user.id)
+    return ReactionOut(**summary)
+
+
+@router.get("/{round_id}/reading_logs/{reading_log_id}/reactions", response_model=ReactionOut)
+def get_reading_log_reactions(
+    round_id: uuid.UUID,
+    reading_log_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> ReactionOut:
+    summary = ReadingService(db).logs.reaction_summary(reading_log_id=reading_log_id, user_id=user.id)
+    return ReactionOut(**summary)
+
+
 @router.get("/{round_id}/calendar")
 def my_calendar(round_id: uuid.UUID, db: Session = Depends(get_db), user=Depends(get_current_user)) -> dict:
     return ReadingService(db).calendar_for_user(round_id=round_id, user_id=user.id)
@@ -137,6 +162,5 @@ def user_calendar(
 
 @router.get("/{round_id}/leaderboard")
 def leaderboard(round_id: uuid.UUID, db: Session = Depends(get_db), _user=Depends(get_current_user)) -> list[dict]:
-    # “near-real-time” MVP: clients poll this endpoint (e.g., every 5–10 seconds)
+    # "near-real-time" MVP: clients poll this endpoint (e.g., every 5-10 seconds)
     return ReadingService(db).leaderboard(round_id=round_id)
-

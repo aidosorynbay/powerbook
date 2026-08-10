@@ -11,3 +11,7 @@ class LogMinutesRequest(BaseModel):
     book_finished: bool = False
     comment: str | None = None
 
+
+class ReactionOut(BaseModel):
+    count: int
+    reacted_by_me: bool

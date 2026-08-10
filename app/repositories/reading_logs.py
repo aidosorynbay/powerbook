@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.enums import RoundParticipantStatus
+from app.models.reaction import ReadingLogReaction
 from app.models.round import ReadingLog, RoundParticipant
 from app.models.user import User
 from app.repositories.base import BaseRepository
@@ -142,3 +143,30 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
         self.db.refresh(row)
         return row
 
+    def toggle_reaction(self, *, reading_log_id: uuid.UUID, user_id: uuid.UUID, emoji: str = "🔥") -> bool:
+        stmt = select(ReadingLogReaction).where(
+            ReadingLogReaction.reading_log_id == reading_log_id,
+            ReadingLogReaction.user_id == user_id,
+        )
+        existing = self.db.execute(stmt).scalar_one_or_none()
+        if existing is not None:
+            self.db.delete(existing)
+            self.db.commit()
+            return False
+        row = ReadingLogReaction(reading_log_id=reading_log_id, user_id=user_id, emoji=emoji)
+        self.db.add(row)
+        self.db.commit()
+        return True
+
+    def reaction_summary(self, *, reading_log_id: uuid.UUID, user_id: uuid.UUID) -> dict:
+        count_stmt = select(func.count(ReadingLogReaction.id)).where(
+            ReadingLogReaction.reading_log_id == reading_log_id
+        )
+        count = int(self.db.execute(count_stmt).scalar() or 0)
+
+        mine_stmt = select(ReadingLogReaction.id).where(
+            ReadingLogReaction.reading_log_id == reading_log_id,
+            ReadingLogReaction.user_id == user_id,
+        )
+        reacted = self.db.execute(mine_stmt).scalar_one_or_none() is not None
+        return {"count": count, "reacted_by_me": reacted}

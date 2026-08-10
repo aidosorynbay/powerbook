@@ -20,6 +20,7 @@ const translations = {
     'nav.round': 'Раунд',
     'nav.archive': 'Архив',
     'nav.results': 'Результаты',
+    'nav.insights': 'Профиль+',
 
     // Auth pages
     'login.title': 'Вход',
@@ -220,7 +221,7 @@ const translations = {
     'footer.contact': 'Связь',
     'footer.privacy': 'Конфиденциальность',
     'footer.terms': 'Условия',
-    'footer.copyright': '\u00A9 {year} PowerBook. Все права защищены.',
+    'footer.copyright': '© {year} PowerBook. Все права защищены.',
 
     // Reward
     'reward.badge': 'Награда каждый месяц',
@@ -251,6 +252,34 @@ const translations = {
     'profile.passwordMismatch': 'Пароли не совпадают',
     'profile.changingPassword': 'Меняем...',
 
+    // Insights
+    'insights.title': 'Моя статистика',
+    'insights.subtitle': 'Твой путь чтения за всё время в PowerBook',
+    'insights.totalHours': 'Часов прочитано',
+    'insights.longestStreak': 'Лучшая серия, дн.',
+    'insights.consistency': 'Стабильность',
+    'insights.circles': 'Кругов',
+    'insights.booksFinished': 'Книг прочитано',
+    'insights.currentStreak': 'Текущая серия',
+    'insights.readingSince': 'Читаешь с нами с',
+    'insights.yourType': 'Твой тип читателя',
+    'insights.league': 'Лига',
+    'insights.yourScore': 'Твой счёт',
+    'insights.badges': 'Достижения',
+    'insights.nextUp': 'Скоро получишь',
+    'insights.showMore': 'Показать ещё',
+    'insights.bookshelf': 'Твоя книжная полка',
+    'insights.popularBooks': 'Популярное среди участников',
+    'insights.readingTwins': 'Читательские близнецы',
+    'insights.readingTwinsHint': 'Участники с похожим книжным вкусом',
+    'insights.celebrityMatch': 'Совпадение со знаменитостями',
+    'insights.celebrityMatchHint': 'Насколько твой вкус похож на списки чтения известных людей',
+
+    // Leagues
+    'league.gold': 'Золотая лига',
+    'league.silver': 'Серебряная лига',
+    'league.bronze': 'Бронзовая лига',
+
     // Errors
     'error.network': 'Ошибка сети. Попробуйте ещё раз.',
     'error.validation': 'Ошибка валидации. Проверьте данные.',
@@ -272,6 +301,7 @@ const translations = {
     'nav.round': 'Раунд',
     'nav.archive': 'Мұрағат',
     'nav.results': 'Нәтижелер',
+    'nav.insights': 'Профиль+',
 
     // Auth pages
     'login.title': 'Кіру',
@@ -472,7 +502,7 @@ const translations = {
     'footer.contact': 'Байланыс',
     'footer.privacy': 'Құпиялылық',
     'footer.terms': 'Шарттар',
-    'footer.copyright': '\u00A9 {year} PowerBook. Барлық құқықтар қорғалған.',
+    'footer.copyright': '© {year} PowerBook. Барлық құқықтар қорғалған.',
 
     // Reward
     'reward.badge': 'Ай сайын сыйлық',
@@ -503,6 +533,34 @@ const translations = {
     'profile.passwordMismatch': 'Құпия сөздер сәйкес келмейді',
     'profile.changingPassword': 'Өзгертілуде...',
 
+    // Insights
+    'insights.title': 'Менің статистикам',
+    'insights.subtitle': 'PowerBook-тағы бүкіл уақыттағы оқу жолың',
+    'insights.totalHours': 'Оқылған сағат',
+    'insights.longestStreak': 'Үздік серия, күн',
+    'insights.consistency': 'Тұрақтылық',
+    'insights.circles': 'Раундтар',
+    'insights.booksFinished': 'Оқылған кітап',
+    'insights.currentStreak': 'Ағымдағы серия',
+    'insights.readingSince': 'Бізбен бірге оқисың',
+    'insights.yourType': 'Сенің оқырман түрің',
+    'insights.league': 'Лига',
+    'insights.yourScore': 'Сенің ұпайың',
+    'insights.badges': 'Жетістіктер',
+    'insights.nextUp': 'Жақында аласың',
+    'insights.showMore': 'Тағы көрсету',
+    'insights.bookshelf': 'Сенің кітап сөресі',
+    'insights.popularBooks': 'Қатысушылар арасында танымал',
+    'insights.readingTwins': 'Оқырман егіздер',
+    'insights.readingTwinsHint': 'Дәмі ұқсас қатысушылар',
+    'insights.celebrityMatch': 'Атақты адамдармен сәйкестік',
+    'insights.celebrityMatchHint': 'Сенің дәмің белгілі адамдардың оқу тізімдеріне қаншалықты ұқсас',
+
+    // Leagues
+    'league.gold': 'Алтын лига',
+    'league.silver': 'Күміс лига',
+    'league.bronze': 'Қола лига',
+
     // Errors
     'error.network': 'Желі қатесі. Қайтадан көріңіз.',
     'error.validation': 'Тексеру қатесі. Деректерді тексеріңіз.',
@@ -524,6 +582,7 @@ const translations = {
     'nav.round': 'Round',
     'nav.archive': 'Archive',
     'nav.results': 'Results',
+    'nav.insights': 'Insights',
 
     // Auth pages
     'login.title': 'Login',
@@ -724,7 +783,7 @@ const translations = {
     'footer.contact': 'Contact',
     'footer.privacy': 'Privacy',
     'footer.terms': 'Terms',
-    'footer.copyright': '\u00A9 {year} PowerBook. All rights reserved.',
+    'footer.copyright': '© {year} PowerBook. All rights reserved.',
 
     // Reward
     'reward.badge': 'Monthly reward',
@@ -754,6 +813,34 @@ const translations = {
     'profile.passwordChanged': 'Password changed!',
     'profile.passwordMismatch': 'Passwords do not match',
     'profile.changingPassword': 'Changing...',
+
+    // Insights
+    'insights.title': 'My Insights',
+    'insights.subtitle': 'Your all-time reading journey on PowerBook',
+    'insights.totalHours': 'Hours read',
+    'insights.longestStreak': 'Longest streak, d.',
+    'insights.consistency': 'Consistency',
+    'insights.circles': 'Rounds',
+    'insights.booksFinished': 'Books finished',
+    'insights.currentStreak': 'Current streak',
+    'insights.readingSince': 'Reading with us since',
+    'insights.yourType': 'Your reader type',
+    'insights.league': 'League',
+    'insights.yourScore': 'Your score',
+    'insights.badges': 'Badges',
+    'insights.nextUp': 'Coming up',
+    'insights.showMore': 'Show more',
+    'insights.bookshelf': 'Your bookshelf',
+    'insights.popularBooks': 'Popular among participants',
+    'insights.readingTwins': 'Reading twins',
+    'insights.readingTwinsHint': 'Participants with a similar taste in books',
+    'insights.celebrityMatch': 'Celebrity match',
+    'insights.celebrityMatchHint': 'How close your taste is to the reading lists of well-known people',
+
+    // Leagues
+    'league.gold': 'Gold League',
+    'league.silver': 'Silver League',
+    'league.bronze': 'Bronze League',
 
     // Errors
     'error.network': 'Network error. Please try again.',

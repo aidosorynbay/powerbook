@@ -74,6 +74,11 @@
   gap: var(--spacing-2);
 }
 
+.legendGradient {
+  display: flex;
+  gap: 2px;
+}
+
 .legendDot {
   width: 12px;
   height: 12px;
@@ -182,7 +187,8 @@
 
 /* Day color states */
 .green {
-  background: var(--color-success);
+  --intensity: 1;
+  background: color-mix(in oklab, var(--color-bg-card) calc((1 - var(--intensity)) * 100%), var(--color-success) calc(var(--intensity) * 100%));
   color: var(--color-bg-primary);
 }
 

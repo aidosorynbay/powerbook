@@ -1,7 +1,7 @@
 import { SVGAttributes } from 'react';
 import styles from './Icon.module.css';
 
-export type IconName = 
+export type IconName =
   | 'logo'
   | 'arrow-right'
   | 'telegram'
@@ -9,7 +9,8 @@ export type IconName =
   | 'users'
   | 'clock'
   | 'refresh'
-  | 'check';
+  | 'check'
+  | 'star';
 
 interface IconProps extends SVGAttributes<SVGElement> {
   name: IconName;
@@ -25,21 +26,21 @@ const icons: Record<IconName, JSX.Element> = {
     </>
   ),
   'arrow-right': (
-    <path 
-      d="M5 12h14m-6-6l6 6-6 6" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
+    <path
+      d="M5 12h14m-6-6l6 6-6 6"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
       strokeLinejoin="round"
       fill="none"
     />
   ),
   'telegram': (
-    <path 
-      d="M21 5L2 12.5l7 1M21 5l-4 15-7-7.5M21 5L9 13.5m0 0V21l3.5-3.5" 
-      stroke="currentColor" 
-      strokeWidth="1.5" 
-      strokeLinecap="round" 
+    <path
+      d="M21 5L2 12.5l7 1M21 5l-4 15-7-7.5M21 5L9 13.5m0 0V21l3.5-3.5"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
       strokeLinejoin="round"
       fill="none"
     />
@@ -72,11 +73,20 @@ const icons: Record<IconName, JSX.Element> = {
     </>
   ),
   'check': (
-    <path 
-      d="M5 12l5 5L20 7" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
+    <path
+      d="M5 12l5 5L20 7"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
+  ),
+  'star': (
+    <path
+      d="M12 2.5l2.9 6.16 6.6.75-4.9 4.55 1.3 6.54L12 17.5l-5.9 3-1.3-6.54-4.9-4.55 6.6-.75L12 2.5z"
+      stroke="currentColor"
+      strokeWidth="1.5"
       strokeLinejoin="round"
       fill="none"
     />
@@ -91,9 +101,9 @@ export function Icon({ name, size = 'md', className = '', ...props }: IconProps)
   ].filter(Boolean).join(' ');
 
   return (
-    <svg 
+    <svg
       className={classNames}
-      viewBox="0 0 24 24" 
+      viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       {...props}

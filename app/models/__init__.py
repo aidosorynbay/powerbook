@@ -1,4 +1,5 @@
 from app.models.group import Group, GroupMember
+from app.models.reaction import ReadingLogReaction
 from app.models.round import BookExchangePair, ReadingLog, Round, RoundParticipant, RoundResult
 from app.models.user import User
 
@@ -11,5 +12,5 @@ __all__ = [
     "ReadingLog",
     "RoundResult",
     "BookExchangePair",
+    "ReadingLogReaction",
 ]
-

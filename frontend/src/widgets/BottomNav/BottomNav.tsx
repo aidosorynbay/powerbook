@@ -7,6 +7,7 @@ const tabs = [
   { path: '/round', icon: 'clock' as const, label: 'nav.round' },
   { path: '/archive', icon: 'refresh' as const, label: 'nav.archive' },
   { path: '/results', icon: 'check' as const, label: 'nav.results' },
+  { path: '/insights', icon: 'star' as const, label: 'nav.insights' },
 ];
 
 export function BottomNav() {

@@ -1,20 +1,25 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
 import { useI18n, apiGet, type YearlyArchiveResponse } from '@/shared/lib';
 import { Container, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import styles from './ArchivePage.module.css';
 
-function getDayColor(minutes: number, dateStr: string, participated: boolean): string {
+const INTENSITY_CAP_MINUTES = 120;
+
+function getDayCell(minutes: number, dateStr: string, participated: boolean): { className: string; style?: CSSProperties } {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const day = new Date(dateStr + 'T00:00:00');
 
-  if (day > today) return styles.future;
-  if (minutes >= 30) return styles.green;
-  if (minutes >= 2) return styles.yellow;
+  if (day > today) return { className: styles.future };
+  if (minutes >= 30) {
+    const intensity = 0.35 + 0.65 * Math.min(minutes / INTENSITY_CAP_MINUTES, 1);
+    return { className: styles.green, style: { '--intensity': intensity } as CSSProperties };
+  }
+  if (minutes >= 2) return { className: styles.yellow };
   // If user didn't participate in this month's round, show gray instead of red
-  if (!participated) return styles.future;
-  return styles.red;
+  if (!participated) return { className: styles.future };
+  return { className: styles.red };
 }
 
 const MIN_YEAR = 2021;
@@ -117,7 +122,11 @@ export function ArchivePage() {
             <div>
               <div className={styles.legend}>
                 <span className={styles.legendItem}>
-                  <span className={`${styles.legendDot} ${styles.green}`} />
+                  <span className={styles.legendGradient}>
+                    <span className={styles.legendDot} style={{ '--intensity': 0.35 } as CSSProperties} />
+                    <span className={styles.legendDot} style={{ '--intensity': 0.6 } as CSSProperties} />
+                    <span className={styles.legendDot} style={{ '--intensity': 1 } as CSSProperties} />
+                  </span>
                   30+ min
                 </span>
                 <span className={styles.legendItem}>
@@ -142,19 +151,20 @@ export function ArchivePage() {
                       {weekdays.map(wd => (
                         <div key={wd} className={styles.weekdayHeader}>{wd}</div>
                       ))}
-                      {grid.map((cell, idx) =>
-                        cell === null ? (
-                          <div key={`e-${idx}`} className={styles.emptyCell} />
-                        ) : (
+                      {grid.map((cell, idx) => {
+                        if (cell === null) return <div key={`e-${idx}`} className={styles.emptyCell} />;
+                        const { className, style } = getDayCell(cell.minutes, cell.date, participated);
+                        return (
                           <div
                             key={cell.date}
-                            className={`${styles.dayCell} ${getDayColor(cell.minutes, cell.date, participated)}`}
+                            className={`${styles.dayCell} ${className}`}
+                            style={style}
                             title={`${cell.date}: ${cell.minutes} min`}
                           >
                             <span className={styles.dayNum}>{cell.day}</span>
                           </div>
-                        )
-                      )}
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
