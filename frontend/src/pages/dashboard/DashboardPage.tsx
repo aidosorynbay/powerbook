@@ -10,6 +10,7 @@ import {
   type CurrentRoundStatusResponse,
   type LeaderboardEntry,
   type CalendarResponse,
+  type RosterResponse,
 } from '@/shared/lib';
 import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition } from '@/shared/ui';
@@ -70,6 +71,8 @@ export function DashboardPage() {
     return ranks;
   }, [leaderboard]);
   const [calendar, setCalendar] = useState<CalendarResponse | null>(null);
+  const [roster, setRoster] = useState<RosterResponse | null>(null);
+  const [rosterModalDate, setRosterModalDate] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
@@ -80,6 +83,7 @@ export function DashboardPage() {
   const [minutesInput, setMinutesInput] = useState('');
   const [modalBookFinished, setModalBookFinished] = useState(false);
   const [modalComment, setModalComment] = useState('');
+  const [modalCommentPrivate, setModalCommentPrivate] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Dual countdown timers
@@ -100,6 +104,7 @@ export function DashboardPage() {
   const [todayMinutes, setTodayMinutes] = useState('');
   const [todayBookFinished, setTodayBookFinished] = useState(false);
   const [todayComment, setTodayComment] = useState('');
+  const [todayCommentPrivate, setTodayCommentPrivate] = useState(false);
   const [isSavingToday, setIsSavingToday] = useState(false);
 
   const fetchRoundStatus = useCallback(async () => {
@@ -126,6 +131,14 @@ export function DashboardPage() {
     if (data) setCalendar(data);
   }, []);
 
+  const fetchRoster = useCallback(async (roundId: string) => {
+    const { data } = await apiGet<RosterResponse>(
+      `/rounds/${roundId}/roster`,
+      { requireAuth: true }
+    );
+    if (data) setRoster(data);
+  }, []);
+
   const loadData = useCallback(async () => {
     setIsLoading(true);
     await fetchRoundStatus();
@@ -139,11 +152,12 @@ export function DashboardPage() {
   useEffect(() => {
     if (roundStatus?.round) {
       fetchLeaderboard(roundStatus.round.id);
+      fetchRoster(roundStatus.round.id);
       if (roundStatus.participation?.is_participant) {
         fetchCalendar(roundStatus.round.id);
       }
     }
-  }, [roundStatus, fetchLeaderboard, fetchCalendar]);
+  }, [roundStatus, fetchLeaderboard, fetchCalendar, fetchRoster]);
 
   // Last day of the round's month
   const lastDayOfMonth = useMemo(() => {
@@ -253,6 +267,7 @@ export function DashboardPage() {
     const dayData = calendar?.days.find(d => d.date === date);
     setModalBookFinished(dayData?.book_finished ?? false);
     setModalComment(dayData?.comment ?? '');
+    setModalCommentPrivate(dayData?.comment_private ?? false);
   };
 
   const closeLogModal = () => {
@@ -260,7 +275,11 @@ export function DashboardPage() {
     setMinutesInput('');
     setModalBookFinished(false);
     setModalComment('');
+    setModalCommentPrivate(false);
   };
+
+  const openRosterModal = (date: string) => setRosterModalDate(date);
+  const closeRosterModal = () => setRosterModalDate(null);
 
   const selectUser = async (userId: string, displayName: string) => {
     if (!roundStatus?.round) return;
@@ -292,16 +311,39 @@ export function DashboardPage() {
     setIsSaving(true);
     const { data } = await apiPost(
       `/rounds/${roundStatus.round.id}/reading_logs`,
-      { date: selectedDate, minutes, book_finished: modalBookFinished, comment: modalComment || null },
+      {
+        date: selectedDate, minutes, book_finished: modalBookFinished,
+        comment: modalComment || null, comment_private: modalCommentPrivate,
+      },
       { requireAuth: true }
     );
     if (data) {
       await fetchCalendar(roundStatus.round.id);
       await fetchLeaderboard(roundStatus.round.id);
+      await fetchRoster(roundStatus.round.id);
       closeLogModal();
     }
     setIsSaving(false);
   };
+
+  const circleCalendarGrid = useMemo(() => {
+    if (!roundStatus?.round) return [];
+    const { year, month } = roundStatus.round;
+    const firstDay = new Date(year, month - 1, 1);
+    let startDayOfWeek = firstDay.getDay() - 1;
+    if (startDayOfWeek < 0) startDayOfWeek = 6;
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    const grid: Array<{ day: number; date: string } | null> = [];
+    for (let i = 0; i < startDayOfWeek; i++) {
+      grid.push(null);
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      grid.push({ day: d, date: dateStr });
+    }
+    return grid;
+  }, [roundStatus?.round]);
 
   // Build calendar grid from a CalendarResponse
   const buildGrid = useCallback((cal: CalendarResponse, year: number, month: number) => {
@@ -386,6 +428,7 @@ export function DashboardPage() {
       setTodayMinutes(todayData.minutes > 0 ? String(todayData.minutes) : '');
       setTodayBookFinished(todayData.book_finished);
       setTodayComment(todayData.comment ?? '');
+      setTodayCommentPrivate(todayData.comment_private ?? false);
     }
   }, [todayData]);
 
@@ -395,12 +438,16 @@ export function DashboardPage() {
     setIsSavingToday(true);
     const { data } = await apiPost(
       `/rounds/${roundStatus.round.id}/reading_logs`,
-      { date: todayStr, minutes, book_finished: todayBookFinished, comment: todayComment || null },
+      {
+        date: todayStr, minutes, book_finished: todayBookFinished,
+        comment: todayComment || null, comment_private: todayCommentPrivate,
+      },
       { requireAuth: true }
     );
     if (data) {
       await fetchCalendar(roundStatus.round.id);
       await fetchLeaderboard(roundStatus.round.id);
+      await fetchRoster(roundStatus.round.id);
     }
     setIsSavingToday(false);
   };
@@ -732,6 +779,36 @@ export function DashboardPage() {
                   </div>
                 ) : null}
 
+                {/* Shared circle calendar — visible to everyone, participant or not */}
+                {roundStatus.round && (
+                  <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay3}`}>
+                    <div className={styles.sectionTitle}>{t('dashboard.circleCalendar')}</div>
+                    <div className={styles.calendar}>
+                      {weekdays.map(day => (
+                        <div key={`circle-${day}`} className={styles.calendarHeader}>{day}</div>
+                      ))}
+                      {circleCalendarGrid.map((cell, idx) => {
+                        if (cell === null) {
+                          return <div key={`circle-empty-${idx}`} className={`${styles.calendarDay} ${styles.empty}`} />;
+                        }
+                        const count = roster?.days[cell.date]?.length ?? 0;
+                        const clickable = count > 0;
+                        return (
+                          <div
+                            key={`circle-${cell.date}`}
+                            className={`${styles.calendarDay} ${styles.circleDay} ${count > 0 ? styles.circleDayActive : ''}`}
+                            style={clickable ? { cursor: 'pointer' } : undefined}
+                            onClick={clickable ? () => openRosterModal(cell.date) : undefined}
+                          >
+                            <span className={styles.dayNumber}>{cell.day}</span>
+                            {count > 0 && <span className={styles.circleDayCount}>{count}</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Today panel — third column */}
                 {isParticipant && !inRegistrationWindow && (
                   <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay3}`}>
@@ -784,6 +861,15 @@ export function DashboardPage() {
                           placeholder={t('dashboard.commentPlaceholder')}
                         />
                       </div>
+
+                      <label className={styles.todayCheckbox}>
+                        <input
+                          type="checkbox"
+                          checked={todayCommentPrivate}
+                          onChange={e => setTodayCommentPrivate(e.target.checked)}
+                        />
+                        {t('dashboard.hideComment')}
+                      </label>
 
                       <Button onClick={handleSaveToday} disabled={isSavingToday}>
                         {isSavingToday ? t('dashboard.saving') : t('dashboard.save')}
@@ -838,6 +924,16 @@ export function DashboardPage() {
                 placeholder={t('dashboard.commentPlaceholder')}
               />
             </div>
+            <div className={styles.modalField}>
+              <label className={styles.todayCheckbox}>
+                <input
+                  type="checkbox"
+                  checked={modalCommentPrivate}
+                  onChange={e => setModalCommentPrivate(e.target.checked)}
+                />
+                {t('dashboard.hideComment')}
+              </label>
+            </div>
             <div className={styles.modalActions}>
               <Button variant="ghost" onClick={closeLogModal}>
                 {t('dashboard.cancel')}
@@ -864,6 +960,29 @@ export function DashboardPage() {
                 {isLeaving ? t('dashboard.leaving') : t('dashboard.leaveConfirmBtn')}
               </Button>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {rosterModalDate && createPortal(
+        <div className={styles.modal} onClick={closeRosterModal}>
+          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalTitle}>{rosterModalDate}</div>
+            <ul className={styles.rosterList}>
+              {(roster?.days[rosterModalDate] ?? []).map(entry => (
+                <li key={entry.user_id} className={styles.rosterRow}>
+                  <div className={styles.rosterInfo}>
+                    <span className={styles.rosterName}>
+                      {entry.book_finished && '\u2605 '}
+                      {entry.display_name}
+                    </span>
+                    {entry.comment && <span className={styles.rosterComment}>{entry.comment}</span>}
+                  </div>
+                  <span className={styles.rosterMinutes}>{entry.minutes}m</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>,
         document.body

@@ -28,6 +28,7 @@ class ArchetypeOut(BaseModel):
     key: str
     title: str
     description: str
+    fun_fact: str | None = None
 
 
 class BookshelfEntryOut(BaseModel):

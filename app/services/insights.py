@@ -258,16 +258,40 @@ class InsightsService:
 
     # ---------- archetype ----------
 
+    WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+    def _fun_fact(self, *, ids: list[uuid.UUID]) -> str | None:
+        """One concrete, personal data point — different for (almost) every
+        user, unlike the archetype bucket which many people can share."""
+        daily = self.repo.daily_minutes_all_time(user_ids=ids)
+        if not daily:
+            return None
+
+        weekday_minutes: dict[int, int] = defaultdict(int)
+        weekday_days: dict[int, int] = defaultdict(int)
+        for d, m in daily:
+            if m > 0:
+                weekday_minutes[d.weekday()] += m
+                weekday_days[d.weekday()] += 1
+
+        if weekday_minutes:
+            fav_weekday = max(weekday_minutes, key=lambda k: weekday_minutes[k])
+            if weekday_days[fav_weekday] >= 3:
+                return f"You read the most on {self.WEEKDAY_NAMES[fav_weekday]}s — {weekday_minutes[fav_weekday]} minutes there in total."
+        return None
+
     def archetype(self, *, user_id: uuid.UUID) -> ArchetypeOut:
         ids = self._effective_ids(user_id)
         daily = self.repo.daily_minutes_all_time(user_ids=ids)
         active = [(d, m) for d, m in daily if m > 0]
+        fun_fact = self._fun_fact(ids=ids)
 
         if len(active) < 10:
             return ArchetypeOut(
                 key="newcomer",
                 title="Newcomer",
                 description="Just getting started — a few more circles and your reading style will start to show.",
+                fun_fact=fun_fact,
             )
 
         minutes_list = [m for _, m in active]
@@ -279,6 +303,32 @@ class InsightsService:
         total_minutes = sum(minutes_list)
         weekend_share = weekend_minutes / total_minutes if total_minutes else 0
 
+        # Books finished per circle participated — a "always finishes what they start" signal
+        books = self.repo.finished_book_titles_for_user(user_ids=ids)
+        rounds_n = self.repo.rounds_participated_count(user_ids=ids)
+        finish_rate = len(books) / rounds_n if rounds_n else 0
+
+        # One weekday dominating the reading pattern, beyond the generic weekend split
+        weekday_minutes: dict[int, int] = defaultdict(int)
+        weekday_days: dict[int, int] = defaultdict(int)
+        for d, m in active:
+            weekday_minutes[d.weekday()] += m
+            weekday_days[d.weekday()] += 1
+        dominant_weekday = None
+        if weekday_minutes:
+            top_wd = max(weekday_minutes, key=lambda k: weekday_minutes[k])
+            if weekday_days[top_wd] >= 3 and weekday_minutes[top_wd] / total_minutes >= 0.40:
+                dominant_weekday = top_wd
+
+        # Trend: meaningfully more active in the second half of their history than the first
+        midpoint = len(minutes_list) // 2
+        first_half_avg = statistics.mean(minutes_list[:midpoint]) if midpoint >= 3 else None
+        second_half_avg = statistics.mean(minutes_list[midpoint:]) if midpoint >= 3 else None
+        is_leveling_up = (
+            first_half_avg is not None and second_half_avg is not None
+            and first_half_avg > 0 and second_half_avg >= first_half_avg * 1.3
+        )
+
         profile = self.all_time_profile(user_id=user_id)
 
         if avg_minutes >= 75:
@@ -286,29 +336,55 @@ class InsightsService:
                 key="marathoner",
                 title="Marathoner",
                 description=f"You average {int(avg_minutes)} minutes on the days you read — long, immersive sessions rather than quick check-ins.",
+                fun_fact=fun_fact,
+            )
+        if finish_rate >= 0.5 and rounds_n >= 3:
+            return ArchetypeOut(
+                key="finisher",
+                title="The Finisher",
+                description=f"You've finished a book in {int(round(finish_rate * 100))}% of the circles you've joined — you don't leave things half-read.",
+                fun_fact=fun_fact,
+            )
+        if dominant_weekday is not None:
+            return ArchetypeOut(
+                key="weekday_loyalist",
+                title=f"{self.WEEKDAY_NAMES[dominant_weekday]} Reader",
+                description=f"A disproportionate share of your reading happens on {self.WEEKDAY_NAMES[dominant_weekday]}s — your week has a clear reading day.",
+                fun_fact=fun_fact,
             )
         if weekend_share >= 0.40:
             return ArchetypeOut(
                 key="weekend_reader",
                 title="Weekend Reader",
                 description="Your reading clusters around weekends — the weekday grind gives way to real reading time on Sat/Sun.",
+                fun_fact=fun_fact,
+            )
+        if is_leveling_up:
+            return ArchetypeOut(
+                key="on_the_rise",
+                title="On the Rise",
+                description=f"You're reading noticeably more now than when you started — averaging {int(second_half_avg)} min/day lately, up from {int(first_half_avg)}.",
+                fun_fact=fun_fact,
             )
         if profile.consistency_percent >= 85 and burstiness < 0.6:
             return ArchetypeOut(
                 key="steady",
                 title="The Steady One",
                 description=f"{profile.consistency_percent}% consistency with very even daily minutes — you show up, every day, like clockwork.",
+                fun_fact=fun_fact,
             )
         if burstiness >= 1.0:
             return ArchetypeOut(
                 key="sprinter",
                 title="Sprinter",
                 description="Big reading days followed by quiet stretches — you read in bursts, not a steady drip.",
+                fun_fact=fun_fact,
             )
         return ArchetypeOut(
             key="reader",
             title="The Reader",
             description="A solid, well-rounded reading habit — no single extreme, just consistent progress.",
+            fun_fact=fun_fact,
         )
 
     # ---------- bookshelf ----------

@@ -177,6 +177,7 @@ class ReadingLog(TimestampMixin, Base):
     score: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     book_finished: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     comment: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    is_comment_private: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
     round: Mapped["Round"] = relationship(back_populates="reading_logs")
     user: Mapped["User"] = relationship(back_populates="reading_logs")

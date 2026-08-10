@@ -67,6 +67,7 @@ export type CalendarDay = {
   score: number;
   book_finished: boolean;
   comment: string | null;
+  comment_private: boolean;
 };
 
 export type CalendarResponse = {
@@ -173,6 +174,7 @@ export type Archetype = {
   key: string;
   title: string;
   description: string;
+  fun_fact: string | null;
 };
 
 export type BookshelfEntry = {
@@ -278,4 +280,20 @@ export type HallOfFameCategory = {
 
 export type HallOfFame = {
   categories: HallOfFameCategory[];
+};
+
+// Shared circle calendar (roster)
+export type RosterEntry = {
+  user_id: string;
+  display_name: string;
+  telegram_id: string | null;
+  minutes: number;
+  score: number;
+  book_finished: boolean;
+  comment: string | null;
+};
+
+export type RosterResponse = {
+  round_id: string;
+  days: Record<string, RosterEntry[]>;
 };

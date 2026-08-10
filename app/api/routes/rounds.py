@@ -116,10 +116,12 @@ def log_minutes(
     row = ReadingService(db).log_minutes(
         round_id=round_id, user_id=user.id, day=payload.date, minutes=payload.minutes,
         book_finished=payload.book_finished, comment=payload.comment,
+        comment_private=payload.comment_private,
     )
     return {
         "id": str(row.id), "date": row.date.isoformat(), "minutes": int(row.minutes),
         "score": int(row.score), "book_finished": bool(row.book_finished), "comment": row.comment,
+        "comment_private": bool(row.is_comment_private),
     }
 
 
@@ -150,17 +152,25 @@ def get_reading_log_reactions(
 
 @router.get("/{round_id}/calendar")
 def my_calendar(round_id: uuid.UUID, db: Session = Depends(get_db), user=Depends(get_current_user)) -> dict:
-    return ReadingService(db).calendar_for_user(round_id=round_id, user_id=user.id)
+    return ReadingService(db).calendar_for_user(round_id=round_id, user_id=user.id, viewer_id=user.id)
 
 
 @router.get("/{round_id}/calendar/{user_id}")
 def user_calendar(
-    round_id: uuid.UUID, user_id: uuid.UUID, db: Session = Depends(get_db), _user=Depends(get_current_user)
+    round_id: uuid.UUID, user_id: uuid.UUID, db: Session = Depends(get_db), user=Depends(get_current_user)
 ) -> dict:
-    return ReadingService(db).calendar_for_user(round_id=round_id, user_id=user_id)
+    return ReadingService(db).calendar_for_user(round_id=round_id, user_id=user_id, viewer_id=user.id)
 
 
 @router.get("/{round_id}/leaderboard")
 def leaderboard(round_id: uuid.UUID, db: Session = Depends(get_db), _user=Depends(get_current_user)) -> list[dict]:
     # "near-real-time" MVP: clients poll this endpoint (e.g., every 5-10 seconds)
     return ReadingService(db).leaderboard(round_id=round_id)
+
+
+@router.get("/{round_id}/roster")
+def circle_roster(round_id: uuid.UUID, db: Session = Depends(get_db), _user=Depends(get_current_user)) -> dict:
+    """Shared calendar: who logged what, per day, across the whole circle.
+    Visible to any logged-in user, whether or not they're enrolled in this
+    circle themselves. Comments marked private are already stripped out."""
+    return ReadingService(db).circle_roster(round_id=round_id)

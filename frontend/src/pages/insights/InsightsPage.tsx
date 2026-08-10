@@ -114,6 +114,7 @@ export function InsightsPage() {
                     <div className={styles.archetypeKicker}>{t('insights.yourType')}</div>
                     <div className={styles.archetypeTitle}>{archetype.title}</div>
                     <div className={styles.archetypeDesc}>{archetype.description}</div>
+                    {archetype.fun_fact && <div className={styles.archetypeFunFact}>{archetype.fun_fact}</div>}
                   </Card>
                 )}
 

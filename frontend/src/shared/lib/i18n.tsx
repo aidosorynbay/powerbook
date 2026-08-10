@@ -132,6 +132,8 @@ const translations = {
     'dashboard.legendLastDay': 'Последний день',
     'dashboard.legendStar': 'Книга прочитана',
     'dashboard.legendComment': 'Есть комментарий',
+    'dashboard.circleCalendar': 'Календарь круга',
+    'dashboard.hideComment': 'Скрыть комментарий от других',
 
     // Results
     'header.results': 'Результаты',
@@ -451,6 +453,8 @@ const translations = {
     'dashboard.legendLastDay': 'Соңғы күн',
     'dashboard.legendStar': 'Кітап оқылды',
     'dashboard.legendComment': 'Түсініктеме бар',
+    'dashboard.circleCalendar': 'Раунд күнтізбесі',
+    'dashboard.hideComment': 'Түсініктемені басқалардан жасыру',
 
     // Results
     'header.results': 'Нәтижелер',
@@ -770,6 +774,8 @@ const translations = {
     'dashboard.legendLastDay': 'Last day',
     'dashboard.legendStar': 'Book finished',
     'dashboard.legendComment': 'Has comment',
+    'dashboard.circleCalendar': 'Circle calendar',
+    'dashboard.hideComment': 'Hide comment from others',
 
     // Results
     'header.results': 'Results',

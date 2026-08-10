@@ -101,6 +101,15 @@
   line-height: var(--line-height-relaxed);
 }
 
+.archetypeFunFact {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border-secondary);
+  color: var(--color-accent-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
 .section {
   margin-bottom: 28px;
 }

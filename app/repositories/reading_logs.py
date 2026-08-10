@@ -123,6 +123,7 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
         force_score: int | None = None,
         book_finished: bool = False,
         comment: str | None = None,
+        comment_private: bool = False,
     ) -> ReadingLog:
         score = force_score if force_score is not None else (1 if minutes >= 30 else 0)
         existing = self.get_for_user_date(round_id=round_id, user_id=user_id, day=day)
@@ -131,17 +132,47 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
             row.score = score
             row.book_finished = book_finished
             row.comment = comment
+            row.is_comment_private = comment_private
             self.db.add(row)
         else:
             existing.minutes = minutes
             existing.score = score
             existing.book_finished = book_finished
             existing.comment = comment
+            existing.is_comment_private = comment_private
             row = existing
 
         self.db.commit()
         self.db.refresh(row)
         return row
+
+    def roster_for_round(self, *, round_id: uuid.UUID) -> list[tuple]:
+        """Every logged day this circle, with who logged it — for the
+        shared/group calendar. Private comments are redacted here so callers
+        never see them, not just the API response."""
+        stmt = (
+            select(
+                ReadingLog.date,
+                ReadingLog.user_id,
+                User.display_name,
+                User.telegram_id,
+                ReadingLog.minutes,
+                ReadingLog.score,
+                ReadingLog.book_finished,
+                ReadingLog.comment,
+                ReadingLog.is_comment_private,
+            )
+            .join(User, ReadingLog.user_id == User.id)
+            .where(ReadingLog.round_id == round_id)
+            .order_by(ReadingLog.date.asc())
+        )
+        rows = []
+        for d, uid, name, tg, minutes, score, book_finished, comment, is_private in self.db.execute(stmt).all():
+            rows.append((
+                d, uid, name, tg, int(minutes), int(score), bool(book_finished),
+                None if is_private else comment,
+            ))
+        return rows
 
     def toggle_reaction(self, *, reading_log_id: uuid.UUID, user_id: uuid.UUID, emoji: str = "🔥") -> bool:
         stmt = select(ReadingLogReaction).where(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import calendar
 import uuid
+from collections import defaultdict
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -34,6 +35,7 @@ class ReadingService:
         minutes: int,
         book_finished: bool = False,
         comment: str | None = None,
+        comment_private: bool = False,
     ) -> ReadingLog:
         rnd = self.rounds.get_round(round_id)
         if rnd is None:
@@ -72,12 +74,15 @@ class ReadingService:
         return self.logs.upsert_minutes(
             round_id=round_id, user_id=user_id, day=day, minutes=minutes,
             force_score=force_score, book_finished=book_finished, comment=comment,
+            comment_private=comment_private,
         )
 
-    def calendar_for_user(self, *, round_id: uuid.UUID, user_id: uuid.UUID) -> dict:
+    def calendar_for_user(self, *, round_id: uuid.UUID, user_id: uuid.UUID, viewer_id: uuid.UUID | None = None) -> dict:
         rnd = self.rounds.get_round(round_id)
         if rnd is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Round not found")
+
+        is_owner = viewer_id is None or viewer_id == user_id
 
         month_days = self.rounds.month_calendar(year=rnd.year, month=rnd.month)
         logs = self.logs.list_for_user(round_id=round_id, user_id=user_id)
@@ -91,10 +96,14 @@ class ReadingService:
             minutes = int(row.minutes) if row else 0
             score = int(row.score) if row else 0
             book_finished = bool(row.book_finished) if row else False
+            is_private = bool(row.is_comment_private) if row else False
             comment = row.comment if row else None
+            if is_private and not is_owner:
+                comment = None
             days.append({
                 "date": d.isoformat(), "minutes": minutes, "score": score,
                 "book_finished": book_finished, "comment": comment,
+                "comment_private": is_private,
             })
             total_minutes += minutes
             total_score += score
@@ -144,3 +153,27 @@ class ReadingService:
         data = self.logs.leaderboard_data(round_id=round_id)
         data.sort(key=lambda x: (-x["total_score"], x["display_name"]))
         return data
+
+    def circle_roster(self, *, round_id: uuid.UUID) -> dict:
+        """Who logged what, per day, for the whole circle — the shared
+        calendar. Visible to anyone logged in, not just people enrolled in
+        this particular circle. Private comments are already redacted by
+        the repository."""
+        rnd = self.rounds.get_round(round_id)
+        if rnd is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Round not found")
+
+        rows = self.logs.roster_for_round(round_id=round_id)
+        by_date: dict[str, list[dict]] = defaultdict(list)
+        for d, uid, name, tg, minutes, score, book_finished, comment in rows:
+            by_date[d.isoformat()].append({
+                "user_id": str(uid),
+                "display_name": name,
+                "telegram_id": tg,
+                "minutes": minutes,
+                "score": score,
+                "book_finished": book_finished,
+                "comment": comment,
+            })
+
+        return {"round_id": str(round_id), "days": dict(by_date)}
