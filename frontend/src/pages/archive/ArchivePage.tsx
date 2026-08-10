@@ -17,7 +17,7 @@ function getDayColor(minutes: number, dateStr: string, participated: boolean): s
   return styles.red;
 }
 
-const MIN_YEAR = 2026;
+const MIN_YEAR = 2021;
 
 export function ArchivePage() {
   const { t } = useI18n();
