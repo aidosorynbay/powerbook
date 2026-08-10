@@ -61,8 +61,10 @@
 /* Legend */
 .legend {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--spacing-5);
+  row-gap: var(--spacing-2);
+  column-gap: var(--spacing-4);
   margin-bottom: var(--spacing-6);
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
@@ -72,17 +74,32 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-2);
+  white-space: nowrap;
 }
 
 .legendGradient {
   display: flex;
   gap: 2px;
+  flex-shrink: 0;
 }
 
 .legendDot {
+  flex-shrink: 0;
   width: 12px;
   height: 12px;
   border-radius: var(--radius-sm);
+}
+
+@media (max-width: 480px) {
+  .legend {
+    column-gap: var(--spacing-3);
+    font-size: var(--font-size-xs);
+  }
+
+  .legendDot {
+    width: 10px;
+    height: 10px;
+  }
 }
 
 /* Months grid */
