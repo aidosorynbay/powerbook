@@ -88,7 +88,7 @@ def get_league(
 
 @router.get("/wrapped", response_model=WrappedOut)
 def get_wrapped(
-    year: int = Query(...),
+    year: int | None = Query(default=None),
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ) -> WrappedOut:

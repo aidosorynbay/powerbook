@@ -31,10 +31,24 @@
   color: var(--color-text-primary);
 }
 
+.wordmarkGroup {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
 .wordmark {
   font-size: 15px;
   font-weight: var(--font-weight-extrabold);
   color: var(--color-text-primary);
+}
+
+.since {
+  font-size: 9.5px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
 }
 
 .yearTag {

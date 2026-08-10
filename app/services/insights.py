@@ -594,8 +594,23 @@ class InsightsService:
 
     # ---------- wrapped ----------
 
-    def wrapped(self, *, user_id: uuid.UUID, year: int) -> WrappedOut:
+    def _best_year(self, ids: list[uuid.UUID]) -> int | None:
+        daily = self.repo.daily_minutes_all_time(user_ids=ids)
+        year_totals: dict[int, int] = defaultdict(int)
+        for d, m in daily:
+            year_totals[d.year] += m
+        if not year_totals:
+            return None
+        return max(year_totals, key=lambda y: year_totals[y])
+
+    def wrapped(self, *, user_id: uuid.UUID, year: int | None = None) -> WrappedOut:
         ids = self._effective_ids(user_id)
+        if year is None:
+            # Default to whichever year they actually read the most in —
+            # blindly using the current calendar year makes the card look
+            # embarrassingly empty for anyone whose best years are behind
+            # them or who hasn't logged much yet this year.
+            year = self._best_year(ids) or date.today().year
         by_month = self.repo.minutes_by_month_for_year(user_ids=ids, year=year)
         total_minutes = sum(by_month.values())
         best_month, best_minutes = (None, 0)

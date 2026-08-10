@@ -26,7 +26,10 @@ export const WrappedCard = forwardRef<HTMLDivElement, WrappedCardProps>(function
 
       <div className={styles.header}>
         <Icon name="logo" size="sm" />
-        <span className={styles.wordmark}>PowerBook</span>
+        <div className={styles.wordmarkGroup}>
+          <span className={styles.wordmark}>PowerBook</span>
+          <span className={styles.since}>Since 2021</span>
+        </div>
         <span className={styles.yearTag}>Wrapped {wrapped.year}</span>
       </div>
 

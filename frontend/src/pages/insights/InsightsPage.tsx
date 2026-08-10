@@ -53,8 +53,7 @@ export function InsightsPage() {
     setShowWrapped(true);
     if (wrapped) return;
     setIsLoadingWrapped(true);
-    const year = new Date().getFullYear();
-    const { data } = await apiGet<Wrapped>(`/insights/wrapped?year=${year}`, { requireAuth: true });
+    const { data } = await apiGet<Wrapped>('/insights/wrapped', { requireAuth: true });
     if (data) setWrapped(data);
     setIsLoadingWrapped(false);
   };
