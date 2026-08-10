@@ -13,7 +13,7 @@ function sharedDayIntensity(count: number, maxCount: number): number {
   // of everything slamming into full intensity once counts get into the
   // hundreds (which is normal for this community's busiest years).
   const ratio = Math.sqrt(count / Math.max(maxCount, 1));
-  return 0.28 + 0.6 * Math.min(ratio, 1);
+  return 0.12 + 0.88 * Math.min(ratio, 1);
 }
 
 type DayCell = {
