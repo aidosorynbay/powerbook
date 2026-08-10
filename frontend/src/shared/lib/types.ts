@@ -301,3 +301,8 @@ export type RosterResponse = {
   round_id: string;
   days: Record<string, RosterEntry[]>;
 };
+
+export type YearlyRosterResponse = {
+  year: number;
+  days: Record<string, RosterEntry[]>;
+};

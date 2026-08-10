@@ -150,6 +150,13 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
         """Every logged day this circle, with who logged it — for the
         shared/group calendar. Private comments are redacted here so callers
         never see them, not just the API response."""
+        return self.roster_for_rounds(round_ids=[round_id])
+
+    def roster_for_rounds(self, *, round_ids: list[uuid.UUID]) -> list[tuple]:
+        """Same as roster_for_round but across many circles at once — used
+        by the shared/public archive view."""
+        if not round_ids:
+            return []
         stmt = (
             select(
                 ReadingLog.date,
@@ -163,7 +170,7 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
                 ReadingLog.is_comment_private,
             )
             .join(User, ReadingLog.user_id == User.id)
-            .where(ReadingLog.round_id == round_id)
+            .where(ReadingLog.round_id.in_(round_ids))
             .order_by(ReadingLog.date.asc())
         )
         rows = []

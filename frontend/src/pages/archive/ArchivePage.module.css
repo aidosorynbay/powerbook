@@ -357,3 +357,92 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
 }
+
+/* Personal / Shared view tabs */
+.viewTabs {
+  display: flex;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-5);
+}
+
+.viewTab {
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.viewTab:hover {
+  color: var(--color-text-primary);
+}
+
+.viewTabActive {
+  background: var(--color-accent-primary-muted);
+  color: var(--color-accent-primary);
+  border: 1px solid var(--color-border-accent);
+}
+
+/* Shared/group day cells */
+.circleDayActive {
+  background: var(--color-accent-primary-muted);
+  border-color: var(--color-border-accent);
+  color: var(--color-text-primary);
+}
+
+.circleDayCount {
+  font-size: 9px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent-primary);
+}
+
+/* Roster modal (shared view) */
+.rosterList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.rosterRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) 0;
+  border-bottom: 1px solid var(--color-border-secondary);
+}
+
+.rosterRow:last-child {
+  border-bottom: none;
+}
+
+.rosterInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rosterName {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+}
+
+.rosterComment {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-relaxed);
+}
+
+.rosterMinutes {
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}

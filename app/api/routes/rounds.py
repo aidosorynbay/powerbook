@@ -25,6 +25,14 @@ def yearly_archive(year: int, db: Session = Depends(get_db), user=Depends(get_cu
     return ReadingService(db).yearly_archive(user_id=user.id, year=year, group_id=group.id)
 
 
+@router.get("/archive/{year}/roster")
+def yearly_archive_roster(year: int, db: Session = Depends(get_db), _user=Depends(get_current_user)) -> dict:
+    """Public/shared reading archive — who read what, every day, across
+    every circle in the given year. Not scoped to the viewer."""
+    group = GroupService(db).get_by_slug(slug=DEFAULT_GROUP_SLUG)
+    return ReadingService(db).yearly_roster(year=year, group_id=group.id)
+
+
 @router.get("/last-completed")
 def last_completed_round(db: Session = Depends(get_db), _user=Depends(get_current_user)) -> dict | None:
     group = GroupService(db).get_by_slug(slug=DEFAULT_GROUP_SLUG)

@@ -66,4 +66,5 @@ export type {
   HallOfFame,
   RosterEntry,
   RosterResponse,
+  YearlyRosterResponse,
 } from './types';

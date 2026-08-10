@@ -149,6 +149,29 @@ class ReadingService:
 
         return {"year": year, "months": months, "participated_months": participated_months}
 
+    def yearly_roster(self, *, year: int, group_id: uuid.UUID) -> dict:
+        """Public/shared archive: who logged what, per day, across every
+        circle in this year — not just the current one, and not scoped to
+        any single viewer. Private comments are already redacted."""
+        all_rounds = self.rounds.list_for_group(group_id=group_id, limit=200)
+        year_rounds = [r for r in all_rounds if r.year == year]
+        round_ids = [r.id for r in year_rounds]
+
+        rows = self.logs.roster_for_rounds(round_ids=round_ids)
+        by_date: dict[str, list[dict]] = defaultdict(list)
+        for d, uid, name, tg, minutes, score, book_finished, comment in rows:
+            by_date[d.isoformat()].append({
+                "user_id": str(uid),
+                "display_name": name,
+                "telegram_id": tg,
+                "minutes": minutes,
+                "score": score,
+                "book_finished": book_finished,
+                "comment": comment,
+            })
+
+        return {"year": year, "days": dict(by_date)}
+
     def leaderboard(self, *, round_id: uuid.UUID) -> list[dict]:
         data = self.logs.leaderboard_data(round_id=round_id)
         data.sort(key=lambda x: (-x["total_score"], x["display_name"]))

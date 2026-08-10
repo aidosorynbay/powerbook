@@ -174,6 +174,9 @@ const translations = {
     'archive.title': 'Архив чтения',
     'archive.noData': 'Нет данных за этот год',
     'archive.noComment': 'Без комментария',
+    'archive.personal': 'Личное',
+    'archive.shared': 'Общее',
+    'archive.sharedLegend': 'Число участников, отметившихся в этот день',
 
     // Round status
     'status.draft': 'Черновик',
@@ -499,6 +502,9 @@ const translations = {
     'archive.title': 'Оқу мұрағаты',
     'archive.noData': 'Бұл жылға деректер жоқ',
     'archive.noComment': 'Түсініктеме жоқ',
+    'archive.personal': 'Жеке',
+    'archive.shared': 'Ортақ',
+    'archive.sharedLegend': 'Осы күні белгі қойған қатысушылар саны',
 
     // Round status
     'status.draft': 'Жоба',
@@ -824,6 +830,9 @@ const translations = {
     'archive.title': 'Reading Archive',
     'archive.noData': 'No data for this year',
     'archive.noComment': 'No comment',
+    'archive.personal': 'Personal',
+    'archive.shared': 'Shared',
+    'archive.sharedLegend': 'Number of participants who logged that day',
 
     // Round status
     'status.draft': 'Draft',
