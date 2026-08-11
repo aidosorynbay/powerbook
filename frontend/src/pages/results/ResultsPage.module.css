@@ -124,8 +124,15 @@
   font-weight: var(--font-weight-semibold);
   margin-bottom: var(--spacing-4);
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: var(--spacing-3);
+}
+
+.statsSectionTitleName {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: break-word;
 }
 
 .statsRow {
@@ -157,6 +164,7 @@
 .rankBadge {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
   gap: var(--spacing-2);
   background: var(--color-accent-primary-muted);
   color: var(--color-accent-primary);
@@ -265,7 +273,8 @@
 /* Viewing another user banner */
 .viewingBanner {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--spacing-3);
   background: var(--color-bg-card);
@@ -277,6 +286,12 @@
   color: var(--color-accent-primary);
 }
 
+.viewingBannerName {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: break-word;
+}
+
 .viewingBackBtn {
   background: none;
   border: 1px solid var(--color-accent-primary);
@@ -286,6 +301,7 @@
   padding: var(--spacing-1) var(--spacing-3);
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .viewingBackBtn:hover {

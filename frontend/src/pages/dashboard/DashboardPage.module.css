@@ -81,7 +81,8 @@
 
 .joinInline {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--spacing-3);
   padding: var(--spacing-3);
@@ -94,6 +95,9 @@
 .joinInlineText {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: break-word;
 }
 
 /* How it works steps */
@@ -194,20 +198,21 @@
   gap: var(--spacing-2);
 }
 
-/* Calendar section header with leave button */
+/* Calendar section header with leave button.
+   This column can be narrower than the title + leave-hint content even on
+   wide viewports (it's one of several grid columns, not the full page), so
+   this always stacks rather than trying a fragile row+wrap layout that
+   depends on total window width. */
 .calendarHeaderRow {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-4);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-2);
   margin-bottom: var(--spacing-4);
 }
 
 .calendarHeaderRow .sectionTitle {
   margin-bottom: 0;
-  min-width: 0;
-  flex: 1;
 }
 
 .closeBtn {
@@ -233,28 +238,15 @@
 
 .leaveActions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--spacing-3);
+  width: 100%;
 }
 
 .leaveHint {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
-  white-space: nowrap;
-}
-
-@media (max-width: 600px) {
-  .calendarHeaderRow {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .leaveActions {
-    width: 100%;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-2);
-  }
 }
 
 /* Leaderboard styles */

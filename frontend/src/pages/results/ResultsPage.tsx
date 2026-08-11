@@ -250,7 +250,7 @@ export function ResultsPage() {
                     {/* Viewing another user banner */}
                     {selectedEntry && !isSelf && (
                       <div className={styles.viewingBanner}>
-                        <span>{selectedDisplayName}</span>
+                        <span className={styles.viewingBannerName}>{selectedDisplayName}</span>
                         {results.my_result && user && (
                           <button
                             className={styles.viewingBackBtn}
@@ -306,7 +306,9 @@ export function ResultsPage() {
                     {selectedEntry && (
                       <div className={styles.statsSection}>
                         <div className={styles.statsSectionTitle}>
-                          {isSelf ? t('results.yourStats') : selectedDisplayName}
+                          <span className={styles.statsSectionTitleName}>
+                            {isSelf ? t('results.yourStats') : selectedDisplayName}
+                          </span>
                           <span className={styles.rankBadge}>
                             {t('results.place', { rank: selectedEntry.rank })}
                           </span>
