@@ -9,7 +9,8 @@ interface HeaderProps {
 }
 
 export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, user } = useAuth();
+  const isAdmin = user?.system_role === 'admin' || user?.system_role === 'superadmin';
   const { t, locale, setLocale } = useI18n();
 
   return (
@@ -28,6 +29,9 @@ export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
                 <Link to="/readers" className={styles.navLink}>{t('header.directory')}</Link>
               </>
             )}
+            {isAdmin && (
+              <Link to="/suggestions/admin" className={styles.navLink}>{t('suggestionsAdmin.navLink')}</Link>
+            )}
             <Link to="/hall-of-fame" className={styles.navLink}>{t('header.hallOfFame')}</Link>
             <a href="https://t.me/+ZSmueLtmT8Y1MDBi" className={styles.navLink} target="_blank" rel="noopener noreferrer">
               <Icon name="telegram" size="sm" />
@@ -35,6 +39,10 @@ export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
           </nav>
 
           <div className={styles.actions}>
+            <Link to="/suggestions" className={styles.suggestionsBtn}>
+              {t('suggestions.navCta')}
+            </Link>
+
             <div className={styles.langSwitcher}>
               {LOCALES.map((loc) => (
                 <button

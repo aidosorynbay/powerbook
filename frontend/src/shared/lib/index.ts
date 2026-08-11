@@ -76,4 +76,5 @@ export type {
   DirectoryEntry,
   PublicProfile,
   Buddy,
+  Suggestion,
 } from './types';

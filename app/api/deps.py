@@ -48,3 +48,29 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return current_user
 
+
+def get_current_user_optional(
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """Same identity resolution as get_current_user, but never raises — for
+    routes that are open to anyone and only want to attribute the submission
+    when the caller happens to be logged in."""
+    if creds is None or not creds.credentials:
+        return None
+    try:
+        payload = decode_access_token(creds.credentials)
+    except ValueError:
+        return None
+    sub = payload.get("sub")
+    if not sub:
+        return None
+    try:
+        user_id = uuid.UUID(sub)
+    except ValueError:
+        return None
+    user = UserRepository(db).get(user_id)
+    if user is None or not user.is_active:
+        return None
+    return user
+

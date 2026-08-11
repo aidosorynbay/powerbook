@@ -10,3 +10,5 @@ export { InsightsPage } from './insights';
 export { HallOfFamePage } from './hall-of-fame';
 export { DirectoryPage } from './directory';
 export { PublicProfilePage } from './reader';
+export { SuggestionsPage } from './suggestions';
+export { AdminSuggestionsPage } from './admin-suggestions';

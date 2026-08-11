@@ -17,6 +17,24 @@ const translations = {
     'header.archive': 'Архив',
     'header.hallOfFame': 'Зал славы',
 
+    // Suggestion box (temporary)
+    'suggestions.navCta': '💡 Идеи для сайта',
+    'suggestions.title': 'Ящик предложений',
+    'suggestions.subtitle': 'Что добавить, поправить или улучшить на PowerBook? Пиши как есть — админ читает всё лично.',
+    'suggestions.nameLabel': 'Имя (необязательно)',
+    'suggestions.namePlaceholder': 'Как к тебе обращаться?',
+    'suggestions.messageLabel': 'Твоя идея',
+    'suggestions.messagePlaceholder': 'Опиши идею или проблему...',
+    'suggestions.submit': 'Отправить',
+    'suggestions.submitting': 'Отправляем…',
+    'suggestions.thanks': 'Спасибо! Сообщение получено — обязательно прочитаем.',
+    'suggestionsAdmin.navLink': 'Ящик предложений',
+    'suggestionsAdmin.title': 'Ящик предложений',
+    'suggestionsAdmin.subtitle': 'Все сообщения от юзеров, новые сверху',
+    'suggestionsAdmin.denied': 'Доступно только администратору',
+    'suggestionsAdmin.empty': 'Пока пусто',
+    'suggestionsAdmin.anonymous': 'Аноним',
+
     // Bottom nav
     'nav.round': 'Раунд',
     'nav.archive': 'Архив',
@@ -228,6 +246,10 @@ const translations = {
     'stats.totalParticipants': 'всего участников',
     'stats.hoursRead': 'часов прочитано',
     'stats.totalRounds': 'проведённых кругов',
+    'stats.minutesReadCaption': 'минут прочитано за все круги',
+    'stats.circlesRunCaption': 'кругов проведено с самого первого',
+    'stats.participationsCaption': 'участий в кругах за всё время',
+    'stats.distinctPeopleCaption': 'разных людей читали хотя бы раз',
 
     // Hero
     'hero.titleLine1': 'Понемногу, но постоянно.',
@@ -397,6 +419,24 @@ const translations = {
     'header.currentRound': 'Ағымдағы раунд',
     'header.archive': 'Мұрағат',
     'header.hallOfFame': 'Даңқ залы',
+
+    // Suggestion box (temporary)
+    'suggestions.navCta': '💡 Сайтқа идеялар',
+    'suggestions.title': 'Ұсыныстар жәшігі',
+    'suggestions.subtitle': 'PowerBook-қа не қосу, түзету немесе жақсарту керек? Жаз — админ бәрін өзі оқиды.',
+    'suggestions.nameLabel': 'Аты (міндетті емес)',
+    'suggestions.namePlaceholder': 'Саған қалай хабарласайық?',
+    'suggestions.messageLabel': 'Сенің идеяң',
+    'suggestions.messagePlaceholder': 'Идеяңды немесе мәселені сипатта...',
+    'suggestions.submit': 'Жіберу',
+    'suggestions.submitting': 'Жіберілуде…',
+    'suggestions.thanks': 'Рахмет! Хабарлама алынды — міндетті түрде оқимыз.',
+    'suggestionsAdmin.navLink': 'Ұсыныстар жәшігі',
+    'suggestionsAdmin.title': 'Ұсыныстар жәшігі',
+    'suggestionsAdmin.subtitle': 'Барлық хабарламалар, жаңалары жоғарыда',
+    'suggestionsAdmin.denied': 'Тек әкімшіге қолжетімді',
+    'suggestionsAdmin.empty': 'Әзірге бос',
+    'suggestionsAdmin.anonymous': 'Аноним',
 
     // Bottom nav
     'nav.round': 'Раунд',
@@ -609,6 +649,10 @@ const translations = {
     'stats.totalParticipants': 'барлық қатысушылар',
     'stats.hoursRead': 'оқылған сағаттар',
     'stats.totalRounds': 'өткізілген раундтар',
+    'stats.minutesReadCaption': 'барлық шеңберлерде оқылған минут',
+    'stats.circlesRunCaption': 'бірінші шеңберден бері өткізілген шеңбер',
+    'stats.participationsCaption': 'барлық уақыттағы шеңберге қатысулар',
+    'stats.distinctPeopleCaption': 'кемінде бір рет оқыған әртүрлі адам',
 
     // Hero
     'hero.titleLine1': 'Аз-аздан үздіксіз.',
@@ -778,6 +822,24 @@ const translations = {
     'header.currentRound': 'Current Round',
     'header.archive': 'Archive',
     'header.hallOfFame': 'Hall of Fame',
+
+    // Suggestion box (temporary)
+    'suggestions.navCta': '💡 Suggest an idea',
+    'suggestions.title': 'Suggestion box',
+    'suggestions.subtitle': 'What should we add, fix, or improve on PowerBook? Write freely — the admin reads every message personally.',
+    'suggestions.nameLabel': 'Name (optional)',
+    'suggestions.namePlaceholder': 'What should we call you?',
+    'suggestions.messageLabel': 'Your idea',
+    'suggestions.messagePlaceholder': 'Describe the idea or issue...',
+    'suggestions.submit': 'Send',
+    'suggestions.submitting': 'Sending…',
+    'suggestions.thanks': 'Thanks! Your message was received — we\'ll read it.',
+    'suggestionsAdmin.navLink': 'Suggestion box',
+    'suggestionsAdmin.title': 'Suggestion box',
+    'suggestionsAdmin.subtitle': 'All messages from users, newest first',
+    'suggestionsAdmin.denied': 'Admins only',
+    'suggestionsAdmin.empty': 'Nothing yet',
+    'suggestionsAdmin.anonymous': 'Anonymous',
 
     // Bottom nav
     'nav.round': 'Round',
@@ -990,6 +1052,10 @@ const translations = {
     'stats.totalParticipants': 'total participants',
     'stats.hoursRead': 'hours read',
     'stats.totalRounds': 'rounds completed',
+    'stats.minutesReadCaption': 'minutes read across every circle',
+    'stats.circlesRunCaption': 'circles run since Circle 1',
+    'stats.participationsCaption': 'reader-circle participations all-time',
+    'stats.distinctPeopleCaption': 'distinct people who read at least once',
 
     // Hero
     'hero.titleLine1': 'Small but consistent.',

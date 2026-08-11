@@ -149,6 +149,8 @@ export type YearlyArchiveResponse = {
 export type PublicStats = {
   total_participants: number;
   total_hours_read: number;
+  total_minutes_read: number;
+  total_participations: number;
   total_rounds: number;
   current_round_participants: number;
   days_remaining: number;
@@ -347,6 +349,15 @@ export type PublicProfile = {
   favorite_books: string[];
   is_buddy: boolean;
   is_self: boolean;
+};
+
+// Suggestion box (temporary public feedback form)
+export type Suggestion = {
+  id: string;
+  name: string | null;
+  message: string;
+  author_display_name: string | null;
+  created_at: string;
 };
 
 export type Buddy = {
