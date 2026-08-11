@@ -129,6 +129,8 @@ const translations = {
     'dashboard.roundStats': 'Раунд в цифрах',
     'dashboard.statParticipants': 'Участников',
     'dashboard.statDaysLeft': 'Дней осталось',
+    'dashboard.statOnTrack': 'Твой результат',
+    'dashboard.statStreak': 'Серия дней',
     'dashboard.statProgress': 'Прогресс',
     'dashboard.legend30': '30+ мин',
     'dashboard.legend2': '2-29 мин',
@@ -294,6 +296,7 @@ const translations = {
     'insights.readingTwinsHint': 'Участники с похожим книжным вкусом',
     'insights.celebrityMatch': 'Совпадение со знаменитостями',
     'insights.celebrityMatchHint': 'Насколько твой вкус похож на списки чтения известных людей',
+    'insights.matchPercentSuffix': 'совпадение',
 
     // Leagues
     'league.gold': 'Золотая лига',
@@ -506,6 +509,8 @@ const translations = {
     'dashboard.roundStats': 'Раунд сандарда',
     'dashboard.statParticipants': 'Қатысушылар',
     'dashboard.statDaysLeft': 'Қалған күндер',
+    'dashboard.statOnTrack': 'Сенің нәтижең',
+    'dashboard.statStreak': 'Күндер тізбегі',
     'dashboard.statProgress': 'Прогресс',
     'dashboard.legend30': '30+ мин',
     'dashboard.legend2': '2-29 мин',
@@ -671,6 +676,7 @@ const translations = {
     'insights.readingTwinsHint': 'Дәмі ұқсас қатысушылар',
     'insights.celebrityMatch': 'Атақты адамдармен сәйкестік',
     'insights.celebrityMatchHint': 'Сенің дәмің белгілі адамдардың оқу тізімдеріне қаншалықты ұқсас',
+    'insights.matchPercentSuffix': 'сәйкестік',
 
     // Leagues
     'league.gold': 'Алтын лига',
@@ -883,6 +889,8 @@ const translations = {
     'dashboard.roundStats': 'Round stats',
     'dashboard.statParticipants': 'Participants',
     'dashboard.statDaysLeft': 'Days left',
+    'dashboard.statOnTrack': 'Your score',
+    'dashboard.statStreak': 'Day streak',
     'dashboard.statProgress': 'Progress',
     'dashboard.legend30': '30+ min',
     'dashboard.legend2': '2-29 min',
@@ -1048,6 +1056,7 @@ const translations = {
     'insights.readingTwinsHint': 'Participants with a similar taste in books',
     'insights.celebrityMatch': 'Celebrity match',
     'insights.celebrityMatchHint': 'How close your taste is to the reading lists of well-known people',
+    'insights.matchPercentSuffix': 'match',
 
     // Leagues
     'league.gold': 'Gold League',

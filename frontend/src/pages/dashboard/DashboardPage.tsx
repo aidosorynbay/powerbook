@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   useAuth,
@@ -37,25 +37,45 @@ function getDayColorClass(minutes: number, dateStr: string, isLastDay: boolean, 
   return s.dayRed;
 }
 
-function RoundProgressRing({ daysElapsed, daysTotal }: { daysElapsed: number; daysTotal: number }) {
+function ProgressRing({ pct, trackColor, fillColor, children }: {
+  pct: number;
+  trackColor?: string;
+  fillColor?: string;
+  children: React.ReactNode;
+}) {
   const R = 42;
   const C = 2 * Math.PI * R;
-  const pct = daysTotal > 0 ? Math.min(Math.max(daysElapsed / daysTotal, 0), 1) : 0;
-  const daysLeft = Math.max(daysTotal - daysElapsed, 0);
+  const clamped = Math.min(Math.max(pct, 0), 1);
   return (
     <svg width="110" height="110" viewBox="0 0 110 110">
-      <circle cx="55" cy="55" r={R} fill="none" stroke="var(--color-bg-secondary)" strokeWidth="10" />
+      <circle cx="55" cy="55" r={R} fill="none" stroke={trackColor ?? 'var(--color-bg-secondary)'} strokeWidth="10" />
       <circle
         cx="55" cy="55" r={R} fill="none"
-        stroke="var(--color-accent-primary)" strokeWidth="10" strokeLinecap="round"
-        strokeDasharray={`${C * pct} ${C}`}
+        stroke={fillColor ?? 'var(--color-accent-primary)'} strokeWidth="10" strokeLinecap="round"
+        strokeDasharray={`${C * clamped} ${C}`}
         transform="rotate(-90 55 55)"
+        style={{ transition: 'stroke-dasharray var(--transition-slow, 0.6s ease)' }}
       />
       <text x="55" y="61" textAnchor="middle" fontSize="26" fontWeight="800" fill="var(--color-text-primary)">
-        {daysLeft}
+        {children}
       </text>
     </svg>
   );
+}
+
+function RoundProgressRing({ daysElapsed, daysTotal }: { daysElapsed: number; daysTotal: number }) {
+  const pct = daysTotal > 0 ? daysElapsed / daysTotal : 0;
+  const daysLeft = Math.max(daysTotal - daysElapsed, 0);
+  return <ProgressRing pct={pct}>{daysLeft}</ProgressRing>;
+}
+
+// Personal round-completion ring: how many of the days that have already
+// happened this round were "good" days (30+ min logged). Missed days pull
+// this down immediately — same daily-accountability signal as a Duolingo
+// streak or an Apple Fitness ring, using data we already have client-side.
+function PersonalProgressRing({ scoreDays, daysElapsed }: { scoreDays: number; daysElapsed: number }) {
+  const pct = daysElapsed > 0 ? scoreDays / daysElapsed : 0;
+  return <ProgressRing pct={pct}>{Math.round(pct * 100)}%</ProgressRing>;
 }
 
 function formatCountdown(ms: number): string {
@@ -411,6 +431,20 @@ export function DashboardPage() {
     if (!roundStatus?.round || !calendar) return [];
     return buildGrid(calendar, roundStatus.round.year, roundStatus.round.month);
   }, [roundStatus?.round, calendar, buildGrid]);
+
+  // Current streak within THIS round only — consecutive "good" days (30+ min)
+  // counting back from the most recent day that's already happened.
+  const personalStreak = useMemo(() => {
+    let streak = 0;
+    for (let i = calendarGrid.length - 1; i >= 0; i--) {
+      const cell = calendarGrid[i];
+      if (cell === null) continue;
+      if (cell.day > roundDaysElapsed) continue;
+      if (cell.score === 1) streak++;
+      else break;
+    }
+    return streak;
+  }, [calendarGrid, roundDaysElapsed]);
 
   const viewUserGrid = useMemo(() => {
     if (!roundStatus?.round || !viewUserCalendar) return [];
@@ -817,14 +851,7 @@ export function DashboardPage() {
                 ) : isParticipant && !inRegistrationWindow ? (
                   <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay2}`}>
                     <div className={styles.calendarHeaderRow}>
-                      <div className={styles.sectionTitle}>
-                        {t('dashboard.myCalendar')}
-                        {calendar && (
-                          <Badge variant="default" size="sm">
-                            {calendar.total_score} / {calendar.days.length} {t('dashboard.daysShort')}
-                          </Badge>
-                        )}
-                      </div>
+                      <div className={styles.sectionTitle}>{t('dashboard.myCalendar')}</div>
                       {canLeave && (
                         <div className={styles.leaveActions}>
                           <span className={styles.leaveHint}>
@@ -836,6 +863,22 @@ export function DashboardPage() {
                         </div>
                       )}
                     </div>
+
+                    {calendar && (
+                      <div className={styles.roundOverview}>
+                        <div className={styles.roundOverviewRing}>
+                          <PersonalProgressRing scoreDays={calendar.total_score} daysElapsed={roundDaysElapsed} />
+                          <span className={styles.roundOverviewRingLabel}>{t('dashboard.statOnTrack')}</span>
+                        </div>
+                        <div className={styles.roundOverviewSide}>
+                          <span className={`${styles.roundOverviewBig} ${styles.streakBig}`}>
+                            {personalStreak > 0 && <span className={styles.streakFlame}>&#128293;</span>}
+                            {personalStreak}
+                          </span>
+                          <span className={styles.roundOverviewLabel}>{t('dashboard.statStreak')}</span>
+                        </div>
+                      </div>
+                    )}
 
                     <div className={styles.calendar}>
                       {weekdays.map(day => (

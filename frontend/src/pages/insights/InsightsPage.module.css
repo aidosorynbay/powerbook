@@ -251,7 +251,21 @@
 .twinCard {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  text-align: left;
   gap: 6px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-4);
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border-primary);
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.twinCard:hover {
+  border-color: var(--color-border-accent);
+  transform: translateY(-2px);
 }
 
 .twinHeader {
@@ -361,4 +375,69 @@
 .wrappedActions {
   display: flex;
   gap: 10px;
+}
+
+/* Reading twins / celebrity match — shared-books modal */
+.matchOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-index-modal);
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.matchModal {
+  width: 100%;
+  max-width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.matchModalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  margin-bottom: 16px;
+}
+
+.matchModalName {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.matchModalSubtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-accent-primary);
+  margin-top: 2px;
+}
+
+.matchModalClose {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xl);
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+.matchModalClose:hover {
+  color: var(--color-text-primary);
+}
+
+.matchModalGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 12px;
 }

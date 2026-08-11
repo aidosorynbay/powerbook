@@ -15,7 +15,7 @@ import {
   type BadgeData,
   type LeagueTier,
 } from '@/shared/lib';
-import { Card, Container, PageTransition, Badge, ProgressBar, Button } from '@/shared/ui';
+import { Card, Container, PageTransition, Badge, ProgressBar, Button, BookCard } from '@/shared/ui';
 import { Header, Footer, ClaimPicker, WrappedCard } from '@/widgets';
 import styles from './InsightsPage.module.css';
 
@@ -47,6 +47,11 @@ export function InsightsPage() {
   const [showWrapped, setShowWrapped] = useState(false);
   const [isLoadingWrapped, setIsLoadingWrapped] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [expandedMatch, setExpandedMatch] = useState<{
+    name: string;
+    subtitle: string;
+    books: string[];
+  } | null>(null);
   const wrappedCardRef = useRef<HTMLDivElement>(null);
 
   const openWrapped = async () => {
@@ -256,13 +261,22 @@ export function InsightsPage() {
                     <p className={styles.sectionHint}>{t('insights.readingTwinsHint')}</p>
                     <div className={styles.twinGrid}>
                       {twins.map((tw) => (
-                        <Card key={tw.user_id} variant="default" padding="md" className={styles.twinCard}>
+                        <button
+                          key={tw.user_id}
+                          type="button"
+                          className={styles.twinCard}
+                          onClick={() => setExpandedMatch({
+                            name: tw.display_name,
+                            subtitle: `${tw.match_percent}% ${t('insights.matchPercentSuffix')}`,
+                            books: tw.shared_books,
+                          })}
+                        >
                           <div className={styles.twinHeader}>
                             <span className={styles.twinName}>{tw.display_name}</span>
                             <span className={styles.twinPercent}>{tw.match_percent}%</span>
                           </div>
                           <div className={styles.twinBooks}>{tw.shared_books.slice(0, 3).join(' · ')}</div>
-                        </Card>
+                        </button>
                       ))}
                     </div>
                   </section>
@@ -274,13 +288,22 @@ export function InsightsPage() {
                     <p className={styles.sectionHint}>{t('insights.celebrityMatchHint')}</p>
                     <div className={styles.twinGrid}>
                       {celebrities.map((c) => (
-                        <Card key={c.name} variant="default" padding="md" className={styles.twinCard}>
+                        <button
+                          key={c.name}
+                          type="button"
+                          className={styles.twinCard}
+                          onClick={() => setExpandedMatch({
+                            name: c.name,
+                            subtitle: `${c.role} · ${c.match_percent}% ${t('insights.matchPercentSuffix')}`,
+                            books: c.shared_books,
+                          })}
+                        >
                           <div className={styles.twinHeader}>
                             <span className={styles.twinName}>{c.name}</span>
                             <span className={styles.twinPercent}>{c.match_percent}%</span>
                           </div>
-                          <div className={styles.twinBooks}>{c.role}</div>
-                        </Card>
+                          <div className={styles.twinBooks}>{c.shared_books.slice(0, 3).join(' · ')}</div>
+                        </button>
                       ))}
                     </div>
                   </section>
@@ -310,6 +333,28 @@ export function InsightsPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {expandedMatch && createPortal(
+        <div className={styles.matchOverlay} onClick={() => setExpandedMatch(null)}>
+          <div className={styles.matchModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.matchModalHeader}>
+              <div>
+                <div className={styles.matchModalName}>{expandedMatch.name}</div>
+                <div className={styles.matchModalSubtitle}>{expandedMatch.subtitle}</div>
+              </div>
+              <button className={styles.matchModalClose} onClick={() => setExpandedMatch(null)} aria-label="Close">
+                &times;
+              </button>
+            </div>
+            <div className={styles.matchModalGrid}>
+              {expandedMatch.books.map((title, i) => (
+                <BookCard key={i} title={title} size="sm" />
+              ))}
+            </div>
           </div>
         </div>,
         document.body
