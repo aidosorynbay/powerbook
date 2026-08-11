@@ -153,11 +153,15 @@ export function ArchivePage() {
     return result;
   }, [year]);
 
-  const maxSharedCount = useMemo(() => {
-    if (!roster) return 1;
-    let max = 1;
-    for (const entries of Object.values(roster.days)) {
-      if (entries.length > max) max = entries.length;
+  // Scaled per month (not per year) — a quiet early month shouldn't render
+  // as uniformly dark just because a later month had way more participants.
+  // Each month's brightest day is its own reference point.
+  const maxSharedCountByMonth = useMemo(() => {
+    const max: Record<number, number> = {};
+    if (!roster) return max;
+    for (const [date, entries] of Object.entries(roster.days)) {
+      const month = Number(date.slice(5, 7));
+      if (!max[month] || entries.length > max[month]) max[month] = entries.length;
     }
     return max;
   }, [roster]);
@@ -309,7 +313,7 @@ export function ArchivePage() {
                           <div
                             key={cell.date}
                             className={`${styles.dayCell} ${count > 0 ? styles.circleDayActive : styles.future} ${clickable ? styles.dayCellClickable : ''}`}
-                            style={count > 0 ? ({ '--intensity': sharedDayIntensity(count, maxSharedCount) } as CSSProperties) : undefined}
+                            style={count > 0 ? ({ '--intensity': sharedDayIntensity(count, maxSharedCountByMonth[month] ?? 1) } as CSSProperties) : undefined}
                             title={`${cell.date}: ${count} ${t('archive.participantsShort')}`}
                             onClick={clickable ? () => setRosterModalDate(cell.date) : undefined}
                           >

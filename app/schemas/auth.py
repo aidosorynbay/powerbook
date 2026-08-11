@@ -42,6 +42,7 @@ class UpdateProfileRequest(BaseModel):
     avatar_data: str | None = Field(default=None, max_length=400000)
     recommendation_text: str | None = Field(default=None, max_length=280)
     reading_music_url: str | None = Field(default=None, max_length=500)
+    favorite_books: list[str] | None = None
 
     @field_validator("username")
     @classmethod
@@ -51,6 +52,16 @@ class UpdateProfileRequest(BaseModel):
         if not USERNAME_RE.match(v):
             raise ValueError("Username may only contain letters, numbers, dots, and dashes.")
         return v.lower()
+
+    @field_validator("favorite_books")
+    @classmethod
+    def validate_favorite_books(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return v
+        cleaned = [title.strip() for title in v if title.strip()]
+        if len(cleaned) > 3:
+            raise ValueError("At most 3 favorite books.")
+        return cleaned
 
 
 class ChangePasswordRequest(BaseModel):

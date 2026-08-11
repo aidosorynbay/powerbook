@@ -23,6 +23,7 @@ export type User = {
   avatar_data: string | null;
   recommendation_text: string | null;
   reading_music_url: string | null;
+  favorite_books: string[] | null;
 };
 
 // Rounds
@@ -339,7 +340,9 @@ export type PublicProfile = {
   rounds_participated: number;
   books_finished: number;
   badges_earned: number;
+  badges: Badge[];
   recent_books: string[];
+  favorite_books: string[];
   is_buddy: boolean;
   is_self: boolean;
 };

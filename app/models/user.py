@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Enum, String, Text, Uuid
+from sqlalchemy import JSON, Boolean, Enum, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -52,6 +52,10 @@ class User(TimestampMixin, Base):
     avatar_data: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     recommendation_text: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     reading_music_url: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
+
+    # Up to 3 titles the user picks themselves — may include books read outside
+    # PowerBook circles, unlike the auto-derived bookshelf from reading_logs.
+    favorite_books: Mapped[list[str] | None] = mapped_column(JSON, nullable=True, default=None)
 
     group_memberships: Mapped[list["GroupMember"]] = relationship(
         back_populates="user",

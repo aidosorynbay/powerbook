@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from app.schemas.insights import BadgeOut
+
 
 class DirectoryEntryOut(BaseModel):
     user_id: str
@@ -29,7 +31,9 @@ class PublicProfileOut(BaseModel):
     rounds_participated: int
     books_finished: int
     badges_earned: int
+    badges: list[BadgeOut]
     recent_books: list[str]
+    favorite_books: list[str]
     is_buddy: bool
     is_self: bool
 

@@ -148,8 +148,129 @@
   margin-top: 2px;
 }
 
+.statClickable {
+  font-family: inherit;
+  cursor: pointer;
+  width: 100%;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.statClickable:hover {
+  border-color: var(--color-border-accent);
+  transform: translateY(-1px);
+}
+
 @media (max-width: 480px) {
   .statGrid {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* Badge detail modal */
+.badgeOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-index-modal);
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.badgeModal {
+  width: 100%;
+  max-width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.badgeModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.badgeModalTitle {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.badgeModalClose {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xl);
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.badgeModalClose:hover {
+  color: var(--color-text-primary);
+}
+
+.badgeModalGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.badgeModalCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  opacity: 0.6;
+}
+
+.badgeModalCardEarned {
+  opacity: 1;
+  border-color: var(--color-border-accent);
+  background: var(--color-accent-primary-muted);
+}
+
+.badgeModalIcon {
+  color: var(--color-accent-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+.badgeModalCardTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.badgeModalCardDesc {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-snug);
+}
+
+.badgeModalProgress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.badgeModalProgress > :first-child {
+  flex: 1;
+}
+
+.badgeModalProgressText {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }

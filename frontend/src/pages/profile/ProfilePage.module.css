@@ -39,6 +39,11 @@
   gap: var(--spacing-2);
 }
 
+.favoriteBooksList {
+  display: grid;
+  gap: var(--spacing-2);
+}
+
 .label {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);

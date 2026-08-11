@@ -29,6 +29,10 @@ export function ProfilePage() {
   const [avatarData, setAvatarData] = useState<string | null>(user?.avatar_data ?? null);
   const [recommendationText, setRecommendationText] = useState(user?.recommendation_text ?? '');
   const [readingMusicUrl, setReadingMusicUrl] = useState(user?.reading_music_url ?? '');
+  const [favoriteBooks, setFavoriteBooks] = useState<string[]>(() => {
+    const existing = user?.favorite_books ?? [];
+    return [0, 1, 2].map((i) => existing[i] ?? '');
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
@@ -68,6 +72,10 @@ export function ProfilePage() {
     await loadBuddyData();
   };
 
+  const setFavoriteBookAt = (index: number, value: string) => {
+    setFavoriteBooks((prev) => prev.map((b, i) => (i === index ? value : b)));
+  };
+
   const onAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -94,6 +102,7 @@ export function ProfilePage() {
       avatar_data: avatarData ?? '',
       recommendation_text: recommendationText,
       reading_music_url: readingMusicUrl,
+      favorite_books: favoriteBooks.map((b) => b.trim()).filter(Boolean),
     }, { requireAuth: true });
 
     if (error) {
@@ -263,6 +272,25 @@ export function ProfilePage() {
                   placeholder="https://open.spotify.com/..."
                 />
                 <div className={styles.hint}>{t('profile.readingMusicHint')}</div>
+              </div>
+
+              <div className={styles.field}>
+                <label className={styles.label}>{t('profile.favoriteBooks')}</label>
+                <div className={styles.hint}>{t('profile.favoriteBooksHint')}</div>
+                <div className={styles.favoriteBooksList}>
+                  {favoriteBooks.map((book, i) => (
+                    <input
+                      key={i}
+                      className={styles.input}
+                      type="text"
+                      aria-label={`${t('profile.favoriteBooksLabel')} ${i + 1}`}
+                      value={book}
+                      onChange={(e) => setFavoriteBookAt(i, e.target.value)}
+                      placeholder={`${t('profile.favoriteBooksPlaceholder')} ${i + 1}`}
+                      maxLength={200}
+                    />
+                  ))}
+                </div>
               </div>
 
               <Button type="submit" fullWidth disabled={isSaving}>

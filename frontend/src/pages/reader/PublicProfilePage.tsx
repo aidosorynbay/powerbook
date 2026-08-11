@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import { useI18n, apiGet, apiPost, apiDelete, type PublicProfile } from '@/shared/lib';
-import { Container, PageTransition, Avatar, Button, Card, BookCard } from '@/shared/ui';
+import { Container, PageTransition, Avatar, Button, Card, BookCard, ProgressBar } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import styles from './PublicProfilePage.module.css';
 
@@ -32,6 +33,7 @@ export function PublicProfilePage() {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTogglingBuddy, setIsTogglingBuddy] = useState(false);
+  const [showBadges, setShowBadges] = useState(false);
 
   const load = async () => {
     if (!userId) return;
@@ -113,6 +115,17 @@ export function PublicProfilePage() {
                   </Card>
                 )}
 
+                {profile.favorite_books.length > 0 && (
+                  <div className={styles.librarySection}>
+                    <div className={styles.musicKicker}>{t('profile.favoriteBooks')}</div>
+                    <div className={styles.libraryGrid}>
+                      {profile.favorite_books.map((title, i) => (
+                        <BookCard key={i} title={title} size="sm" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {profile.recent_books.length > 0 && (
                   <div className={styles.librarySection}>
                     <div className={styles.musicKicker}>{t('profile.library')}</div>
@@ -154,10 +167,14 @@ export function PublicProfilePage() {
                     <div className={styles.statValue}>{profile.books_finished}</div>
                     <div className={styles.statLabel}>{t('insights.booksFinished')}</div>
                   </div>
-                  <div className={styles.stat}>
+                  <button
+                    type="button"
+                    className={`${styles.stat} ${styles.statClickable}`}
+                    onClick={() => setShowBadges(true)}
+                  >
                     <div className={styles.statValue}>{profile.badges_earned}</div>
                     <div className={styles.statLabel}>{t('profile.badgesEarned')}</div>
-                  </div>
+                  </button>
                 </div>
               </>
             )}
@@ -165,6 +182,40 @@ export function PublicProfilePage() {
         </main>
         <Footer />
       </div>
+
+      {showBadges && profile && createPortal(
+        <div className={styles.badgeOverlay} onClick={() => setShowBadges(false)}>
+          <div className={styles.badgeModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.badgeModalHeader}>
+              <div className={styles.badgeModalTitle}>{t('profile.badgeModalTitle')}</div>
+              <button className={styles.badgeModalClose} onClick={() => setShowBadges(false)} aria-label="Close">
+                &times;
+              </button>
+            </div>
+            <div className={styles.badgeModalGrid}>
+              {profile.badges.map((b) => (
+                <div
+                  key={b.key}
+                  className={`${styles.badgeModalCard} ${b.earned ? styles.badgeModalCardEarned : ''}`}
+                >
+                  <div className={styles.badgeModalIcon}>{b.earned ? '✓' : '○'}</div>
+                  <div className={styles.badgeModalCardTitle}>{b.title}</div>
+                  <div className={styles.badgeModalCardDesc}>{b.description}</div>
+                  {!b.earned && (
+                    <div className={styles.badgeModalProgress}>
+                      <ProgressBar value={b.progress_current} max={b.progress_target} size="sm" />
+                      <span className={styles.badgeModalProgressText}>
+                        {b.progress_current}/{b.progress_target}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </PageTransition>
   );
 }

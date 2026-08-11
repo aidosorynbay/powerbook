@@ -341,7 +341,7 @@ const translations = {
     'directory.searchPlaceholder': 'Поиск по имени или нику...',
     'header.directory': 'Читатели',
     'nav.directory': 'Читатели',
-    'profile.addBuddy': '+ Reading buddy',
+    'profile.addBuddy': '+ Добавить в buddies',
     'profile.removeBuddy': 'Убрать из buddies',
     'profile.chatTelegram': 'Написать в Telegram',
     'profile.recommends': 'Рекомендует',
@@ -360,6 +360,12 @@ const translations = {
     'profile.noFollowers': 'Пока никто не добавил тебя',
     'profile.addBack': '+ Добавить в ответ',
     'profile.library': 'Книжная полка',
+    'profile.badgeModalTitle': 'Ачивки',
+    'profile.favoriteBooks': 'Топ-3 книги',
+    'profile.favoriteBooksHint': 'Твои любимые книги — необязательно из кругов PowerBook',
+    'profile.favoriteBooksLabel': 'Любимая книга',
+    'profile.favoriteBooksPlaceholder': 'Название книги',
+    'profile.editFavoriteBooks': 'Выбрать топ-3',
 
     // About
     'about.kicker': 'Наша история',
@@ -578,7 +584,7 @@ const translations = {
     // Weekdays
     'weekday.mon': 'Дс',
     'weekday.tue': 'Сс',
-    'weekday.wed': 'Ср',
+    'weekday.wed': 'Сә',
     'weekday.thu': 'Бс',
     'weekday.fri': 'Жм',
     'weekday.sat': 'Сн',
@@ -608,7 +614,7 @@ const translations = {
 
     // Footer
     'footer.description': 'Нақты нәтижелері бар айлық оқу челленджі. Күн сайын оқы, жарыс және кітаптар ұт.',
-    'footer.navigation': 'Навигация',
+    'footer.navigation': 'Шарлау',
     'footer.contact': 'Байланыс',
     'footer.privacy': 'Құпиялылық',
     'footer.terms': 'Шарттар',
@@ -712,7 +718,7 @@ const translations = {
     'directory.searchPlaceholder': 'Аты немесе ник бойынша іздеу...',
     'header.directory': 'Оқырмандар',
     'nav.directory': 'Оқырмандар',
-    'profile.addBuddy': '+ Reading buddy',
+    'profile.addBuddy': '+ Buddy-ге қосу',
     'profile.removeBuddy': 'Buddy-ден шығару',
     'profile.chatTelegram': 'Telegram-ға жазу',
     'profile.recommends': 'Ұсынады',
@@ -731,6 +737,12 @@ const translations = {
     'profile.noFollowers': 'Әзірге ешкім сені қосқан жоқ',
     'profile.addBack': '+ Жауап ретінде қосу',
     'profile.library': 'Кітап сөресі',
+    'profile.badgeModalTitle': 'Ачивкалар',
+    'profile.favoriteBooks': 'Топ-3 кітап',
+    'profile.favoriteBooksHint': 'Сүйікті кітаптарың — PowerBook шеңберінен тыс болуы да мүмкін',
+    'profile.favoriteBooksLabel': 'Сүйікті кітап',
+    'profile.favoriteBooksPlaceholder': 'Кітап атауы',
+    'profile.editFavoriteBooks': 'Топ-3-ті таңдау',
 
     // About
     'about.kicker': 'Біздің тарихымыз',
@@ -1083,7 +1095,7 @@ const translations = {
     'directory.searchPlaceholder': 'Search by name or username...',
     'header.directory': 'Readers',
     'nav.directory': 'Readers',
-    'profile.addBuddy': '+ Reading buddy',
+    'profile.addBuddy': '+ Add buddy',
     'profile.removeBuddy': 'Remove buddy',
     'profile.chatTelegram': 'Message on Telegram',
     'profile.recommends': 'Recommends',
@@ -1102,6 +1114,12 @@ const translations = {
     'profile.noFollowers': "No one has added you yet",
     'profile.addBack': '+ Add back',
     'profile.library': 'Bookshelf',
+    'profile.badgeModalTitle': 'Badges',
+    'profile.favoriteBooks': 'Top 3 books',
+    'profile.favoriteBooksHint': 'Your favorite books — don’t have to be from a PowerBook circle',
+    'profile.favoriteBooksLabel': 'Favorite book',
+    'profile.favoriteBooksPlaceholder': 'Book title',
+    'profile.editFavoriteBooks': 'Pick your top 3',
 
     // About
     'about.kicker': 'Our story',

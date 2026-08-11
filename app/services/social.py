@@ -68,7 +68,9 @@ class SocialService:
             rounds_participated=profile.rounds_participated,
             books_finished=profile.books_finished,
             badges_earned=earned,
+            badges=badges,
             recent_books=recent_books,
+            favorite_books=target.favorite_books or [],
             is_buddy=is_buddy,
             is_self=target.id == viewer_id,
         )

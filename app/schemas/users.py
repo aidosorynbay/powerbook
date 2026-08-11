@@ -22,6 +22,7 @@ class UserOut(BaseModel):
     avatar_data: str | None = None
     recommendation_text: str | None = None
     reading_music_url: str | None = None
+    favorite_books: list[str] | None = None
 
     model_config = {"from_attributes": True}
 
