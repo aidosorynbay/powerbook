@@ -45,6 +45,7 @@ class StatsService:
 
         # Global stats
         total_participants = self.stats_repo.count_total_unique_participants()
+        total_participations = self.stats_repo.count_total_participations()
         total_minutes = self.stats_repo.sum_total_reading_minutes()
         total_hours_read = total_minutes // 60
 
@@ -84,6 +85,8 @@ class StatsService:
         result = PublicStatsOut(
             total_participants=total_participants,
             total_hours_read=total_hours_read,
+            total_minutes_read=total_minutes,
+            total_participations=total_participations,
             total_rounds=total_rounds,
             current_round_participants=current_round_participants,
             days_remaining=days_remaining,

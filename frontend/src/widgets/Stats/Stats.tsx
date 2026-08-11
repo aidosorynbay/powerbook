@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useI18n, apiGet, type PublicStats } from '@/shared/lib';
 import { useScrollReveal } from '@/shared/hooks';
-import { Container, Card, Icon, ProgressBar } from '@/shared/ui';
+import { Container, Card } from '@/shared/ui';
 import anim from '@/shared/styles/animations.module.css';
 import styles from './Stats.module.css';
 
 function formatNumber(num: number): string {
+    return num.toLocaleString('ru-RU');
+}
+
+function formatEpic(num: number): string {
+    if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(2)}M`;
+    if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
     return num.toLocaleString('ru-RU');
 }
 
@@ -37,34 +43,24 @@ export function Stats() {
                 {isLoading || !stats ? (
                     <div className={styles.loading}>{t('dashboard.loading')}</div>
                 ) : (
-                    <div className={styles.grid}>
-                        {/* Total participants */}
-                        <Card variant="gradient" padding="lg" className={`${styles.card} ${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''} ${anim.scrollRevealDelay1}`}>
-                            <div className={styles.iconWrapper}>
-                                <Icon name="users" size="lg" />
-                            </div>
-                            <span className={styles.value}>{formatNumber(stats.total_participants)}</span>
-                            <span className={styles.label}>{t('stats.totalParticipants')}</span>
-                        </Card>
-
-                        {/* Total hours read */}
-                        <Card variant="gradient" padding="lg" className={`${styles.card} ${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''} ${anim.scrollRevealDelay2}`}>
-                            <div className={styles.iconWrapper}>
-                                <Icon name="clock" size="lg" />
-                            </div>
-                            <span className={styles.value}>{formatNumber(stats.total_hours_read)}</span>
-                            <span className={styles.label}>{t('stats.hoursRead')}</span>
-                        </Card>
-
-                        {/* Total rounds */}
-                        <Card variant="gradient" padding="lg" className={`${styles.card} ${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''} ${anim.scrollRevealDelay3}`}>
-                            <div className={styles.iconWrapper}>
-                                <Icon name="refresh" size="lg" />
-                            </div>
-                            <span className={styles.value}>{stats.total_rounds}</span>
-                            <span className={styles.label}>{t('stats.totalRounds')}</span>
-                        </Card>
-                    </div>
+                    <Card variant="default" padding="none" className={`${styles.epicRow} ${anim.scrollReveal} ${isVisible ? anim.scrollRevealVisible : ''}`}>
+                        <div className={styles.epicCell}>
+                            <span className={styles.epicValue}>{formatEpic(stats.total_minutes_read)}</span>
+                            <span className={styles.epicCaption}>{t('stats.minutesReadCaption')}</span>
+                        </div>
+                        <div className={styles.epicCell}>
+                            <span className={styles.epicValue}>{stats.total_rounds}</span>
+                            <span className={styles.epicCaption}>{t('stats.circlesRunCaption')}</span>
+                        </div>
+                        <div className={styles.epicCell}>
+                            <span className={styles.epicValue}>{formatNumber(stats.total_participations)}</span>
+                            <span className={styles.epicCaption}>{t('stats.participationsCaption')}</span>
+                        </div>
+                        <div className={styles.epicCell}>
+                            <span className={styles.epicValue}>{formatNumber(stats.total_participants)}</span>
+                            <span className={styles.epicCaption}>{t('stats.distinctPeopleCaption')}</span>
+                        </div>
+                    </Card>
                 )}
             </Container>
         </section>

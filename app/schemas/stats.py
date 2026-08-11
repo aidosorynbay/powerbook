@@ -8,6 +8,8 @@ class PublicStatsOut(BaseModel):
 
     total_participants: int
     total_hours_read: int
+    total_minutes_read: int
+    total_participations: int
     total_rounds: int
     current_round_participants: int
     days_remaining: int
