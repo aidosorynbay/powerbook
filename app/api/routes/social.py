@@ -40,3 +40,8 @@ def remove_buddy(user_id: uuid.UUID, db: Session = Depends(get_db), user=Depends
 @router.get("/buddies/mine", response_model=list[BuddyOut])
 def my_buddies(db: Session = Depends(get_db), user=Depends(get_current_user)) -> list[BuddyOut]:
     return SocialService(db).my_buddies(user_id=user.id)
+
+
+@router.get("/buddies/followers", response_model=list[BuddyOut])
+def my_followers(db: Session = Depends(get_db), user=Depends(get_current_user)) -> list[BuddyOut]:
+    return SocialService(db).my_followers(user_id=user.id)

@@ -356,6 +356,9 @@ const translations = {
     'profile.myBuddies': 'Мои reading buddies',
     'profile.noBuddies': 'Пока никого не добавил(а)',
     'profile.viewDirectory': 'Смотреть всех читателей →',
+    'profile.whoAddedYou': 'Кто добавил тебя',
+    'profile.noFollowers': 'Пока никто не добавил тебя',
+    'profile.addBack': '+ Добавить в ответ',
 
     // About
     'about.kicker': 'Наша история',
@@ -723,6 +726,9 @@ const translations = {
     'profile.myBuddies': 'Менің reading buddy-лерім',
     'profile.noBuddies': 'Әзірге ешкімді қосқан жоқсың',
     'profile.viewDirectory': 'Барлық оқырмандарды көру →',
+    'profile.whoAddedYou': 'Сені кім қосты',
+    'profile.noFollowers': 'Әзірге ешкім сені қосқан жоқ',
+    'profile.addBack': '+ Жауап ретінде қосу',
 
     // About
     'about.kicker': 'Біздің тарихымыз',
@@ -1090,6 +1096,9 @@ const translations = {
     'profile.myBuddies': 'My reading buddies',
     'profile.noBuddies': "You haven't added anyone yet",
     'profile.viewDirectory': 'Browse all readers →',
+    'profile.whoAddedYou': 'Who added you',
+    'profile.noFollowers': "No one has added you yet",
+    'profile.addBack': '+ Add back',
 
     // About
     'about.kicker': 'Our story',

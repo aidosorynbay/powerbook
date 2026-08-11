@@ -5,6 +5,7 @@ import {
   useI18n,
   apiPut,
   apiGet,
+  apiPost,
   apiDelete,
   resizeImageToDataUrl,
   type User,
@@ -42,18 +43,29 @@ export function ProfilePage() {
 
   // Reading buddies
   const [buddies, setBuddies] = useState<Buddy[]>([]);
+  const [followers, setFollowers] = useState<Buddy[]>([]);
+
+  const loadBuddyData = async () => {
+    const [mine, theirs] = await Promise.all([
+      apiGet<Buddy[]>('/social/buddies/mine', { requireAuth: true }),
+      apiGet<Buddy[]>('/social/buddies/followers', { requireAuth: true }),
+    ]);
+    if (mine.data) setBuddies(mine.data);
+    if (theirs.data) setFollowers(theirs.data);
+  };
 
   useEffect(() => {
-    async function loadBuddies() {
-      const { data } = await apiGet<Buddy[]>('/social/buddies/mine', { requireAuth: true });
-      if (data) setBuddies(data);
-    }
-    loadBuddies();
+    loadBuddyData();
   }, []);
 
   const removeBuddy = async (buddyId: string) => {
     await apiDelete(`/social/buddies/${buddyId}`, { requireAuth: true });
     setBuddies((prev) => prev.filter((b) => b.user_id !== buddyId));
+  };
+
+  const addBuddyBack = async (buddyId: string) => {
+    await apiPost(`/social/buddies/${buddyId}`, {}, { requireAuth: true });
+    await loadBuddyData();
   };
 
   const onAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -281,6 +293,32 @@ export function ProfilePage() {
             <Link className={styles.link} to="/readers">
               {t('profile.viewDirectory')}
             </Link>
+
+            <hr className={styles.divider} />
+
+            <div className={styles.sectionTitle}>{t('profile.whoAddedYou')}</div>
+            {followers.length === 0 ? (
+              <div className={styles.hint}>{t('profile.noFollowers')}</div>
+            ) : (
+              <div className={styles.buddyList}>
+                {followers.map((f) => {
+                  const alreadyBuddy = buddies.some((b) => b.user_id === f.user_id);
+                  return (
+                    <div key={f.user_id} className={styles.buddyRow}>
+                      <Link to={`/readers/${f.user_id}`} className={styles.buddyLink}>
+                        <Avatar src={f.avatar_data} name={f.display_name} size="sm" />
+                        <span>{f.display_name}</span>
+                      </Link>
+                      {!alreadyBuddy && (
+                        <button className={styles.addBackBtn} onClick={() => addBuddyBack(f.user_id)}>
+                          {t('profile.addBack')}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             <hr className={styles.divider} />
 

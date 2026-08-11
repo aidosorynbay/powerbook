@@ -23,6 +23,16 @@ class BuddyRepository(BaseRepository[ReadingBuddy]):
         stmt = select(ReadingBuddy).where(ReadingBuddy.user_id == user_id).order_by(ReadingBuddy.created_at.desc())
         return list(self.db.execute(stmt).scalars().all())
 
+    def list_followers(self, *, buddy_user_id: uuid.UUID) -> list[ReadingBuddy]:
+        """Who has added *this* user as their buddy — the one-directional
+        follow means the target otherwise has no way to know."""
+        stmt = (
+            select(ReadingBuddy)
+            .where(ReadingBuddy.buddy_user_id == buddy_user_id)
+            .order_by(ReadingBuddy.created_at.desc())
+        )
+        return list(self.db.execute(stmt).scalars().all())
+
     def create(self, *, user_id: uuid.UUID, buddy_user_id: uuid.UUID) -> ReadingBuddy:
         row = ReadingBuddy(user_id=user_id, buddy_user_id=buddy_user_id)
         self.db.add(row)

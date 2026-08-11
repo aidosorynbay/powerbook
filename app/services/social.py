@@ -97,3 +97,25 @@ class SocialService:
                 )
             )
         return out
+
+    def my_followers(self, *, user_id: uuid.UUID) -> list[BuddyOut]:
+        """Everyone who has added *me* as their buddy — so the one-directional
+        follow isn't invisible to the person being added."""
+        rows = self.buddies.list_followers(buddy_user_id=user_id)
+        out = []
+        for row in rows:
+            u = self.users.get(row.user_id)
+            if u is None:
+                continue
+            arch_title = self.insights.archetype(user_id=u.id).title
+            out.append(
+                BuddyOut(
+                    user_id=str(u.id),
+                    username=u.username,
+                    display_name=u.display_name,
+                    telegram_id=u.telegram_id,
+                    avatar_data=u.avatar_data,
+                    archetype_title=arch_title,
+                )
+            )
+        return out
