@@ -595,11 +595,18 @@ class InsightsService:
     # ---------- wrapped ----------
 
     def _year_totals(self, ids: list[uuid.UUID]) -> dict[int, int]:
+        year_totals, _ = self._year_totals_and_days(ids)
+        return year_totals
+
+    def _year_totals_and_days(self, ids: list[uuid.UUID]) -> tuple[dict[int, int], dict[int, int]]:
         daily = self.repo.daily_minutes_all_time(user_ids=ids)
         year_totals: dict[int, int] = defaultdict(int)
+        days_read: dict[int, int] = defaultdict(int)
         for d, m in daily:
             year_totals[d.year] += m
-        return year_totals
+            if m > 0:
+                days_read[d.year] += 1
+        return year_totals, days_read
 
     def _best_year(self, ids: list[uuid.UUID]) -> int | None:
         year_totals = self._year_totals(ids)
@@ -609,7 +616,7 @@ class InsightsService:
 
     def wrapped(self, *, user_id: uuid.UUID, year: int | None = None) -> WrappedOut:
         ids = self._effective_ids(user_id)
-        year_totals = self._year_totals(ids)
+        year_totals, days_read_by_year = self._year_totals_and_days(ids)
         available_years = sorted(year_totals.keys())
         if year is None:
             # Default to whichever year they actually read the most in —
@@ -663,6 +670,7 @@ class InsightsService:
             minutes_by_month=minutes_by_month,
             rounds_participated=rounds_this_year,
             available_years=available_years,
+            days_read=days_read_by_year.get(year, 0),
         )
 
     # ---------- hall of fame (public) ----------

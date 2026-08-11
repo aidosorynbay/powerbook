@@ -248,6 +248,7 @@ export type Wrapped = {
   minutes_by_month: number[];
   rounds_participated: number;
   available_years: number[];
+  days_read: number;
 };
 
 export type ReactionSummary = {

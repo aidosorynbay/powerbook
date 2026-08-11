@@ -88,6 +88,7 @@ class WrappedOut(BaseModel):
     minutes_by_month: list[int]
     rounds_participated: int
     available_years: list[int]
+    days_read: int
 
 
 class HallOfFameEntryOut(BaseModel):

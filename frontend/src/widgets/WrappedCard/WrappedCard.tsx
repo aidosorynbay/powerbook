@@ -76,10 +76,8 @@ export const WrappedCard = forwardRef<HTMLDivElement, WrappedCardProps>(function
           <div className={styles.statLabel}>{t('wrapped.booksFinished')}</div>
         </div>
         <div className={styles.stat}>
-          <div className={styles.statValue}>
-            {wrapped.percentile_best !== null ? `${wrapped.percentile_best}%` : '—'}
-          </div>
-          <div className={styles.statLabel}>{t('wrapped.topPercentile')}</div>
+          <div className={styles.statValue}>{wrapped.days_read}/365</div>
+          <div className={styles.statLabel}>{t('wrapped.daysRead')}</div>
         </div>
       </div>
 
