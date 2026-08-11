@@ -1,3 +1,4 @@
+import { colorFromSeed } from '@/shared/lib';
 import styles from './Avatar.module.css';
 
 interface AvatarProps {
@@ -13,5 +14,11 @@ export function Avatar({ src, name, size = 'md' }: AvatarProps) {
   if (src) {
     return <img className={classNames} src={src} alt={name} />;
   }
-  return <div className={classNames}>{initial}</div>;
+
+  const color = colorFromSeed(name);
+  return (
+    <div className={classNames} style={{ background: `${color}26`, color, borderColor: `${color}55` }}>
+      {initial}
+    </div>
+  );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n, apiGet, type DirectoryEntry } from '@/shared/lib';
-import { Container, PageTransition, Avatar } from '@/shared/ui';
+import { Container, PageTransition, Avatar, BookCard } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import styles from './DirectoryPage.module.css';
 
@@ -63,13 +63,34 @@ export function DirectoryPage() {
                     className={styles.readerCard}
                     onClick={() => navigate(`/readers/${entry.user_id}`)}
                   >
-                    <Avatar src={entry.avatar_data} name={entry.display_name} size="lg" />
-                    <div className={styles.readerName}>{entry.display_name}</div>
-                    {entry.archetype_title && (
-                      <div className={styles.readerArchetype}>{entry.archetype_title}</div>
+                    <div className={styles.readerTop}>
+                      <Avatar src={entry.avatar_data} name={entry.display_name} size="md" />
+                      <div className={styles.readerIdentity}>
+                        <div className={styles.readerName}>{entry.display_name}</div>
+                        {entry.archetype_title && (
+                          <div className={styles.readerArchetype}>{entry.archetype_title}</div>
+                        )}
+                      </div>
+                      {entry.badges_earned > 0 && (
+                        <div className={styles.badgePill}>
+                          <span>&#127942;</span>
+                          {entry.badges_earned}
+                        </div>
+                      )}
+                    </div>
+
+                    {entry.recent_books.length > 0 && (
+                      <div className={styles.miniLibrary}>
+                        {entry.recent_books.slice(0, 3).map((title, i) => (
+                          <div key={i} className={styles.miniLibraryItem}>
+                            <BookCard title={title} size="sm" />
+                          </div>
+                        ))}
+                      </div>
                     )}
+
                     {entry.recommendation_text && (
-                      <div className={styles.readerRec}>“{entry.recommendation_text}”</div>
+                      <div className={styles.readerRec}>&ldquo;{entry.recommendation_text}&rdquo;</div>
                     )}
                   </button>
                 ))}

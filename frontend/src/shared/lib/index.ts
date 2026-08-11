@@ -25,6 +25,9 @@ export {
 // Image utilities
 export { resizeImageToDataUrl } from './imageResize';
 
+// Color utilities
+export { colorFromSeed } from './colorHash';
+
 // Constants
 export {
   DEFAULT_GROUP_SLUG,

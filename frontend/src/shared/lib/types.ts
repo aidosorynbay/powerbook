@@ -321,6 +321,8 @@ export type DirectoryEntry = {
   avatar_data: string | null;
   archetype_title: string | null;
   recommendation_text: string | null;
+  recent_books: string[];
+  badges_earned: number;
 };
 
 export type PublicProfile = {
@@ -337,6 +339,7 @@ export type PublicProfile = {
   rounds_participated: number;
   books_finished: number;
   badges_earned: number;
+  recent_books: string[];
   is_buddy: boolean;
   is_self: boolean;
 };

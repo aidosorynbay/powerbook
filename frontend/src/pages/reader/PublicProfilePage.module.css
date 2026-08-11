@@ -73,11 +73,32 @@
   margin-bottom: 8px;
 }
 
+.recCardBody {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.recCover {
+  width: 72px;
+  flex-shrink: 0;
+}
+
 .recText {
   color: var(--color-text-primary);
   font-size: var(--font-size-base);
   font-style: italic;
   line-height: var(--line-height-relaxed);
+}
+
+.librarySection {
+  margin-bottom: 20px;
+}
+
+.libraryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 12px;
 }
 
 .musicSection {

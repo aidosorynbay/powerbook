@@ -359,6 +359,7 @@ const translations = {
     'profile.whoAddedYou': 'Кто добавил тебя',
     'profile.noFollowers': 'Пока никто не добавил тебя',
     'profile.addBack': '+ Добавить в ответ',
+    'profile.library': 'Книжная полка',
 
     // About
     'about.kicker': 'Наша история',
@@ -729,6 +730,7 @@ const translations = {
     'profile.whoAddedYou': 'Сені кім қосты',
     'profile.noFollowers': 'Әзірге ешкім сені қосқан жоқ',
     'profile.addBack': '+ Жауап ретінде қосу',
+    'profile.library': 'Кітап сөресі',
 
     // About
     'about.kicker': 'Біздің тарихымыз',
@@ -1099,6 +1101,7 @@ const translations = {
     'profile.whoAddedYou': 'Who added you',
     'profile.noFollowers': "No one has added you yet",
     'profile.addBack': '+ Add back',
+    'profile.library': 'Bookshelf',
 
     // About
     'about.kicker': 'Our story',

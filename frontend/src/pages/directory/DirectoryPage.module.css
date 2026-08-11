@@ -48,20 +48,20 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 14px;
 }
 
 .readerCard {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 8px;
+  align-items: stretch;
+  text-align: left;
+  gap: 12px;
   background: var(--color-bg-card);
   border: 1px solid var(--color-border-primary);
   border-radius: var(--radius-lg);
-  padding: 20px 14px;
+  padding: 16px;
   cursor: pointer;
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
@@ -70,6 +70,20 @@
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
   border-color: var(--color-border-accent);
+}
+
+.readerTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.readerIdentity {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .readerName {
@@ -86,6 +100,33 @@
   font-size: var(--font-size-xs);
   color: var(--color-accent-primary);
   font-weight: var(--font-weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badgePill {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-full);
+  padding: 3px 8px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+}
+
+.miniLibrary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.miniLibraryItem {
+  min-width: 0;
 }
 
 .readerRec {
@@ -97,4 +138,5 @@
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  font-style: italic;
 }

@@ -22,6 +22,9 @@ class SocialService:
         out = []
         for u in self.users.list_real_users():
             arch_title = self.insights.archetype(user_id=u.id).title
+            shelf = self.insights.bookshelf(user_id=u.id)
+            recent_books = [b.title for b in shelf[-3:][::-1]]
+            badges_earned = sum(1 for b in self.insights.badges(user_id=u.id) if b.earned)
             out.append(
                 DirectoryEntryOut(
                     user_id=str(u.id),
@@ -31,6 +34,8 @@ class SocialService:
                     avatar_data=u.avatar_data,
                     archetype_title=arch_title,
                     recommendation_text=u.recommendation_text,
+                    recent_books=recent_books,
+                    badges_earned=badges_earned,
                 )
             )
         return out
@@ -44,6 +49,8 @@ class SocialService:
         arch = self.insights.archetype(user_id=target.id)
         badges = self.insights.badges(user_id=target.id)
         earned = sum(1 for b in badges if b.earned)
+        shelf = self.insights.bookshelf(user_id=target.id)
+        recent_books = [b.title for b in shelf[-6:][::-1]]
 
         is_buddy = self.buddies.get(user_id=viewer_id, buddy_user_id=target.id) is not None
 
@@ -61,6 +68,7 @@ class SocialService:
             rounds_participated=profile.rounds_participated,
             books_finished=profile.books_finished,
             badges_earned=earned,
+            recent_books=recent_books,
             is_buddy=is_buddy,
             is_self=target.id == viewer_id,
         )

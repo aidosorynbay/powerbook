@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useI18n, apiGet, apiPost, apiDelete, type PublicProfile } from '@/shared/lib';
-import { Container, PageTransition, Avatar, Button, Card } from '@/shared/ui';
+import { Container, PageTransition, Avatar, Button, Card, BookCard } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import styles from './PublicProfilePage.module.css';
 
@@ -104,8 +104,24 @@ export function PublicProfilePage() {
                 {profile.recommendation_text && (
                   <Card variant="glass" padding="lg" className={styles.recCard}>
                     <div className={styles.recKicker}>{t('profile.recommends')}</div>
-                    <div className={styles.recText}>&ldquo;{profile.recommendation_text}&rdquo;</div>
+                    <div className={styles.recCardBody}>
+                      <div className={styles.recCover}>
+                        <BookCard title={profile.recommendation_text} size="md" />
+                      </div>
+                      <div className={styles.recText}>&ldquo;{profile.recommendation_text}&rdquo;</div>
+                    </div>
                   </Card>
+                )}
+
+                {profile.recent_books.length > 0 && (
+                  <div className={styles.librarySection}>
+                    <div className={styles.musicKicker}>{t('profile.library')}</div>
+                    <div className={styles.libraryGrid}>
+                      {profile.recent_books.map((title, i) => (
+                        <BookCard key={i} title={title} size="sm" />
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 {embedUrl && (

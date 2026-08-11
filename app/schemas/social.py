@@ -11,6 +11,8 @@ class DirectoryEntryOut(BaseModel):
     avatar_data: str | None
     archetype_title: str | None
     recommendation_text: str | None
+    recent_books: list[str]
+    badges_earned: int
 
 
 class PublicProfileOut(BaseModel):
@@ -27,6 +29,7 @@ class PublicProfileOut(BaseModel):
     rounds_participated: int
     books_finished: int
     badges_earned: int
+    recent_books: list[str]
     is_buddy: bool
     is_self: bool
 
