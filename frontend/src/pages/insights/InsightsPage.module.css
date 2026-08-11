@@ -377,6 +377,43 @@
   gap: 10px;
 }
 
+.wrappedCardSwitching {
+  opacity: 0.5;
+  transition: opacity var(--transition-fast);
+}
+
+/* iOS-style page-dot indicator for switching between years' Wrapped cards */
+.wrappedYearDots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.wrappedYearDot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-border-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.wrappedYearDot:hover {
+  background: var(--color-text-muted);
+}
+
+.wrappedYearDotActive {
+  background: var(--color-accent-primary);
+  transform: scale(1.3);
+}
+
+.wrappedYearDotActive:hover {
+  background: var(--color-accent-primary);
+}
+
 /* Reading twins / celebrity match — shared-books modal */
 .matchOverlay {
   position: fixed;

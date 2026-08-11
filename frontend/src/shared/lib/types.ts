@@ -247,6 +247,7 @@ export type Wrapped = {
   archetype: Archetype;
   minutes_by_month: number[];
   rounds_participated: number;
+  available_years: number[];
 };
 
 export type ReactionSummary = {

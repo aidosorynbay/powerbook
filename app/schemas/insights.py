@@ -87,6 +87,7 @@ class WrappedOut(BaseModel):
     archetype: ArchetypeOut
     minutes_by_month: list[int]
     rounds_participated: int
+    available_years: list[int]
 
 
 class HallOfFameEntryOut(BaseModel):

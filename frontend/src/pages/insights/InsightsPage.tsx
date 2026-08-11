@@ -63,6 +63,14 @@ export function InsightsPage() {
     setIsLoadingWrapped(false);
   };
 
+  const switchWrappedYear = async (year: number) => {
+    if (wrapped?.year === year) return;
+    setIsLoadingWrapped(true);
+    const { data } = await apiGet<Wrapped>(`/insights/wrapped?year=${year}`, { requireAuth: true });
+    if (data) setWrapped(data);
+    setIsLoadingWrapped(false);
+  };
+
   const downloadWrapped = async () => {
     if (!wrappedCardRef.current) return;
     setIsDownloading(true);
@@ -318,11 +326,13 @@ export function InsightsPage() {
       {showWrapped && createPortal(
         <div className={styles.wrappedOverlay} onClick={() => setShowWrapped(false)}>
           <div className={styles.wrappedModal} onClick={(e) => e.stopPropagation()}>
-            {isLoadingWrapped || !wrapped ? (
+            {!wrapped ? (
               <div className={styles.loading}>{t('dashboard.loading')}</div>
             ) : (
               <>
-                <WrappedCard ref={wrappedCardRef} wrapped={wrapped} displayName={user?.display_name ?? ''} />
+                <div className={isLoadingWrapped ? styles.wrappedCardSwitching : undefined}>
+                  <WrappedCard ref={wrappedCardRef} wrapped={wrapped} displayName={user?.display_name ?? ''} />
+                </div>
                 <div className={styles.wrappedActions}>
                   <Button variant="ghost" onClick={() => setShowWrapped(false)}>
                     {t('wrapped.close')}
@@ -331,6 +341,21 @@ export function InsightsPage() {
                     {isDownloading ? t('wrapped.downloading') : t('wrapped.download')}
                   </Button>
                 </div>
+                {wrapped.available_years.length > 1 && (
+                  <div className={styles.wrappedYearDots}>
+                    {wrapped.available_years.map((y) => (
+                      <button
+                        key={y}
+                        type="button"
+                        className={`${styles.wrappedYearDot} ${y === wrapped.year ? styles.wrappedYearDotActive : ''}`}
+                        aria-label={String(y)}
+                        title={String(y)}
+                        disabled={isLoadingWrapped}
+                        onClick={() => switchWrappedYear(y)}
+                      />
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </div>
