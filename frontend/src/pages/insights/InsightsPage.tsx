@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import { toPng } from 'html-to-image';
 import {
   useI18n,
@@ -51,6 +52,7 @@ export function InsightsPage() {
     name: string;
     subtitle: string;
     books: string[];
+    userId?: string;
   } | null>(null);
   const wrappedCardRef = useRef<HTMLDivElement>(null);
 
@@ -277,6 +279,7 @@ export function InsightsPage() {
                             name: tw.display_name,
                             subtitle: `${tw.match_percent}% ${t('insights.matchPercentSuffix')}`,
                             books: tw.shared_books,
+                            userId: tw.user_id,
                           })}
                         >
                           <div className={styles.twinHeader}>
@@ -368,7 +371,17 @@ export function InsightsPage() {
           <div className={styles.matchModal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.matchModalHeader}>
               <div>
-                <div className={styles.matchModalName}>{expandedMatch.name}</div>
+                {expandedMatch.userId ? (
+                  <Link
+                    to={`/readers/${expandedMatch.userId}`}
+                    className={styles.matchModalNameLink}
+                    onClick={() => setExpandedMatch(null)}
+                  >
+                    {expandedMatch.name}
+                  </Link>
+                ) : (
+                  <div className={styles.matchModalName}>{expandedMatch.name}</div>
+                )}
                 <div className={styles.matchModalSubtitle}>{expandedMatch.subtitle}</div>
               </div>
               <button className={styles.matchModalClose} onClick={() => setExpandedMatch(null)} aria-label="Close">

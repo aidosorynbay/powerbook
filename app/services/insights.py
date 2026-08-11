@@ -63,7 +63,9 @@ CELEBRITY_READING_LISTS: list[dict] = [
         "role": "CEO, Tesla / SpaceX",
         "books": [
             "the hitchhiker's guide to the galaxy",
+            "автостопом по галактике",
             "foundation",
+            "основание",
             "superintelligence",
         ],
     },
@@ -72,7 +74,9 @@ CELEBRITY_READING_LISTS: list[dict] = [
         "role": "Co-founder, Meta",
         "books": [
             "sapiens",
+            "сапиенс",
             "the three-body problem",
+            "задача трёх тел",
             "the rational optimist",
         ],
     },
@@ -82,6 +86,7 @@ CELEBRITY_READING_LISTS: list[dict] = [
         "books": [
             "business adventures",
             "the intelligent investor",
+            "разумный инвестор",
             "poor charlie's almanack",
         ],
     },
@@ -90,8 +95,11 @@ CELEBRITY_READING_LISTS: list[dict] = [
         "role": "Founder, Bridgewater Associates",
         "books": [
             "the power of habit",
+            "сила привычки",
             "steve jobs",
+            "стив джобс",
             "einstein: his life and universe",
+            "эйнштейн. его жизнь и вселенная",
         ],
     },
     {
@@ -99,10 +107,15 @@ CELEBRITY_READING_LISTS: list[dict] = [
         "role": "Entrepreneur & Investor",
         "books": [
             "the selfish gene",
+            "эгоистичный ген",
             "sapiens",
+            "сапиенс",
             "antifragile",
+            "антихрупкость",
             "man's search for meaning",
+            "человек в поисках смысла",
             "influence",
+            "психология влияния",
         ],
     },
     {
@@ -110,9 +123,11 @@ CELEBRITY_READING_LISTS: list[dict] = [
         "role": "Media Executive & Book Club Founder",
         "books": [
             "anna karenina",
+            "анна каренина",
             "a new earth",
             "the poisonwood bible",
             "beloved",
+            "возлюбленная",
         ],
     },
     {
@@ -121,6 +136,7 @@ CELEBRITY_READING_LISTS: list[dict] = [
         "books": [
             "little fires everywhere",
             "where the crawdads sing",
+            "там, где раки поют",
             "daisy jones & the six",
         ],
     },
@@ -130,8 +146,11 @@ CELEBRITY_READING_LISTS: list[dict] = [
         "books": [
             "decoded",
             "the godfather",
+            "крёстный отец",
             "the alchemist",
+            "алхимик",
             "the tipping point",
+            "переломный момент",
         ],
     },
     {
@@ -139,8 +158,11 @@ CELEBRITY_READING_LISTS: list[dict] = [
         "role": "Actor & Activist",
         "books": [
             "the remains of the day",
+            "остаток дня",
             "siddhartha",
+            "сиддхартха",
             "a thousand splendid suns",
+            "тысяча сияющих солнц",
         ],
     },
 ]

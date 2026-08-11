@@ -29,9 +29,6 @@ export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
                 <Link to="/readers" className={styles.navLink}>{t('header.directory')}</Link>
               </>
             )}
-            {isAdmin && (
-              <Link to="/suggestions/admin" className={styles.navLink}>{t('suggestionsAdmin.navLink')}</Link>
-            )}
             <Link to="/hall-of-fame" className={styles.navLink}>{t('header.hallOfFame')}</Link>
             <a href="https://t.me/+ZSmueLtmT8Y1MDBi" className={styles.navLink} target="_blank" rel="noopener noreferrer">
               <Icon name="telegram" size="sm" />
@@ -39,8 +36,8 @@ export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
           </nav>
 
           <div className={styles.actions}>
-            <Link to="/suggestions" className={styles.suggestionsBtn}>
-              {t('suggestions.navCta')}
+            <Link to={isAdmin ? '/suggestions/admin' : '/suggestions'} className={styles.suggestionsBtn}>
+              {isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCta')}
             </Link>
 
             <div className={styles.langSwitcher}>

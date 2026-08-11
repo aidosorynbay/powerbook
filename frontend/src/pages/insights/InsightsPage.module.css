@@ -452,6 +452,21 @@
   color: var(--color-text-primary);
 }
 
+.matchModalNameLink {
+  display: inline-block;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-primary);
+  text-underline-offset: 3px;
+  transition: color var(--transition-fast);
+}
+
+.matchModalNameLink:hover {
+  color: var(--color-accent-primary);
+}
+
 .matchModalSubtitle {
   font-size: var(--font-size-sm);
   color: var(--color-accent-primary);

@@ -1,11 +1,12 @@
 import { FormEvent, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth, useI18n, apiPost, type TokenResponse } from '@/shared/lib';
 import { Button, Card, Container, Logo, PageTransition } from '@/shared/ui';
 import styles from './LoginPage.module.css';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login } = useAuth();
   const { t } = useI18n();
 
@@ -30,7 +31,9 @@ export function LoginPage() {
 
     if (data) {
       login(data.access_token);
-      navigate('/');
+      const redirect = searchParams.get('redirect');
+      const safeRedirect = redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/';
+      navigate(safeRedirect);
     }
     setIsSubmitting(false);
   };

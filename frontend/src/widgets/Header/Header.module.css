@@ -12,13 +12,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-6);
+  gap: var(--spacing-4);
 }
 
 .nav {
   display: flex;
   align-items: center;
-  gap: var(--spacing-8);
+  gap: var(--spacing-5);
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav::-webkit-scrollbar {
+  display: none;
 }
 
 .navLink {
@@ -28,6 +35,8 @@
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: color var(--transition-fast);
   position: relative;
 }
@@ -60,7 +69,8 @@
 .actions {
   display: flex;
   align-items: center;
-  gap: var(--spacing-4);
+  gap: var(--spacing-3);
+  flex-shrink: 0;
 }
 
 .loginBtn {
@@ -68,6 +78,8 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   padding: var(--spacing-2) var(--spacing-3);
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: color var(--transition-fast);
 }
 
@@ -79,6 +91,7 @@
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
+  flex-shrink: 0;
   color: var(--color-accent-primary);
   background: var(--color-accent-primary-muted);
   border: 1px solid var(--color-border-accent);
@@ -102,6 +115,7 @@
   padding: var(--spacing-1);
   background: var(--color-bg-secondary);
   border-radius: var(--radius-md);
+  flex-shrink: 0;
 }
 
 .langBtn {
