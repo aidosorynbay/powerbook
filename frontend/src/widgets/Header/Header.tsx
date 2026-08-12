@@ -9,7 +9,7 @@ interface HeaderProps {
 }
 
 export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
-  const { isAuthenticated, logout, user } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const isAdmin = user?.system_role === 'admin' || user?.system_role === 'superadmin';
   const { t, locale, setLocale } = useI18n();
 
@@ -36,8 +36,15 @@ export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
           </nav>
 
           <div className={styles.actions}>
-            <Link to={isAdmin ? '/suggestions/admin' : '/suggestions'} className={styles.suggestionsBtn}>
-              {isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCta')}
+            <Link
+              to={isAdmin ? '/suggestions/admin' : '/suggestions'}
+              className={styles.suggestionsBtn}
+              aria-label={isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCta')}
+            >
+              <span aria-hidden="true">💡</span>
+              <span className={styles.suggestionsBtnText}>
+                {isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCtaShort')}
+              </span>
             </Link>
 
             <select
@@ -54,14 +61,9 @@ export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
             </select>
 
             {isAuthenticated ? (
-              <>
               <Link to="/profile" className={styles.loginBtn}>
                 {t('profile.title')}
               </Link>
-              <button className={styles.loginBtn} onClick={logout}>
-                {t('header.logout')}
-              </button>
-              </>
             ) : (
               <>
                 <button className={styles.loginBtn} onClick={onLoginClick}>

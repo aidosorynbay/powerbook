@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   useAuth,
   useI18n,
@@ -17,7 +17,13 @@ import styles from './ProfilePage.module.css';
 type Gender = 'male' | 'female' | 'unknown';
 
 export function ProfilePage() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const onLogout = () => {
+    logout();
+    navigate('/');
+  };
   const { t } = useI18n();
 
   // Profile form
@@ -412,6 +418,9 @@ export function ProfilePage() {
               <Link className={styles.link} to="/round">
                 {t('header.currentRound')}
               </Link>
+              <button type="button" className={styles.logoutBtn} onClick={onLogout}>
+                {t('header.logout')}
+              </button>
             </div>
           </Card>
         </Container>

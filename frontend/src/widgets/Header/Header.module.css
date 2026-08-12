@@ -92,6 +92,7 @@
 .suggestionsBtn {
   display: inline-flex;
   align-items: center;
+  gap: var(--spacing-2);
   white-space: nowrap;
   flex-shrink: 0;
   color: var(--color-accent-primary);
@@ -156,7 +157,10 @@
   }
 
   .suggestionsBtn {
-    padding: var(--spacing-1) var(--spacing-2);
-    font-size: var(--font-size-xs);
+    padding: var(--spacing-2);
+  }
+
+  .suggestionsBtnText {
+    display: none;
   }
 }

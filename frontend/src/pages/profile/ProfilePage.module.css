@@ -105,7 +105,10 @@
 .footer {
   margin-top: var(--spacing-6);
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
+  gap: var(--spacing-4);
 }
 
 .link {
@@ -116,6 +119,19 @@
 
 .link:hover {
   opacity: 0.9;
+}
+
+.logoutBtn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.logoutBtn:hover {
+  color: var(--color-text-primary);
 }
 
 /* Mount animation */

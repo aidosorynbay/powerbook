@@ -19,6 +19,7 @@ const translations = {
 
     // Suggestion box (temporary)
     'suggestions.navCta': '💡 Идеи для сайта',
+    'suggestions.navCtaShort': 'Идеи для сайта',
     'suggestions.title': 'Ящик предложений',
     'suggestions.subtitle': 'Что добавить, поправить или улучшить на PowerBook? Пиши как есть — админ читает всё лично.',
     'suggestions.nameLabel': 'Имя (необязательно)',
@@ -424,6 +425,7 @@ const translations = {
 
     // Suggestion box (temporary)
     'suggestions.navCta': '💡 Сайтқа идеялар',
+    'suggestions.navCtaShort': 'Сайтқа идеялар',
     'suggestions.title': 'Ұсыныстар жәшігі',
     'suggestions.subtitle': 'PowerBook-қа не қосу, түзету немесе жақсарту керек? Жаз — админ бәрін өзі оқиды.',
     'suggestions.nameLabel': 'Аты (міндетті емес)',
@@ -829,6 +831,7 @@ const translations = {
 
     // Suggestion box (temporary)
     'suggestions.navCta': '💡 Suggest an idea',
+    'suggestions.navCtaShort': 'Suggest an idea',
     'suggestions.title': 'Suggestion box',
     'suggestions.subtitle': 'What should we add, fix, or improve on PowerBook? Write freely — the admin reads every message personally.',
     'suggestions.nameLabel': 'Name (optional)',
