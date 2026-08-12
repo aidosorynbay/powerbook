@@ -40,17 +40,18 @@ export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
               {isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCta')}
             </Link>
 
-            <div className={styles.langSwitcher}>
+            <select
+              className={styles.langSelect}
+              value={locale}
+              onChange={(e) => setLocale(e.target.value as typeof locale)}
+              aria-label="Language"
+            >
               {LOCALES.map((loc) => (
-                <button
-                  key={loc.code}
-                  className={`${styles.langBtn} ${locale === loc.code ? styles.langActive : ''}`}
-                  onClick={() => setLocale(loc.code)}
-                >
+                <option key={loc.code} value={loc.code}>
                   {loc.label}
-                </button>
+                </option>
               ))}
-            </div>
+            </select>
 
             {isAuthenticated ? (
               <>
