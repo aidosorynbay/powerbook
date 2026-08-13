@@ -280,11 +280,11 @@ class InsightsService:
 
     # ---------- archetype ----------
 
-    WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
-    def _fun_fact(self, *, ids: list[uuid.UUID]) -> str | None:
+    def _fun_fact_data(self, *, ids: list[uuid.UUID]) -> tuple[int, int] | None:
         """One concrete, personal data point — different for (almost) every
-        user, unlike the archetype bucket which many people can share."""
+        user, unlike the archetype bucket which many people can share.
+        Returns (weekday, minutes) — weekday text is a frontend i18n concern,
+        not something the backend should bake into a sentence."""
         daily = self.repo.daily_minutes_all_time(user_ids=ids)
         if not daily:
             return None
@@ -299,22 +299,26 @@ class InsightsService:
         if weekday_minutes:
             fav_weekday = max(weekday_minutes, key=lambda k: weekday_minutes[k])
             if weekday_days[fav_weekday] >= 3:
-                return f"You read the most on {self.WEEKDAY_NAMES[fav_weekday]}s — {weekday_minutes[fav_weekday]} minutes there in total."
+                return (fav_weekday, weekday_minutes[fav_weekday])
         return None
 
     def archetype(self, *, user_id: uuid.UUID) -> ArchetypeOut:
         ids = self._effective_ids(user_id)
         daily = self.repo.daily_minutes_all_time(user_ids=ids)
         active = [(d, m) for d, m in daily if m > 0]
-        fun_fact = self._fun_fact(ids=ids)
+        fun_fact = self._fun_fact_data(ids=ids)
+        fun_fact_weekday, fun_fact_minutes = fun_fact if fun_fact else (None, None)
+
+        def out(key: str, params: dict[str, int]) -> ArchetypeOut:
+            return ArchetypeOut(
+                key=key,
+                params=params,
+                fun_fact_weekday=fun_fact_weekday,
+                fun_fact_minutes=fun_fact_minutes,
+            )
 
         if len(active) < 10:
-            return ArchetypeOut(
-                key="newcomer",
-                title="Newcomer",
-                description="Just getting started — a few more circles and your reading style will start to show.",
-                fun_fact=fun_fact,
-            )
+            return out("newcomer", {})
 
         minutes_list = [m for _, m in active]
         avg_minutes = statistics.mean(minutes_list)
@@ -354,60 +358,20 @@ class InsightsService:
         profile = self.all_time_profile(user_id=user_id)
 
         if avg_minutes >= 75:
-            return ArchetypeOut(
-                key="marathoner",
-                title="Marathoner",
-                description=f"You average {int(avg_minutes)} minutes on the days you read — long, immersive sessions rather than quick check-ins.",
-                fun_fact=fun_fact,
-            )
+            return out("marathoner", {"avg_minutes": int(avg_minutes)})
         if finish_rate >= 0.5 and rounds_n >= 3:
-            return ArchetypeOut(
-                key="finisher",
-                title="The Finisher",
-                description=f"You've finished a book in {int(round(finish_rate * 100))}% of the circles you've joined — you don't leave things half-read.",
-                fun_fact=fun_fact,
-            )
+            return out("finisher", {"finish_pct": int(round(finish_rate * 100))})
         if dominant_weekday is not None:
-            return ArchetypeOut(
-                key="weekday_loyalist",
-                title=f"{self.WEEKDAY_NAMES[dominant_weekday]} Reader",
-                description=f"A disproportionate share of your reading happens on {self.WEEKDAY_NAMES[dominant_weekday]}s — your week has a clear reading day.",
-                fun_fact=fun_fact,
-            )
+            return out("weekday_loyalist", {"weekday": dominant_weekday})
         if weekend_share >= 0.40:
-            return ArchetypeOut(
-                key="weekend_reader",
-                title="Weekend Reader",
-                description="Your reading clusters around weekends — the weekday grind gives way to real reading time on Sat/Sun.",
-                fun_fact=fun_fact,
-            )
+            return out("weekend_reader", {})
         if is_leveling_up:
-            return ArchetypeOut(
-                key="on_the_rise",
-                title="On the Rise",
-                description=f"You're reading noticeably more now than when you started — averaging {int(second_half_avg)} min/day lately, up from {int(first_half_avg)}.",
-                fun_fact=fun_fact,
-            )
+            return out("on_the_rise", {"second_half_avg": int(second_half_avg), "first_half_avg": int(first_half_avg)})
         if profile.consistency_percent >= 85 and burstiness < 0.6:
-            return ArchetypeOut(
-                key="steady",
-                title="The Steady One",
-                description=f"{profile.consistency_percent}% consistency with very even daily minutes — you show up, every day, like clockwork.",
-                fun_fact=fun_fact,
-            )
+            return out("steady", {"consistency_pct": profile.consistency_percent})
         if burstiness >= 1.0:
-            return ArchetypeOut(
-                key="sprinter",
-                title="Sprinter",
-                description="Big reading days followed by quiet stretches — you read in bursts, not a steady drip.",
-                fun_fact=fun_fact,
-            )
-        return ArchetypeOut(
-            key="reader",
-            title="The Reader",
-            description="A solid, well-rounded reading habit — no single extreme, just consistent progress.",
-            fun_fact=fun_fact,
-        )
+            return out("sprinter", {})
+        return out("reader", {})
 
     # ---------- bookshelf ----------
 
@@ -602,7 +566,7 @@ class InsightsService:
                 continue
             info = self.repo.display_name_and_telegram(user_id=uid)
             if info:
-                members.append({"display_name": info[0], "telegram_id": info[1], "score": scores.get(uid, 0)})
+                members.append({"user_id": str(uid), "display_name": info[0], "telegram_id": info[1], "score": scores.get(uid, 0)})
         members.sort(key=lambda m: -m["score"])
 
         return LeagueTierOut(
@@ -702,7 +666,6 @@ class InsightsService:
     ROUND_MILESTONES = [1, 10, 25, 50]
     BOOK_MILESTONES = [1, 5, 10, 25, 50]
     PERFECT_CIRCLE_MILESTONES = [1, 3, 5, 10]
-    TENURE_MILESTONES = [12, 24, 48, 60]
 
     @staticmethod
     def _highest_tier(value: int, milestones: list[int]) -> int | None:
@@ -746,7 +709,7 @@ class InsightsService:
             uid: _longest_and_current_streak(sorted(set(dlist)))[0] for uid, dlist in dates_merged.items()
         }
 
-        def top_entries(merged: dict[uuid.UUID, int], milestones: list[int], badge_label: str, n: int = 5) -> list[HallOfFameEntryOut]:
+        def top_entries(merged: dict[uuid.UUID, int], milestones: list[int], n: int = 5) -> list[HallOfFameEntryOut]:
             ranked = sorted(merged.items(), key=lambda x: -x[1])[:n]
             out = []
             for uid, value in ranked:
@@ -756,20 +719,20 @@ class InsightsService:
                 tier = self._highest_tier(value, milestones)
                 out.append(
                     HallOfFameEntryOut(
+                        user_id=str(uid),
                         display_name=info[0] if info else "?",
                         telegram_id=info[1] if info else None,
                         value=value,
-                        badge_title=(badge_label.format(tier) if tier else None),
+                        badge_title=None,
+                        badge_milestone=tier,
                     )
                 )
             return out
 
-        hours_entries = top_entries(
-            {uid: v // 60 for uid, v in minutes_merged.items()}, self.HOUR_MILESTONES, "{}+ hours read"
-        )
-        streak_entries = top_entries(streak_merged, self.STREAK_MILESTONES, "{}-day streak")
-        rounds_entries = top_entries(rounds_merged, self.ROUND_MILESTONES, "{} circles completed")
-        books_entries = top_entries(books_merged, self.BOOK_MILESTONES, "{} books finished")
+        hours_entries = top_entries({uid: v // 60 for uid, v in minutes_merged.items()}, self.HOUR_MILESTONES)
+        streak_entries = top_entries(streak_merged, self.STREAK_MILESTONES)
+        rounds_entries = top_entries(rounds_merged, self.ROUND_MILESTONES)
+        books_entries = top_entries(books_merged, self.BOOK_MILESTONES)
 
         # Single-record categories: best single day, best single circle —
         # each person's own personal record, ranked against everyone else's.
@@ -801,10 +764,12 @@ class InsightsService:
                 info = users.get(uid)
                 out.append(
                     HallOfFameEntryOut(
+                        user_id=str(uid),
                         display_name=info[0] if info else "?",
                         telegram_id=info[1] if info else None,
                         value=value,
                         badge_title=label_fn(rec),
+                        badge_milestone=None,
                     )
                 )
             return out
@@ -816,15 +781,12 @@ class InsightsService:
         # hit (30+ min) — a much harder bar than just "participated".
         round_days = {r.id: calendar.monthrange(r.year, r.month)[1] for r in self.repo.all_rounds()}
         perfect_day_counts: dict[tuple[uuid.UUID, uuid.UUID], int] = defaultdict(int)
-        first_date: dict[uuid.UUID, date] = {}
         for uid, d, minutes, round_id in rows:
             target = resolve(uid)
             if target is None:
                 continue
             if minutes >= 30:
                 perfect_day_counts[(target, round_id)] += 1
-            if target not in first_date or d < first_date[target]:
-                first_date[target] = d
 
         perfect_circles: dict[uuid.UUID, int] = defaultdict(int)
         for (target, round_id), count in perfect_day_counts.items():
@@ -832,13 +794,7 @@ class InsightsService:
             if days_needed and count >= days_needed:
                 perfect_circles[target] += 1
 
-        # Veteran: tenure on the platform in months, from their very first
-        # logged day to today — rewards the earliest, longest-standing readers.
-        today = date.today()
-        tenure_months = {uid: (today - d).days // 30 for uid, d in first_date.items()}
-
-        perfect_entries = top_entries(dict(perfect_circles), self.PERFECT_CIRCLE_MILESTONES, "{}× flawless circle")
-        veteran_entries = top_entries(tenure_months, self.TENURE_MILESTONES, "{}+ months with us")
+        perfect_entries = top_entries(dict(perfect_circles), self.PERFECT_CIRCLE_MILESTONES)
 
         return HallOfFameOut(
             categories=[
@@ -849,6 +805,6 @@ class InsightsService:
                 HallOfFameCategoryOut(key="best_day", title="Best single day", unit="min", entries=best_day_entries),
                 HallOfFameCategoryOut(key="best_month", title="Best single circle", unit="min", entries=best_month_entries),
                 HallOfFameCategoryOut(key="perfect_circles", title="Flawless circles", unit="circles", entries=perfect_entries),
-                HallOfFameCategoryOut(key="veteran", title="Longest with us", unit="months", entries=veteran_entries),
             ]
         )
+

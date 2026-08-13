@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import {
   useAuth,
   useI18n,
@@ -1045,10 +1046,10 @@ export function DashboardPage() {
               {(roster?.days[rosterModalDate] ?? []).map(entry => (
                 <li key={entry.user_id} className={styles.rosterRow}>
                   <div className={styles.rosterInfo}>
-                    <span className={styles.rosterName}>
+                    <Link to={`/readers/${entry.user_id}`} className={styles.rosterName}>
                       {entry.book_finished && '\u2605 '}
                       {entry.display_name}
-                    </span>
+                    </Link>
                     {entry.comment && <span className={styles.rosterComment}>{entry.comment}</span>}
                   </div>
                   <span className={styles.rosterMinutes}>{entry.minutes}m</span>
@@ -1063,3 +1064,4 @@ export function DashboardPage() {
     </PageTransition>
   );
 }
+

@@ -1,21 +1,12 @@
-import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth, I18nProvider, useI18n } from '@/shared/lib';
 import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage } from '@/pages';
 import { BottomNav } from '@/widgets';
 import '@/app/styles/theme.css';
 
 function AppRoutes() {
-  const navigate = useNavigate();
   const { isAuthenticated, isLoading } = useAuth();
   const { t } = useI18n();
-
-  const handleRegister = () => {
-    navigate('/register');
-  };
-
-  const handleLogin = () => {
-    navigate('/login');
-  };
 
   if (isLoading) {
     return (
@@ -34,15 +25,7 @@ function AppRoutes() {
   return (
     <>
       <Routes>
-        <Route
-          path="/"
-          element={
-            <HomePage
-              onRegisterClick={handleRegister}
-              onLoginClick={handleLogin}
-            />
-          }
-        />
+        <Route path="/" element={<HomePage />} />
         <Route
           path="/round"
           element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" replace />}
@@ -106,3 +89,4 @@ export function App() {
     </BrowserRouter>
   );
 }
+

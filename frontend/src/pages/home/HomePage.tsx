@@ -4,27 +4,18 @@ import { PageTransition } from '@/shared/ui';
 import { Header, Hero, Stats, Reward, CallToAction, Footer } from '@/widgets';
 import styles from './HomePage.module.css';
 
-interface HomePageProps {
-  onRegisterClick?: () => void;
-  onLoginClick?: () => void;
-}
-
-export function HomePage({ onRegisterClick, onLoginClick }: HomePageProps) {
+export function HomePage() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const handleJoin = () => {
-    if (isAuthenticated) {
-      navigate('/round');
-    } else {
-      onRegisterClick?.();
-    }
+    navigate(isAuthenticated ? '/round' : '/register');
   };
 
   return (
     <PageTransition>
       <div className={styles.page}>
-        <Header onRegisterClick={onRegisterClick} onLoginClick={onLoginClick} />
+        <Header />
 
         <main className={styles.main}>
           <Hero onJoinClick={handleJoin} />
@@ -38,3 +29,4 @@ export function HomePage({ onRegisterClick, onLoginClick }: HomePageProps) {
     </PageTransition>
   );
 }
+

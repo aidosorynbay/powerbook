@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import uuid
 from collections import defaultdict
 
@@ -11,6 +12,32 @@ from app.models.enums import ClaimStatus, RoundParticipantStatus
 from app.models.round import ReadingLog, Round, RoundParticipant, RoundResult
 from app.models.user import User
 from app.repositories.base import BaseRepository
+
+_TRAILING_ASIDE_RE = re.compile(r"\s*[\(\[][^\(\)\[\]]*[\)\]]\s*$")
+_WRAP_QUOTES = "'\"«»“”‘’"
+
+
+def normalize_book_title(raw: str) -> str:
+    """Collapse free-text variation in a finished-book comment down to a
+    comparable title, so matching (Reading Twins, Celebrity Match) isn't
+    defeated by an appended aside or reaction-thread noise that two people
+    who read the same book happened to phrase differently.
+
+    - Only the first line is ever the title; anything after a newline is
+      commentary or (for older bulk-imported rows) raw threaded-reaction text.
+    - Trailing parenthetical/bracketed asides ("(second time)", "(екінші рет
+      оқу нәсіп болды)") are stripped, repeatedly, since they're asides, not
+      part of the title.
+    - Wrapping quote characters and internal whitespace runs are normalized.
+    """
+    text = raw.strip().split("\n", 1)[0].strip()
+    while True:
+        stripped = _TRAILING_ASIDE_RE.sub("", text)
+        if stripped == text:
+            break
+        text = stripped.strip()
+    text = text.strip(_WRAP_QUOTES).strip()
+    return re.sub(r"\s+", " ", text).lower()
 
 
 class InsightsRepository(BaseRepository[None]):
@@ -66,7 +93,7 @@ class InsightsRepository(BaseRepository[None]):
             ReadingLog.book_finished.is_(True),
             ReadingLog.comment.is_not(None),
         )
-        return {row[0].strip().lower() for row in self.db.execute(stmt).all() if row[0]}
+        return {normalize_book_title(row[0]) for row in self.db.execute(stmt).all() if row[0]}
 
     def all_users_finished_books(self, *, exclude_user_ids: list[uuid.UUID] | None = None) -> dict[uuid.UUID, set[str]]:
         stmt = select(ReadingLog.user_id, ReadingLog.comment).where(
@@ -79,18 +106,32 @@ class InsightsRepository(BaseRepository[None]):
             if user_id in exclude:
                 continue
             if comment:
-                by_user[user_id].add(comment.strip().lower())
+                by_user[user_id].add(normalize_book_title(comment))
         return dict(by_user)
 
     def popular_books(self, *, limit: int = 10) -> list[tuple[str, int]]:
-        stmt = (
-            select(ReadingLog.comment, func.count(func.distinct(ReadingLog.user_id)).label("n"))
-            .where(ReadingLog.book_finished.is_(True), ReadingLog.comment.is_not(None))
-            .group_by(ReadingLog.comment)
-            .order_by(func.count(func.distinct(ReadingLog.user_id)).desc())
-            .limit(limit)
+        # Group by normalized title, not the raw comment — free-text variation
+        # (an appended aside, reaction-thread noise, a quoted vs. unquoted
+        # title) would otherwise split one book's finishers across several
+        # rows and undercount every title. Each group keeps its most common
+        # raw spelling as the display title.
+        stmt = select(ReadingLog.user_id, ReadingLog.comment).where(
+            ReadingLog.book_finished.is_(True), ReadingLog.comment.is_not(None)
         )
-        return [(row[0], int(row[1])) for row in self.db.execute(stmt).all()]
+        readers_by_norm: dict[str, set[uuid.UUID]] = defaultdict(set)
+        raw_counts_by_norm: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        for user_id, comment in self.db.execute(stmt).all():
+            if not comment:
+                continue
+            norm = normalize_book_title(comment)
+            readers_by_norm[norm].add(user_id)
+            raw_counts_by_norm[norm][comment.strip()] += 1
+
+        ranked = sorted(readers_by_norm.items(), key=lambda kv: -len(kv[1]))[:limit]
+        return [
+            (max(raw_counts_by_norm[norm].items(), key=lambda kv: kv[1])[0], len(readers))
+            for norm, readers in ranked
+        ]
 
     def display_name_and_telegram(self, *, user_id: uuid.UUID) -> tuple[str, str | None] | None:
         stmt = select(User.display_name, User.telegram_id).where(User.id == user_id)
@@ -185,3 +226,4 @@ class InsightsRepository(BaseRepository[None]):
 
     def all_rounds(self) -> list[Round]:
         return list(self.db.execute(select(Round)).scalars().all())
+

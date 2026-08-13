@@ -182,9 +182,9 @@ export type PercentileInfo = {
 
 export type Archetype = {
   key: string;
-  title: string;
-  description: string;
-  fun_fact: string | null;
+  params: Record<string, number>;
+  fun_fact_weekday: number | null;
+  fun_fact_minutes: number | null;
 };
 
 export type BookshelfEntry = {
@@ -223,6 +223,7 @@ export type Badge = {
 };
 
 export type LeagueMember = {
+  user_id: string;
   display_name: string;
   telegram_id: string | null;
   score: number;
@@ -279,10 +280,12 @@ export type MyClaim = {
 
 // Hall of fame (public leaderboard)
 export type HallOfFameEntry = {
+  user_id: string;
   display_name: string;
   telegram_id: string | null;
   value: number;
   badge_title: string | null;
+  badge_milestone: number | null;
 };
 
 export type HallOfFameCategory = {
@@ -368,3 +371,4 @@ export type Buddy = {
   avatar_data: string | null;
   archetype_title: string | null;
 };
+

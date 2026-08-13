@@ -118,6 +118,30 @@ export function InsightsPage() {
   const nextBadges = badges.filter((b) => !b.earned).slice(0, showAllBadges ? undefined : 3);
   const visibleBooks = showAllBooks ? bookshelf : bookshelf.slice(0, 6);
 
+  const archetypeTitle = archetype
+    ? t(
+        `archetype.${archetype.key}.title`,
+        archetype.key === 'weekday_loyalist'
+          ? { weekday: t(`weekday.long.${archetype.params.weekday}`) }
+          : archetype.params
+      )
+    : '';
+  const archetypeDesc = archetype
+    ? t(
+        `archetype.${archetype.key}.description`,
+        archetype.key === 'weekday_loyalist'
+          ? { weekday: t(`weekday.longPlural.${archetype.params.weekday}`) }
+          : archetype.params
+      )
+    : '';
+  const funFactText =
+    archetype && archetype.fun_fact_weekday !== null && archetype.fun_fact_minutes !== null
+      ? t('insights.funFact', {
+          weekday: t(`weekday.longPlural.${archetype.fun_fact_weekday}`),
+          minutes: archetype.fun_fact_minutes,
+        })
+      : null;
+
   return (
     <PageTransition>
       <div className={styles.page}>
@@ -167,9 +191,9 @@ export function InsightsPage() {
                 {archetype && (
                   <Card variant="glass" padding="lg" className={styles.archetypeCard}>
                     <div className={styles.archetypeKicker}>{t('insights.yourType')}</div>
-                    <div className={styles.archetypeTitle}>{archetype.title}</div>
-                    <div className={styles.archetypeDesc}>{archetype.description}</div>
-                    {archetype.fun_fact && <div className={styles.archetypeFunFact}>{archetype.fun_fact}</div>}
+                    <div className={styles.archetypeTitle}>{archetypeTitle}</div>
+                    <div className={styles.archetypeDesc}>{archetypeDesc}</div>
+                    {funFactText && <div className={styles.archetypeFunFact}>{funFactText}</div>}
                   </Card>
                 )}
 
@@ -185,8 +209,10 @@ export function InsightsPage() {
                       </div>
                       <ol className={styles.leagueList}>
                         {league.members.slice(0, 8).map((m) => (
-                          <li key={m.telegram_id ?? m.display_name} className={styles.leagueRow}>
-                            <span>{m.display_name}</span>
+                          <li key={m.user_id} className={styles.leagueRow}>
+                            <Link to={`/readers/${m.user_id}`} className={styles.leagueRowName}>
+                              {m.display_name}
+                            </Link>
                             <span className={styles.leagueRowScore}>{m.score}</span>
                           </li>
                         ))}
@@ -400,3 +426,4 @@ export function InsightsPage() {
     </PageTransition>
   );
 }
+

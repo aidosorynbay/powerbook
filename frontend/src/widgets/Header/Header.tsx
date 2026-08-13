@@ -1,14 +1,10 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, useI18n, LOCALES } from '@/shared/lib';
 import { Logo, Button, Icon, Container } from '@/shared/ui';
 import styles from './Header.module.css';
 
-interface HeaderProps {
-  onRegisterClick?: () => void;
-  onLoginClick?: () => void;
-}
-
-export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
+export function Header() {
+  const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const isAdmin = user?.system_role === 'admin' || user?.system_role === 'superadmin';
   const { t, locale, setLocale } = useI18n();
@@ -66,10 +62,10 @@ export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
               </Link>
             ) : (
               <>
-                <button className={styles.loginBtn} onClick={onLoginClick}>
+                <Link to="/login" className={styles.loginBtn}>
                   {t('header.login')}
-                </button>
-                <Button variant="primary" size="sm" onClick={onRegisterClick}>
+                </Link>
+                <Button variant="primary" size="sm" onClick={() => navigate('/register')}>
                   {t('header.register')}
                 </Button>
               </>
@@ -80,3 +76,4 @@ export function Header({ onRegisterClick, onLoginClick }: HeaderProps) {
     </header>
   );
 }
+

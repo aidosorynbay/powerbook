@@ -26,9 +26,9 @@ class PercentileOut(BaseModel):
 
 class ArchetypeOut(BaseModel):
     key: str
-    title: str
-    description: str
-    fun_fact: str | None = None
+    params: dict[str, int]
+    fun_fact_weekday: int | None = None
+    fun_fact_minutes: int | None = None
 
 
 class BookshelfEntryOut(BaseModel):
@@ -92,10 +92,12 @@ class WrappedOut(BaseModel):
 
 
 class HallOfFameEntryOut(BaseModel):
+    user_id: str
     display_name: str
     telegram_id: str | None
     value: int
     badge_title: str | None
+    badge_milestone: int | None
 
 
 class HallOfFameCategoryOut(BaseModel):
@@ -107,3 +109,4 @@ class HallOfFameCategoryOut(BaseModel):
 
 class HallOfFameOut(BaseModel):
     categories: list[HallOfFameCategoryOut]
+

@@ -19,6 +19,22 @@ export const WrappedCard = forwardRef<HTMLDivElement, WrappedCardProps>(function
 ) {
   const { t } = useI18n();
   const maxMonth = Math.max(...wrapped.minutes_by_month, 1);
+  const archetype = wrapped.archetype;
+  const archetypeTitle = archetype
+    ? t(
+        `archetype.${archetype.key}.title`,
+        archetype.key === 'weekday_loyalist'
+          ? { weekday: t(`weekday.long.${archetype.params.weekday}`) }
+          : archetype.params
+      )
+    : '';
+  const funFactText =
+    archetype && archetype.fun_fact_weekday !== null && archetype.fun_fact_minutes !== null
+      ? t('insights.funFact', {
+          weekday: t(`weekday.longPlural.${archetype.fun_fact_weekday}`),
+          minutes: archetype.fun_fact_minutes,
+        })
+      : null;
 
   return (
     <div ref={ref} className={styles.card}>
@@ -35,8 +51,8 @@ export const WrappedCard = forwardRef<HTMLDivElement, WrappedCardProps>(function
 
       <div className={styles.name}>{displayName}</div>
 
-      {wrapped.archetype && (
-        <div className={styles.archetypeTag}>{wrapped.archetype.title}</div>
+      {archetype && (
+        <div className={styles.archetypeTag}>{archetypeTitle}</div>
       )}
 
       <div className={styles.hero}>
@@ -44,8 +60,8 @@ export const WrappedCard = forwardRef<HTMLDivElement, WrappedCardProps>(function
         <div className={styles.heroLabel}>{t('wrapped.hoursRead')}</div>
       </div>
 
-      {wrapped.archetype?.fun_fact && (
-        <div className={styles.funFact}>{wrapped.archetype.fun_fact}</div>
+      {funFactText && (
+        <div className={styles.funFact}>{funFactText}</div>
       )}
 
       <div className={styles.chart}>

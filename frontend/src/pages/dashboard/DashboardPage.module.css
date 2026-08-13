@@ -883,6 +883,12 @@
   color: var(--color-text-primary);
   font-weight: var(--font-weight-semibold);
   font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.rosterName:hover {
+  color: var(--color-accent-primary);
+  text-decoration: underline;
 }
 
 .rosterComment {
@@ -962,3 +968,4 @@
   font-weight: var(--font-weight-medium);
   text-align: center;
 }
+

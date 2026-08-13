@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import { useI18n, apiGet, type YearlyArchiveResponse, type YearlyRosterResponse } from '@/shared/lib';
 import { Container, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
@@ -364,10 +365,10 @@ export function ArchivePage() {
               {(roster?.days[rosterModalDate] ?? []).map(entry => (
                 <li key={entry.user_id} className={styles.rosterRow}>
                   <div className={styles.rosterInfo}>
-                    <span className={styles.rosterName}>
+                    <Link to={`/readers/${entry.user_id}`} className={styles.rosterName}>
                       {entry.book_finished && '★ '}
                       {entry.display_name}
-                    </span>
+                    </Link>
                     {entry.comment && <span className={styles.rosterComment}>{entry.comment}</span>}
                   </div>
                   <span className={styles.rosterMinutes}>{entry.minutes}m</span>
@@ -381,3 +382,4 @@ export function ArchivePage() {
     </PageTransition>
   );
 }
+

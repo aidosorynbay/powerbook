@@ -202,6 +202,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-decoration: none;
+}
+
+.entryName:hover {
+  color: var(--color-accent-primary);
+  text-decoration: underline;
 }
 
 .entryBadge {
@@ -217,3 +223,4 @@
   font-size: var(--font-size-sm);
   font-variant-numeric: tabular-nums;
 }
+

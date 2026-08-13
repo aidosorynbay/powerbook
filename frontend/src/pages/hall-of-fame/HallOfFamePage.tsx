@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useI18n, apiGet, type HallOfFame, type HallOfFameCategory } from '@/shared/lib';
+import { Link } from 'react-router-dom';
+import { useI18n, apiGet, type HallOfFame, type HallOfFameCategory, type HallOfFameEntry } from '@/shared/lib';
 import { Container, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import styles from './HallOfFamePage.module.css';
@@ -15,7 +16,6 @@ const CATEGORY_ICONS: Record<string, string> = {
   best_day: '⚡',
   best_month: '🚀',
   perfect_circles: '💎',
-  veteran: '🌱',
 };
 
 export function HallOfFamePage() {
@@ -23,6 +23,12 @@ export function HallOfFamePage() {
   const [data, setData] = useState<HallOfFame | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [openCategory, setOpenCategory] = useState<HallOfFameCategory | null>(null);
+
+  const formatUnit = (unit: string) => t(`hallOfFame.unit.${unit}`);
+  const formatBadge = (categoryKey: string, entry: HallOfFameEntry) =>
+    entry.badge_milestone != null
+      ? t(`hallOfFame.badge.${categoryKey}`, { value: entry.badge_milestone })
+      : entry.badge_title;
 
   useEffect(() => {
     let cancelled = false;
@@ -68,7 +74,7 @@ export function HallOfFamePage() {
                       <span className={styles.badgeTitle}>{t(`hallOfFame.category.${cat.key}`)}</span>
                       {leader ? (
                         <span className={styles.badgeLeader}>
-                          {leader.display_name} · {leader.value} {cat.unit}
+                          {leader.display_name} · {leader.value} {formatUnit(cat.unit)}
                         </span>
                       ) : (
                         <span className={styles.badgeLeader}>{t('hallOfFame.empty')}</span>
@@ -90,18 +96,23 @@ export function HallOfFamePage() {
               {CATEGORY_ICONS[openCategory.key] ?? '🏆'} {t(`hallOfFame.category.${openCategory.key}`)}
             </div>
             <ol className={styles.entryList}>
-              {openCategory.entries.map((e, i) => (
-                <li key={i} className={styles.entryRow}>
-                  <span className={styles.entryRank}>{MEDALS[i] ?? i + 1}</span>
-                  <span className={styles.entryInfo}>
-                    <span className={styles.entryName}>{e.display_name}</span>
-                    {e.badge_title && <span className={styles.entryBadge}>{e.badge_title}</span>}
-                  </span>
-                  <span className={styles.entryValue}>
-                    {e.value} {openCategory.unit}
-                  </span>
-                </li>
-              ))}
+              {openCategory.entries.map((e, i) => {
+                const badgeText = formatBadge(openCategory.key, e);
+                return (
+                  <li key={e.user_id} className={styles.entryRow}>
+                    <span className={styles.entryRank}>{MEDALS[i] ?? i + 1}</span>
+                    <span className={styles.entryInfo}>
+                      <Link to={`/readers/${e.user_id}`} className={styles.entryName}>
+                        {e.display_name}
+                      </Link>
+                      {badgeText && <span className={styles.entryBadge}>{badgeText}</span>}
+                    </span>
+                    <span className={styles.entryValue}>
+                      {e.value} {formatUnit(openCategory.unit)}
+                    </span>
+                  </li>
+                );
+              })}
             </ol>
           </div>
         </div>,
@@ -110,3 +121,4 @@ export function HallOfFamePage() {
     </PageTransition>
   );
 }
+
