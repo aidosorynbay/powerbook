@@ -32,14 +32,22 @@ export function PublicProfilePage() {
   const { t } = useI18n();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isTogglingBuddy, setIsTogglingBuddy] = useState(false);
   const [showBadges, setShowBadges] = useState(false);
 
   const load = async () => {
     if (!userId) return;
     setIsLoading(true);
-    const { data } = await apiGet<PublicProfile>(`/social/profile/${userId}`, { requireAuth: true });
-    if (data) setProfile(data);
+    const { data, error } = await apiGet<PublicProfile>(`/social/profile/${userId}`, { requireAuth: true });
+    if (data) {
+      setProfile(data);
+      setLoadError(null);
+    } else {
+      // Never leave the page spinning: an archive-only account has no public
+      // profile, and a transient failure needs to say so rather than hang.
+      setLoadError(error ?? t('readers.profileUnavailable'));
+    }
     setIsLoading(false);
   };
 
@@ -68,15 +76,24 @@ export function PublicProfilePage() {
         <Header />
         <main className={styles.main}>
           <Container size="sm">
-            {isLoading || !profile ? (
+            {isLoading ? (
               <div className={styles.loading}>{t('dashboard.loading')}</div>
+            ) : !profile ? (
+              <div className={styles.loading}>{loadError ?? t('readers.profileUnavailable')}</div>
             ) : (
               <>
                 <div className={styles.hero}>
                   <Avatar src={profile.avatar_data} name={profile.display_name} size="xl" />
                   <div className={styles.name}>{profile.display_name}</div>
-                  {profile.archetype_title && (
-                    <div className={styles.archetype}>{profile.archetype_title}</div>
+                  {profile.archetype_key && (
+                    <div className={styles.archetype}>
+                      {t(
+                        `archetype.${profile.archetype_key}.title`,
+                        profile.archetype_weekday !== null
+                          ? { weekday: t(`weekday.long.${profile.archetype_weekday}`) }
+                          : undefined
+                      )}
+                    </div>
                   )}
 
                   <div className={styles.actions}>
@@ -219,3 +236,4 @@ export function PublicProfilePage() {
     </PageTransition>
   );
 }
+

@@ -67,8 +67,15 @@ export function DirectoryPage() {
                       <Avatar src={entry.avatar_data} name={entry.display_name} size="md" />
                       <div className={styles.readerIdentity}>
                         <div className={styles.readerName}>{entry.display_name}</div>
-                        {entry.archetype_title && (
-                          <div className={styles.readerArchetype}>{entry.archetype_title}</div>
+                        {entry.archetype_key && (
+                          <div className={styles.readerArchetype}>
+                            {t(
+                              `archetype.${entry.archetype_key}.title`,
+                              entry.archetype_weekday !== null
+                                ? { weekday: t(`weekday.long.${entry.archetype_weekday}`) }
+                                : undefined
+                            )}
+                          </div>
                         )}
                       </div>
                       {entry.badges_earned > 0 && (
@@ -103,3 +110,4 @@ export function DirectoryPage() {
     </PageTransition>
   );
 }
+

@@ -11,7 +11,8 @@ class DirectoryEntryOut(BaseModel):
     display_name: str
     telegram_id: str | None
     avatar_data: str | None
-    archetype_title: str | None
+    archetype_key: str | None
+    archetype_weekday: int | None = None
     recommendation_text: str | None
     recent_books: list[str]
     badges_earned: int
@@ -25,7 +26,8 @@ class PublicProfileOut(BaseModel):
     avatar_data: str | None
     recommendation_text: str | None
     reading_music_url: str | None
-    archetype_title: str | None
+    archetype_key: str | None
+    archetype_weekday: int | None = None
     total_hours: int
     longest_streak_days: int
     rounds_participated: int
@@ -44,4 +46,6 @@ class BuddyOut(BaseModel):
     display_name: str
     telegram_id: str | None
     avatar_data: str | None
-    archetype_title: str | None
+    archetype_key: str | None
+    archetype_weekday: int | None = None
+

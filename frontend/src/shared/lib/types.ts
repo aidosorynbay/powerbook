@@ -327,7 +327,8 @@ export type DirectoryEntry = {
   display_name: string;
   telegram_id: string | null;
   avatar_data: string | null;
-  archetype_title: string | null;
+  archetype_key: string | null;
+  archetype_weekday: number | null;
   recommendation_text: string | null;
   recent_books: string[];
   badges_earned: number;
@@ -341,7 +342,8 @@ export type PublicProfile = {
   avatar_data: string | null;
   recommendation_text: string | null;
   reading_music_url: string | null;
-  archetype_title: string | null;
+  archetype_key: string | null;
+  archetype_weekday: number | null;
   total_hours: number;
   longest_streak_days: number;
   rounds_participated: number;
@@ -370,6 +372,7 @@ export type Buddy = {
   display_name: string;
   telegram_id: string | null;
   avatar_data: string | null;
-  archetype_title: string | null;
+  archetype_key: string | null;
+  archetype_weekday: number | null;
 };
 

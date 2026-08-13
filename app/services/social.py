@@ -18,10 +18,17 @@ class SocialService:
         self.buddies = BuddyRepository(db)
         self.insights = InsightsService(db)
 
+    def _archetype_ref(self, user_id) -> tuple[str | None, int | None]:
+        """Archetype identity for list/badge contexts: the key plus the one
+        parameter its label needs, so the client renders it in the viewer's
+        language instead of us baking an English string into the response."""
+        arch = self.insights.archetype(user_id=user_id)
+        return arch.key, arch.params.get("weekday")
+
     def directory(self) -> list[DirectoryEntryOut]:
         out = []
         for u in self.users.list_real_users():
-            arch_title = self.insights.archetype(user_id=u.id).title
+            arch_key, arch_weekday = self._archetype_ref(u.id)
             shelf = self.insights.bookshelf(user_id=u.id)
             recent_books = [b.title for b in shelf[-3:][::-1]]
             badges_earned = sum(1 for b in self.insights.badges(user_id=u.id) if b.earned)
@@ -32,7 +39,8 @@ class SocialService:
                     display_name=u.display_name,
                     telegram_id=u.telegram_id,
                     avatar_data=u.avatar_data,
-                    archetype_title=arch_title,
+                    archetype_key=arch_key,
+                    archetype_weekday=arch_weekday,
                     recommendation_text=u.recommendation_text,
                     recent_books=recent_books,
                     badges_earned=badges_earned,
@@ -46,7 +54,7 @@ class SocialService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
         profile = self.insights.all_time_profile(user_id=target.id)
-        arch = self.insights.archetype(user_id=target.id)
+        arch_key, arch_weekday = self._archetype_ref(target.id)
         badges = self.insights.badges(user_id=target.id)
         earned = sum(1 for b in badges if b.earned)
         shelf = self.insights.bookshelf(user_id=target.id)
@@ -62,7 +70,8 @@ class SocialService:
             avatar_data=target.avatar_data,
             recommendation_text=target.recommendation_text,
             reading_music_url=target.reading_music_url,
-            archetype_title=arch.title,
+            archetype_key=arch_key,
+            archetype_weekday=arch_weekday,
             total_hours=profile.total_hours,
             longest_streak_days=profile.longest_streak_days,
             rounds_participated=profile.rounds_participated,
@@ -95,7 +104,7 @@ class SocialService:
             u = self.users.get(row.buddy_user_id)
             if u is None:
                 continue
-            arch_title = self.insights.archetype(user_id=u.id).title
+            arch_key, arch_weekday = self._archetype_ref(u.id)
             out.append(
                 BuddyOut(
                     user_id=str(u.id),
@@ -103,7 +112,8 @@ class SocialService:
                     display_name=u.display_name,
                     telegram_id=u.telegram_id,
                     avatar_data=u.avatar_data,
-                    archetype_title=arch_title,
+                    archetype_key=arch_key,
+                    archetype_weekday=arch_weekday,
                 )
             )
         return out
@@ -117,7 +127,7 @@ class SocialService:
             u = self.users.get(row.user_id)
             if u is None:
                 continue
-            arch_title = self.insights.archetype(user_id=u.id).title
+            arch_key, arch_weekday = self._archetype_ref(u.id)
             out.append(
                 BuddyOut(
                     user_id=str(u.id),
@@ -125,7 +135,9 @@ class SocialService:
                     display_name=u.display_name,
                     telegram_id=u.telegram_id,
                     avatar_data=u.avatar_data,
-                    archetype_title=arch_title,
+                    archetype_key=arch_key,
+                    archetype_weekday=arch_weekday,
                 )
             )
         return out
+
