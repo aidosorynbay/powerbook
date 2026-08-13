@@ -350,6 +350,8 @@ const translations = {
     'hallOfFame.category.books': 'Больше всех книг',
     'hallOfFame.category.best_day': 'Рекорд за один день',
     'hallOfFame.category.best_month': 'Рекорд за один круг',
+    'hallOfFame.category.perfect_circles': 'Безупречные круги',
+    'hallOfFame.category.veteran': 'Дольше всех с нами',
 
     // Wrapped
     'wrapped.button': 'Моя карточка года 🎁',
@@ -756,6 +758,8 @@ const translations = {
     'hallOfFame.category.books': 'Ең көп кітап',
     'hallOfFame.category.best_day': 'Бір күндегі рекорд',
     'hallOfFame.category.best_month': 'Бір раундтағы рекорд',
+    'hallOfFame.category.perfect_circles': 'Мінсіз раундтар',
+    'hallOfFame.category.veteran': 'Бізбен ең ұзақ бірге',
 
     // Wrapped
     'wrapped.button': 'Жыл кітапшам 🎁',
@@ -1162,6 +1166,8 @@ const translations = {
     'hallOfFame.category.books': 'Most books finished',
     'hallOfFame.category.best_day': 'Best single day',
     'hallOfFame.category.best_month': 'Best single circle',
+    'hallOfFame.category.perfect_circles': 'Flawless circles',
+    'hallOfFame.category.veteran': 'Longest with us',
 
     // Wrapped
     'wrapped.button': 'My Year Card 🎁',

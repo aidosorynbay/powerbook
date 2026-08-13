@@ -14,6 +14,8 @@ const CATEGORY_ICONS: Record<string, string> = {
   books: '📚',
   best_day: '⚡',
   best_month: '🚀',
+  perfect_circles: '💎',
+  veteran: '🌱',
 };
 
 export function HallOfFamePage() {

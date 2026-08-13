@@ -701,6 +701,8 @@ class InsightsService:
     STREAK_MILESTONES = [7, 30, 100, 365]
     ROUND_MILESTONES = [1, 10, 25, 50]
     BOOK_MILESTONES = [1, 5, 10, 25, 50]
+    PERFECT_CIRCLE_MILESTONES = [1, 3, 5, 10]
+    TENURE_MILESTONES = [12, 24, 48, 60]
 
     @staticmethod
     def _highest_tier(value: int, milestones: list[int]) -> int | None:
@@ -810,6 +812,34 @@ class InsightsService:
         best_day_entries = top_record_entries(best_day, lambda rec: rec[1].isoformat() if rec[1] else None)
         best_month_entries = top_record_entries(best_month, lambda rec: rounds_lookup.get(rec[1]))
 
+        # Perfect circles: rounds where every single day of the month was
+        # hit (30+ min) — a much harder bar than just "participated".
+        round_days = {r.id: calendar.monthrange(r.year, r.month)[1] for r in self.repo.all_rounds()}
+        perfect_day_counts: dict[tuple[uuid.UUID, uuid.UUID], int] = defaultdict(int)
+        first_date: dict[uuid.UUID, date] = {}
+        for uid, d, minutes, round_id in rows:
+            target = resolve(uid)
+            if target is None:
+                continue
+            if minutes >= 30:
+                perfect_day_counts[(target, round_id)] += 1
+            if target not in first_date or d < first_date[target]:
+                first_date[target] = d
+
+        perfect_circles: dict[uuid.UUID, int] = defaultdict(int)
+        for (target, round_id), count in perfect_day_counts.items():
+            days_needed = round_days.get(round_id)
+            if days_needed and count >= days_needed:
+                perfect_circles[target] += 1
+
+        # Veteran: tenure on the platform in months, from their very first
+        # logged day to today — rewards the earliest, longest-standing readers.
+        today = date.today()
+        tenure_months = {uid: (today - d).days // 30 for uid, d in first_date.items()}
+
+        perfect_entries = top_entries(dict(perfect_circles), self.PERFECT_CIRCLE_MILESTONES, "{}× flawless circle")
+        veteran_entries = top_entries(tenure_months, self.TENURE_MILESTONES, "{}+ months with us")
+
         return HallOfFameOut(
             categories=[
                 HallOfFameCategoryOut(key="hours", title="Most hours read", unit="h", entries=hours_entries),
@@ -818,5 +848,7 @@ class InsightsService:
                 HallOfFameCategoryOut(key="books", title="Most books finished", unit="books", entries=books_entries),
                 HallOfFameCategoryOut(key="best_day", title="Best single day", unit="min", entries=best_day_entries),
                 HallOfFameCategoryOut(key="best_month", title="Best single circle", unit="min", entries=best_month_entries),
+                HallOfFameCategoryOut(key="perfect_circles", title="Flawless circles", unit="circles", entries=perfect_entries),
+                HallOfFameCategoryOut(key="veteran", title="Longest with us", unit="months", entries=veteran_entries),
             ]
         )
