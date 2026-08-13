@@ -16,6 +16,8 @@ class SuggestionOut(BaseModel):
     name: str | None
     message: str
     author_display_name: str | None
+    author_user_id: uuid.UUID | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
+

@@ -20,6 +20,7 @@ class SuggestionService:
             name=row.name,
             message=row.message,
             author_display_name=row.user.display_name if row.user else None,
+            author_user_id=row.user_id,
             created_at=row.created_at,
         )
 
@@ -31,7 +32,9 @@ class SuggestionService:
                 name=row.name,
                 message=row.message,
                 author_display_name=row.user.display_name if row.user else None,
+                author_user_id=row.user_id,
                 created_at=row.created_at,
             )
             for row in rows
         ]
+

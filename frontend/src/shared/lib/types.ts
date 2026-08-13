@@ -360,6 +360,7 @@ export type Suggestion = {
   name: string | null;
   message: string;
   author_display_name: string | null;
+  author_user_id: string | null;
   created_at: string;
 };
 

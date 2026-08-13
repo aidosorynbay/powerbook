@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth, useI18n, apiGet, type Suggestion } from '@/shared/lib';
 import { Container, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
@@ -58,9 +59,15 @@ export function AdminSuggestionsPage() {
                 {suggestions.map((s) => (
                   <div key={s.id} className={styles.row}>
                     <div className={styles.rowHeader}>
-                      <span className={styles.rowAuthor}>
-                        {s.author_display_name ?? s.name ?? t('suggestionsAdmin.anonymous')}
-                      </span>
+                      {s.author_user_id ? (
+                        <Link to={`/readers/${s.author_user_id}`} className={styles.rowAuthorLink}>
+                          {s.author_display_name ?? t('suggestionsAdmin.anonymous')}
+                        </Link>
+                      ) : (
+                        <span className={styles.rowAuthor}>
+                          {s.author_display_name ?? s.name ?? t('suggestionsAdmin.anonymous')}
+                        </span>
+                      )}
                       <span className={styles.rowDate}>{formatDate(s.created_at)}</span>
                     </div>
                     <div className={styles.rowMessage}>{s.message}</div>
@@ -75,3 +82,4 @@ export function AdminSuggestionsPage() {
     </PageTransition>
   );
 }
+

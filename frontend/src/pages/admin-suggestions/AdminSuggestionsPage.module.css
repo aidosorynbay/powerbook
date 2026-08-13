@@ -60,6 +60,19 @@
   overflow-wrap: break-word;
 }
 
+.rowAuthorLink {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-primary);
+  font-size: var(--font-size-sm);
+  min-width: 0;
+  overflow-wrap: break-word;
+  text-decoration: none;
+}
+
+.rowAuthorLink:hover {
+  text-decoration: underline;
+}
+
 .rowDate {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
@@ -73,3 +86,4 @@
   white-space: pre-wrap;
   overflow-wrap: break-word;
 }
+
