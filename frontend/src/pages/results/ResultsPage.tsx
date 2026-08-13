@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   useI18n,
   useAuth,
@@ -372,7 +373,13 @@ export function ResultsPage() {
                           >
                             <span className={styles.leaderboardRank}>#{entry.rank}</span>
                             <TrophyIcon rank={entry.rank} />
-                            <span className={styles.leaderboardName}>{displayName}</span>
+                            <Link
+                              to={`/readers/${entry.user_id}`}
+                              className={styles.leaderboardName}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {displayName}
+                            </Link>
                             <span className={styles.leaderboardScore}>
                               {entry.total_score} {t('dashboard.daysShort')}
                             </span>
@@ -436,3 +443,4 @@ export function ResultsPage() {
     </PageTransition>
   );
 }
+

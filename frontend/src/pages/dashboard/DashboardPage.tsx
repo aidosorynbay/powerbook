@@ -719,8 +719,13 @@ export function DashboardPage() {
                             <div className={styles.rank}>{leaderboardRanks[myIdx]}</div>
                             <div className={styles.participantName}>
                               {entry.telegram_id ? (
-                                <a href={`https://t.me/${entry.telegram_id}`} target="_blank" rel="noopener noreferrer" className={styles.telegramLink} onClick={e => e.stopPropagation()}>@{entry.telegram_id}</a>
-                              ) : entry.display_name}
+                                <>
+                                  <a href={`https://t.me/${entry.telegram_id}`} target="_blank" rel="noopener noreferrer" className={styles.telegramLink} onClick={e => e.stopPropagation()}>@{entry.telegram_id}</a>
+                                  <Link to={`/readers/${entry.user_id}`} className={styles.profileLink} onClick={e => e.stopPropagation()}>›</Link>
+                                </>
+                              ) : (
+                                <Link to={`/readers/${entry.user_id}`} className={styles.profileLinkName} onClick={e => e.stopPropagation()}>{entry.display_name}</Link>
+                              )}
                             </div>
                             <div className={styles.participantScore}>{entry.total_score} {t('dashboard.daysShort')}</div>
                           </div>
@@ -739,17 +744,22 @@ export function DashboardPage() {
                               <div className={styles.rank}>{leaderboardRanks[idx]}</div>
                               <div className={styles.participantName}>
                                 {entry.telegram_id ? (
-                                  <a
-                                    href={`https://t.me/${entry.telegram_id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={styles.telegramLink}
-                                    onClick={e => e.stopPropagation()}
-                                  >
-                                    @{entry.telegram_id}
-                                  </a>
+                                  <>
+                                    <a
+                                      href={`https://t.me/${entry.telegram_id}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={styles.telegramLink}
+                                      onClick={e => e.stopPropagation()}
+                                    >
+                                      @{entry.telegram_id}
+                                    </a>
+                                    <Link to={`/readers/${entry.user_id}`} className={styles.profileLink} onClick={e => e.stopPropagation()}>›</Link>
+                                  </>
                                 ) : (
-                                  entry.display_name
+                                  <Link to={`/readers/${entry.user_id}`} className={styles.profileLinkName} onClick={e => e.stopPropagation()}>
+                                    {entry.display_name}
+                                  </Link>
                                 )}
                               </div>
                               <div className={styles.participantScore}>{entry.total_score} {t('dashboard.daysShort')}</div>
