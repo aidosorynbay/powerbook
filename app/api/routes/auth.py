@@ -13,8 +13,9 @@ from app.core.security import hash_password, verify_password
 from app.db.session import get_db
 from app.models.user import User
 from app.repositories.users import UserRepository
-from app.schemas.auth import ChangePasswordRequest, LoginRequest, RegisterRequest, TelegramResetRequest, TokenResponse, UpdateProfileRequest
+from app.schemas.auth import ChangePasswordRequest, DeleteAccountRequest, LoginRequest, RegisterRequest, TelegramResetRequest, TokenResponse, UpdateProfileRequest
 from app.schemas.users import UserOut
+from app.services.account_deletion import AccountDeletionService
 from app.services.auth import AuthService
 
 TELEGRAM_AUTH_MAX_AGE = 600  # 10 minutes
@@ -116,3 +117,16 @@ def reset_password(payload: TelegramResetRequest, db: Session = Depends(get_db))
     repo.update(user, password_hash=hash_password(payload.new_password))
     return {"detail": "Password reset successful"}
 
+
+@router.post("/delete-account", status_code=204)
+def delete_account(
+    payload: DeleteAccountRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Permanently delete the caller's account.
+
+    Required by both app stores, and reachable from the website as well as
+    the app. See AccountDeletionService for what survives and why.
+    """
+    AccountDeletionService(db).delete_account(user=current_user, password=payload.password)

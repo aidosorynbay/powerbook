@@ -272,3 +272,151 @@
 .addBackBtn:hover {
   background: var(--color-accent-primary-muted);
 }
+
+
+@media (max-width: 900px) {
+  /* Clear the fixed bottom tab bar (plus the iPhone home indicator) so the
+     last section isn't hidden underneath it. */
+  .page {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
+
+
+/* ---- books read outside the circles ---- */
+.bookCounted {
+  font-size: var(--font-size-sm);
+  color: var(--color-accent-primary);
+  margin-bottom: var(--spacing-3);
+}
+
+.bookForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-5);
+}
+
+.bookFormRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--spacing-3);
+}
+
+.bookList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.bookRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+}
+
+.bookInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Lets a long title wrap instead of pushing the remove button off the row */
+  min-width: 0;
+}
+
+.bookTitle {
+  font-weight: var(--font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.bookMeta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 600px) {
+  /* The date field can't shrink much, so on a narrow screen it gets its
+     own line rather than squeezing the author next to it. */
+  .bookFormRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Danger zone — account deletion. Visually separated and never the first
+   thing the eye lands on, but reachable without support: both app stores
+   require in-product deletion, and Google Play requires it on the web too. */
+.dangerZone {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border-secondary);
+}
+
+.dangerTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-error, #e5484d);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.dangerText {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-relaxed);
+  margin: 0 0 12px;
+}
+
+.dangerBtn {
+  background: none;
+  border: 1px solid var(--color-error, #e5484d);
+  color: var(--color-error, #e5484d);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.dangerBtn:hover:not(:disabled) {
+  background: rgba(229, 72, 77, 0.1);
+}
+
+.dangerBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.dangerConfirm {
+  border: 1px solid var(--color-error, #e5484d);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+
+.dangerConfirmTitle {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: 12px;
+}
+
+.dangerError {
+  color: var(--color-error, #e5484d);
+  font-size: var(--font-size-xs);
+  margin-top: 8px;
+}
+
+.dangerActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}

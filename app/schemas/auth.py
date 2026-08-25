@@ -100,3 +100,13 @@ class TelegramResetRequest(BaseModel):
             raise ValueError("Password must be at most 72 bytes (bcrypt limit).")
         return v
 
+
+class DeleteAccountRequest(BaseModel):
+    """Password re-confirmation for account deletion.
+
+    Sent as a POST body rather than on DELETE because the browser client's
+    delete helper has no body, and this must work from the website as-is —
+    Google Play requires the deletion path to be reachable on the web too.
+    """
+
+    password: str = Field(min_length=1, max_length=128)

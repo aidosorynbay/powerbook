@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useI18n } from '@/shared/lib';
 import { Container, Logo, Icon } from '@/shared/ui';
 import styles from './Footer.module.css';
@@ -53,15 +54,15 @@ export function Footer() {
 
           <nav className={styles.legal}>
             <span className={styles.legalItem}>
-              <a href="/privacy" className={styles.legalLink}>
+              <Link to="/privacy" className={styles.legalLink}>
                 {t('footer.privacy')}
-              </a>
+              </Link>
               <span className={styles.separator} />
             </span>
             <span className={styles.legalItem}>
-              <a href="/terms" className={styles.legalLink}>
+              <Link to="/terms" className={styles.legalLink}>
                 {t('footer.terms')}
-              </a>
+              </Link>
             </span>
           </nav>
         </div>
@@ -69,3 +70,4 @@ export function Footer() {
     </footer>
   );
 }
+

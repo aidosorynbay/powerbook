@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth, I18nProvider, useI18n } from '@/shared/lib';
-import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage } from '@/pages';
+import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage } from '@/pages';
 import { BottomNav } from '@/widgets';
 import '@/app/styles/theme.css';
 
@@ -42,7 +42,12 @@ function AppRoutes() {
           path="/insights"
           element={isAuthenticated ? <InsightsPage /> : <Navigate to="/login" replace />}
         />
+        <Route path="/claim" element={<ClaimPage />} />
         <Route path="/hall-of-fame" element={<HallOfFamePage />} />
+        {/* Public and unauthenticated on purpose: both app stores need a
+            policy URL reachable without an account. */}
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         <Route path="/suggestions" element={<SuggestionsPage />} />
         <Route
           path="/suggestions/admin"
@@ -89,4 +94,5 @@ export function App() {
     </BrowserRouter>
   );
 }
+
 

@@ -1,6 +1,7 @@
 export { HomePage } from './home';
 export { ForgotPasswordPage } from './forgot-password';
 export { LoginPage } from './login';
+export { ClaimPage } from './claim';
 export { RegisterPage } from './register';
 export { DashboardPage } from './dashboard';
 export { ArchivePage } from './archive';
@@ -12,3 +13,4 @@ export { DirectoryPage } from './directory';
 export { PublicProfilePage } from './reader';
 export { SuggestionsPage } from './suggestions';
 export { AdminSuggestionsPage } from './admin-suggestions';
+export { PrivacyPage, TermsPage } from './legal';

@@ -10,6 +10,8 @@ import {
   resizeImageToDataUrl,
   type User,
   type Buddy,
+  type ManualBook,
+  type BookshelfEntry,
 } from '@/shared/lib';
 import { Button, Card, Container, Logo, PageTransition, Avatar } from '@/shared/ui';
 import styles from './ProfilePage.module.css';
@@ -19,6 +21,25 @@ type Gender = 'male' | 'female' | 'unknown';
 export function ProfilePage() {
   const { user, refreshUser, logout } = useAuth();
   const navigate = useNavigate();
+
+  const [showDelete, setShowDelete] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const onDeleteAccount = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
+    const { error } = await apiPost('/auth/delete-account', { password: deletePassword }, { requireAuth: true });
+    if (error) {
+      setDeleteError(error);
+      setIsDeleting(false);
+      return;
+    }
+    // The account is gone; drop the now-useless token and leave.
+    logout();
+    navigate('/');
+  };
 
   const onLogout = () => {
     logout();
@@ -68,14 +89,97 @@ export function ProfilePage() {
     loadBuddyData();
   }, []);
 
+  const [buddyError, setBuddyError] = useState<string | null>(null);
+
   const removeBuddy = async (buddyId: string) => {
-    await apiDelete(`/social/buddies/${buddyId}`, { requireAuth: true });
+    setBuddyError(null);
+    const { error } = await apiDelete(`/social/buddies/${buddyId}`, { requireAuth: true });
+    if (error) {
+      setBuddyError(t('profile.buddyActionFailed'));
+      return;
+    }
     setBuddies((prev) => prev.filter((b) => b.user_id !== buddyId));
   };
 
   const addBuddyBack = async (buddyId: string) => {
-    await apiPost(`/social/buddies/${buddyId}`, {}, { requireAuth: true });
+    setBuddyError(null);
+    const { error } = await apiPost(`/social/buddies/${buddyId}`, {}, { requireAuth: true });
+    if (error) {
+      // The API rejects placeholder archive accounts outright; say so rather
+      // than leaving a button that appears to do nothing.
+      setBuddyError(t('profile.buddyNotAddable'));
+      return;
+    }
     await loadBuddyData();
+  };
+
+  // Books read outside the circles
+  const [manualBooks, setManualBooks] = useState<ManualBook[]>([]);
+  const [roundBookCount, setRoundBookCount] = useState(0);
+  const [bookTitle, setBookTitle] = useState('');
+  const [bookAuthor, setBookAuthor] = useState('');
+  const [bookDate, setBookDate] = useState('');
+  const [isAddingBook, setIsAddingBook] = useState(false);
+  const [bookError, setBookError] = useState<string | null>(null);
+  const [bookSuccess, setBookSuccess] = useState<string | null>(null);
+
+  const loadBooks = async () => {
+    const [mine, shelf] = await Promise.all([
+      apiGet<ManualBook[]>('/insights/books', { requireAuth: true }),
+      apiGet<BookshelfEntry[]>('/insights/bookshelf', { requireAuth: true }),
+    ]);
+    if (mine.data) setManualBooks(mine.data);
+    if (shelf.data) setRoundBookCount(shelf.data.filter((e) => e.source === 'round').length);
+  };
+
+  useEffect(() => {
+    loadBooks();
+  }, []);
+
+  const onAddBook = async (e: FormEvent) => {
+    e.preventDefault();
+    setBookError(null);
+    setBookSuccess(null);
+
+    const title = bookTitle.trim();
+    if (!title) {
+      setBookError(t('profile.bookEmptyTitle'));
+      return;
+    }
+
+    setIsAddingBook(true);
+    const { data, error } = await apiPost<ManualBook>(
+      '/insights/books',
+      {
+        title,
+        author: bookAuthor.trim() || null,
+        finished_on: bookDate || null,
+      },
+      { requireAuth: true }
+    );
+    setIsAddingBook(false);
+
+    if (error || !data) {
+      // The API answers with a reason code so it can be said in any language.
+      const known: Record<string, string> = {
+        duplicate_round: 'profile.bookDuplicateRound',
+        duplicate_manual: 'profile.bookDuplicateManual',
+        empty_title: 'profile.bookEmptyTitle',
+      };
+      setBookError(t(known[error ?? ''] ?? 'error.validation'));
+      return;
+    }
+
+    setManualBooks((prev) => [data, ...prev]);
+    setBookTitle('');
+    setBookAuthor('');
+    setBookDate('');
+    setBookSuccess(t('profile.bookAdded'));
+  };
+
+  const onRemoveBook = async (bookId: string) => {
+    await apiDelete(`/insights/books/${bookId}`, { requireAuth: true });
+    setManualBooks((prev) => prev.filter((b) => b.id !== bookId));
   };
 
   const setFavoriteBookAt = (index: number, value: string) => {
@@ -155,7 +259,7 @@ export function ProfilePage() {
           <Card variant="glass" padding="lg" className={styles.card}>
             <div className={styles.header}>
               <div>
-                <div className={styles.title}>{t('profile.title')}</div>
+                <div className={styles.title}>{t('profile.settingsTitle')}</div>
                 <div className={styles.subtitle}>{t('profile.subtitle')}</div>
               </div>
               <Link to="/" aria-label="Go to home">
@@ -306,6 +410,80 @@ export function ProfilePage() {
 
             <hr className={styles.divider} />
 
+            <div className={styles.sectionTitle}>{t('profile.readBooks')}</div>
+            <div className={styles.hint}>{t('profile.readBooksHint')}</div>
+
+            {roundBookCount > 0 && (
+              <div className={styles.bookCounted}>
+                {t('profile.readBooksFromRounds').replace('{count}', String(roundBookCount))}
+              </div>
+            )}
+
+            <form onSubmit={onAddBook} className={styles.bookForm}>
+              <input
+                type="text"
+                className={styles.input}
+                value={bookTitle}
+                onChange={(e) => setBookTitle(e.target.value)}
+                placeholder={t('profile.bookTitlePlaceholder')}
+                maxLength={300}
+              />
+              <div className={styles.bookFormRow}>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={bookAuthor}
+                  onChange={(e) => setBookAuthor(e.target.value)}
+                  placeholder={t('profile.bookAuthorPlaceholder')}
+                  maxLength={200}
+                />
+                <input
+                  type="date"
+                  className={styles.input}
+                  value={bookDate}
+                  onChange={(e) => setBookDate(e.target.value)}
+                  aria-label={t('profile.bookDateLabel')}
+                  max={new Date().toISOString().slice(0, 10)}
+                />
+              </div>
+
+              {bookError && <div className={styles.error}>{bookError}</div>}
+              {bookSuccess && <div className={styles.success}>{bookSuccess}</div>}
+
+              <Button type="submit" variant="secondary" disabled={isAddingBook}>
+                {isAddingBook ? t('profile.addingBook') : t('profile.addBook')}
+              </Button>
+            </form>
+
+            {manualBooks.length === 0 ? (
+              <div className={styles.hint}>{t('profile.noReadBooks')}</div>
+            ) : (
+              <div className={styles.bookList}>
+                {manualBooks.map((b) => (
+                  <div key={b.id} className={styles.bookRow}>
+                    <div className={styles.bookInfo}>
+                      <span className={styles.bookTitle}>{b.title}</span>
+                      {(b.author || b.finished_on) && (
+                        <span className={styles.bookMeta}>
+                          {[b.author, b.finished_on].filter(Boolean).join(' · ')}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.buddyRemoveBtn}
+                      onClick={() => onRemoveBook(b.id)}
+                      aria-label={t('profile.removeBook')}
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <hr className={styles.divider} />
+
             <div className={styles.sectionTitle}>{t('profile.myBuddies')}</div>
             {buddies.length === 0 ? (
               <div className={styles.hint}>{t('profile.noBuddies')}</div>
@@ -331,6 +509,7 @@ export function ProfilePage() {
             <hr className={styles.divider} />
 
             <div className={styles.sectionTitle}>{t('profile.whoAddedYou')}</div>
+            {buddyError && <div className={styles.error}>{buddyError}</div>}
             {followers.length === 0 ? (
               <div className={styles.hint}>{t('profile.noFollowers')}</div>
             ) : (
@@ -422,9 +601,58 @@ export function ProfilePage() {
                 {t('header.logout')}
               </button>
             </div>
+
+            <div className={styles.dangerZone}>
+              <div className={styles.dangerTitle}>{t('profile.dangerZone')}</div>
+              <p className={styles.dangerText}>{t('profile.deleteWarning')}</p>
+
+              {!showDelete ? (
+                <button type="button" className={styles.dangerBtn} onClick={() => setShowDelete(true)}>
+                  {t('profile.deleteAccount')}
+                </button>
+              ) : (
+                <div className={styles.dangerConfirm}>
+                  <div className={styles.dangerConfirmTitle}>{t('profile.deleteConfirmTitle')}</div>
+                  <label className={styles.label} htmlFor="deletePassword">
+                    {t('profile.deletePasswordLabel')}
+                  </label>
+                  <input
+                    id="deletePassword"
+                    className={styles.input}
+                    type="password"
+                    autoComplete="current-password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                  />
+                  {deleteError && <div className={styles.dangerError}>{deleteError}</div>}
+                  <div className={styles.dangerActions}>
+                    <button
+                      type="button"
+                      className={styles.logoutBtn}
+                      onClick={() => {
+                        setShowDelete(false);
+                        setDeletePassword('');
+                        setDeleteError(null);
+                      }}
+                    >
+                      {t('profile.deleteCancel')}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.dangerBtn}
+                      onClick={onDeleteAccount}
+                      disabled={isDeleting || deletePassword.length === 0}
+                    >
+                      {isDeleting ? t('profile.deleting') : t('profile.deleteConfirm')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </Card>
         </Container>
       </div>
     </PageTransition>
   );
 }
+
