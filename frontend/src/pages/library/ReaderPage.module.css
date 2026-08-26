@@ -56,3 +56,39 @@
   font-size: var(--font-size-xs); color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---- reader tools: font size, contents ---- */
+.barTools {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+.toolBtn {
+  min-width: 34px; height: 30px; padding: 0 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-card); color: var(--color-text-secondary);
+  font-size: var(--font-size-xs); font-family: inherit; cursor: pointer;
+}
+.toolBtn:hover { border-color: var(--color-border-accent); color: var(--color-accent-primary); }
+
+.tocBackdrop {
+  position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 8;
+}
+.tocPanel {
+  position: absolute; top: 0; bottom: 0; right: 0; width: min(320px, 85vw);
+  z-index: 9; overflow-y: auto;
+  background: var(--color-bg-secondary);
+  border-left: 1px solid var(--color-border-primary);
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 0 env(safe-area-inset-bottom, 0px);
+}
+.tocTitle {
+  font-size: var(--font-size-xs); text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide); color: var(--color-text-muted);
+  padding: 0 16px 10px;
+}
+.tocItem {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  padding: 11px 16px; font-family: inherit; font-size: var(--font-size-sm);
+  color: var(--color-text-primary); cursor: pointer;
+  border-bottom: 1px solid var(--color-border-secondary);
+}
+.tocItem:hover { background: var(--color-bg-card); color: var(--color-accent-primary); }

@@ -20,11 +20,13 @@ export function ReaderPage() {
   const { t } = useI18n();
 
   const hostRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const bookRef = useRef<Book | null>(null);
   const renditionRef = useRef<Rendition | null>(null);
   const pdfRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
   const saveTimer = useRef<number | null>(null);
   const objectUrlRef = useRef<string | null>(null);
+  const fontPctRef = useRef(100);
 
   const [meta, setMeta] = useState<LibraryBook | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +34,22 @@ export function ReaderPage() {
   const [percent, setPercent] = useState(0);
   const [pdfPage, setPdfPage] = useState(1);
   const [pdfPages, setPdfPages] = useState(0);
+  const [showToc, setShowToc] = useState(false);
+  const [toc, setToc] = useState<{ label: string; href: string }[]>([]);
+  // Font size is a reader preference, not a per-book one, so it is remembered
+  // globally and applied to whatever they open next.
+  const [fontPct, setFontPct] = useState(() => {
+    const saved = Number(localStorage.getItem('pb.readerFont'));
+    return Number.isFinite(saved) && saved >= 80 && saved <= 200 ? saved : 100;
+  });
+
+  // Keep the ref in step so the loader effect doesn't depend on font size and
+  // re-open the book every time it changes.
+  useEffect(() => {
+    fontPctRef.current = fontPct;
+    localStorage.setItem('pb.readerFont', String(fontPct));
+    renditionRef.current?.themes.fontSize(`${fontPct}%`);
+  }, [fontPct]);
 
   /** Persist position. Debounced, and never lowers a percentage the server
    *  already knows about — the backend enforces that too, this just avoids
@@ -134,7 +152,21 @@ export function ReaderPage() {
             spread: 'none',
           });
           renditionRef.current = rendition;
+          rendition.themes.fontSize(`${fontPctRef.current}%`);
           await rendition.display(info.progress_position ?? undefined);
+
+          // Chapter list for jumping around — every real reader has one.
+          try {
+            const nav = await book.loaded.navigation;
+            setToc(
+              (nav.toc ?? []).map((item: { label: string; href: string }) => ({
+                label: (item.label ?? '').trim(),
+                href: item.href,
+              }))
+            );
+          } catch {
+            /* a book without navigation still reads fine */
+          }
 
           // locations power the percentage; generating them is what lets a
           // CFI be turned into "you are 34% through".
@@ -188,6 +220,34 @@ export function ReaderPage() {
     else goToPdfPage(pdfPage + 1);
   }, [goToPdfPage, pdfPage]);
 
+  // Swipe to turn pages. On a phone this is how people expect to read; the
+  // buttons stay for desktop and accessibility.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    let startX = 0;
+    let startY = 0;
+    const onStart = (e: TouchEvent) => {
+      startX = e.changedTouches[0].clientX;
+      startY = e.changedTouches[0].clientY;
+    };
+    const onEnd = (e: TouchEvent) => {
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = e.changedTouches[0].clientY - startY;
+      // Ignore mostly-vertical movement so scrolling a PDF page doesn't
+      // accidentally flip it.
+      if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+      if (dx < 0) goNext();
+      else goPrev();
+    };
+    stage.addEventListener('touchstart', onStart, { passive: true });
+    stage.addEventListener('touchend', onEnd, { passive: true });
+    return () => {
+      stage.removeEventListener('touchstart', onStart);
+      stage.removeEventListener('touchend', onEnd);
+    };
+  }, [goNext, goPrev]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') goPrev();
@@ -205,10 +265,60 @@ export function ReaderPage() {
           ← {t('library.backToLibrary')}
         </button>
         <div className={styles.barTitle}>{meta?.title ?? ''}</div>
-        <div className={styles.barPercent}>{percent}%</div>
+        <div className={styles.barTools}>
+          {meta?.file_format === 'epub' && (
+            <>
+              <button
+                className={styles.toolBtn}
+                onClick={() => setFontPct((v) => Math.max(80, v - 10))}
+                aria-label={t('library.fontSmaller')}
+              >
+                A−
+              </button>
+              <button
+                className={styles.toolBtn}
+                onClick={() => setFontPct((v) => Math.min(200, v + 10))}
+                aria-label={t('library.fontBigger')}
+              >
+                A+
+              </button>
+              {toc.length > 0 && (
+                <button
+                  className={styles.toolBtn}
+                  onClick={() => setShowToc((v) => !v)}
+                  aria-label={t('library.contents')}
+                >
+                  ☰
+                </button>
+              )}
+            </>
+          )}
+          <span className={styles.barPercent}>{percent}%</span>
+        </div>
       </header>
 
-      <div className={styles.stage}>
+      {showToc && (
+        <>
+          <div className={styles.tocBackdrop} onClick={() => setShowToc(false)} />
+          <nav className={styles.tocPanel}>
+            <div className={styles.tocTitle}>{t('library.contents')}</div>
+            {toc.map((item, i) => (
+              <button
+                key={i}
+                className={styles.tocItem}
+                onClick={() => {
+                  renditionRef.current?.display(item.href);
+                  setShowToc(false);
+                }}
+              >
+                {item.label || `#${i + 1}`}
+              </button>
+            ))}
+          </nav>
+        </>
+      )}
+
+      <div className={styles.stage} ref={stageRef}>
         {isLoading && <div className={styles.loading}>{t('library.opening')}</div>}
         {error && <div className={styles.error}>{error}</div>}
         <div ref={hostRef} className={styles.host} />
