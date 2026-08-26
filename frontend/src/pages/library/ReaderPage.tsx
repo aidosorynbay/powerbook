@@ -3,7 +3,17 @@ import { useNavigate, useParams } from 'react-router-dom';
 import ePub, { type Book, type Rendition } from 'epubjs';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import { useI18n, apiGet, apiGetBlob, apiPut, type LibraryBook } from '@/shared/lib';
+import {
+  useI18n,
+  apiGet,
+  apiGetBlob,
+  apiPut,
+  apiPost,
+  DEFAULT_GROUP_SLUG,
+  type LibraryBook,
+  type CurrentRoundStatusResponse,
+  type CalendarResponse,
+} from '@/shared/lib';
 import styles from './ReaderPage.module.css';
 
 // pdf.js refuses to parse anything without a worker, and Vite needs the URL
@@ -35,6 +45,12 @@ export function ReaderPage() {
   const [pdfPage, setPdfPage] = useState(1);
   const [pdfPages, setPdfPages] = useState(0);
   const [showToc, setShowToc] = useState(false);
+  // Time actually spent reading this session. The app can measure it because
+  // the book is open here — a tracker that lives outside your book has to
+  // take your word for the number.
+  const [seconds, setSeconds] = useState(0);
+  const [logState, setLogState] = useState<'idle' | 'asking' | 'saving' | 'done' | 'error'>('idle');
+  const [logMessage, setLogMessage] = useState('');
   const [toc, setToc] = useState<{ label: string; href: string }[]>([]);
   // Font size is a reader preference, not a per-book one, so it is remembered
   // globally and applied to whatever they open next.
@@ -50,6 +66,16 @@ export function ReaderPage() {
     localStorage.setItem('pb.readerFont', String(fontPct));
     renditionRef.current?.themes.fontSize(`${fontPct}%`);
   }, [fontPct]);
+
+  // Only counts while the reader is actually on screen: a book left open in a
+  // background tab overnight must not turn into eight hours of "reading".
+  useEffect(() => {
+    if (isLoading || error) return;
+    const tick = window.setInterval(() => {
+      if (document.visibilityState === 'visible') setSeconds((s) => s + 1);
+    }, 1000);
+    return () => window.clearInterval(tick);
+  }, [isLoading, error]);
 
   /** Persist position. Debounced, and never lowers a percentage the server
    *  already knows about — the backend enforces that too, this just avoids
@@ -209,6 +235,58 @@ export function ReaderPage() {
     };
   }, [bookId, t, queueSave, renderPdfPage]);
 
+  const minutes = Math.floor(seconds / 60);
+
+  /** Add this session to today's entry.
+   *
+   * The log endpoint replaces the day's minutes rather than adding to them,
+   * so today's existing total has to be read first — otherwise a 10-minute
+   * session would wipe an hour already logged by hand.
+   */
+  const logSession = async () => {
+    setLogState('saving');
+
+    const { data: status } = await apiGet<CurrentRoundStatusResponse>(
+      `/groups/by-slug/${DEFAULT_GROUP_SLUG}/current-round-status`, { requireAuth: true }
+    );
+    const round = status?.round;
+    if (!round || !status?.participation?.is_participant) {
+      setLogState('error');
+      setLogMessage(t('reader.logNoRound'));
+      return;
+    }
+
+    const today = new Date();
+    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    const { data: cal } = await apiGet<CalendarResponse>(
+      `/rounds/${round.id}/calendar`, { requireAuth: true }
+    );
+    const existing = cal?.days.find((d) => d.date === iso)?.minutes ?? 0;
+
+    const { error: err } = await apiPost(
+      `/rounds/${round.id}/reading_logs`,
+      { date: iso, minutes: existing + minutes, book_finished: false, comment: null, comment_private: false },
+      { requireAuth: true }
+    );
+    if (err) {
+      setLogState('error');
+      setLogMessage(err);
+      return;
+    }
+    setLogState('done');
+    setLogMessage(t('reader.logSaved', { total: existing + minutes }));
+  };
+
+  const leave = () => {
+    // Offer to keep the session rather than silently discarding it.
+    if (minutes >= 1 && logState === 'idle') {
+      setLogState('asking');
+      return;
+    }
+    navigate('/library');
+  };
+
   // ---- navigation ----------------------------------------------------
   const goPrev = useCallback(() => {
     if (renditionRef.current) renditionRef.current.prev();
@@ -252,16 +330,17 @@ export function ReaderPage() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') goPrev();
       if (e.key === 'ArrowRight') goNext();
-      if (e.key === 'Escape') navigate('/library');
+      if (e.key === 'Escape') leave();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [goPrev, goNext, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goPrev, goNext, minutes, logState]);
 
   return (
     <div className={styles.reader}>
       <header className={styles.bar}>
-        <button className={styles.barBtn} onClick={() => navigate('/library')}>
+        <button className={styles.barBtn} onClick={leave}>
           ← {t('library.backToLibrary')}
         </button>
         <div className={styles.barTitle}>{meta?.title ?? ''}</div>
@@ -318,6 +397,38 @@ export function ReaderPage() {
         </>
       )}
 
+      {logState !== 'idle' && (
+        <div className={styles.logOverlay}>
+          <div className={styles.logCard}>
+            {logState === 'asking' && (
+              <>
+                <div className={styles.logTitle}>{t('reader.logTitle', { minutes })}</div>
+                <p className={styles.logText}>{t('reader.logText')}</p>
+                <div className={styles.logActions}>
+                  <button className={styles.logSkip} onClick={() => navigate('/library')}>
+                    {t('reader.logSkip')}
+                  </button>
+                  <button className={styles.logConfirm} onClick={logSession}>
+                    {t('reader.logConfirm')}
+                  </button>
+                </div>
+              </>
+            )}
+            {logState === 'saving' && <div className={styles.logTitle}>{t('reader.logSaving')}</div>}
+            {(logState === 'done' || logState === 'error') && (
+              <>
+                <div className={styles.logTitle}>{logMessage}</div>
+                <div className={styles.logActions}>
+                  <button className={styles.logConfirm} onClick={() => navigate('/library')}>
+                    {t('reader.logClose')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className={styles.stage} ref={stageRef}>
         {isLoading && <div className={styles.loading}>{t('library.opening')}</div>}
         {error && <div className={styles.error}>{error}</div>}
@@ -327,6 +438,9 @@ export function ReaderPage() {
       {!isLoading && !error && (
         <footer className={styles.controls}>
           <button className={styles.navBtn} onClick={goPrev}>‹</button>
+          <div className={styles.sessionTime} title={t('reader.sessionTitle')}>
+            ⏱ {minutes}{t('reader.minShort')}
+          </div>
           <div className={styles.position}>
             {meta?.file_format === 'pdf' && pdfPages > 0
               ? t('library.pageOf', { page: pdfPage, total: pdfPages })

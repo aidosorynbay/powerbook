@@ -92,3 +92,42 @@
   border-bottom: 1px solid var(--color-border-secondary);
 }
 .tocItem:hover { background: var(--color-bg-card); color: var(--color-accent-primary); }
+
+/* ---- reading session ---- */
+.sessionTime {
+  font-size: var(--font-size-xs); color: var(--color-accent-primary);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+.logOverlay {
+  position: absolute; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.72); padding: 20px;
+}
+.logCard {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  padding: 22px; width: 100%; max-width: 360px;
+}
+.logTitle {
+  font-size: var(--font-size-lg); font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary); margin-bottom: 8px;
+}
+.logText {
+  font-size: var(--font-size-sm); color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed); margin: 0 0 18px;
+}
+.logActions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.logSkip {
+  background: none; border: none; color: var(--color-text-secondary);
+  font-size: var(--font-size-sm); font-family: inherit; cursor: pointer; padding: 10px 6px;
+}
+.logSkip:hover { color: var(--color-text-primary); }
+.logConfirm {
+  background: var(--color-accent-primary); color: #fff; border: none;
+  border-radius: var(--radius-md); padding: 10px 18px;
+  font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold);
+  font-family: inherit; cursor: pointer;
+}
+.logConfirm:hover { opacity: 0.88; }

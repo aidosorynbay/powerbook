@@ -10,6 +10,7 @@ import {
   type LibraryStats,
 } from '@/shared/lib';
 import { Container, PageTransition, Card } from '@/shared/ui';
+import { extractCover } from './extractCover';
 import { Header, Footer } from '@/widgets';
 import styles from './LibraryPage.module.css';
 
@@ -92,11 +93,20 @@ export function LibraryPage() {
     // reader can rename it afterwards.
     form.append('title', file.name.replace(/\.[^.]+$/, ''));
 
-    const { error: err } = await apiUploadWithProgress<LibraryBook>(
+    const { data: created, error: err } = await apiUploadWithProgress<LibraryBook>(
       '/library/books', form, setUploadPct
     );
-    if (err) setError(err);
-    else await load();
+    if (err) {
+      setError(err);
+    } else {
+      if (created) {
+        const cover = await extractCover(file);
+        if (cover) {
+          await apiPatch(`/library/books/${created.id}`, { cover_data: cover }, { requireAuth: true });
+        }
+      }
+      await load();
+    }
 
     setIsUploading(false);
     setUploadPct(0);
