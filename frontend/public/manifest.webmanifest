@@ -1,0 +1,21 @@
+{
+  "name": "PowerBook — Reading Marathon",
+  "short_name": "PowerBook",
+  "description": "Monthly reading circles, your own library, and every book you have finished — in one place.",
+  "start_url": "/round",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f0f0f",
+  "theme_color": "#0f0f0f",
+  "lang": "ru",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Отметить чтение", "url": "/round" },
+    { "name": "Библиотека", "url": "/library" }
+  ]
+}
