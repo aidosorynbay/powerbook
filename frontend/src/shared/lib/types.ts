@@ -36,6 +36,9 @@ export type RoundInfo = {
   status: RoundStatus;
   registration_open_until_day: number;
   timezone: string;
+  /** Day window inside the month; a mini-round is a slice of it. */
+  start_day?: number;
+  end_day?: number | null;
 };
 
 export type ParticipationInfo = {
@@ -67,6 +70,8 @@ export type LeaderboardEntry = {
 // Calendar
 export type CalendarDay = {
   date: string;
+  /** false when the day falls outside a mini-round's window */
+  in_round?: boolean;
   minutes: number;
   score: number;
   book_finished: boolean;
@@ -156,6 +161,14 @@ export type PublicStats = {
   days_remaining: number;
   round_progress_percent: number;
   is_round_active: boolean;
+  // Current round window, used by the homepage round card
+  round_year?: number | null;
+  round_month?: number | null;
+  round_start_day?: number | null;
+  round_end_day?: number | null;
+  round_is_partial?: boolean;
+  round_registration_open?: boolean;
+  yearly?: YearlyStat[];
 };
 
 // Insights
@@ -191,6 +204,17 @@ export type BookshelfEntry = {
   title: string;
   date: string;
   round_label: string;
+  /** 'round' comes from a reading log; 'manual' the reader added themselves. */
+  source: 'round' | 'manual';
+  id: string | null;
+  author: string | null;
+};
+
+export type ManualBook = {
+  id: string;
+  title: string;
+  author: string | null;
+  finished_on: string | null;
 };
 
 export type PopularBook = {
@@ -332,6 +356,12 @@ export type DirectoryEntry = {
   recommendation_text: string | null;
   recent_books: string[];
   badges_earned: number;
+  /** A historical record nobody has claimed yet, not a registered member. */
+  is_archive: boolean;
+  archive_usernames: string[];
+  rounds_count: number;
+  total_minutes: number;
+  books_count: number;
 };
 
 export type PublicProfile = {
@@ -353,6 +383,8 @@ export type PublicProfile = {
   recent_books: string[];
   favorite_books: string[];
   is_buddy: boolean;
+  /** An unclaimed archive record, not a member's own profile. */
+  is_archive: boolean;
   is_self: boolean;
 };
 
@@ -376,3 +408,46 @@ export type Buddy = {
   archetype_weekday: number | null;
 };
 
+
+
+/** One calendar year of community history, from /stats/public. */
+export type YearlyStat = {
+  year: number;
+  readers: number;
+  minutes: number;
+  entries: number;
+};
+
+// Personal library (uploaded PDF/EPUB)
+export type LibraryBook = {
+  id: string;
+  title: string;
+  author: string | null;
+  file_format: 'pdf' | 'epub';
+  file_size: number;
+  cover_data: string | null;
+  progress_percent: number;
+  progress_position: string | null;
+  last_read_at: string | null;
+  is_visible_to_buddies: boolean;
+  created_at: string;
+};
+
+export type LibraryStats = {
+  total_books: number;
+  finished_books: number;
+  in_progress_books: number;
+  not_started_books: number;
+  average_percent: number;
+  storage_used_bytes: number;
+  storage_quota_bytes: number;
+};
+
+export type ShelfBook = {
+  title: string;
+  author: string | null;
+  file_format: 'pdf' | 'epub';
+  cover_data: string | null;
+  progress_percent: number;
+  last_read_at: string | null;
+};

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useI18n, apiGet, type DirectoryEntry } from '@/shared/lib';
 import { Container, PageTransition, Avatar, BookCard } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
@@ -11,6 +11,9 @@ export function DirectoryPage() {
   const [entries, setEntries] = useState<DirectoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [query, setQuery] = useState('');
+  // Registered members first by default — the archive is much larger and
+  // would otherwise bury the people who are actually here.
+  const [showArchive, setShowArchive] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,16 +28,21 @@ export function DirectoryPage() {
     };
   }, []);
 
+  const members = useMemo(() => entries.filter((e) => !e.is_archive), [entries]);
+  const archive = useMemo(() => entries.filter((e) => e.is_archive), [entries]);
+
   const filtered = useMemo(() => {
+    const pool = showArchive ? archive : members;
     const q = query.trim().toLowerCase();
-    if (!q) return entries;
-    return entries.filter(
+    if (!q) return pool;
+    return pool.filter(
       (e) =>
         e.display_name.toLowerCase().includes(q) ||
         e.username.toLowerCase().includes(q) ||
+        e.archive_usernames.some((u) => u.toLowerCase().includes(q)) ||
         (e.telegram_id ?? '').toLowerCase().includes(q)
     );
-  }, [entries, query]);
+  }, [members, archive, query, showArchive]);
 
   return (
     <PageTransition>
@@ -43,6 +51,32 @@ export function DirectoryPage() {
         <main className={styles.main}>
           <Container>
             <h1 className={styles.title}>{t('directory.title')}</h1>
+
+            <div className={styles.tabs} role="group">
+              <button
+                type="button"
+                className={`${styles.tab} ${!showArchive ? styles.tabActive : ''}`}
+                aria-pressed={!showArchive}
+                onClick={() => setShowArchive(false)}
+              >
+                {t('directory.tabMembers')} ({members.length})
+              </button>
+              <button
+                type="button"
+                className={`${styles.tab} ${showArchive ? styles.tabActive : ''}`}
+                aria-pressed={showArchive}
+                onClick={() => setShowArchive(true)}
+              >
+                {t('directory.tabArchive')} ({archive.length})
+              </button>
+            </div>
+
+            {showArchive && (
+              <p className={styles.archiveNote}>
+                {t('directory.archiveNote')}{' '}
+                <Link to="/claim" className={styles.archiveLink}>{t('directory.archiveClaim')}</Link>
+              </p>
+            )}
             <p className={styles.subtitle}>{t('directory.subtitle')}</p>
 
             <input
@@ -60,8 +94,10 @@ export function DirectoryPage() {
                 {filtered.map((entry) => (
                   <button
                     key={entry.user_id}
-                    className={styles.readerCard}
-                    onClick={() => navigate(`/readers/${entry.user_id}`)}
+                    className={`${styles.readerCard} ${entry.is_archive ? styles.archiveCard : ''}`}
+                    onClick={() =>
+                      entry.is_archive ? navigate('/claim') : navigate(`/readers/${entry.user_id}`)
+                    }
                   >
                     <div className={styles.readerTop}>
                       <Avatar src={entry.avatar_data} name={entry.display_name} size="md" />
@@ -78,6 +114,9 @@ export function DirectoryPage() {
                           </div>
                         )}
                       </div>
+                      {entry.is_archive && (
+                        <div className={styles.archivePill}>{t('directory.archiveTag')}</div>
+                      )}
                       {entry.badges_earned > 0 && (
                         <div className={styles.badgePill}>
                           <span>&#127942;</span>
@@ -85,6 +124,23 @@ export function DirectoryPage() {
                         </div>
                       )}
                     </div>
+
+                    {entry.is_archive && (
+                      <>
+                        <div className={styles.archiveStats}>
+                          <span><b>{entry.rounds_count}</b> {t('directory.statRounds')}</span>
+                          <span><b>{Math.round(entry.total_minutes / 60)}</b> {t('directory.statHours')}</span>
+                          {entry.books_count > 0 && (
+                            <span><b>{entry.books_count}</b> {t('directory.statBooks')}</span>
+                          )}
+                        </div>
+                        {entry.archive_usernames.length > 1 && (
+                          <div className={styles.archiveAliases}>
+                            {t('directory.alsoKnownAs')} {entry.archive_usernames.join(', ')}
+                          </div>
+                        )}
+                      </>
+                    )}
 
                     {entry.recent_books.length > 0 && (
                       <div className={styles.miniLibrary}>

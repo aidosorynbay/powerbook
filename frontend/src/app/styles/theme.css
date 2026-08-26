@@ -158,7 +158,11 @@ html {
     font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
+    /* clip, not hidden: `overflow-x: hidden` here turns the root into a
+       scroll container, which silently disables position:sticky everywhere
+       below it (the header was the casualty). `clip` still prevents sideways
+       scrolling but leaves sticky working. */
+    overflow-x: clip;
 }
 
 body {
@@ -169,7 +173,7 @@ body {
     color: var(--color-text-primary);
     background-color: var(--color-bg-primary);
     min-height: 100vh;
-    overflow-x: hidden;
+    overflow-x: clip;
     max-width: 100vw;
 }
 

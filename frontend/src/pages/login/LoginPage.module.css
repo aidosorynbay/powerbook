@@ -116,3 +116,40 @@
     padding-top: var(--spacing-8);
   }
 }
+
+/* Reclaiming an old nickname — deliberately loud, it's why most people log in */
+.claimCta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--spacing-5);
+  padding: var(--spacing-4);
+  border: 1px solid var(--color-border-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-primary-muted);
+  text-decoration: none;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.claimCta:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-accent-primary);
+}
+
+.claimCtaTitle {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent-primary);
+}
+
+.claimCtaText {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+
+/* Armed state: no longer a link, it's a promise about what happens next */
+.claimCtaArmed {
+  border-color: var(--color-accent-primary);
+  cursor: default;
+}

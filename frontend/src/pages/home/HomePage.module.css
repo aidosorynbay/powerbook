@@ -7,3 +7,12 @@
 .main {
   flex: 1;
 }
+
+
+@media (max-width: 900px) {
+  /* Clear the fixed bottom tab bar (plus the iPhone home indicator) so the
+     last section isn't hidden underneath it. */
+  .page {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}

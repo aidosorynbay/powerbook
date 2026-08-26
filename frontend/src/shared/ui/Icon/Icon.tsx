@@ -6,6 +6,7 @@ export type IconName =
   | 'arrow-right'
   | 'telegram'
   | 'email'
+  | 'user'
   | 'users'
   | 'clock'
   | 'refresh'
@@ -50,6 +51,12 @@ const icons: Record<IconName, JSX.Element> = {
     <>
       <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" />
       <path d="M2 7l10 6 10-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </>
+  ),
+  'user': (
+    <>
+      <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      <path d="M5 21v-1.5A5.5 5.5 0 0110.5 14h3a5.5 5.5 0 015.5 5.5V21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
     </>
   ),
   'users': (

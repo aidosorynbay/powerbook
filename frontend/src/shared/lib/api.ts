@@ -150,3 +150,63 @@ export async function apiDelete<T>(
     requireAuth: options?.requireAuth,
   });
 }
+
+/**
+ * POST a multipart form (file upload).
+ *
+ * Content-Type is deliberately not set: the browser has to generate the
+ * multipart boundary itself, and setting the header by hand strips it.
+ */
+export async function apiUpload<T>(
+  endpoint: string,
+  form: FormData,
+  options?: { requireAuth?: boolean }
+): Promise<{ data: T | null; error: string | null }> {
+  return apiFetch<T>(endpoint, {
+    method: 'POST',
+    body: form,
+    requireAuth: options?.requireAuth,
+  });
+}
+
+/**
+ * PATCH request with JSON body.
+ */
+export async function apiPatch<T, B = unknown>(
+  endpoint: string,
+  body: B,
+  options?: { requireAuth?: boolean }
+): Promise<{ data: T | null; error: string | null }> {
+  return apiFetch<T>(endpoint, {
+    method: 'PATCH',
+    headers: getJsonHeaders(),
+    body: JSON.stringify(body),
+    requireAuth: options?.requireAuth,
+  });
+}
+
+/**
+ * GET a binary response as a Blob.
+ *
+ * Book files sit behind an authenticated route, so they cannot be handed to
+ * a reader as a plain URL — the token has to travel with the request and the
+ * bytes come back in memory.
+ */
+export async function apiGetBlob(
+  endpoint: string,
+  options?: { requireAuth?: boolean }
+): Promise<{ data: Blob | null; error: string | null }> {
+  const url = `${getApiBaseUrl()}${endpoint}`;
+  const headers: Record<string, string> = {};
+  if (options?.requireAuth) {
+    const token = getAuthToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+  }
+  try {
+    const res = await fetch(url, { method: 'GET', headers });
+    if (!res.ok) return { data: null, error: await parseErrorMessage(res) };
+    return { data: await res.blob(), error: null };
+  } catch {
+    return { data: null, error: 'error.network' };
+  }
+}

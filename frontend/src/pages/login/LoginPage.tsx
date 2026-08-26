@@ -14,6 +14,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const claimArmed = searchParams.get('redirect') === '/claim';
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -90,6 +91,22 @@ export function LoginPage() {
               {isSubmitting ? t('login.submitting') : t('login.submit')}
             </Button>
           </form>
+
+          {/* Most people arriving here read in the circles for years before
+              the site existed. Finding that history is the first thing they
+              want, so it sits with the form rather than behind a menu.
+              Once armed, signing in lands on the search instead of home. */}
+          {claimArmed ? (
+            <div className={`${styles.claimCta} ${styles.claimCtaArmed}`}>
+              <span className={styles.claimCtaTitle}>{t('login.claimArmedTitle')}</span>
+              <span className={styles.claimCtaText}>{t('login.claimArmedText')}</span>
+            </div>
+          ) : (
+            <Link to="/login?redirect=%2Fclaim" className={styles.claimCta}>
+              <span className={styles.claimCtaTitle}>{t('login.claimTitle')}</span>
+              <span className={styles.claimCtaText}>{t('login.claimText')}</span>
+            </Link>
+          )}
 
           <div className={styles.footer}>
             <span>{t('login.noAccount')}</span>

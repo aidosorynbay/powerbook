@@ -14,3 +14,4 @@ export { PublicProfilePage } from './reader';
 export { SuggestionsPage } from './suggestions';
 export { AdminSuggestionsPage } from './admin-suggestions';
 export { PrivacyPage, TermsPage } from './legal';
+export { LibraryPage } from './library';

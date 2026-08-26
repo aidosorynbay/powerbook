@@ -1,0 +1,52 @@
+.page {
+  padding: var(--spacing-8) 0 var(--spacing-16);
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-3);
+  text-align: center;
+  margin-bottom: var(--spacing-8);
+}
+
+.title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.02em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.lede {
+  color: var(--color-text-secondary);
+  max-width: 56ch;
+  margin: 0;
+  line-height: var(--line-height-relaxed);
+}
+
+.gate {
+  margin: 0 0 var(--spacing-5);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.gateActions {
+  display: flex;
+  gap: var(--spacing-3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.gateLink {
+  text-decoration: none;
+}
+
+.note {
+  margin: var(--spacing-6) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+  line-height: var(--line-height-relaxed);
+}

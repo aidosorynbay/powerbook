@@ -386,15 +386,56 @@
   border: 1px solid var(--color-border-accent);
 }
 
-/* Shared/group day cells */
+/* Shared/group day cells.
+   A single-hue opacity ramp made 20 readers and 60 readers look nearly the
+   same, so this walks a multi-hue scale instead — violet → magenta → the
+   brand orange → amber. Brand colour stays the anchor at the busy end, and
+   quiet days are now clearly a different colour, not just a fainter one.
+   --intensity (0..1) is set inline per day by ArchivePage.tsx. */
 .circleDayActive {
   --intensity: 1;
-  --heat-low: color-mix(in oklab, var(--color-accent-primary) 9%, var(--color-bg-card) 91%);
-  --heat-high: color-mix(in oklab, var(--color-accent-primary) 92%, white 8%);
-  background: color-mix(in oklab, var(--heat-low) calc((1 - var(--intensity)) * 100%), var(--heat-high) calc(var(--intensity) * 100%));
-  border-color: color-mix(in oklab, var(--color-border-secondary) calc((1 - var(--intensity)) * 100%), var(--color-accent-primary) calc(var(--intensity) * 70%));
-  color: color-mix(in oklab, var(--color-text-secondary) calc((1 - var(--intensity)) * 100%), var(--color-bg-primary) calc(var(--intensity) * 85%));
-  box-shadow: 0 0 calc(var(--intensity) * 10px) color-mix(in oklab, var(--color-accent-primary) calc(var(--intensity) * 45%), transparent);
+  --heat-1: #2E1B45;
+  --heat-2: #5C2A6E;
+  --heat-3: #9B3172;
+  --heat-4: #D2443F;
+  --heat-5: var(--color-accent-primary);
+  --heat-6: #F5B72E;
+
+  /* Piecewise blend across five segments of the ramp */
+  --seg: calc(var(--intensity) * 5);
+  --t1: clamp(0, var(--seg), 1);
+  --t2: clamp(0, calc(var(--seg) - 1), 1);
+  --t3: clamp(0, calc(var(--seg) - 2), 1);
+  --t4: clamp(0, calc(var(--seg) - 3), 1);
+  --t5: clamp(0, calc(var(--seg) - 4), 1);
+
+  --mix1: color-mix(in oklab, var(--heat-2) calc(var(--t1) * 100%), var(--heat-1));
+  --mix2: color-mix(in oklab, var(--heat-3) calc(var(--t2) * 100%), var(--mix1));
+  --mix3: color-mix(in oklab, var(--heat-4) calc(var(--t3) * 100%), var(--mix2));
+  --mix4: color-mix(in oklab, var(--heat-5) calc(var(--t4) * 100%), var(--mix3));
+  --heat: color-mix(in oklab, var(--heat-6) calc(var(--t5) * 100%), var(--mix4));
+
+  background: var(--heat);
+  border-color: color-mix(in oklab, var(--heat) 70%, transparent);
+  /* Dark text only once the cell is bright enough to need it */
+  color: color-mix(in oklab, var(--color-bg-primary) calc(max(0, var(--intensity) - 0.62) * 260%), white);
+  box-shadow: 0 0 calc(max(0, var(--intensity) - 0.5) * 18px)
+    color-mix(in oklab, var(--heat) calc(var(--intensity) * 55%), transparent);
+}
+
+/* Legend gradient bar — mirrors the ramp above so the scale is readable */
+.sharedScale {
+  width: 150px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, #2E1B45, #5C2A6E, #9B3172, #D2443F, var(--color-accent-primary), #F5B72E);
+  box-shadow: 0 0 14px color-mix(in oklab, var(--color-accent-primary) 22%, transparent);
+}
+
+.sharedScaleEnd {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .circleDayCount {
@@ -465,3 +506,68 @@
   font-variant-numeric: tabular-nums;
 }
 
+
+/* ---- Shared view: year summary + per-month peak ---- */
+
+.summaryRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-6);
+}
+
+.summaryCard {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-4);
+}
+
+.summaryNum {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.summaryNumAccent {
+  color: var(--color-accent-primary);
+}
+
+.summaryLbl {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-top: 3px;
+}
+
+.monthHeadRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-3);
+}
+
+.monthPeak {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Lift the day out of the grid on hover so its count is readable */
+.dayCellClickable:hover {
+  transform: scale(1.18);
+  z-index: 3;
+  box-shadow: var(--shadow-md, 0 4px 14px rgba(0, 0, 0, 0.5));
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .summaryRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

@@ -131,8 +131,12 @@
 
 /* Mobile responsive */
 @media (max-width: 900px) {
+  /* Keep the nav reachable on phones — it already scrolls sideways,
+     so it only needs to be tighter, not hidden. */
   .nav {
-    display: none;
+    gap: var(--spacing-3);
+    font-size: var(--font-size-sm);
+    -webkit-overflow-scrolling: touch;
   }
 }
 
@@ -161,6 +165,349 @@
   }
 
   .suggestionsBtnText {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  /* Blur behind a sticky bar is recomposited on every scroll frame, which
+     is what makes scrolling feel heavy on phones. Solid is cheap. */
+  .header {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    /* Fully opaque: blending a translucent bar over scrolling content is
+       what tore holes in it during momentum scroll on iOS. */
+    background: #0D1117;
+    /* Own compositor layer, so scrolling never has to repaint the bar.
+       Deliberately not transform/will-change: those would make the header a
+       containing block for .menuBackdrop, which is fixed to the viewport. */
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+}
+
+
+@media (max-width: 900px) {
+  /* Signed-in readers navigate from the bottom tab bar, so the top nav would
+     just be a second copy competing for a narrow row. Guests keep it. */
+  .navHiddenMobile {
+    display: none;
+  }
+}
+
+/* ---- logo-as-menu (phones) ---- */
+
+.brand {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/* The trigger only exists on narrow screens; wide screens keep a plain logo. */
+.logoTrigger {
+  display: none;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-1) var(--spacing-2) var(--spacing-1) 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.logoTriggerIcon {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  display: block;
+}
+
+.logoTriggerText {
+  font-size: var(--font-size-base);
+  white-space: nowrap;
+}
+
+.logoChev {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.logoChevOpen {
+  transform: rotate(180deg);
+  color: var(--color-accent-primary);
+}
+
+/* First-visit nudge: a dot on the control plus a short label beside it. */
+.hintDot {
+  position: absolute;
+  left: 18px;
+  bottom: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-primary);
+  box-shadow: 0 0 0 0 rgba(242, 100, 48, 0.7);
+  animation: hintPulse 1.8s infinite;
+}
+
+@keyframes hintPulse {
+  70% { box-shadow: 0 0 0 8px rgba(242, 100, 48, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(242, 100, 48, 0); }
+}
+
+.hintBubble {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 3;
+  padding: 4px 9px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-primary-muted);
+  border: 1px solid var(--color-border-accent);
+  color: var(--color-accent-primary);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  animation: hintFloat 2.2s ease-in-out infinite;
+}
+
+@keyframes hintFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.menuBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.menuPanel {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 3;
+  min-width: 210px;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-2);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-primary);
+  box-shadow: 0 18px 44px -14px rgba(0, 0, 0, 0.85);
+  animation: menuIn 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.menuPanel .navLink {
+  padding: var(--spacing-3);
+  border-radius: var(--radius-md);
+}
+
+.menuPanel .navLink:hover {
+  background: var(--color-bg-secondary);
+}
+
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hintDot, .hintBubble, .menuPanel { animation: none; }
+}
+
+@media (max-width: 900px) {
+  .logoDesktop { display: none; }
+  .logoTrigger { display: inline-flex; }
+  .hintBubble { display: inline-block; }
+}
+
+/* ---- menu extras (phones) ---- */
+
+.menuDivider {
+  height: 1px;
+  margin: var(--spacing-2) var(--spacing-1);
+  background: var(--color-border-secondary);
+}
+
+.menuCta {
+  margin-top: 2px;
+  padding: var(--spacing-3);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-primary);
+  color: #fff;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-align: center;
+  text-decoration: none;
+}
+
+.menuCta:hover {
+  background: var(--color-accent-primary-hover);
+}
+
+.menuLangRow {
+  display: flex;
+  gap: var(--spacing-2);
+  padding: var(--spacing-1);
+}
+
+.menuLang {
+  flex: 1;
+  padding: var(--spacing-2);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.menuLangActive {
+  background: var(--color-accent-primary-muted);
+  border-color: var(--color-border-accent);
+  color: var(--color-accent-primary);
+}
+
+@media (max-width: 900px) {
+  /* The row only has to hold the logo now, so nothing gets clipped. */
+  .actionsDesktop { display: none; }
+  .inner { justify-content: flex-start; }
+}
+
+/* An icon-only link has almost no intrinsic width, so the flex row squeezed
+   it down to a sliver. Keep it from shrinking and give it a label. */
+.navTelegram {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  white-space: nowrap;
+}
+
+.nav > * {
+  flex: none;
+}
+
+/* The logo must never be the thing that gives way: with nav items set to
+   flex:none the row got wider than the bar, and the brand (min-width:0) was
+   the only shrinkable box left, so the wordmark collided with the first link.
+   Pin the brand and let the nav scroll instead. */
+.brand {
+  flex: none;
+  min-width: auto;
+  margin-right: var(--spacing-5);
+}
+
+.nav {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ---- compact account/language chips (phones only) ---- */
+
+.mobileActions {
+  display: none;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-left: auto;
+  flex: none;
+}
+
+.mobileLang {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 5px 8px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-align: center;
+}
+
+.mobileAccount {
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-primary-muted);
+  border: 1px solid var(--color-border-accent);
+  color: var(--color-accent-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .mobileActions { display: flex; }
+  .brand { margin-right: 0; }
+}
+
+/* The banner starts immediately below the bar, so a hard rule between them
+   reads as a seam. The bar keeps its own translucency and blur for contrast
+   over content further down the page. */
+.header {
+  border-bottom-color: transparent;
+}
+
+@media (max-width: 900px) {
+  /* The mark is the brand's most recognisable asset and the menu trigger —
+     on a phone it deserves more presence than a desktop-sized icon. */
+  .logoTriggerIcon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .logoTriggerText {
+    font-size: var(--font-size-xl);
+    letter-spacing: -0.02em;
+  }
+
+  .logoChev {
+    font-size: 12px;
+  }
+
+  .hintDot {
+    left: 26px;
+    width: 9px;
+    height: 9px;
+  }
+}
+
+
+/* keep the row on one line — it used to scroll sideways on narrow laptops */
+@media (min-width: 901px) and (max-width: 1200px) {
+  .nav {
+    gap: var(--spacing-4);
+  }
+
+  .navLink {
+    font-size: var(--font-size-xs);
+  }
+
+  .actions {
+    gap: var(--spacing-2);
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1050px) {
+  .nav {
+    gap: var(--spacing-3);
+  }
+
+  /* The Telegram mark reads on its own; the word is what costs the room. */
+  .navTelegram span {
     display: none;
   }
 }

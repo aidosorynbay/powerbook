@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { toPng } from 'html-to-image';
+import { toBlob, toPng } from 'html-to-image';
 import {
   useI18n,
   useAuth,
@@ -48,6 +48,8 @@ export function InsightsPage() {
   const [showWrapped, setShowWrapped] = useState(false);
   const [isLoadingWrapped, setIsLoadingWrapped] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  // Rendered ahead of the tap so sharing stays inside the user gesture
+  const [wrappedFile, setWrappedFile] = useState<File | null>(null);
   const [expandedMatch, setExpandedMatch] = useState<{
     name: string;
     subtitle: string;
@@ -73,15 +75,93 @@ export function InsightsPage() {
     setIsLoadingWrapped(false);
   };
 
+  const buildWrappedFile = useCallback(async (): Promise<File | null> => {
+    if (!wrappedCardRef.current) return null;
+    const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    const blob = await toBlob(wrappedCardRef.current, {
+      pixelRatio: isCoarsePointer ? 2 : 3,
+    });
+    if (!blob) return null;
+    return new File([blob], `powerbook-wrapped-${wrapped?.year ?? ''}.png`, {
+      type: 'image/png',
+    });
+  }, [wrapped?.year]);
+
+  useEffect(() => {
+    if (!showWrapped || !wrapped) {
+      setWrappedFile(null);
+      return;
+    }
+    let cancelled = false;
+    // One frame for the card to paint, then render it to a file in advance.
+    const id = window.setTimeout(async () => {
+      try {
+        const file = await buildWrappedFile();
+        if (!cancelled) setWrappedFile(file);
+      } catch {
+        // leave it null; the button falls back to rendering on demand
+      }
+    }, 350);
+    return () => { cancelled = true; window.clearTimeout(id); };
+  }, [showWrapped, wrapped, buildWrappedFile]);
+
   const downloadWrapped = async () => {
     if (!wrappedCardRef.current) return;
+    const fileName = `powerbook-wrapped-${wrapped?.year ?? ''}.png`;
+
+    // Fast path: the image is already rendered, so the share sheet opens
+    // while the tap still counts as user activation.
+    if (wrappedFile && navigator.canShare?.({ files: [wrappedFile] })) {
+      try {
+        await navigator.share({ files: [wrappedFile] });
+        return;
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return;
+      }
+    }
+
     setIsDownloading(true);
     try {
-      const dataUrl = await toPng(wrappedCardRef.current, { pixelRatio: 3 });
+      const file = wrappedFile ?? (await buildWrappedFile());
+      if (!file) throw new Error('render failed');
+      const blob = file;
+
+      if (navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file] });
+          return;
+        } catch (err) {
+          // User dismissed the sheet — that's not a failure worth falling
+          // through for.
+          if ((err as Error)?.name === 'AbortError') return;
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.download = `powerbook-wrapped-${wrapped?.year ?? ''}.png`;
-      link.href = dataUrl;
-      link.click();
+
+      // Phones never get here with a working download attribute anyway.
+      if ('download' in link && !window.matchMedia('(pointer: coarse)').matches) {
+        link.download = fileName;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } else {
+        // Last resort: show it so it can be long-pressed and saved.
+        window.open(url, '_blank');
+      }
+
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch {
+      // Keep the old path as a safety net rather than leaving the user with
+      // a button that silently does nothing.
+      try {
+        const dataUrl = await toPng(wrappedCardRef.current, { pixelRatio: 2 });
+        window.open(dataUrl, '_blank');
+      } catch {
+        // nothing more we can do here
+      }
     } finally {
       setIsDownloading(false);
     }
@@ -151,7 +231,11 @@ export function InsightsPage() {
             <div className={styles.titleRow}>
               <div>
                 <h1 className={styles.title}>{t('insights.title')}</h1>
-                <p className={styles.subtitle}>{t('insights.subtitle')}</p>
+                <p className={styles.subtitle}>
+                  {t('insights.subtitle')}
+                  {' · '}
+                  <Link to="/profile" className={styles.settingsLink}>{t('nav.settings')}</Link>
+                </p>
               </div>
               <Button variant="primary" size="sm" onClick={openWrapped}>
                 {t('wrapped.button')}
@@ -261,8 +345,13 @@ export function InsightsPage() {
                       <ul className={styles.bookList}>
                         {visibleBooks.map((b, i) => (
                           <li key={i} className={styles.bookRow}>
-                            <span className={styles.bookTitle}>{b.title}</span>
-                            <span className={styles.bookMeta}>{b.round_label}</span>
+                            <span className={styles.bookTitle}>
+                              {b.title}
+                              {b.author && <span className={styles.bookAuthor}> — {b.author}</span>}
+                            </span>
+                            <span className={styles.bookMeta}>
+                              {b.source === 'manual' ? t('insights.addedByHand') : b.round_label}
+                            </span>
                           </li>
                         ))}
                       </ul>

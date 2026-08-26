@@ -195,3 +195,13 @@
     font-size: var(--font-size-2xl);
   }
 }
+/* Second line under each headline number: translates the raw figure into
+   something a reader can picture. Deliberately quieter than the caption. */
+.epicSell {
+    display: block;
+    margin-top: 6px;
+    font-size: var(--font-size-xs);
+    line-height: var(--line-height-relaxed);
+    color: var(--color-accent-primary);
+    opacity: 0.85;
+}

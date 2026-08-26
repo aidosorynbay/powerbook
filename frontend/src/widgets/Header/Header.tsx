@@ -1,37 +1,189 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, useI18n, LOCALES } from '@/shared/lib';
 import { Logo, Button, Icon, Container } from '@/shared/ui';
 import styles from './Header.module.css';
 
+const HINT_KEY = 'pb.menuHintSeen';
+
 export function Header() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, user } = useAuth();
   const isAdmin = user?.system_role === 'admin' || user?.system_role === 'superadmin';
   const { t, locale, setLocale } = useI18n();
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  // The logo-as-menu is an unusual place to look, so first-time visitors get
+  // a one-off nudge. Once they've opened it, the hint never comes back.
+  const [showHint, setShowHint] = useState(false);
+
+  useEffect(() => {
+    try {
+      setShowHint(localStorage.getItem(HINT_KEY) !== '1');
+    } catch {
+      // private mode / storage blocked — just skip the hint
+    }
+  }, []);
+
+  const dismissHint = useCallback(() => {
+    setShowHint(false);
+    try {
+      localStorage.setItem(HINT_KEY, '1');
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const openMenu = useCallback(() => {
+    setMenuOpen(o => !o);
+    dismissHint();
+  }, [dismissHint]);
+
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  // Route change means the user went somewhere — the panel shouldn't linger
+  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
+
+  const navLinks = (
+    <>
+      {isAuthenticated && (
+        <>
+          <Link to="/round" className={styles.navLink}>{t('nav.round')}</Link>
+          <Link to="/archive" className={styles.navLink}>{t('header.archive')}</Link>
+          <Link to="/results" className={styles.navLink}>{t('header.results')}</Link>
+          <Link to="/insights" className={styles.navLink}>{t('nav.profile')}</Link>
+          <Link to="/library" className={styles.navLink}>{t('nav.library')}</Link>
+          <Link to="/readers" className={styles.navLink}>{t('header.directory')}</Link>
+        </>
+      )}
+      <Link to="/hall-of-fame" className={styles.navLink}>{t('nav.hallOfFame')}</Link>
+      <a
+        href="https://t.me/+ZSmueLtmT8Y1MDBi"
+        className={`${styles.navLink} ${styles.navTelegram}`}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <Icon name="telegram" size="sm" />
+        <span>{t('header.telegram')}</span>
+      </a>
+    </>
+  );
 
   return (
     <header className={styles.header}>
       <Container>
         <div className={styles.inner}>
-          <Logo size="md" />
+          <div className={styles.brand}>
+            {/* Wide screens: the logo does what a logo is expected to do. */}
+            <Logo size="md" className={styles.logoDesktop} />
 
-          <nav className={styles.nav}>
-            {isAuthenticated && (
+            {/* Narrow screens: the same mark opens the menu. The chevron is
+                there so it reads as a control rather than a plain logo. */}
+            <button
+              type="button"
+              className={styles.logoTrigger}
+              onClick={openMenu}
+              aria-expanded={menuOpen}
+              aria-haspopup="true"
+              aria-label={t('header.menuHint')}
+            >
+              <img src="/logo-icon.png" alt="" className={styles.logoTriggerIcon} />
+              <span className={styles.logoTriggerText}>PowerBook</span>
+              <span className={`${styles.logoChev} ${menuOpen ? styles.logoChevOpen : ''}`} aria-hidden="true">▾</span>
+              {showHint && <span className={styles.hintDot} aria-hidden="true" />}
+            </button>
+
+            {showHint && !menuOpen && (
+              <span className={styles.hintBubble} aria-hidden="true">
+                {t('header.menuHint')}
+              </span>
+            )}
+
+            {menuOpen && (
               <>
-                <Link to="/round" className={styles.navLink}>{t('header.currentRound')}</Link>
-                <Link to="/archive" className={styles.navLink}>{t('header.archive')}</Link>
-                <Link to="/results" className={styles.navLink}>{t('header.results')}</Link>
-                <Link to="/insights" className={styles.navLink}>{t('nav.insights')}</Link>
-                <Link to="/readers" className={styles.navLink}>{t('header.directory')}</Link>
+                <div className={styles.menuBackdrop} onClick={closeMenu} />
+                <nav className={styles.menuPanel}>
+                  <Link to="/" className={styles.navLink}>{t('header.home')}</Link>
+                  {navLinks}
+
+                  {/* Everything that used to sit on the right of the bar lives
+                      here on phones — the row simply has no room for it. */}
+                  <div className={styles.menuDivider} />
+
+                  <Link
+                    to={isAdmin ? '/suggestions/admin' : '/suggestions'}
+                    className={styles.navLink}
+                  >
+                    <span aria-hidden="true">💡</span>{' '}
+                    {isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCtaShort')}
+                  </Link>
+
+                  {isAuthenticated ? (
+                    <Link to="/profile" className={styles.navLink}>{t('nav.settings')}</Link>
+                  ) : (
+                    <>
+                      <Link to="/login" className={styles.navLink}>{t('header.login')}</Link>
+                      <Link to="/register" className={styles.menuCta}>{t('header.register')}</Link>
+                    </>
+                  )}
+
+                  <div className={styles.menuDivider} />
+
+                  <div className={styles.menuLangRow}>
+                    {LOCALES.map((loc) => (
+                      <button
+                        key={loc.code}
+                        type="button"
+                        className={`${styles.menuLang} ${locale === loc.code ? styles.menuLangActive : ''}`}
+                        onClick={() => setLocale(loc.code as typeof locale)}
+                      >
+                        {loc.label}
+                      </button>
+                    ))}
+                  </div>
+                </nav>
               </>
             )}
-            <Link to="/hall-of-fame" className={styles.navLink}>{t('header.hallOfFame')}</Link>
-            <a href="https://t.me/+ZSmueLtmT8Y1MDBi" className={styles.navLink} target="_blank" rel="noopener noreferrer">
-              <Icon name="telegram" size="sm" />
-            </a>
+          </div>
+
+          <nav className={`${styles.nav} ${styles.navHiddenMobile}`}>
+            {navLinks}
           </nav>
 
-          <div className={styles.actions}>
+          {/* Phones: the row holds only the logo, so language and account fit
+              here as compact chips instead of hiding inside the menu. */}
+          <div className={styles.mobileActions}>
+            <select
+              className={styles.mobileLang}
+              value={locale}
+              onChange={(e) => setLocale(e.target.value as typeof locale)}
+              aria-label="Language"
+            >
+              {LOCALES.map((loc) => (
+                <option key={loc.code} value={loc.code}>{loc.label}</option>
+              ))}
+            </select>
+
+            {isAuthenticated ? (
+              <Link to="/profile" className={styles.mobileAccount}>
+                {t('nav.settings')}
+              </Link>
+            ) : (
+              <Link to="/login" className={styles.mobileAccount}>
+                {t('header.login')}
+              </Link>
+            )}
+          </div>
+
+          <div className={`${styles.actions} ${styles.actionsDesktop}`}>
             <Link
               to={isAdmin ? '/suggestions/admin' : '/suggestions'}
               className={styles.suggestionsBtn}
@@ -58,7 +210,7 @@ export function Header() {
 
             {isAuthenticated ? (
               <Link to="/profile" className={styles.loginBtn}>
-                {t('profile.title')}
+                {t('nav.settings')}
               </Link>
             ) : (
               <>
@@ -76,4 +228,3 @@ export function Header() {
     </header>
   );
 }
-

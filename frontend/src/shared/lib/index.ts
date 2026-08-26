@@ -20,6 +20,9 @@ export {
   apiGet,
   apiPut,
   apiDelete,
+  apiUpload,
+  apiPatch,
+  apiGetBlob,
 } from './api';
 
 // Image utilities
@@ -57,6 +60,7 @@ export type {
   PercentileInfo,
   Archetype,
   BookshelfEntry,
+  ManualBook,
   PopularBook,
   ReadingTwin,
   CelebrityMatch,
@@ -77,4 +81,7 @@ export type {
   PublicProfile,
   Buddy,
   Suggestion,
+  LibraryBook,
+  LibraryStats,
+  ShelfBook,
 } from './types';

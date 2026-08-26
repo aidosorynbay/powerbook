@@ -9,7 +9,7 @@ interface UseScrollRevealOptions {
 export function useScrollReveal<T extends HTMLElement = HTMLElement>(
   options: UseScrollRevealOptions = {}
 ) {
-  const { threshold = 0.15, rootMargin = '0px 0px -60px 0px', triggerOnce = true } = options;
+  const { threshold = 0, rootMargin = '0px 0px -60px 0px', triggerOnce = true } = options;
   const [isVisible, setIsVisible] = useState(false);
   const [element, setElement] = useState<T | null>(null);
 

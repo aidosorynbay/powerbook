@@ -59,6 +59,11 @@
 @media (max-width: 600px) {
   .badgeGrid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .badgeTile {
+    padding: 18px 8px;
   }
 }
 
@@ -68,6 +73,9 @@
   align-items: center;
   text-align: center;
   gap: 6px;
+  /* Grid items are min-width:auto by default; the nowrap leader line below
+     would otherwise widen the column past the viewport. */
+  min-width: 0;
   background: var(--color-bg-card);
   border: 1px solid var(--color-border-accent);
   border-radius: var(--radius-lg);
@@ -92,6 +100,7 @@
 }
 
 .badgeTitle {
+  overflow-wrap: anywhere;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
@@ -224,3 +233,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+
+
+@media (max-width: 900px) {
+  /* Clear the fixed bottom tab bar (plus the iPhone home indicator) so the
+     last section isn't hidden underneath it. */
+  .page {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}

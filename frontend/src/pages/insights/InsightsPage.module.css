@@ -505,3 +505,25 @@
   gap: 12px;
 }
 
+
+
+@media (max-width: 900px) {
+  /* Clear the fixed bottom tab bar (plus the iPhone home indicator) so the
+     last section isn't hidden underneath it. */
+  .page {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
+
+
+.bookAuthor {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-normal);
+}
+
+
+.settingsLink {
+  color: var(--color-accent-primary);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}

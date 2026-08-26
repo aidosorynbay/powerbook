@@ -274,3 +274,19 @@
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
+
+
+.archiveBanner {
+  margin: var(--spacing-4) 0;
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px dashed var(--color-border-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-primary-muted);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+}
+
+.claimLink {
+  text-decoration: none;
+}

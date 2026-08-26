@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useI18n, apiGet, apiPost, apiDelete, type PublicProfile } from '@/shared/lib';
 import { Container, PageTransition, Avatar, Button, Card, BookCard, ProgressBar } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
@@ -96,8 +96,19 @@ export function PublicProfilePage() {
                     </div>
                   )}
 
+                  {profile.is_archive && (
+                    <div className={styles.archiveBanner}>{t('publicProfile.archiveNote')}</div>
+                  )}
+
                   <div className={styles.actions}>
-                    {!profile.is_self && (
+                    {/* An archive record has no one behind it yet — offering
+                        "add as buddy" would promise something that can't
+                        happen. The way in is to claim it. */}
+                    {profile.is_archive ? (
+                      <Link to="/claim" className={styles.claimLink}>
+                        <Button variant="primary" size="sm">{t('publicProfile.claimThis')}</Button>
+                      </Link>
+                    ) : !profile.is_self && (
                       <Button
                         variant={profile.is_buddy ? 'secondary' : 'primary'}
                         size="sm"

@@ -7,7 +7,9 @@
 
 .entered {
   opacity: 1;
-  transform: translateY(0);
+  /* none, not translateY(0): a transform here would make this a
+     containing block and break position:sticky on the header. */
+  transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

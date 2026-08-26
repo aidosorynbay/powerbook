@@ -65,7 +65,9 @@ export function ClaimPicker({ onChange }: ClaimPickerProps) {
   };
 
   const approvedClaims = myClaims.filter((c) => c.status === 'approved');
+  const pendingClaims = myClaims.filter((c) => c.status === 'pending');
   const claimedIds = new Set(approvedClaims.map((c) => c.ghost_user_id));
+  const pendingIds = new Set(pendingClaims.map((c) => c.ghost_user_id));
 
   return (
     <div className={styles.wrap}>
@@ -91,15 +93,21 @@ export function ClaimPicker({ onChange }: ClaimPickerProps) {
               </div>
               <Button
                 size="sm"
-                variant={claimedIds.has(c.user_id) ? 'secondary' : 'primary'}
-                disabled={submittingId === c.user_id || claimedIds.has(c.user_id)}
+                variant={claimedIds.has(c.user_id) || pendingIds.has(c.user_id) ? 'secondary' : 'primary'}
+                disabled={
+                  submittingId === c.user_id ||
+                  claimedIds.has(c.user_id) ||
+                  pendingIds.has(c.user_id)
+                }
                 onClick={() => claim(c)}
               >
                 {claimedIds.has(c.user_id)
                   ? t('claims.claimed')
-                  : submittingId === c.user_id
-                    ? t('claims.claiming')
-                    : t('claims.claimBtn')}
+                  : pendingIds.has(c.user_id)
+                    ? t('claims.pending')
+                    : submittingId === c.user_id
+                      ? t('claims.claiming')
+                      : t('claims.claimBtn')}
               </Button>
             </li>
           ))}
@@ -109,6 +117,24 @@ export function ClaimPicker({ onChange }: ClaimPickerProps) {
       {searching && <div className={styles.hint}>{t('claims.searching')}</div>}
       {!searching && query.trim().length >= 2 && results.length === 0 && (
         <div className={styles.hint}>{t('claims.noResults')}</div>
+      )}
+
+      {pendingClaims.length > 0 && (
+        <div className={styles.myClaims}>
+          <div className={styles.myClaimsLabel}>{t('claims.pendingLabel')}</div>
+          <div className={styles.hint}>{t('claims.pendingHint')}</div>
+          {pendingClaims.map((c) => (
+            <div key={c.id} className={styles.myClaimRow}>
+              <div className={styles.myClaimInfo}>
+                <span className={styles.myClaimName}>{c.ghost_display_name}</span>
+                <span className={styles.myClaimRounds}>{c.rounds.join(', ')}</span>
+              </div>
+              <button className={styles.unclaimBtn} onClick={() => unclaim(c.id)}>
+                {t('claims.cancelRequest')}
+              </button>
+            </div>
+          ))}
+        </div>
       )}
 
       {approvedClaims.length > 0 && (

@@ -1,8 +1,14 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
 import { AuthProvider, useAuth, I18nProvider, useI18n } from '@/shared/lib';
-import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage } from '@/pages';
+import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage } from '@/pages';
 import { BottomNav } from '@/widgets';
 import '@/app/styles/theme.css';
+
+// Loaded only when a book is actually opened.
+const ReaderPage = lazy(() =>
+  import('@/pages/library/ReaderPage').then((m) => ({ default: m.ReaderPage }))
+);
 
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -46,6 +52,22 @@ function AppRoutes() {
         <Route path="/hall-of-fame" element={<HallOfFamePage />} />
         {/* Public and unauthenticated on purpose: both app stores need a
             policy URL reachable without an account. */}
+        <Route
+          path="/library"
+          element={isAuthenticated ? <LibraryPage /> : <Navigate to="/login" replace />}
+        />
+        <Route
+          path="/library/:bookId"
+          element={
+            isAuthenticated ? (
+              <Suspense fallback={<div className="readerBoot">{t('library.opening')}</div>}>
+                <ReaderPage />
+              </Suspense>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/suggestions" element={<SuggestionsPage />} />

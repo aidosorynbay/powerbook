@@ -990,3 +990,162 @@
   text-align: center;
 }
 
+
+
+/* Days outside a mini-round's window: decorative, not failed. */
+.quietDay {
+  background: color-mix(in oklab, var(--color-accent-primary) 7%, var(--color-bg-secondary));
+  color: color-mix(in oklab, var(--color-accent-primary) 55%, transparent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.quietDay:hover {
+  color: var(--color-accent-primary);
+  transform: scale(1.08);
+}
+
+.quietIcon {
+  width: 55%;
+  height: 55%;
+}
+
+.quietModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-4);
+  z-index: var(--z-index-modal);
+}
+
+.quietModalCard {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-6);
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+}
+
+.quietModalIcon {
+  width: 40px;
+  height: 40px;
+  color: var(--color-accent-primary);
+  margin-bottom: var(--spacing-3);
+}
+
+.quietModalLabel {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-4);
+}
+
+.quietQuote {
+  margin: 0 0 var(--spacing-3);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-text-primary);
+  font-style: italic;
+}
+
+.quietAuthor {
+  font-size: var(--font-size-sm);
+  color: var(--color-accent-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quietDay { transition: none; }
+  .quietDay:hover { transform: none; }
+}
+
+
+/* Read on a day the round doesn't score: keep it visible so the effort
+   isn't erased, but mute it so it doesn't read as counting. */
+.outOfRound {
+  opacity: 0.45;
+  filter: saturate(0.6);
+}
+
+
+/* The status pill doubles as the join action while registration is open. */
+.statusJoinBtn {
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-full);
+  background: var(--color-success-muted);
+  border: 1px solid color-mix(in oklab, var(--color-success) 45%, transparent);
+  color: var(--color-success);
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.statusJoinBtn:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--color-success) 22%, transparent);
+  transform: translateY(-1px);
+}
+
+.statusJoinBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+
+/* Steps read as a sentence above the grid rather than as a card */
+.stepsLine {
+  margin: 0 0 var(--spacing-6);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-relaxed);
+}
+
+.stepSep {
+  color: var(--color-accent-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+/* Keep the three cards in one row whichever branch rendered them */
+.orderLeaderboard { order: 1; }
+.orderCalendar { order: 2; }
+.orderStats { order: 3; }
+
+.calTabs {
+  display: flex;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-4);
+  flex-wrap: wrap;
+}
+
+.calTab {
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-full);
+  background: transparent;
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.calTab:hover {
+  color: var(--color-text-primary);
+}
+
+.calTabActive {
+  background: var(--color-accent-primary-muted);
+  border-color: var(--color-border-accent);
+  color: var(--color-accent-primary);
+}

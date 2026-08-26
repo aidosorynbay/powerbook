@@ -1,0 +1,185 @@
+.showcase {
+  padding: var(--spacing-16) 0;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: var(--spacing-8);
+}
+
+.title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.02em;
+  margin-bottom: var(--spacing-2);
+  text-wrap: balance;
+}
+
+.subtitle {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  max-width: 60ch;
+  margin: 0 auto;
+}
+
+/* ---- how a round works: one line, not four boxes ---- */
+.stepsLine {
+  max-width: 78ch;
+  margin: 0 auto var(--spacing-8);
+  text-align: center;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-text-secondary);
+}
+
+.stepPhrase {
+  white-space: normal;
+}
+
+.stepSep {
+  color: var(--color-accent-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+/* ---- the calendar, a preview of the full archive ---- */
+.calendarCard {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-6);
+}
+
+.calHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-5);
+}
+
+.calTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.calYear {
+  color: var(--color-accent-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.calLegend {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.calLegendLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.calScale {
+  width: 120px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, #2E1B45, #5C2A6E, #9B3172, #D2443F, var(--color-accent-primary), #F5B72E);
+}
+
+.calScaleEnd {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.monthsGrid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--spacing-4);
+}
+
+.monthBlock {
+  min-width: 0;
+}
+
+.monthName {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.emptyCell {
+  aspect-ratio: 1;
+}
+
+.dayCell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: var(--color-bg-secondary);
+}
+
+/* Same multi-hue ramp as the archive so the preview matches the real thing */
+.dayActive {
+  --intensity: 1;
+  --h1: #2E1B45;
+  --h2: #5C2A6E;
+  --h3: #9B3172;
+  --h4: #D2443F;
+  --h5: var(--color-accent-primary);
+  --h6: #F5B72E;
+
+  --seg: calc(var(--intensity) * 5);
+  --t1: clamp(0, var(--seg), 1);
+  --t2: clamp(0, calc(var(--seg) - 1), 1);
+  --t3: clamp(0, calc(var(--seg) - 2), 1);
+  --t4: clamp(0, calc(var(--seg) - 3), 1);
+  --t5: clamp(0, calc(var(--seg) - 4), 1);
+
+  --m1: color-mix(in oklab, var(--h2) calc(var(--t1) * 100%), var(--h1));
+  --m2: color-mix(in oklab, var(--h3) calc(var(--t2) * 100%), var(--m1));
+  --m3: color-mix(in oklab, var(--h4) calc(var(--t3) * 100%), var(--m2));
+  --m4: color-mix(in oklab, var(--h5) calc(var(--t4) * 100%), var(--m3));
+
+  background: color-mix(in oklab, var(--h6) calc(var(--t5) * 100%), var(--m4));
+}
+
+.calFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  flex-wrap: wrap;
+  margin-top: var(--spacing-6);
+  padding-top: var(--spacing-5);
+  border-top: 1px solid var(--color-border-secondary);
+}
+
+.calFootText {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.calLink {
+  text-decoration: none;
+}
+
+@media (max-width: 1024px) {
+  .steps { grid-template-columns: repeat(2, 1fr); }
+  .monthsGrid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .steps { grid-template-columns: 1fr; }
+  .monthsGrid { grid-template-columns: repeat(3, 1fr); }
+  .calendarCard { padding: var(--spacing-4); }
+}

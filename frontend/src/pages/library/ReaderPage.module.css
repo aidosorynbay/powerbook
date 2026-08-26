@@ -1,0 +1,55 @@
+/* Full-screen reading surface. Fixed rather than page-scrolled so the
+   paginated view can own the viewport and page turns don't fight scroll. */
+.reader {
+  position: fixed; inset: 0; display: flex; flex-direction: column;
+  background: var(--color-bg-primary); z-index: 50;
+}
+
+.bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-bottom: 1px solid var(--color-border-secondary);
+  flex-shrink: 0;
+}
+.barBtn {
+  background: none; border: none; color: var(--color-text-secondary);
+  font-size: var(--font-size-sm); font-family: inherit; cursor: pointer;
+  padding: 4px 0; flex-shrink: 0;
+}
+.barBtn:hover { color: var(--color-accent-primary); }
+.barTitle {
+  flex: 1; min-width: 0; text-align: center;
+  font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.barPercent {
+  font-size: var(--font-size-sm); color: var(--color-accent-primary);
+  font-variant-numeric: tabular-nums; flex-shrink: 0;
+}
+
+.stage { flex: 1; position: relative; overflow: auto; }
+.host { width: 100%; height: 100%; }
+
+.loading, .error {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; color: var(--color-text-secondary);
+  font-size: var(--font-size-sm); padding: 24px; text-align: center;
+}
+.error { color: var(--color-error, #e5484d); }
+
+.controls {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 10px 14px;
+  border-top: 1px solid var(--color-border-secondary); flex-shrink: 0;
+}
+.navBtn {
+  width: 44px; height: 44px; border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-primary); background: var(--color-bg-card);
+  color: var(--color-text-primary); font-size: 22px; line-height: 1;
+  cursor: pointer; flex-shrink: 0;
+}
+.navBtn:hover { border-color: var(--color-border-accent); color: var(--color-accent-primary); }
+.position {
+  font-size: var(--font-size-xs); color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}

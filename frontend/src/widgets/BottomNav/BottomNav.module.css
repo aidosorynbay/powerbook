@@ -1,12 +1,18 @@
 .bottomNav {
   display: none;
   position: fixed;
+  /* Same reason as the header: own layer, no per-frame repaint. */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
   bottom: 0;
   left: 0;
   right: 0;
   z-index: var(--z-index-sticky);
-  background: rgba(13, 17, 23, 0.95);
-  backdrop-filter: blur(12px);
+  background: #0D1117;
+  /* Solid rather than blurred: a fixed bar with backdrop-filter is
+     recomposited on every scroll frame, which phones feel. */
+  background: #0D1117;
   border-top: 1px solid var(--color-border-secondary);
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -44,4 +50,25 @@
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   line-height: 1;
+  /* Five tabs on a 360px screen leaves ~70px each. Labels like "Результаты"
+     wrapped to a second line and broke the bar's height, so they stay on one
+     line and clip instead. */
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.tab {
+  min-width: 0;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+@media (max-width: 380px) {
+  .tabLabel {
+    font-size: 10px;
+    letter-spacing: -0.01em;
+  }
 }

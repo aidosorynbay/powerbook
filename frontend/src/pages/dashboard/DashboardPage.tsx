@@ -17,6 +17,7 @@ import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import anim from '@/shared/styles/animations.module.css';
+import { quietDayIcon, quietDayQuoteKeys, finishFlagIcon } from '@/shared/lib/quietDays';
 import styles from './DashboardPage.module.css';
 
 function getStatusVariant(status: RoundStatus): 'success' | 'accent' | 'default' {
@@ -64,9 +65,10 @@ function ProgressRing({ pct, trackColor, fillColor, children }: {
   );
 }
 
-function RoundProgressRing({ daysElapsed, daysTotal }: { daysElapsed: number; daysTotal: number }) {
-  const pct = daysTotal > 0 ? daysElapsed / daysTotal : 0;
-  const daysLeft = Math.max(daysTotal - daysElapsed, 0);
+function RoundProgressRing({ daysLeft, daysTotal }: { daysLeft: number; daysTotal: number }) {
+  // Fill tracks what is still ahead: a round that hasn't started shows a
+  // full ring and empties as the days are used up.
+  const pct = daysTotal > 0 ? daysLeft / daysTotal : 0;
   return <ProgressRing pct={pct}>{daysLeft}</ProgressRing>;
 }
 
@@ -123,6 +125,9 @@ export function DashboardPage() {
   // Modal for logging minutes
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [minutesInput, setMinutesInput] = useState('');
+  // Day tapped on a decorative (out-of-round) cell, or null
+  const [quietDay, setQuietDay] = useState<number | null>(null);
+  const [calendarView, setCalendarView] = useState<'circle' | 'mine'>('circle');
   const [modalBookFinished, setModalBookFinished] = useState(false);
   const [modalComment, setModalComment] = useState('');
   const [modalCommentPrivate, setModalCommentPrivate] = useState(false);
@@ -207,6 +212,25 @@ export function DashboardPage() {
     const { year, month } = roundStatus.round;
     return new Date(year, month, 0).getDate();
   }, [roundStatus?.round]);
+
+  // The round's own slice of the month. A normal round is the whole
+  // month; a mini-round is narrower, and days outside it don't count.
+  const roundWindow = useMemo(() => {
+    const r = roundStatus?.round;
+    const start = Math.max(1, r?.start_day ?? 1);
+    const end = Math.min(r?.end_day ?? lastDayOfMonth, lastDayOfMonth);
+    return { start, end, total: Math.max(1, end - start + 1) };
+  }, [roundStatus?.round, lastDayOfMonth]);
+
+  const roundDaysLeft = useMemo(() => {
+    const now = new Date();
+    const r = roundStatus?.round;
+    if (!r) return 0;
+    if (now.getFullYear() !== r.year || now.getMonth() + 1 !== r.month) return 0;
+    // Before the round opens every day is still ahead of you.
+    if (now.getDate() < roundWindow.start) return roundWindow.total;
+    return Math.max(0, roundWindow.end - now.getDate());
+  }, [roundStatus?.round, roundWindow]);
 
   const roundDaysElapsed = useMemo(() => {
     if (!roundStatus?.round) return 0;
@@ -406,7 +430,7 @@ export function DashboardPage() {
     const daysInMonth = new Date(year, month, 0).getDate();
     const dayMap = new Map(cal.days.map(d => [d.date, d]));
 
-    const grid: Array<{ day: number; date: string; minutes: number; score: number; book_finished: boolean; comment: string | null } | null> = [];
+    const grid: Array<{ day: number; date: string; minutes: number; score: number; book_finished: boolean; comment: string | null; in_round: boolean } | null> = [];
 
     for (let i = 0; i < startDayOfWeek; i++) {
       grid.push(null);
@@ -422,6 +446,7 @@ export function DashboardPage() {
         score: dayData?.score ?? 0,
         book_finished: dayData?.book_finished ?? false,
         comment: dayData?.comment ?? null,
+        in_round: dayData?.in_round !== false,
       });
     }
 
@@ -588,9 +613,20 @@ export function DashboardPage() {
                   <div className={styles.roundTitle}>
                     {monthName} {roundStatus.round.year}
                   </div>
-                  <Badge variant={getStatusVariant(displayStatus!)}>
-                    {statusLabel}
-                  </Badge>
+                  {roundStatus.round.status === 'registration_open' && !isParticipant ? (
+                    <button
+                      type="button"
+                      className={styles.statusJoinBtn}
+                      onClick={handleJoin}
+                      disabled={isJoining}
+                    >
+                      {statusLabel}
+                    </button>
+                  ) : (
+                    <Badge variant={getStatusVariant(displayStatus!)}>
+                      {statusLabel}
+                    </Badge>
+                  )}
                 </div>
                 {isBeforeDeadline && roundStatus.round.status === 'registration_open' && (
                   <div className={styles.roundMeta}>
@@ -622,6 +658,18 @@ export function DashboardPage() {
                   {t('dashboard.legendComment')}
                 </span>
               </div>
+
+              {!isParticipant && (
+                /* The three steps are one sentence, not three things to
+                   compare — so they read as a line, not as a card. */
+                <p className={styles.stepsLine}>
+                  <span>{t('dashboard.step1')}</span>
+                  <span className={styles.stepSep}>&nbsp;&rarr;&nbsp;</span>
+                  <span>{t('dashboard.step2')}</span>
+                  <span className={styles.stepSep}>&nbsp;&rarr;&nbsp;</span>
+                  <span>{t('dashboard.step3')}</span>
+                </p>
+              )}
 
               <div ref={sectionsRef} className={styles.sections}>
                 {/* Today panel — first, so logging today's reading is the primary action */}
@@ -692,7 +740,7 @@ export function DashboardPage() {
                     </div>
                   </div>
                 )}
-                <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay2}`}>
+                <div className={`${styles.section} ${styles.orderLeaderboard} ${revealClass} ${anim.scrollRevealDelay2}`}>
                   <div className={styles.sectionTitle}>{t('dashboard.leaderboard')}</div>
                   {canJoin && (
                     <div className={styles.joinInline}>
@@ -700,6 +748,11 @@ export function DashboardPage() {
                       <Button size="sm" onClick={handleJoin} disabled={isJoining}>
                         {isJoining ? t('dashboard.joining') : t('dashboard.joinBtn')}
                       </Button>
+                    </div>
+                  )}
+                  {canLeave && (
+                    <div className={`${styles.joinInline} ${styles.leaveInline}`}>
+                      <span className={styles.joinInlineText}>{t('dashboard.youAreIn')}</span>
                     </div>
                   )}
                   {leaderboard.length === 0 ? (
@@ -710,6 +763,10 @@ export function DashboardPage() {
                       {(() => {
                         const myIdx = leaderboard.findIndex(e => e.user_id === user?.id);
                         if (myIdx === -1) return null;
+                        // Pinning your row only helps when it would otherwise be
+                        // scrolled out of sight. Near the top it just shows the
+                        // same row twice, which reads like a duplicate entry.
+                        if (myIdx < 5) return null;
                         const entry = leaderboard[myIdx];
                         return (
                           <div
@@ -798,7 +855,8 @@ export function DashboardPage() {
                             return <div key={`empty-${idx}`} className={`${styles.calendarDay} ${styles.empty}`} />;
                           }
                           const cellIsLastDay = cell.day === lastDayOfMonth;
-                          const colorClass = getDayColorClass(cell.minutes, cell.date, cellIsLastDay, styles);
+                          const colorClass = getDayColorClass(cell.minutes, cell.date, cellIsLastDay, styles)
+                          + (cell.in_round ? '' : ` ${styles.outOfRound}`);
                           return (
                             <div
                               key={cell.date}
@@ -823,30 +881,12 @@ export function DashboardPage() {
                   </div>
                 ) : !isParticipant ? (
                   <>
-                    {/* How it works — for non-participants */}
-                    <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay2}`}>
-                      <div className={styles.sectionTitle}>{t('dashboard.howItWorks')}</div>
-                      <div className={styles.steps}>
-                        <div className={styles.step}>
-                          <div className={styles.stepNum}>1</div>
-                          <span>{t('dashboard.step1')}</span>
-                        </div>
-                        <div className={styles.step}>
-                          <div className={styles.stepNum}>2</div>
-                          <span>{t('dashboard.step2')}</span>
-                        </div>
-                        <div className={styles.step}>
-                          <div className={styles.stepNum}>3</div>
-                          <span>{t('dashboard.step3')}</span>
-                        </div>
-                      </div>
-                    </div>
                     {/* Round stats — for non-participants */}
-                    <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay3}`}>
+                    <div className={`${styles.section} ${styles.orderStats} ${revealClass} ${anim.scrollRevealDelay3}`}>
                       <div className={styles.sectionTitle}>{t('dashboard.roundStats')}</div>
                       <div className={styles.roundOverview}>
                         <div className={styles.roundOverviewRing}>
-                          <RoundProgressRing daysElapsed={roundDaysElapsed} daysTotal={lastDayOfMonth} />
+                          <RoundProgressRing daysLeft={roundDaysLeft} daysTotal={roundWindow.total} />
                           <span className={styles.roundOverviewRingLabel}>{t('dashboard.statDaysLeft')}</span>
                         </div>
                         <div className={styles.roundOverviewSide}>
@@ -862,7 +902,7 @@ export function DashboardPage() {
                 ) : isParticipant && !inRegistrationWindow ? (
                   <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay2}`}>
                     <div className={styles.calendarHeaderRow}>
-                      <div className={styles.sectionTitle}>{t('dashboard.myCalendar')}</div>
+                      <div className={styles.sectionTitle}>{t('dashboard.myRound')}</div>
                       {canLeave && (
                         <div className={styles.leaveActions}>
                           <span className={styles.leaveHint}>
@@ -891,15 +931,87 @@ export function DashboardPage() {
                       </div>
                     )}
 
+                    <div className={styles.calTabs}>
+                      <button
+                        type="button"
+                        className={`${styles.calTab} ${calendarView === 'mine' ? styles.calTabActive : ''}`}
+                        onClick={() => setCalendarView('mine')}
+                      >
+                        {t('dashboard.myCalendar')}
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.calTab} ${calendarView === 'circle' ? styles.calTabActive : ''}`}
+                        onClick={() => setCalendarView('circle')}
+                      >
+                        {t('dashboard.circleCalendar')}
+                      </button>
+                    </div>
+
                     <div className={styles.calendar}>
                       {weekdays.map(day => (
                         <div key={day} className={styles.calendarHeader}>{day}</div>
                       ))}
-                      {calendarGrid.map((cell, idx) => {
+                      {calendarView === 'circle' ? circleCalendarGrid.map((cell, idx) => {
+                        if (cell === null) {
+                          return <div key={`c-empty-${idx}`} className={`${styles.calendarDay} ${styles.empty}`} />;
+                        }
+                        const count = roster?.days[cell.date]?.length ?? 0;
+                        const outsideWindow =
+                          cell.day < roundWindow.start || cell.day > roundWindow.end;
+                        if (outsideWindow && count === 0) {
+                          return (
+                            <div
+                              key={`c-${cell.date}`}
+                              className={`${styles.calendarDay} ${styles.quietDay}`}
+                              onClick={() => setQuietDay(cell.day)}
+                              title={cell.date}
+                            >
+                              <svg className={styles.quietIcon} viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" strokeWidth="1.6"
+                                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                {cell.day === lastDayOfMonth ? finishFlagIcon() : quietDayIcon(cell.day)}
+                              </svg>
+                            </div>
+                          );
+                        }
+                        const clickable = count > 0;
+                        const intensity = count > 0 ? 0.35 + 0.65 * Math.min(count / 15, 1) : 0;
+                        return (
+                          <div
+                            key={`c-${cell.date}`}
+                            className={`${styles.calendarDay} ${styles.circleDay} ${count > 0 ? styles.circleDayActive : ''} ${outsideWindow ? styles.outOfRound : ''}`}
+                            style={clickable ? ({ cursor: 'pointer', '--intensity': intensity } as CSSProperties) : undefined}
+                            title={`${cell.date}: ${count}`}
+                            onClick={clickable ? () => openRosterModal(cell.date) : undefined}
+                          >
+                            <span className={styles.dayNumber}>{cell.day}</span>
+                            {count > 0 && <span className={styles.circleDayCount}>{count}</span>}
+                          </div>
+                        );
+                      }) : calendarGrid.map((cell, idx) => {
                         if (cell === null) {
                           return <div key={`empty-${idx}`} className={`${styles.calendarDay} ${styles.empty}`} />;
                         }
                         const cellIsLastDay = cell.day === lastDayOfMonth;
+                        if (!cell.in_round && cell.minutes === 0) {
+                          // Outside this round's window: not a missed day, so
+                          // show a sticker rather than an empty grey square.
+                          return (
+                            <div
+                              key={cell.date}
+                              className={`${styles.calendarDay} ${styles.quietDay}`}
+                              onClick={() => setQuietDay(cell.day)}
+                              title={cell.date}
+                            >
+                              <svg className={styles.quietIcon} viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" strokeWidth="1.6"
+                                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                {cell.day === lastDayOfMonth ? finishFlagIcon() : quietDayIcon(cell.day)}
+                              </svg>
+                            </div>
+                          );
+                        }
                         const colorClass = getDayColorClass(cell.minutes, cell.date, cellIsLastDay, styles);
                         const lastDayClickable = cellIsLastDay && correctionsOpen;
                         const canClick = !cellIsLastDay || lastDayClickable;
@@ -928,25 +1040,66 @@ export function DashboardPage() {
                   </div>
                 ) : null}
 
-                {/* Shared circle calendar — visible to everyone, participant or not */}
-                {roundStatus.round && (
-                  <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay3}`}>
-                    <div className={styles.sectionTitle}>{t('dashboard.circleCalendar')}</div>
+                {/* Shared circle calendar — only when the personal card (which
+                    carries its own circle/mine switch) isn't on screen. */}
+                {roundStatus.round && !(isParticipant && !inRegistrationWindow) && (
+                  <div className={`${styles.section} ${styles.orderCalendar} ${revealClass} ${anim.scrollRevealDelay3}`}>
+                    <div className={styles.calTabs}>
+                      <button
+                        type="button"
+                        className={`${styles.calTab} ${calendarView === 'circle' ? styles.calTabActive : ''}`}
+                        onClick={() => setCalendarView('circle')}
+                      >
+                        {t('dashboard.circleCalendar')}
+                      </button>
+                      {calendar && (
+                        <button
+                          type="button"
+                          className={`${styles.calTab} ${calendarView === 'mine' ? styles.calTabActive : ''}`}
+                          onClick={() => setCalendarView('mine')}
+                        >
+                          {t('dashboard.myCalendar')}
+                        </button>
+                      )}
+                    </div>
                     <div className={styles.calendar}>
                       {weekdays.map(day => (
                         <div key={`circle-${day}`} className={styles.calendarHeader}>{day}</div>
                       ))}
-                      {circleCalendarGrid.map((cell, idx) => {
+                      {(calendarView === 'mine' && calendarGrid.length
+                        ? calendarGrid
+                        : circleCalendarGrid
+                      ).map((cell, idx) => {
                         if (cell === null) {
                           return <div key={`circle-empty-${idx}`} className={`${styles.calendarDay} ${styles.empty}`} />;
                         }
                         const count = roster?.days[cell.date]?.length ?? 0;
+                        const outsideWindow =
+                          cell.day < roundWindow.start || cell.day > roundWindow.end;
+                        if (outsideWindow && count === 0) {
+                          // Not part of this round, and nobody read — decorate
+                          // it instead of leaving a blank that reads as a miss.
+                          return (
+                            <div
+                              key={`circle-${cell.date}`}
+                              className={`${styles.calendarDay} ${styles.quietDay}`}
+                              onClick={() => setQuietDay(cell.day)}
+                              title={cell.date}
+                            >
+                              <svg className={styles.quietIcon} viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" strokeWidth="1.6"
+                                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                {cell.day === lastDayOfMonth ? finishFlagIcon() : quietDayIcon(cell.day)}
+                              </svg>
+                            </div>
+                          );
+                        }
                         const clickable = count > 0;
                         const intensity = count > 0 ? 0.35 + 0.65 * Math.min(count / 15, 1) : 0;
                         return (
                           <div
                             key={`circle-${cell.date}`}
-                            className={`${styles.calendarDay} ${styles.circleDay} ${count > 0 ? styles.circleDayActive : ''}`}
+                            className={`${styles.calendarDay} ${styles.circleDay} ${count > 0 ? styles.circleDayActive : ''} ${outsideWindow ? styles.outOfRound : ''}`}
                             style={clickable ? ({ cursor: 'pointer', '--intensity': intensity } as CSSProperties) : undefined}
                             title={`${cell.date}: ${count}`}
                             onClick={clickable ? () => openRosterModal(cell.date) : undefined}
@@ -1071,6 +1224,34 @@ export function DashboardPage() {
         document.body
       )}
       </div>
+      {quietDay !== null && (
+        <div className={styles.quietModal} onClick={() => setQuietDay(null)}>
+          <div className={styles.quietModalCard} onClick={e => e.stopPropagation()}>
+            <svg className={styles.quietModalIcon} viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="1.4"
+              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              {quietDay === lastDayOfMonth ? finishFlagIcon() : quietDayIcon(quietDay)}
+            </svg>
+            {quietDay === lastDayOfMonth ? (
+              <>
+                <div className={styles.quietModalLabel}>{t('quiet.finishLabel')}</div>
+                <blockquote className={styles.quietQuote}>{t('quiet.finishText')}</blockquote>
+              </>
+            ) : (
+              <>
+                <div className={styles.quietModalLabel}>{t('quiet.modalTitle')}</div>
+                <blockquote className={styles.quietQuote}>
+                  {t(quietDayQuoteKeys(quietDay).text)}
+                </blockquote>
+                <div className={styles.quietAuthor}>
+                  {t(quietDayQuoteKeys(quietDay).author)}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
     </PageTransition>
   );
 }

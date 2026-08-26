@@ -167,6 +167,34 @@ export function ArchivePage() {
     return max;
   }, [roster]);
 
+  // Busiest single day of the year — labels the top of the legend scale.
+  const maxSharedCountOverall = useMemo(
+    () => Math.max(0, ...Object.values(maxSharedCountByMonth)),
+    [maxSharedCountByMonth]
+  );
+
+  // Year summary for the shared view. All of it comes out of the roster we
+  // already fetched, so no extra request.
+  const sharedSummary = useMemo(() => {
+    if (!roster) return null;
+    let entries = 0;
+    let activeDays = 0;
+    let peak = 0;
+    let peakDate = '';
+    const readers = new Set<string>();
+    for (const [date, list] of Object.entries(roster.days)) {
+      if (!list.length) continue;
+      activeDays += 1;
+      entries += list.length;
+      if (list.length > peak) {
+        peak = list.length;
+        peakDate = date;
+      }
+      for (const e of list) readers.add(e.user_id);
+    }
+    return { entries, activeDays, peak, peakDate, readers: readers.size };
+  }, [roster]);
+
   const weekdays = useMemo(() => [
     t('weekday.mon'), t('weekday.tue'), t('weekday.wed'),
     t('weekday.thu'), t('weekday.fri'), t('weekday.sat'), t('weekday.sun')
@@ -293,15 +321,51 @@ export function ArchivePage() {
             <div>
               <div className={styles.legend}>
                 <span className={styles.legendItem}>
-                  <span className={`${styles.legendDot} ${styles.circleDayActive}`} />
                   {t('archive.sharedLegend')}
+                  <span className={styles.sharedScaleEnd}>1</span>
+                  <span className={styles.sharedScale} />
+                  <span className={styles.sharedScaleEnd}>{maxSharedCountOverall || 1}</span>
+                </span>
+                <span className={styles.legendItem}>
+                  <span className={`${styles.legendDot} ${styles.future}`} />
+                  &mdash;
                 </span>
               </div>
+
+              {sharedSummary && sharedSummary.activeDays > 0 && (
+                <div className={styles.summaryRow}>
+                  <div className={styles.summaryCard}>
+                    <div className={`${styles.summaryNum} ${styles.summaryNumAccent}`}>
+                      {sharedSummary.entries.toLocaleString()}
+                    </div>
+                    <div className={styles.summaryLbl}>{t('archive.sumEntries')}</div>
+                  </div>
+                  <div className={styles.summaryCard}>
+                    <div className={styles.summaryNum}>{sharedSummary.activeDays}</div>
+                    <div className={styles.summaryLbl}>{t('archive.sumActiveDays')}</div>
+                  </div>
+                  <div className={styles.summaryCard}>
+                    <div className={styles.summaryNum}>{sharedSummary.peak}</div>
+                    <div className={styles.summaryLbl}>{t('archive.sumPeak')}</div>
+                  </div>
+                  <div className={styles.summaryCard}>
+                    <div className={styles.summaryNum}>{sharedSummary.readers}</div>
+                    <div className={styles.summaryLbl}>{t('archive.sumReaders')}</div>
+                  </div>
+                </div>
+              )}
 
               <div className={styles.monthsGrid}>
                 {sharedMonths.map(({ month, grid }) => (
                   <div key={month} className={styles.monthBlock}>
-                    <div className={styles.monthName}>{t(`month.${month}`)}</div>
+                    <div className={styles.monthHeadRow}>
+                      <span className={styles.monthName}>{t(`month.${month}`)}</span>
+                      {(maxSharedCountByMonth[month] ?? 0) > 0 && (
+                        <span className={styles.monthPeak}>
+                          {t('archive.peakShort')} {maxSharedCountByMonth[month]}
+                        </span>
+                      )}
+                    </div>
                     <div className={styles.calendar}>
                       {weekdays.map(wd => (
                         <div key={`s-${wd}`} className={styles.weekdayHeader}>{wd}</div>
