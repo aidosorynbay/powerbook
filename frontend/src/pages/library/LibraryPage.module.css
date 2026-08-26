@@ -129,3 +129,16 @@
   .statGrid { grid-template-columns: repeat(2, 1fr); }
   .grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
 }
+
+.uploadProgress { margin-bottom: 16px; }
+.uploadBar {
+  height: 6px; border-radius: var(--radius-full);
+  background: var(--color-border-secondary); overflow: hidden;
+}
+.uploadFill {
+  height: 100%; background: var(--color-accent-primary);
+  transition: width 120ms linear;
+}
+.uploadHint {
+  font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 6px;
+}

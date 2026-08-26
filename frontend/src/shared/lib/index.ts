@@ -23,6 +23,7 @@ export {
   apiUpload,
   apiPatch,
   apiGetBlob,
+  apiUploadWithProgress,
 } from './api';
 
 // Image utilities

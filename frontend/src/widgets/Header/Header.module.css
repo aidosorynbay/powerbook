@@ -2,7 +2,9 @@
   position: sticky;
   top: 0;
   z-index: var(--z-index-sticky);
-  padding: var(--spacing-4) 0;
+  /* Installed on iOS the status bar is translucent and draws over the page,
+     so without the inset the row sits under the clock and the notch. */
+  padding: calc(var(--spacing-4) + env(safe-area-inset-top, 0px)) 0 var(--spacing-4);
   background: rgba(13, 17, 23, 0.8);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border-secondary);

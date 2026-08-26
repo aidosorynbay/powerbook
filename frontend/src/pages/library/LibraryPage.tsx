@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   useI18n,
   apiGet,
-  apiUpload,
+  apiUploadWithProgress,
   apiDelete,
   apiPatch,
   type LibraryBook,
@@ -29,6 +29,7 @@ export function LibraryPage() {
   const [stats, setStats] = useState<LibraryStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadPct, setUploadPct] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
 
@@ -48,8 +49,22 @@ export function LibraryPage() {
 
   const onPickFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // A cancelled picker fires change with no file — nothing to do.
     if (!file) return;
+
+    // Validated here rather than by the input's accept attribute: iOS refuses
+    // to open the picker for some accept values (epub's MIME type among them)
+    // and the app just appears to hang. Better to let anything be chosen and
+    // explain the problem afterwards.
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext !== 'pdf' && ext !== 'epub') {
+      setError(t('library.wrongFormat'));
+      if (fileInput.current) fileInput.current.value = '';
+      return;
+    }
+
     setError(null);
+    setUploadPct(0);
     setIsUploading(true);
 
     const form = new FormData();
@@ -58,11 +73,14 @@ export function LibraryPage() {
     // reader can rename it afterwards.
     form.append('title', file.name.replace(/\.[^.]+$/, ''));
 
-    const { error: err } = await apiUpload<LibraryBook>('/library/books', form, { requireAuth: true });
+    const { error: err } = await apiUploadWithProgress<LibraryBook>(
+      '/library/books', form, setUploadPct
+    );
     if (err) setError(err);
     else await load();
 
     setIsUploading(false);
+    setUploadPct(0);
     // Reset so picking the same file again still fires a change event.
     if (fileInput.current) fileInput.current.value = '';
   };
@@ -104,16 +122,24 @@ export function LibraryPage() {
                 onClick={() => fileInput.current?.click()}
                 disabled={isUploading}
               >
-                {isUploading ? t('library.uploading') : t('library.upload')}
+                {isUploading ? t('library.uploadingPct', { percent: uploadPct }) : t('library.upload')}
               </button>
               <input
                 ref={fileInput}
                 type="file"
-                accept=".pdf,.epub,application/pdf,application/epub+zip"
                 onChange={onPickFile}
                 hidden
               />
             </div>
+
+            {isUploading && (
+              <div className={styles.uploadProgress}>
+                <div className={styles.uploadBar}>
+                  <div className={styles.uploadFill} style={{ width: `${uploadPct}%` }} />
+                </div>
+                <div className={styles.uploadHint}>{t('library.uploadingHint')}</div>
+              </div>
+            )}
 
             {error && <div className={styles.error}>{error}</div>}
 

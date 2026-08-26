@@ -210,3 +210,56 @@ export async function apiGetBlob(
     return { data: null, error: 'error.network' };
   }
 }
+
+/**
+ * Upload a file, reporting progress.
+ *
+ * fetch() cannot report upload progress at all, so a large book on a phone
+ * connection looks identical to a frozen app. XMLHttpRequest is the only way
+ * to get real byte counts, which is worth the older API here.
+ */
+export function apiUploadWithProgress<T>(
+  endpoint: string,
+  form: FormData,
+  onProgress?: (percent: number) => void
+): Promise<{ data: T | null; error: string | null }> {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${getApiBaseUrl()}${endpoint}`);
+
+    const token = getAuthToken();
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    // Content-Type is left alone on purpose: the browser must set the
+    // multipart boundary itself.
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve({ data: JSON.parse(xhr.responseText) as T, error: null });
+        } catch {
+          resolve({ data: null, error: 'error.validation' });
+        }
+        return;
+      }
+      let message = `Request failed (${xhr.status})`;
+      try {
+        const body = JSON.parse(xhr.responseText);
+        if (typeof body?.detail === 'string') message = body.detail;
+      } catch {
+        /* keep the status-code message */
+      }
+      resolve({ data: null, error: message });
+    };
+
+    xhr.onerror = () => resolve({ data: null, error: 'error.network' });
+    xhr.ontimeout = () => resolve({ data: null, error: 'error.network' });
+
+    xhr.send(form);
+  });
+}
