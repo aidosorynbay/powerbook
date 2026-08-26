@@ -32,6 +32,10 @@ export function LibraryPage() {
   const [uploadPct, setUploadPct] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [rightsOk, setRightsOk] = useState(
+    () => localStorage.getItem('pb.libraryRightsAck') === '1'
+  );
+  const [askRights, setAskRights] = useState(false);
 
   const load = useCallback(async () => {
     const [{ data: list }, { data: s }] = await Promise.all([
@@ -46,6 +50,21 @@ export function LibraryPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const startUpload = () => {
+    if (!rightsOk) {
+      setAskRights(true);
+      return;
+    }
+    fileInput.current?.click();
+  };
+
+  const acceptRights = () => {
+    localStorage.setItem('pb.libraryRightsAck', '1');
+    setRightsOk(true);
+    setAskRights(false);
+    fileInput.current?.click();
+  };
 
   const onPickFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -119,7 +138,7 @@ export function LibraryPage() {
               </div>
               <button
                 className={styles.uploadBtn}
-                onClick={() => fileInput.current?.click()}
+                onClick={startUpload}
                 disabled={isUploading}
               >
                 {isUploading ? t('library.uploadingPct', { percent: uploadPct }) : t('library.upload')}
@@ -131,6 +150,21 @@ export function LibraryPage() {
                 hidden
               />
             </div>
+
+            {askRights && (
+              <div className={styles.rightsBox}>
+                <div className={styles.rightsTitle}>{t('library.rightsTitle')}</div>
+                <p className={styles.rightsText}>{t('library.rightsText')}</p>
+                <div className={styles.rightsActions}>
+                  <button className={styles.rightsCancel} onClick={() => setAskRights(false)}>
+                    {t('library.rightsCancel')}
+                  </button>
+                  <button className={styles.uploadBtn} onClick={acceptRights}>
+                    {t('library.rightsAccept')}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {isUploading && (
               <div className={styles.uploadProgress}>
@@ -172,7 +206,7 @@ export function LibraryPage() {
                   <div className={styles.emptyIcon} aria-hidden="true">📚</div>
                   <div className={styles.emptyTitle}>{t('library.emptyTitle')}</div>
                   <p className={styles.emptyText}>{t('library.emptyText')}</p>
-                  <button className={styles.uploadBtn} onClick={() => fileInput.current?.click()}>
+                  <button className={styles.uploadBtn} onClick={startUpload}>
                     {t('library.upload')}
                   </button>
                 </div>

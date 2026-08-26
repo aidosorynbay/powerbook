@@ -142,3 +142,27 @@
 .uploadHint {
   font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 6px;
 }
+
+/* Asked once before the first upload: an informed acknowledgement, not
+   friction on every file. */
+.rightsBox {
+  border: 1px solid var(--color-border-accent);
+  background: var(--color-accent-primary-muted);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+.rightsTitle {
+  font-size: var(--font-size-base); font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary); margin-bottom: 6px;
+}
+.rightsText {
+  font-size: var(--font-size-sm); color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed); margin: 0 0 14px; max-width: 60ch;
+}
+.rightsActions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.rightsCancel {
+  background: none; border: none; color: var(--color-text-secondary);
+  font-size: var(--font-size-sm); font-family: inherit; cursor: pointer; padding: 8px 4px;
+}
+.rightsCancel:hover { color: var(--color-text-primary); }
