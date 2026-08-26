@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
-import { useI18n, apiGet, apiPost, apiDelete, type PublicProfile } from '@/shared/lib';
+import { useI18n, apiGet, apiPost, apiDelete, type PublicProfile, type ShelfBook } from '@/shared/lib';
 import { Container, PageTransition, Avatar, Button, Card, BookCard, ProgressBar } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import styles from './PublicProfilePage.module.css';
@@ -35,6 +35,7 @@ export function PublicProfilePage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isTogglingBuddy, setIsTogglingBuddy] = useState(false);
   const [showBadges, setShowBadges] = useState(false);
+  const [shelf, setShelf] = useState<ShelfBook[]>([]);
 
   const load = async () => {
     if (!userId) return;
@@ -50,6 +51,14 @@ export function PublicProfilePage() {
     }
     setIsLoading(false);
   };
+
+  useEffect(() => {
+    if (!userId) return;
+    // Metadata only — the endpoint never exposes anyone's actual files.
+    apiGet<ShelfBook[]>(`/library/shelf/${userId}`, { requireAuth: true }).then(({ data }) => {
+      if (data) setShelf(data);
+    });
+  }, [userId]);
 
   useEffect(() => {
     load();
@@ -160,6 +169,41 @@ export function PublicProfilePage() {
                     <div className={styles.libraryGrid}>
                       {profile.recent_books.map((title, i) => (
                         <BookCard key={i} title={title} size="sm" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {shelf.length > 0 && (
+                  <div className={styles.librarySection}>
+                    <div className={styles.musicKicker}>{t('profile.shelfNow')}</div>
+                    <div className={styles.shelfGrid}>
+                      {shelf.map((book, i) => (
+                        <div key={i} className={styles.shelfItem}>
+                          <div className={styles.shelfCover}>
+                            {book.cover_data ? (
+                              <img src={book.cover_data} alt="" className={styles.shelfCoverImg} />
+                            ) : (
+                              <span className={styles.shelfCoverText}>
+                                {book.file_format.toUpperCase()}
+                              </span>
+                            )}
+                            {book.progress_percent > 0 && (
+                              <div className={styles.shelfBar}>
+                                <div
+                                  className={styles.shelfBarFill}
+                                  style={{ width: `${book.progress_percent}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <div className={styles.shelfTitle}>{book.title}</div>
+                          <div className={styles.shelfMeta}>
+                            {book.progress_percent >= 100
+                              ? t('profile.shelfFinished')
+                              : t('library.percentRead', { percent: book.progress_percent })}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
