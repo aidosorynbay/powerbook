@@ -1,0 +1,20 @@
+# Capacitor copies the web build in on every sync — the source of truth is
+# frontend/, not a snapshot committed here.
+dist/
+node_modules/
+
+# Android build output and local machine paths
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/capacitor-cordova-android-plugins/build/
+
+# iOS build output and fetched pods
+ios/App/build/
+ios/App/Pods/
+ios/App/App/public/
+ios/App/DerivedData/
+xcuserdata/
+*.xcuserstate

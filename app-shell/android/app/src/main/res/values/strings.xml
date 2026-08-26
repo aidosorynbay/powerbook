@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PowerBook</string>
+    <string name="title_activity_main">PowerBook</string>
+    <string name="package_name">kz.powerbook.app</string>
+    <string name="custom_url_scheme">kz.powerbook.app</string>
+</resources>

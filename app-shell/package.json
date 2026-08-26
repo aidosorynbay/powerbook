@@ -1,0 +1,12 @@
+{
+  "name": "powerbook-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PowerBook native shell (Capacitor)",
+  "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
+    "@capacitor/ios": "^6.2.1"
+  }
+}

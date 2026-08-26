@@ -1,0 +1,11 @@
+{
+  "appId": "kz.powerbook.app",
+  "appName": "PowerBook",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
