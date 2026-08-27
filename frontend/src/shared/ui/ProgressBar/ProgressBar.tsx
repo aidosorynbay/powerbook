@@ -1,4 +1,5 @@
 import { HTMLAttributes } from 'react';
+import { useI18n } from '@/shared/lib';
 import styles from './ProgressBar.module.css';
 
 interface ProgressBarProps extends HTMLAttributes<HTMLDivElement> {
@@ -16,6 +17,7 @@ export function ProgressBar({
   className = '',
   ...props
 }: ProgressBarProps) {
+  const { t } = useI18n();
   const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
 
   const classNames = [
@@ -33,7 +35,7 @@ export function ProgressBar({
         />
       </div>
       {showLabel && (
-        <span className={styles.label}>{Math.round(percentage)}% завершено</span>
+        <span className={styles.label}>{t('stats.completed', { percent: Math.round(percentage) })}</span>
       )}
     </div>
   );

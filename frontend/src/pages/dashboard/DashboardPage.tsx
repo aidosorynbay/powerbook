@@ -127,7 +127,7 @@ export function DashboardPage() {
   const [minutesInput, setMinutesInput] = useState('');
   // Day tapped on a decorative (out-of-round) cell, or null
   const [quietDay, setQuietDay] = useState<number | null>(null);
-  const [calendarView, setCalendarView] = useState<'circle' | 'mine'>('circle');
+  const [calendarView, setCalendarView] = useState<'circle' | 'mine'>('mine');
   const [modalBookFinished, setModalBookFinished] = useState(false);
   const [modalComment, setModalComment] = useState('');
   const [modalCommentPrivate, setModalCommentPrivate] = useState(false);
@@ -236,11 +236,16 @@ export function DashboardPage() {
     if (!roundStatus?.round) return 0;
     const { year, month } = roundStatus.round;
     const now = new Date();
-    if (now.getFullYear() === year && now.getMonth() + 1 === month) {
-      return now.getDate();
+    const inThisMonth = now.getFullYear() === year && now.getMonth() + 1 === month;
+    // Count days inside the round's window, not days of the month: a round
+    // starting on the 15th must not be judged against the 1st.
+    if (inThisMonth) {
+      const today = now.getDate();
+      if (today < roundWindow.start) return 0;
+      return Math.min(today, roundWindow.end) - roundWindow.start + 1;
     }
-    return now > new Date(year, month - 1, 1) ? lastDayOfMonth : 0;
-  }, [roundStatus?.round, lastDayOfMonth]);
+    return now > new Date(year, month - 1, 1) ? roundWindow.total : 0;
+  }, [roundStatus?.round, roundWindow]);
 
   // Is today the last day of the round's month?
   const isLastDay = useMemo(() => {
@@ -461,16 +466,23 @@ export function DashboardPage() {
   // Current streak within THIS round only — consecutive "good" days (30+ min)
   // counting back from the most recent day that's already happened.
   const personalStreak = useMemo(() => {
+    const today = new Date().getDate();
+    const cells = calendarGrid.filter((c): c is NonNullable<typeof c> => c !== null);
     let streak = 0;
-    for (let i = calendarGrid.length - 1; i >= 0; i--) {
-      const cell = calendarGrid[i];
-      if (cell === null) continue;
-      if (cell.day > roundDaysElapsed) continue;
-      if (cell.score === 1) streak++;
-      else break;
+    for (let i = cells.length - 1; i >= 0; i--) {
+      const cell = cells[i];
+      if (cell.day > today || cell.day < roundWindow.start) continue;
+      if (cell.score === 1) {
+        streak++;
+        continue;
+      }
+      // An unlogged today is simply a day still in progress — the streak only
+      // breaks once the day is over.
+      if (cell.day === today) continue;
+      break;
     }
     return streak;
-  }, [calendarGrid, roundDaysElapsed]);
+  }, [calendarGrid, roundWindow]);
 
   const viewUserGrid = useMemo(() => {
     if (!roundStatus?.round || !viewUserCalendar) return [];
