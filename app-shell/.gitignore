@@ -20,3 +20,7 @@ xcuserdata/
 *.xcuserstate
 keystore.properties
 *.keystore
+
+# macOS resource forks, created when archiving from a Mac
+._*
+.DS_Store
