@@ -18,3 +18,5 @@ ios/App/App/public/
 ios/App/DerivedData/
 xcuserdata/
 *.xcuserstate
+keystore.properties
+*.keystore

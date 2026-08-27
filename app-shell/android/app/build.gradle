@@ -1,5 +1,15 @@
 apply plugin: 'com.android.application'
 
+// Signing credentials live outside the repo. Google Play ties a listing to
+// the signing key forever: lose it and the app can never be updated under
+// the same listing, so keystore.properties and the keystore itself are
+// deliberately not committed.
+def keystorePropsFile = rootProject.file("keystore.properties")
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
 android {
     namespace "kz.powerbook.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -16,8 +26,23 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystoreProps['storeFile']) {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            // Only sign when credentials are actually present, so a checkout
+            // without them still builds rather than failing confusingly.
+            if (keystoreProps['storeFile']) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
