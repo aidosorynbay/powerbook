@@ -12,6 +12,7 @@ from app.models.manual_book import ManualBook
 from app.models.enums import ClaimStatus, RoundParticipantStatus
 from app.models.round import ReadingLog, Round, RoundParticipant, RoundResult
 from app.models.user import User
+from app.core.booktitles import canonical_key
 from app.repositories.base import BaseRepository
 
 _TRAILING_ASIDE_RE = re.compile(r"\s*[\(\[][^\(\)\[\]]*[\)\]]\s*$")
@@ -106,7 +107,8 @@ class InsightsRepository(BaseRepository[None]):
             ReadingLog.book_finished.is_(True),
             ReadingLog.comment.is_not(None),
         )
-        return {normalize_book_title(row[0]) for row in self.db.execute(stmt).all() if row[0]}
+        keys = (canonical_key(row[0]) for row in self.db.execute(stmt).all() if row[0])
+        return {k for k in keys if k}
 
     def all_users_finished_books(self, *, exclude_user_ids: list[uuid.UUID] | None = None) -> dict[uuid.UUID, set[str]]:
         stmt = select(ReadingLog.user_id, ReadingLog.comment).where(
@@ -119,8 +121,37 @@ class InsightsRepository(BaseRepository[None]):
             if user_id in exclude:
                 continue
             if comment:
-                by_user[user_id].add(normalize_book_title(comment))
+                key = canonical_key(comment)
+                if key:
+                    by_user[user_id].add(key)
         return dict(by_user)
+
+    def title_display_map(self, *, user_ids: list[uuid.UUID] | None = None) -> dict[str, str]:
+        """Match key -> a human title to show for it.
+
+        Comparison keys are stripped of script and punctuation and are not
+        readable, so anything user-facing has to be mapped back. Preference
+        goes to the reader's own spelling when available: seeing the title as
+        you wrote it is less jarring than seeing someone else's variant.
+        """
+        stmt = select(ReadingLog.user_id, ReadingLog.comment).where(
+            ReadingLog.book_finished.is_(True), ReadingLog.comment.is_not(None)
+        )
+        preferred: dict[str, str] = {}
+        fallback: dict[str, str] = {}
+        own = set(user_ids or [])
+        for uid, comment in self.db.execute(stmt).all():
+            if not comment:
+                continue
+            key = canonical_key(comment)
+            if not key:
+                continue
+            title = normalize_book_title(comment)
+            if uid in own:
+                preferred.setdefault(key, title)
+            else:
+                fallback.setdefault(key, title)
+        return {**fallback, **preferred}
 
     def popular_books(self, *, limit: int = 10) -> list[tuple[str, int]]:
         # Group by normalized title, not the raw comment — free-text variation

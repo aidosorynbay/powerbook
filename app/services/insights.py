@@ -6,6 +6,7 @@ import uuid
 from collections import defaultdict
 from datetime import date, timedelta
 
+from app.core.booktitles import canonical_key
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -484,6 +485,7 @@ class InsightsService:
         if not mine:
             return []
         others = self.repo.all_users_finished_books(exclude_user_ids=ids)
+        display = self.repo.title_display_map(user_ids=ids)
 
         scored = []
         for other_id, other_books in others.items():
@@ -507,7 +509,7 @@ class InsightsService:
                     user_id=str(other_id),
                     display_name=display_name,
                     telegram_id=telegram_id,
-                    shared_books=sorted(shared)[:10],
+                    shared_books=sorted(display.get(k, k) for k in shared)[:10],
                     match_percent=pct,
                 )
             )
@@ -520,7 +522,8 @@ class InsightsService:
         mine = self.repo.finished_book_titles_for_user(user_ids=ids)
         out = []
         for entry in CELEBRITY_READING_LISTS:
-            celeb_books = set(entry["books"])
+            celeb_display = {canonical_key(b): b for b in entry["books"] if canonical_key(b)}
+            celeb_books = set(celeb_display)
             shared = mine & celeb_books
             if not shared:
                 # Only surface a celebrity when there's a genuine overlap —
@@ -532,7 +535,7 @@ class InsightsService:
                 CelebrityMatchOut(
                     name=entry["name"],
                     role=entry["role"],
-                    shared_books=sorted(shared),
+                    shared_books=sorted(celeb_display.get(k, k) for k in shared),
                     match_percent=pct,
                 )
             )
