@@ -20,13 +20,27 @@ import { Card, Container, PageTransition, Badge, ProgressBar, Button, BookCard }
 import { Header, Footer, ClaimPicker, WrappedCard } from '@/widgets';
 import styles from './InsightsPage.module.css';
 
-function StatTile({ value, label, accent }: { value: string | number; label: string; accent?: boolean }) {
-  return (
-    <div className={`${styles.statTile} ${accent ? styles.statTileAccent : ''}`}>
+function StatTile({
+  value,
+  label,
+  accent,
+  to,
+}: {
+  value: string | number;
+  label: string;
+  accent?: boolean;
+  to?: string;
+}) {
+  const className = `${styles.statTile} ${accent ? styles.statTileAccent : ''} ${to ? styles.statTileLink : ''}`;
+  const body = (
+    <>
       <div className={styles.statValue}>{value}</div>
       <div className={styles.statLabel}>{label}</div>
-    </div>
+    </>
   );
+  // Tiles without a meaningful destination stay plain rather than pretending
+  // to be interactive.
+  return to ? <Link to={to} className={className}>{body}</Link> : <div className={className}>{body}</div>;
 }
 
 export function InsightsPage() {
@@ -248,14 +262,15 @@ export function InsightsPage() {
               <>
                 {profile && (
                   <div className={styles.statGrid}>
-                    <StatTile value={profile.total_hours} label={t('insights.totalHours')} accent />
-                    <StatTile value={profile.longest_streak_days} label={t('insights.longestStreak')} />
-                    <StatTile value={`${profile.consistency_percent}%`} label={t('insights.consistency')} />
-                    <StatTile value={profile.rounds_participated} label={t('insights.circles')} />
-                    <StatTile value={profile.books_finished} label={t('insights.booksFinished')} />
+                    <StatTile value={profile.total_hours} label={t('insights.totalHours')} accent to="/archive" />
+                    <StatTile value={profile.longest_streak_days} label={t('insights.longestStreak')} to="/hall-of-fame" />
+                    <StatTile value={`${profile.consistency_percent}%`} label={t('insights.consistency')} to="/archive" />
+                    <StatTile value={profile.rounds_participated} label={t('insights.circles')} to="/results" />
+                    <StatTile value={profile.books_finished} label={t('insights.booksFinished')} to="/library" />
                     <StatTile
                       value={profile.current_streak_days > 0 ? `🔥 ${profile.current_streak_days}` : '—'}
                       label={t('insights.currentStreak')}
+                      to="/round"
                     />
                   </div>
                 )}

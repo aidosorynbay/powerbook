@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useMemo, useEffect } from 'react';
 import { STORAGE_KEY_LOCALE } from './constants';
 
 export type Locale = 'ru' | 'kk' | 'en';
@@ -2048,6 +2048,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY_LOCALE, newLocale);
     setLocaleState(newLocale);
   }, []);
+
+  // Keep the document's language in step with the chosen one. Screen readers
+  // and hyphenation follow this, and some browsers use it to decide how a
+  // native date field is formatted — which is why an English page could still
+  // show a Russian date placeholder.
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   const t = useCallback(
     (key: TranslationKey | string, params?: Record<string, string | number>): string => {

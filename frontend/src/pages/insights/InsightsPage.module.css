@@ -527,3 +527,15 @@
   font-weight: var(--font-weight-semibold);
   white-space: nowrap;
 }
+
+/* A tile that leads somewhere should look like it does. */
+.statTileLink {
+  display: block;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+.statTileLink:hover {
+  border-color: var(--color-border-accent);
+  transform: translateY(-2px);
+}
