@@ -539,3 +539,25 @@
   border-color: var(--color-border-accent);
   transform: translateY(-2px);
 }
+
+/* Badges answer "what did I do for this" when tapped. */
+.badgeClickable {
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+.badgeClickable:hover { border-color: var(--color-border-accent); transform: translateY(-2px); }
+
+.nextBadgeClickable { cursor: pointer; }
+.nextBadgeClickable:hover .nextBadgeText { color: var(--color-accent-primary); }
+
+.bookTitleLink {
+  color: var(--color-text-primary);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bookTitleLink:hover { color: var(--color-accent-primary); text-decoration: underline; }
+
+.badgeModalProgress { margin-top: 14px; }

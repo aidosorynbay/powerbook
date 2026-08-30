@@ -58,6 +58,7 @@ export function InsightsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showAllBadges, setShowAllBadges] = useState(false);
   const [showAllBooks, setShowAllBooks] = useState(false);
+  const [openBadge, setOpenBadge] = useState<BadgeData | null>(null);
   const [wrapped, setWrapped] = useState<Wrapped | null>(null);
   const [showWrapped, setShowWrapped] = useState(false);
   const [isLoadingWrapped, setIsLoadingWrapped] = useState(false);
@@ -324,17 +325,28 @@ export function InsightsPage() {
                   <h2 className={styles.sectionTitle}>{t('insights.badges')}</h2>
                   <div className={styles.badgeGrid}>
                     {earnedBadges.slice(0, 6).map((b) => (
-                      <div key={b.key} className={`${styles.badgeCard} ${styles.badgeEarned}`}>
+                      <button
+                        key={b.key}
+                        className={`${styles.badgeCard} ${styles.badgeEarned} ${styles.badgeClickable}`}
+                        onClick={() => setOpenBadge(b)}
+                      >
                         <div className={styles.badgeIcon}>✓</div>
                         <div className={styles.badgeTitle}>{b.title}</div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                   {nextBadges.length > 0 && (
                     <div className={styles.nextBadges}>
                       <div className={styles.nextBadgesLabel}>{t('insights.nextUp')}</div>
                       {nextBadges.map((b) => (
-                        <div key={b.key} className={styles.nextBadgeRow}>
+                        <div
+                          key={b.key}
+                          className={`${styles.nextBadgeRow} ${styles.nextBadgeClickable}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setOpenBadge(b)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpenBadge(b); }}
+                        >
                           <div className={styles.nextBadgeText}>
                             <span>{b.title}</span>
                             <span className={styles.nextBadgeProgress}>
@@ -360,10 +372,10 @@ export function InsightsPage() {
                       <ul className={styles.bookList}>
                         {visibleBooks.map((b, i) => (
                           <li key={i} className={styles.bookRow}>
-                            <span className={styles.bookTitle}>
+                            <Link to="/library" className={styles.bookTitleLink}>
                               {b.title}
                               {b.author && <span className={styles.bookAuthor}> — {b.author}</span>}
-                            </span>
+                            </Link>
                             <span className={styles.bookMeta}>
                               {b.source === 'manual' ? t('insights.addedByHand') : b.round_label}
                             </span>
@@ -523,6 +535,36 @@ export function InsightsPage() {
                 <BookCard key={i} title={title} size="sm" />
               ))}
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {openBadge && createPortal(
+        <div className={styles.matchOverlay} onClick={() => setOpenBadge(null)}>
+          <div className={styles.matchModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.matchModalHeader}>
+              <div>
+                <div className={styles.matchModalName}>{openBadge.title}</div>
+                <div className={styles.matchModalSubtitle}>
+                  {openBadge.earned
+                    ? t('insights.badgeEarnedOn')
+                    : `${openBadge.progress_current} / ${openBadge.progress_target}`}
+                </div>
+              </div>
+              <button
+                className={styles.matchModalClose}
+                onClick={() => setOpenBadge(null)}
+                aria-label={t('library.backToLibrary')}
+              >
+                ×
+              </button>
+            </div>
+            <p className={styles.archetypeDesc}>{openBadge.description}</p>
+            {!openBadge.earned && openBadge.progress_target > 0 && (
+              <div className={styles.badgeModalProgress}>
+                <ProgressBar value={openBadge.progress_current} max={openBadge.progress_target} showLabel />
+              </div>
+            )}
           </div>
         </div>,
         document.body
