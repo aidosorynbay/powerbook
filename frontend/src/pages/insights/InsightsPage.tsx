@@ -14,6 +14,7 @@ import {
   type ReadingTwin,
   type CelebrityMatch,
   type BadgeData,
+  type BadgeStats,
   type LeagueTier,
 } from '@/shared/lib';
 import { Card, Container, PageTransition, Badge, ProgressBar, Button, BookCard } from '@/shared/ui';
@@ -59,6 +60,7 @@ export function InsightsPage() {
   const [showAllBadges, setShowAllBadges] = useState(false);
   const [showAllBooks, setShowAllBooks] = useState(false);
   const [openBadge, setOpenBadge] = useState<BadgeData | null>(null);
+  const [badgeStats, setBadgeStats] = useState<BadgeStats | null>(null);
   const [wrapped, setWrapped] = useState<Wrapped | null>(null);
   const [showWrapped, setShowWrapped] = useState(false);
   const [isLoadingWrapped, setIsLoadingWrapped] = useState(false);
@@ -212,6 +214,15 @@ export function InsightsPage() {
   const earnedBadges = badges.filter((b) => b.earned);
   const nextBadges = badges.filter((b) => !b.earned).slice(0, showAllBadges ? undefined : 3);
   const visibleBooks = showAllBooks ? bookshelf : bookshelf.slice(0, 6);
+
+  useEffect(() => {
+    if (!openBadge) return;
+    setBadgeStats(null);
+    let cancelled = false;
+    apiGet<BadgeStats>(`/insights/badges/${openBadge.key}/stats`, { requireAuth: true })
+      .then(({ data }) => { if (!cancelled && data) setBadgeStats(data); });
+    return () => { cancelled = true; };
+  }, [openBadge]);
 
   const archetypeTitle = archetype
     ? t(
@@ -564,6 +575,48 @@ export function InsightsPage() {
               <div className={styles.badgeModalProgress}>
                 <ProgressBar value={openBadge.progress_current} max={openBadge.progress_target} showLabel />
               </div>
+            )}
+
+            {badgeStats && (
+              <>
+                <div className={styles.badgeRarity}>
+                  {t('insights.badgeRarity', {
+                    holders: badgeStats.holders,
+                    total: badgeStats.total_readers,
+                    percent: badgeStats.percent,
+                  })}
+                </div>
+
+                {badgeStats.sample.length > 0 ? (
+                  <div className={styles.badgeHolders}>
+                    <div className={styles.badgeHoldersLabel}>{t('insights.badgeWhoElse')}</div>
+                    {badgeStats.sample.map((h) => (
+                      <Link key={h.user_id} to={`/readers/${h.user_id}`} className={styles.badgeHolderRow}>
+                        <span className={styles.badgeHolderName}>{h.display_name}</span>
+                        <span className={styles.badgeHolderValue}>{h.value}</span>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  openBadge.earned && (
+                    <div className={styles.badgeHoldersLabel}>{t('insights.badgeOnlyYou')}</div>
+                  )
+                )}
+
+                <div className={styles.badgeNext}>
+                  <div className={styles.badgeHoldersLabel}>{t('insights.badgeNext')}</div>
+                  {badgeStats.next_threshold ? (
+                    <div className={styles.badgeNextValue}>
+                      {t('insights.badgeNextValue', {
+                        left: Math.max(0, badgeStats.next_threshold - openBadge.progress_current),
+                        next: badgeStats.next_threshold,
+                      })}
+                    </div>
+                  ) : (
+                    <div className={styles.badgeNextValue}>{t('insights.badgeRarest')}</div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </div>,

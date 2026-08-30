@@ -10,15 +10,20 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.enums import RoundParticipantStatus
+from app.models.manual_book import ManualBook
 from app.repositories.claims import ClaimsRepository
-from app.repositories.insights import InsightsRepository
+from app.repositories.insights import normalize_book_title, InsightsRepository
 from app.repositories.results import RoundResultRepository
 from app.repositories.rounds import RoundRepository
 from app.schemas.insights import (
+    BadgeHolderOut,
+    BadgeStatsOut,
     AllTimeProfileOut,
     ArchetypeOut,
     BadgeOut,
     BookshelfEntryOut,
+    ManualBookIn,
+    ManualBookOut,
     CelebrityMatchOut,
     HallOfFameCategoryOut,
     HallOfFameEntryOut,
@@ -376,12 +381,94 @@ class InsightsService:
     # ---------- bookshelf ----------
 
     def bookshelf(self, *, user_id: uuid.UUID) -> list[BookshelfEntryOut]:
+        """Books finished in a round, plus whatever the reader added by hand.
+
+        A title can legitimately exist on both sides — someone logs a book
+        during a round and later adds it manually, or vice versa. The round
+        entry wins: it carries a real date and the round it belongs to, which
+        the manual one can't reconstruct.
+        """
         ids = self._effective_ids(user_id)
         rows = self.repo.finished_books_for_user(user_ids=ids)
+
+        shelf: list[BookshelfEntryOut] = []
+        seen: set[str] = set()
+        for comment, d, rnd in rows:
+            shelf.append(
+                BookshelfEntryOut(
+                    title=comment,
+                    date=d.isoformat(),
+                    round_label=self.repo.round_label(rnd),
+                    source="round",
+                )
+            )
+            seen.add(normalize_book_title(comment))
+
+        for book in self.repo.manual_books_for_user(user_ids=ids):
+            if book.title_norm in seen:
+                continue
+            seen.add(book.title_norm)
+            shelf.append(
+                BookshelfEntryOut(
+                    title=book.title,
+                    date=book.finished_on.isoformat() if book.finished_on else "",
+                    round_label="",
+                    source="manual",
+                    id=book.id,
+                    author=book.author,
+                )
+            )
+
+        # Newest first, and undated manual entries sink to the bottom rather
+        # than sorting as if they were read in year zero.
+        shelf.sort(key=lambda e: e.date or "0000-00-00", reverse=True)
+        return shelf
+
+    # ---------- manual books ----------
+
+    def manual_books(self, *, user_id: uuid.UUID) -> list[ManualBookOut]:
         return [
-            BookshelfEntryOut(title=comment, date=d.isoformat(), round_label=self.repo.round_label(rnd))
-            for comment, d, rnd in rows
+            ManualBookOut(id=b.id, title=b.title, author=b.author, finished_on=b.finished_on)
+            for b in self.repo.manual_books_for_user(user_ids=self._effective_ids(user_id))
         ]
+
+    def add_manual_book(self, *, user_id: uuid.UUID, payload: ManualBookIn) -> ManualBookOut:
+        title = payload.title.strip()
+        if not title:
+            raise ValueError("empty_title")
+        norm = normalize_book_title(title)
+        if not norm:
+            raise ValueError("empty_title")
+
+        ids = self._effective_ids(user_id)
+
+        # Already on the shelf from a round — nothing to add, and silently
+        # accepting it would leave the reader wondering where it went.
+        if norm in self.repo.finished_book_titles_for_user(user_ids=ids):
+            raise ValueError("duplicate_round")
+
+        if any(b.title_norm == norm for b in self.repo.manual_books_for_user(user_ids=ids)):
+            raise ValueError("duplicate_manual")
+
+        book = ManualBook(
+            user_id=user_id,
+            title=title,
+            title_norm=norm,
+            author=(payload.author or "").strip() or None,
+            finished_on=payload.finished_on,
+        )
+        self.db.add(book)
+        self.db.commit()
+        self.db.refresh(book)
+        return ManualBookOut(id=book.id, title=book.title, author=book.author, finished_on=book.finished_on)
+
+    def delete_manual_book(self, *, user_id: uuid.UUID, book_id: uuid.UUID) -> bool:
+        book = self.repo.manual_book_by_id(book_id=book_id, user_ids=self._effective_ids(user_id))
+        if not book:
+            return False
+        self.db.delete(book)
+        self.db.commit()
+        return True
 
     # ---------- popular books ----------
 
@@ -657,6 +744,91 @@ class InsightsService:
             rounds_participated=rounds_this_year,
             available_years=available_years,
             days_read=days_read_by_year.get(year, 0),
+        )
+
+    # ---------- badge rarity ----------
+
+    BADGE_TRACKS = {
+        "hours": [10, 50, 100, 500, 1000],
+        "streak": [7, 30, 100, 365],
+        "rounds": [1, 10, 25, 50],
+        "books": [1, 5, 10, 25, 50],
+    }
+
+    def badge_stats(self, *, key: str, viewer_id: uuid.UUID) -> BadgeStatsOut:
+        """How rare a badge is, and who else holds it.
+
+        A badge only means something relative to everyone else: "100 hours" is
+        an achievement or a formality depending on whether ten people or eight
+        hundred have done it. The number is computed live rather than stored,
+        because the answer moves every day.
+        """
+        try:
+            track, raw = key.rsplit("_", 1)
+            threshold = int(raw)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown badge")
+        if track not in self.BADGE_TRACKS:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown badge")
+
+        users = self.repo.all_users_with_flags()
+        claim_map = self.repo.all_approved_claims()
+
+        def resolve(uid: uuid.UUID) -> uuid.UUID:
+            return claim_map.get(uid, uid)
+
+        def merge(raw_values: dict[uuid.UUID, int]) -> dict[uuid.UUID, int]:
+            merged: dict[uuid.UUID, int] = defaultdict(int)
+            for uid, v in raw_values.items():
+                merged[resolve(uid)] += v
+            return dict(merged)
+
+        if track == "hours":
+            values = {uid: v // 60 for uid, v in merge(self.repo.minutes_by_all_users()).items()}
+        elif track == "rounds":
+            values = merge(self.repo.rounds_count_by_all_users())
+        elif track == "books":
+            values = merge(self.repo.books_count_by_all_users())
+        else:
+            dates_raw = self.repo.logged_dates_by_all_users()
+            grouped: dict[uuid.UUID, list] = defaultdict(list)
+            for uid, dlist in dates_raw.items():
+                grouped[resolve(uid)].extend(dlist)
+            values = {
+                uid: _longest_and_current_streak(sorted(set(dlist)))[0]
+                for uid, dlist in grouped.items()
+            }
+
+        holders = [uid for uid, v in values.items() if v >= threshold]
+        # One denominator for every track: everyone who has ever logged
+        # reading. Counting only people active in this track would make
+        # "42% of readers" and "0.1% of readers" mean different populations,
+        # so the rarities could not be compared with each other.
+        total = sum(1 for v in merge(self.repo.minutes_by_all_users()).values() if v > 0)
+
+        viewer_ids = set(self._effective_ids(viewer_id))
+        sample = []
+        for uid in sorted(holders, key=lambda u: -values[u])[:24]:
+            if uid in viewer_ids:
+                continue
+            info = users.get(uid)
+            if not info:
+                continue
+            sample.append(BadgeHolderOut(user_id=str(uid), display_name=info[0], value=values[uid]))
+            if len(sample) >= 8:
+                break
+
+        milestones = self.BADGE_TRACKS[track]
+        nxt = next((m for m in milestones if m > threshold), None)
+
+        return BadgeStatsOut(
+            key=key,
+            holders=len(holders),
+            total_readers=total,
+            percent=round((len(holders) / total) * 100, 1) if total else 0.0,
+            sample=sample,
+            next_threshold=nxt,
+            next_key=f"{track}_{nxt}" if nxt else None,
         )
 
     # ---------- hall of fame (public) ----------

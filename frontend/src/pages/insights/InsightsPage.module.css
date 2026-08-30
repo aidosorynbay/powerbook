@@ -561,3 +561,29 @@
 .bookTitleLink:hover { color: var(--color-accent-primary); text-decoration: underline; }
 
 .badgeModalProgress { margin-top: 14px; }
+
+/* Rarity is what makes a badge mean anything — show it prominently. */
+.badgeRarity {
+  margin-top: 16px; padding: 10px 12px;
+  background: var(--color-accent-primary-muted);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm); color: var(--color-accent-primary);
+  font-weight: var(--font-weight-semibold);
+}
+.badgeHolders { margin-top: 16px; }
+.badgeHoldersLabel {
+  font-size: var(--font-size-xs); text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide); color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+.badgeHolderRow {
+  display: flex; justify-content: space-between; padding: 7px 0;
+  border-bottom: 1px solid var(--color-border-secondary);
+  text-decoration: none; font-size: var(--font-size-sm);
+}
+.badgeHolderRow:last-child { border-bottom: none; }
+.badgeHolderName { color: var(--color-text-primary); }
+.badgeHolderRow:hover .badgeHolderName { color: var(--color-accent-primary); }
+.badgeHolderValue { color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.badgeNext { margin-top: 16px; }
+.badgeNextValue { font-size: var(--font-size-sm); color: var(--color-text-secondary); }

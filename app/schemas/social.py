@@ -16,6 +16,12 @@ class DirectoryEntryOut(BaseModel):
     recommendation_text: str | None
     recent_books: list[str]
     badges_earned: int
+    # Archive entries are historical records nobody has claimed yet.
+    is_archive: bool = False
+    archive_usernames: list[str] = []
+    rounds_count: int = 0
+    total_minutes: int = 0
+    books_count: int = 0
 
 
 class PublicProfileOut(BaseModel):
@@ -38,6 +44,8 @@ class PublicProfileOut(BaseModel):
     favorite_books: list[str]
     is_buddy: bool
     is_self: bool
+    # An unclaimed archive record rather than a member's own profile.
+    is_archive: bool = False
 
 
 class BuddyOut(BaseModel):

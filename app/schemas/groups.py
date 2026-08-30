@@ -30,6 +30,10 @@ class RoundInfo(BaseModel):
     month: int
     status: RoundStatus
     registration_open_until_day: int
+    # Day window inside the month — the client needs it to know which days
+    # this round actually scores.
+    start_day: int = 1
+    end_day: int | None = None
     timezone: str
 
     model_config = {"from_attributes": True}

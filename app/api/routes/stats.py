@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.schemas.stats import PublicStatsOut
+from app.schemas.stats import PublicCalendarOut, PublicStatsOut
 from app.services.stats import StatsService
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -17,3 +17,12 @@ def get_public_stats(db: Session = Depends(get_db)) -> PublicStatsOut:
     No authentication required.
     """
     return StatsService(db).get_public_stats()
+
+
+@router.get("/public/calendar", response_model=PublicCalendarOut)
+def get_public_calendar(year: int, db: Session = Depends(get_db)) -> PublicCalendarOut:
+    """
+    Per-day participant counts for one year, for the public homepage.
+    Counts only — no names, no comments — so it is safe without auth.
+    """
+    return StatsService(db).get_public_calendar(year=year)

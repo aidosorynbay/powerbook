@@ -118,16 +118,25 @@ class RoundService:
         month: int,
         timezone: str = "UTC",
         registration_open_until_day: int = 10,
+        start_day: int = 1,
+        end_day: int | None = None,
     ) -> Round:
         existing = self.rounds.get_by_group_year_month(group_id=group_id, year=year, month=month)
         if existing is not None:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Round already exists for this month")
+        if end_day is not None and end_day < start_day:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="end_day must not be before start_day",
+            )
         return self.rounds.create(
             group_id=group_id,
             year=year,
             month=month,
             timezone=timezone,
             registration_open_until_day=registration_open_until_day,
+            start_day=start_day,
+            end_day=end_day,
         )
 
     def set_status(self, *, round_id: uuid.UUID, status_: RoundStatus, now: datetime | None = None) -> Round:
@@ -208,8 +217,13 @@ class RoundService:
         if not participants:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="No participants")
 
-        # aggregate scores per user via repository
-        scores = self.reading_logs.aggregate_scores_by_user(round_id=round_id)
+        # aggregate scores per user via repository, limited to the round's
+        # own day window (the whole month unless this is a mini-round)
+        scores = self.reading_logs.aggregate_scores_by_user(
+            round_id=round_id,
+            day_from=rnd.first_day_date,
+            day_to=rnd.last_day_date,
+        )
 
         # load users for gender matching
         user_ids = [p.user_id for p in participants]
@@ -309,4 +323,10 @@ class RoundService:
     def month_calendar(self, *, year: int, month: int) -> list[date]:
         days_in_month = calendar.monthrange(year, month)[1]
         return [date(year, month, d) for d in range(1, days_in_month + 1)]
+
+    def round_calendar(self, *, rnd) -> list[date]:
+        """Days this round actually scores — narrower than the month for a
+        mini-round. Use this instead of month_calendar wherever a round's
+        own days are meant."""
+        return rnd.day_list
 

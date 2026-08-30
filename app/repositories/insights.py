@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.claim import UsernameClaim
+from app.models.manual_book import ManualBook
 from app.models.enums import ClaimStatus, RoundParticipantStatus
 from app.models.round import ReadingLog, Round, RoundParticipant, RoundResult
 from app.models.user import User
@@ -86,6 +87,18 @@ class InsightsRepository(BaseRepository[None]):
             .order_by(ReadingLog.date.asc())
         )
         return [(row[0], row[1], row[2]) for row in self.db.execute(stmt).all()]
+
+    def manual_books_for_user(self, *, user_ids: list[uuid.UUID]) -> list[ManualBook]:
+        stmt = (
+            select(ManualBook)
+            .where(ManualBook.user_id.in_(user_ids))
+            .order_by(ManualBook.finished_on.desc().nullslast(), ManualBook.created_at.desc())
+        )
+        return list(self.db.execute(stmt).scalars().all())
+
+    def manual_book_by_id(self, *, book_id: uuid.UUID, user_ids: list[uuid.UUID]) -> ManualBook | None:
+        stmt = select(ManualBook).where(ManualBook.id == book_id, ManualBook.user_id.in_(user_ids))
+        return self.db.execute(stmt).scalar_one_or_none()
 
     def finished_book_titles_for_user(self, *, user_ids: list[uuid.UUID]) -> set[str]:
         stmt = select(ReadingLog.comment).where(

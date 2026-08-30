@@ -50,9 +50,10 @@ def _tick_round_lifecycle() -> None:
                     svc.set_status(round_id=rnd.id, status_=RoundStatus.locked)
                     logger.info("Auto-locked stale round %s (month already passed)", rnd.id)
 
-            # Auto-close: locked and past midnight GMT+5 on last day of month
+            # Auto-close: locked and past midnight GMT+5 on the round's last
+            # day (month end for a normal round, end_day for a mini-round)
             if rnd.status == RoundStatus.locked:
-                last_day = calendar.monthrange(rnd.year, rnd.month)[1]
+                last_day = rnd.last_day_num
                 if (today.year > rnd.year or today.month > rnd.month
                         or (today.year == rnd.year and today.month == rnd.month and today.day > last_day)):
                     # Past the round's month entirely — close and publish

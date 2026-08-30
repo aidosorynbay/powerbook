@@ -48,5 +48,7 @@ class ResultGroup(str, Enum):
 
 
 class ClaimStatus(str, Enum):
+    # Submitted, waiting on the founder. Grants nothing until approved.
+    pending = "pending"
     approved = "approved"
     revoked = "revoked"

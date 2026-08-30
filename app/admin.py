@@ -268,6 +268,53 @@ class UsernameClaimAdmin(ModelView, model=UsernameClaim):
     name_plural = "Username Claims"
     icon = "fa-solid fa-user-tag"
 
+    @action(name="approve_claims", label="Approve", confirmation_message="Approve selected claims? The archive history moves to the claimant's profile.")
+    async def approve_claims(self, request: Request) -> HTMLResponse:
+        from datetime import datetime, timezone
+
+        from sqlalchemy import select
+
+        pks = request.query_params.getlist("pks")
+        results: list[str] = []
+        SessionLocal = get_session_factory()
+        db = SessionLocal()
+        try:
+            admin_id = request.session.get("admin_user")
+            for pk in pks:
+                claim = db.execute(select(UsernameClaim).where(UsernameClaim.id == pk)).scalar_one_or_none()
+                if claim is None:
+                    results.append(f"<tr><td>{pk[:8]}…</td><td>Not found</td></tr>")
+                    continue
+                # One nickname can only belong to one person; if it is already
+                # granted elsewhere, say so instead of quietly double-granting.
+                taken = db.execute(select(UsernameClaim).where(
+                    UsernameClaim.ghost_user_id == claim.ghost_user_id,
+                    UsernameClaim.status == ClaimStatus.approved,
+                    UsernameClaim.id != claim.id,
+                )).scalar_one_or_none()
+                if taken is not None:
+                    results.append(f"<tr><td>{pk[:8]}…</td><td>Already approved for someone else</td></tr>")
+                    continue
+                claim.status = ClaimStatus.approved
+                claim.reviewed_by_user_id = admin_id
+                claim.reviewed_at = datetime.now(timezone.utc)
+                results.append(f"<tr><td>{pk[:8]}…</td><td>Approved</td></tr>")
+            db.commit()
+        finally:
+            db.close()
+
+        back_url = request.url_for("admin:list", identity=self.identity)
+        rows = "".join(results)
+        return HTMLResponse(
+            f"<html><body style='font-family:sans-serif;padding:40px;max-width:600px;margin:auto'>"
+            f"<h2>Approve Claims</h2>"
+            f"<table style='width:100%;border-collapse:collapse'>"
+            f"<tr><th align='left'>Claim</th><th align='left'>Result</th></tr>"
+            f"{rows}</table>"
+            f"<br><a href='{back_url}'>Back to Claims</a>"
+            f"</body></html>"
+        )
+
     @action(name="revoke_claims", label="Revoke", confirmation_message="Revoke selected claims? This instantly removes the merged history from the claimant's stats.")
     async def revoke_claims(self, request: Request) -> HTMLResponse:
         from datetime import datetime, timezone

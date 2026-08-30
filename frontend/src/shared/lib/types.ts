@@ -451,3 +451,15 @@ export type ShelfBook = {
   progress_percent: number;
   last_read_at: string | null;
 };
+
+export type BadgeHolder = { user_id: string; display_name: string; value: number };
+
+export type BadgeStats = {
+  key: string;
+  holders: number;
+  total_readers: number;
+  percent: number;
+  sample: BadgeHolder[];
+  next_threshold: number | null;
+  next_key: string | null;
+};

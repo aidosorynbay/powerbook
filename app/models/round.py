@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 import uuid
 from datetime import date, datetime
 from typing import TYPE_CHECKING
@@ -65,10 +66,46 @@ class Round(TimestampMixin, Base):
         nullable=False,
         default=10,
     )
+
+    # Day window inside the month. Regular rounds run the whole month
+    # (start_day=1, end_day=NULL meaning "last day"); a mini-round narrows it,
+    # e.g. 15..30. Days outside the window score nothing and are not misses.
+    start_day: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=1)
+    end_day: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC")
 
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    @property
+    def last_day_num(self) -> int:
+        """Last day this round counts — end_day when set, else month end."""
+        month_end = calendar.monthrange(self.year, self.month)[1]
+        return min(self.end_day, month_end) if self.end_day else month_end
+
+    @property
+    def first_day_date(self) -> date:
+        return date(self.year, self.month, max(1, self.start_day))
+
+    @property
+    def last_day_date(self) -> date:
+        return date(self.year, self.month, self.last_day_num)
+
+    @property
+    def day_list(self) -> list[date]:
+        return [
+            date(self.year, self.month, d)
+            for d in range(max(1, self.start_day), self.last_day_num + 1)
+        ]
+
+    def covers(self, d: date) -> bool:
+        return self.first_day_date <= d <= self.last_day_date
+
+    @property
+    def is_partial_month(self) -> bool:
+        month_end = calendar.monthrange(self.year, self.month)[1]
+        return self.start_day > 1 or self.last_day_num < month_end
 
     group: Mapped["Group"] = relationship(back_populates="rounds")
 

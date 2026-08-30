@@ -40,7 +40,7 @@ class UsernameClaim(TimestampMixin, Base):
     )
 
     status: Mapped[ClaimStatus] = mapped_column(
-        SAEnum(ClaimStatus, name="claim_status"), nullable=False, default=ClaimStatus.approved
+        SAEnum(ClaimStatus, name="claim_status"), nullable=False, default=ClaimStatus.pending
     )
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 

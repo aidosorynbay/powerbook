@@ -82,6 +82,8 @@ export type {
   PublicProfile,
   Buddy,
   Suggestion,
+  BadgeStats,
+  BadgeHolder,
   LibraryBook,
   LibraryStats,
   ShelfBook,

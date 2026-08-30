@@ -46,6 +46,13 @@ class User(TimestampMixin, Base):
     # True for placeholder accounts created by the historical archive import
     # (old circle usernames that couldn't be matched to a real registration).
     # Real users can claim these via /claims to fold that history into their profile.
+    # Archive accounts that are the same human share a person_id. The circles
+    # ran in spreadsheets for years and one reader was often written down
+    # several ways ("Saira", "Saira khanym", "Saira khnm"). NULL = stands alone.
+    person_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), nullable=True, index=True, default=None
+    )
+
     is_claimable: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
 
     # Social profile extras

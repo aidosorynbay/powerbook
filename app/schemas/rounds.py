@@ -14,6 +14,9 @@ class RoundCreateRequest(BaseModel):
     month: int = Field(ge=1, le=12)
     timezone: str = "UTC"
     registration_open_until_day: int = Field(default=10, ge=1, le=31)
+    # Optional day window — omit for a normal whole-month round
+    start_day: int = Field(default=1, ge=1, le=31)
+    end_day: int | None = Field(default=None, ge=1, le=31)
 
 
 class RoundOut(BaseModel):
@@ -23,6 +26,8 @@ class RoundOut(BaseModel):
     month: int
     status: RoundStatus
     registration_open_until_day: int
+    start_day: int
+    end_day: int | None
     timezone: str
     started_at: datetime | None
     closed_at: datetime | None

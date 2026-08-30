@@ -56,7 +56,12 @@ class ClaimsService:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="You already claimed this username")
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This username was already claimed by someone else")
 
-        ghost_rounds = self.repo.participated_round_ids(user_id=ghost_user_id)
+        # Everyone the archive recorded as this same human, this one included.
+        siblings = self._same_person(ghost)
+
+        ghost_rounds = set()
+        for sib in siblings:
+            ghost_rounds |= self.repo.participated_round_ids(user_id=sib.id)
         covered_rounds = self.repo.covered_round_ids(claimant_user_id=user_id)
         clash = ghost_rounds & covered_rounds
         if clash:
@@ -69,12 +74,33 @@ class ClaimsService:
         # A previously-revoked claim between this exact pair leaves a row
         # behind (the unique constraint is on the pair, not the status) —
         # reactivate it instead of inserting a duplicate.
-        prior = self.repo.existing_claim(claimant_user_id=user_id, ghost_user_id=ghost_user_id)
-        if prior is not None:
-            claim = self.repo.reactivate(prior, note=note)
-        else:
-            claim = self.repo.create(claimant_user_id=user_id, ghost_user_id=ghost_user_id, note=note)
-        return self._to_out(claim)
+        asked_for = None
+        for sib in siblings:
+            existing_other = self.repo.active_claim_for_ghost(ghost_user_id=sib.id)
+            if existing_other is not None and existing_other.claimant_user_id != user_id:
+                # Someone else already owns this part of the identity; skip it
+                # rather than fail the whole request.
+                continue
+            prior = self.repo.existing_claim(claimant_user_id=user_id, ghost_user_id=sib.id)
+            claim = (self.repo.reactivate(prior, note=note) if prior is not None
+                     else self.repo.create(claimant_user_id=user_id, ghost_user_id=sib.id, note=note))
+            if sib.id == ghost_user_id:
+                asked_for = claim
+        if asked_for is None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                detail="This username was already claimed by someone else")
+        return self._to_out(asked_for)
+
+    def _same_person(self, ghost) -> list:
+        """The archive accounts that are this same human.
+
+        person_id is set only where a grouping was reviewed and approved;
+        without one the account stands alone.
+        """
+        if not ghost.person_id:
+            return [ghost]
+        same = self.users.list_by_person(person_id=ghost.person_id)
+        return same or [ghost]
 
     def my_claims(self, *, user_id: uuid.UUID) -> list[MyClaimOut]:
         claims = self.repo.list_for_claimant(claimant_user_id=user_id)

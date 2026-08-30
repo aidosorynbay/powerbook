@@ -62,10 +62,23 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
         )
         return list(self.db.execute(stmt).scalars().all())
 
-    def aggregate_scores_by_user(self, *, round_id: uuid.UUID) -> dict[uuid.UUID, int]:
+    def aggregate_scores_by_user(
+        self,
+        *,
+        round_id: uuid.UUID,
+        day_from: date | None = None,
+        day_to: date | None = None,
+    ) -> dict[uuid.UUID, int]:
+        # Same window rule as the leaderboard: for a mini-round, only days
+        # inside the round's slice of the month count toward final results.
+        window = [ReadingLog.round_id == round_id]
+        if day_from is not None:
+            window.append(ReadingLog.date >= day_from)
+        if day_to is not None:
+            window.append(ReadingLog.date <= day_to)
         stmt = (
             select(ReadingLog.user_id, func.coalesce(func.sum(ReadingLog.score), 0).label("total_score"))
-            .where(ReadingLog.round_id == round_id)
+            .where(*window)
             .group_by(ReadingLog.user_id)
         )
         return {row.user_id: int(row.total_score) for row in self.db.execute(stmt).all()}
@@ -78,7 +91,11 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
         return int(self.db.execute(stmt).scalar())
 
     def leaderboard_data(
-        self, *, round_id: uuid.UUID
+        self,
+        *,
+        round_id: uuid.UUID,
+        day_from: date | None = None,
+        day_to: date | None = None,
     ) -> list[dict]:
         participants_stmt = (
             select(RoundParticipant.user_id, User.display_name, User.telegram_id)
@@ -90,13 +107,21 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
         )
         participants = {row.user_id: (row.display_name, row.telegram_id) for row in self.db.execute(participants_stmt).all()}
 
+        # A mini-round only scores its own slice of the month, so logs left
+        # over from days outside the window must not count toward the board.
+        window = [ReadingLog.round_id == round_id]
+        if day_from is not None:
+            window.append(ReadingLog.date >= day_from)
+        if day_to is not None:
+            window.append(ReadingLog.date <= day_to)
+
         scores_stmt = (
             select(
                 ReadingLog.user_id.label("user_id"),
                 func.coalesce(func.sum(ReadingLog.score), 0).label("total_score"),
                 func.coalesce(func.sum(ReadingLog.score), 0).label("days_read"),
             )
-            .where(ReadingLog.round_id == round_id)
+            .where(*window)
             .group_by(ReadingLog.user_id)
         )
         scores = {row.user_id: (int(row.total_score), int(row.days_read)) for row in self.db.execute(scores_stmt).all()}

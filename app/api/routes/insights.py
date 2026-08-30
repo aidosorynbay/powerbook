@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.schemas.insights import (
+    BadgeStatsOut,
     AllTimeProfileOut,
     ArchetypeOut,
     BadgeOut,
@@ -15,6 +16,8 @@ from app.schemas.insights import (
     CelebrityMatchOut,
     HallOfFameOut,
     LeagueTierOut,
+    ManualBookIn,
+    ManualBookOut,
     PercentileOut,
     PopularBookOut,
     ReadingTwinOut,
@@ -47,6 +50,34 @@ def get_archetype(db: Session = Depends(get_db), user=Depends(get_current_user))
 @router.get("/bookshelf", response_model=list[BookshelfEntryOut])
 def get_bookshelf(db: Session = Depends(get_db), user=Depends(get_current_user)) -> list[BookshelfEntryOut]:
     return InsightsService(db).bookshelf(user_id=user.id)
+
+
+@router.get("/books", response_model=list[ManualBookOut])
+def list_manual_books(db: Session = Depends(get_db), user=Depends(get_current_user)) -> list[ManualBookOut]:
+    return InsightsService(db).manual_books(user_id=user.id)
+
+
+@router.post("/books", response_model=ManualBookOut, status_code=status.HTTP_201_CREATED)
+def add_manual_book(
+    payload: ManualBookIn,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> ManualBookOut:
+    try:
+        return InsightsService(db).add_manual_book(user_id=user.id, payload=payload)
+    except ValueError as exc:
+        # The reason travels as a code so the client can translate it.
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.delete("/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_manual_book(
+    book_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> None:
+    if not InsightsService(db).delete_manual_book(user_id=user.id, book_id=book_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
 
 
 @router.get("/popular-books", response_model=list[PopularBookOut])
@@ -99,3 +130,13 @@ def get_wrapped(
 def get_hall_of_fame(db: Session = Depends(get_db)) -> HallOfFameOut:
     """Public leaderboard of all-time top readers — no login required."""
     return InsightsService(db).hall_of_fame()
+
+
+@router.get("/badges/{key}/stats", response_model=BadgeStatsOut)
+def badge_stats(
+    key: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> BadgeStatsOut:
+    """How rare this badge is and who else holds it."""
+    return InsightsService(db).badge_stats(key=key, viewer_id=user.id)

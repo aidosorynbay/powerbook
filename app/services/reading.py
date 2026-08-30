@@ -43,8 +43,15 @@ class ReadingService:
         if rnd.status in {RoundStatus.closed, RoundStatus.results_published}:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Round is closed")
 
-        last_day_num = calendar.monthrange(rnd.year, rnd.month)[1]
-        last_day_date = date(rnd.year, rnd.month, last_day_num)
+        # Round's own window — the whole month for a normal round, a narrower
+        # slice for a mini-round. Days outside it can't be logged at all.
+        if not rnd.covers(day):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Day is outside this round",
+            )
+
+        last_day_date = rnd.last_day_date
         now_local = datetime.now(tz=CORRECTION_TZ)
         today_local = now_local.date()
         is_last_day_today = today_local == last_day_date
@@ -92,6 +99,11 @@ class ReadingService:
         total_minutes = 0
         total_score = 0
         for d in month_days:
+            # Keep the full month in the grid so the calendar keeps its shape,
+            # but flag days outside this round's window — for a mini-round the
+            # client draws those as decorative cells, not as missed days, and
+            # they contribute nothing to the totals.
+            in_round = rnd.covers(d)
             row = by_date.get(d)
             minutes = int(row.minutes) if row else 0
             score = int(row.score) if row else 0
@@ -104,11 +116,21 @@ class ReadingService:
                 "date": d.isoformat(), "minutes": minutes, "score": score,
                 "book_finished": book_finished, "comment": comment,
                 "comment_private": is_private,
+                "in_round": in_round,
             })
-            total_minutes += minutes
-            total_score += score
+            if in_round:
+                total_minutes += minutes
+                total_score += score
 
-        return {"round_id": str(round_id), "total_minutes": total_minutes, "total_score": total_score, "days": days}
+        return {
+            "round_id": str(round_id),
+            "total_minutes": total_minutes,
+            "total_score": total_score,
+            "start_day": max(1, rnd.start_day),
+            "end_day": rnd.last_day_num,
+            "is_partial_month": rnd.is_partial_month,
+            "days": days,
+        }
 
     def yearly_archive(self, *, user_id: uuid.UUID, year: int, group_id: uuid.UUID) -> dict:
         # Fold in any archive usernames this user has claimed as their own —
@@ -173,7 +195,12 @@ class ReadingService:
         return {"year": year, "days": dict(by_date)}
 
     def leaderboard(self, *, round_id: uuid.UUID) -> list[dict]:
-        data = self.logs.leaderboard_data(round_id=round_id)
+        rnd = self.rounds.get_round(round_id)
+        data = self.logs.leaderboard_data(
+            round_id=round_id,
+            day_from=rnd.first_day_date if rnd else None,
+            day_to=rnd.last_day_date if rnd else None,
+        )
         data.sort(key=lambda x: (-x["total_score"], x["display_name"]))
         return data
 
@@ -189,6 +216,12 @@ class ReadingService:
         rows = self.logs.roster_for_round(round_id=round_id)
         by_date: dict[str, list[dict]] = defaultdict(list)
         for d, uid, name, tg, minutes, score, book_finished, comment in rows:
+            # Only the round's own days belong on its shared calendar. Reading
+            # logged outside the window still lives in that person's private
+            # archive, but it isn't part of this circle and shouldn't show up
+            # in the group view or count toward it.
+            if not rnd.covers(d):
+                continue
             by_date[d.isoformat()].append({
                 "user_id": str(uid),
                 "display_name": name,

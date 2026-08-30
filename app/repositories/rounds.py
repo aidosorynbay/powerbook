@@ -58,6 +58,8 @@ class RoundRepository(BaseRepository[Round]):
         month: int,
         timezone: str = "UTC",
         registration_open_until_day: int = 10,
+        start_day: int = 1,
+        end_day: int | None = None,
     ) -> Round:
         rnd = Round(
             group_id=group_id,
@@ -65,6 +67,8 @@ class RoundRepository(BaseRepository[Round]):
             month=month,
             timezone=timezone,
             registration_open_until_day=registration_open_until_day,
+            start_day=start_day,
+            end_day=end_day,
         )
         self.db.add(rnd)
         self.db.commit()

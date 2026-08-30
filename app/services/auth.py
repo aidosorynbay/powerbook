@@ -46,5 +46,13 @@ class AuthService:
         if not verify_password(password, user.password_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
+        if user.is_claimable:
+            # Someone signed in as this archive identity, so it is not an
+            # unclaimed placeholder any more — it is theirs. Leaving the flag
+            # set would keep them out of the directory and, worse, keep
+            # offering their reading history to strangers to claim.
+            user.is_claimable = False
+            self.db.commit()
+
         return create_access_token(subject=str(user.id))
 

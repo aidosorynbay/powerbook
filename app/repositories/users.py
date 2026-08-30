@@ -48,6 +48,11 @@ class UserRepository(BaseRepository[User]):
         stmt = select(User).where(User.is_claimable.is_(False)).order_by(User.display_name.asc())
         return list(self.db.execute(stmt).scalars().all())
 
+    def list_by_person(self, *, person_id: uuid.UUID) -> list[User]:
+        """Every archive account belonging to one human."""
+        stmt = select(User).where(User.person_id == person_id).order_by(User.username.asc())
+        return list(self.db.execute(stmt).scalars().all())
+
     def get_by_ids(self, user_ids: list[uuid.UUID]) -> dict[uuid.UUID, User]:
         if not user_ids:
             return {}

@@ -76,6 +76,15 @@ class ClaimsRepository(BaseRepository[UsernameClaim]):
         )
         return self.db.execute(stmt).scalar_one_or_none()
 
+    def pending_claims_for_ghost(self, *, ghost_user_id: uuid.UUID) -> list[UsernameClaim]:
+        """Requests awaiting review. Several people may ask for the same
+        nickname — that is exactly the case the founder has to settle."""
+        stmt = select(UsernameClaim).where(
+            UsernameClaim.ghost_user_id == ghost_user_id,
+            UsernameClaim.status == ClaimStatus.pending,
+        )
+        return list(self.db.execute(stmt).scalars().all())
+
     def get(self, claim_id: uuid.UUID) -> UsernameClaim | None:
         return self.db.get(UsernameClaim, claim_id)
 
@@ -105,7 +114,8 @@ class ClaimsRepository(BaseRepository[UsernameClaim]):
         return claim
 
     def reactivate(self, claim: UsernameClaim, *, note: str | None) -> UsernameClaim:
-        claim.status = ClaimStatus.approved
+        # Back into the queue, not straight back to granted.
+        claim.status = ClaimStatus.pending
         claim.note = note
         claim.reviewed_by_user_id = None
         claim.reviewed_at = None
