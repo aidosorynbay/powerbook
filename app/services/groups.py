@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.constants import CORRECTION_DEADLINE_HOUR
 from app.models.group import Group
 from app.models.round import Round
 from app.repositories.group_members import GroupMemberRepository
@@ -83,7 +84,9 @@ class GroupService:
         next_round_participation: ParticipationInfo | None = None
 
         if rnd is not None:
-            last_day = calendar.monthrange(rnd.year, rnd.month)[1]
+            # The round's last day, not the month's: a circle running 15-30
+            # ends on the 30th, and its deadline must not point at the 31st.
+            last_day = rnd.last_day_num
 
             # Midnight GMT+5 at end of last day = start of next day
             if rnd.month == 12:
@@ -92,8 +95,11 @@ class GroupService:
                 deadline_local = datetime(rnd.year, rnd.month + 1, 1, tzinfo=tz)
             deadline_utc = deadline_local.astimezone(ZoneInfo("UTC")).isoformat()
 
-            # Correction deadline: 8 PM GMT+5 on last day
-            correction_local = datetime(rnd.year, rnd.month, last_day, 20, 0, 0, tzinfo=tz)
+            # Correction deadline on the last day, taken from the same
+            # constant the enforcing service uses.
+            correction_local = datetime(
+                rnd.year, rnd.month, last_day, CORRECTION_DEADLINE_HOUR, 0, 0, tzinfo=tz
+            )
             correction_deadline_utc = correction_local.astimezone(ZoneInfo("UTC")).isoformat()
 
             # Next month's round
