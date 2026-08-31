@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, select
 
 from app.core.cache import stats_cache
-from app.core.constants import CACHE_KEY_PUBLIC_STATS, DEFAULT_GROUP_SLUG
+from app.core.constants import CACHE_KEY_PUBLIC_STATS, DEFAULT_GROUP_SLUG, ROUND_TZ
 from app.models.enums import RoundStatus
 from app.models.round import ReadingLog
 from app.repositories.groups import GroupRepository
@@ -44,7 +44,7 @@ class StatsService:
         if cached is not None:
             return PublicStatsOut(**cached)
 
-        now = datetime.now(tz=ZoneInfo("UTC"))
+        now = datetime.now(tz=ROUND_TZ)
 
         # Global stats
         total_participants = self.stats_repo.count_total_unique_participants()

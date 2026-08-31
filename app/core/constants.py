@@ -15,9 +15,16 @@ DEFAULT_LEAVE_DEADLINE_DAY = 10  # Users can leave a round until this day of the
 # Cache keys
 CACHE_KEY_PUBLIC_STATS = "public_stats"
 
+# The circle runs on Kazakhstan time, and so must every question of the form
+# "what day is it" — which month's round is current, whether the deadline has
+# passed, how many days are left. Asking that in UTC gives a different answer
+# for five hours every night, which is how the home page came to report an
+# empty round just after midnight local time.
+ROUND_TZ = ZoneInfo("Asia/Almaty")  # GMT+5
+
 # The circle's final day is for corrections only, and they close at this hour
 # local time. Read by the service that enforces it and by the one that reports
 # it to the client, because a countdown that outlives the cut-off is worse
 # than no countdown.
 CORRECTION_DEADLINE_HOUR = 20
-CORRECTION_TZ = ZoneInfo("Asia/Almaty")  # GMT+5
+CORRECTION_TZ = ROUND_TZ

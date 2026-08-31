@@ -21,7 +21,8 @@ from app.services.rounds import RoundService
 
 logger = logging.getLogger(__name__)
 
-ROUND_TZ = ZoneInfo("Asia/Almaty")  # GMT+5
+# Imported rather than redeclared, so there is one answer to "what day is it".
+from app.core.constants import ROUND_TZ  # noqa: E402
 DEFAULT_GROUP_SLUG = "powerbook"
 
 

@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.constants import CORRECTION_DEADLINE_HOUR
+from app.core.constants import CORRECTION_DEADLINE_HOUR, ROUND_TZ
 from app.models.group import Group
 from app.models.round import Round
 from app.repositories.group_members import GroupMemberRepository
@@ -52,8 +52,9 @@ class GroupService:
         return g
 
     def get_current_round(self, *, group_id: uuid.UUID) -> Round | None:
-        # MVP definition: "current round" is the round for the current month (UTC).
-        now = datetime.now(tz=ZoneInfo("Asia/Almaty"))
+        # "Current round" means the round for the current month in the
+        # circle's own timezone, not the server's.
+        now = datetime.now(tz=ROUND_TZ)
         return self.rounds.get_by_group_year_month(group_id=group_id, year=now.year, month=now.month)
 
     def get_current_round_status(self, *, slug: str, user_id: uuid.UUID) -> CurrentRoundStatusOut:
@@ -76,7 +77,7 @@ class GroupService:
             else:
                 participation = ParticipationInfo(is_participant=False)
 
-        tz = ZoneInfo("Asia/Almaty")  # GMT+5
+        tz = ROUND_TZ
 
         deadline_utc: str | None = None
         correction_deadline_utc: str | None = None
