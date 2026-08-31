@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/lib';
 import { Container, PageTransition } from '@/shared/ui';
-import { Header, Hero, Stats, Reward, CallToAction, Footer, About, RoundsShowcase, HeroBanner, LastCallNotice } from '@/widgets';
+import { Header, Hero, Stats, Reward, CallToAction, Footer, About, RoundsShowcase, HeroBanner } from '@/widgets';
 import styles from './HomePage.module.css';
 
 export function HomePage() {
@@ -18,7 +18,6 @@ export function HomePage() {
         <Header />
 
         <main className={styles.main}>
-          <LastCallNotice />
           <HeroBanner />
           <Hero onJoinClick={handleJoin} />
           <Stats />

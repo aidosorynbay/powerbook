@@ -15,7 +15,7 @@ import {
 } from '@/shared/lib';
 import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition } from '@/shared/ui';
-import { Header, Footer, LastCallNotice } from '@/widgets';
+import { Header, Footer } from '@/widgets';
 import anim from '@/shared/styles/animations.module.css';
 import { quietDayIcon, quietDayQuoteKeys, finishFlagIcon } from '@/shared/lib/quietDays';
 import styles from './DashboardPage.module.css';
@@ -574,7 +574,6 @@ export function DashboardPage() {
         <div className={styles.page}>
           <Header />
         <main className={styles.main}>
-          <LastCallNotice />
           <Container>
             <div className={styles.loading}>{t('dashboard.loading')}</div>
           </Container>

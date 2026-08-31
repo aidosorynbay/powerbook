@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { AuthProvider, useAuth, I18nProvider, useI18n } from '@/shared/lib';
 import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage } from '@/pages';
-import { BottomNav } from '@/widgets';
+import { BottomNav, LastCallNotice } from '@/widgets';
 import '@/app/styles/theme.css';
 
 // Loaded only when a book is actually opened.
@@ -101,6 +101,9 @@ function AppRoutes() {
         />
       </Routes>
       <BottomNav />
+      {/* Mounted at the root, not per page: the reader should see it on the
+          last day whichever page they happen to open. */}
+      {isAuthenticated && <LastCallNotice />}
     </>
   );
 }
