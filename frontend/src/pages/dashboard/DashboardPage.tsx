@@ -659,6 +659,39 @@ export function DashboardPage() {
                 )}
               </div>
 
+              {/* Say it outright. Without this a non-participant just finds
+                  a page with no calendar on it and no reason given. */}
+              {!isParticipant && (
+                <div className={styles.notInRound}>
+                  {/* The month is already the heading directly above, and
+                      Russian has no genitive month form here to borrow. */}
+                  <div className={styles.notInRoundTitle}>
+                    {t('dashboard.notInRoundTitle')}
+                  </div>
+                  <p className={styles.notInRoundText}>
+                    {canJoin
+                      ? t('dashboard.notInRoundCanJoin', {
+                          day: roundStatus.round.registration_open_until_day,
+                        })
+                      : t('dashboard.notInRoundClosed')}
+                  </p>
+                  {canJoin ? (
+                    <Button onClick={handleJoin} disabled={isJoining}>
+                      {isJoining ? t('dashboard.joining') : t('dashboard.joinBtn')}
+                    </Button>
+                  ) : roundStatus.next_round?.status === 'registration_open' &&
+                    !roundStatus.next_round_participation?.is_participant ? (
+                    <Button onClick={handleJoinNextRound} disabled={isJoiningNextRound}>
+                      {isJoiningNextRound
+                        ? t('dashboard.registeringNextRound')
+                        : t('dashboard.registerNextRound')}
+                    </Button>
+                  ) : roundStatus.next_round_participation?.is_participant ? (
+                    <p className={styles.notInRoundOk}>{t('dashboard.registeredNextRound')}</p>
+                  ) : null}
+                </div>
+              )}
+
               {/* Color & symbol legend */}
               <div className={styles.legend}>
                 <span className={styles.legendItem}>
