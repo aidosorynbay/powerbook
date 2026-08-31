@@ -13,6 +13,15 @@ from app.models.user import User
 from app.repositories.base import BaseRepository
 
 
+# A day counts once it reaches this many minutes. The round's final day is
+# correction-only and scores nothing regardless — see resync_scores.
+MIN_SCORING_MINUTES = 30
+
+
+def score_for(minutes: int) -> int:
+    return 1 if minutes >= MIN_SCORING_MINUTES else 0
+
+
 class ReadingLogRepository(BaseRepository[ReadingLog]):
     def __init__(self, db: Session) -> None:
         super().__init__(db)
@@ -138,6 +147,36 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
             })
         return result
 
+    def resync_scores(self, *, round_id: uuid.UUID, last_day: date, day_from: date) -> int:
+        """Re-derive `score` for a round's logs and return how many changed.
+
+        `score` is written once, at log time. That is fine until the round's
+        own window moves: extending August from the 30th to the 31st meant the
+        30th stopped being the correction day, but rows already written on the
+        30th kept the 0 they were given. Anyone who logged the same day after
+        the change got a 1, which is how the staleness surfaced.
+
+        Rather than make every read recompute, this puts the values back in
+        agreement with the rule on demand — notably before results are frozen.
+        """
+        rows = self.db.execute(
+            select(ReadingLog).where(
+                ReadingLog.round_id == round_id,
+                ReadingLog.date >= day_from,
+                ReadingLog.date <= last_day,
+            )
+        ).scalars().all()
+
+        changed = 0
+        for row in rows:
+            want = 0 if row.date == last_day else score_for(row.minutes)
+            if row.score != want:
+                row.score = want
+                changed += 1
+        if changed:
+            self.db.flush()
+        return changed
+
     def upsert_minutes(
         self,
         *,
@@ -150,7 +189,7 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
         comment: str | None = None,
         comment_private: bool = False,
     ) -> ReadingLog:
-        score = force_score if force_score is not None else (1 if minutes >= 30 else 0)
+        score = force_score if force_score is not None else score_for(minutes)
         existing = self.get_for_user_date(round_id=round_id, user_id=user_id, day=day)
         if existing is None:
             row = ReadingLog(round_id=round_id, user_id=user_id, date=day, minutes=minutes)

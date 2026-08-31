@@ -217,6 +217,15 @@ class RoundService:
         if not participants:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="No participants")
 
+        # Put stored scores back in agreement with the rule before freezing
+        # them. A round whose window was edited mid-flight carries rows scored
+        # under the old window, and results are the last place to catch that.
+        self.reading_logs.resync_scores(
+            round_id=round_id,
+            day_from=rnd.first_day_date,
+            last_day=rnd.last_day_date,
+        )
+
         # aggregate scores per user via repository, limited to the round's
         # own day window (the whole month unless this is a mini-round)
         scores = self.reading_logs.aggregate_scores_by_user(
