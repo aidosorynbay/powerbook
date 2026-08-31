@@ -14,6 +14,15 @@ import styles from './LastCallNotice.module.css';
  * Shown once per round: a dialog that returns on every navigation stops being
  * a reminder and becomes an obstacle.
  */
+/**
+ * Dismissal is stored per round and per wording. The notice first went out
+ * saying "until midnight"; the deadline is 20:00, and people who had already
+ * closed the old text would never have seen the correction. Bumping the
+ * revision shows it once more to exactly those readers.
+ */
+const NOTICE_REVISION = 2;
+const dismissKey = (roundId: string) => `pb.lastCall.v${NOTICE_REVISION}.${roundId}`;
+
 export function LastCallNotice() {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -35,13 +44,13 @@ export function LastCallNotice() {
       if (!isThisMonth || !stillOpen || now.getDate() !== lastDay) return;
 
       setRoundId(r.id);
-      setOpen(localStorage.getItem(`pb.lastCall.${r.id}`) !== '1');
+      setOpen(localStorage.getItem(dismissKey(r.id)) !== '1');
     });
     return () => { cancelled = true; };
   }, []);
 
   const close = () => {
-    if (roundId) localStorage.setItem(`pb.lastCall.${roundId}`, '1');
+    if (roundId) localStorage.setItem(dismissKey(roundId), '1');
     setOpen(false);
   };
 

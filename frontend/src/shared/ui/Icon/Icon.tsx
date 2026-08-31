@@ -12,7 +12,8 @@ export type IconName =
   | 'refresh'
   | 'check'
   | 'star'
-  | 'trophy';
+  | 'trophy'
+  | 'book';
 
 interface IconProps extends SVGAttributes<SVGElement> {
   name: IconName;
@@ -98,6 +99,12 @@ const icons: Record<IconName, JSX.Element> = {
       strokeLinejoin="round"
       fill="none"
     />
+  ),
+  'book': (
+    <>
+      <path d="M4 4.5A1.5 1.5 0 015.5 3H19a1 1 0 011 1v14a1 1 0 01-1 1H5.5A1.5 1.5 0 004 20.5v-16z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
+      <path d="M4 17.5A1.5 1.5 0 015.5 16H20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </>
   ),
   'trophy': (
     <>

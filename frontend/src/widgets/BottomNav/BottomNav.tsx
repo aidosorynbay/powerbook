@@ -8,7 +8,7 @@ const tabs = [
   { path: '/archive', icon: 'refresh' as const, label: 'nav.archive' },
   { path: '/results', icon: 'check' as const, label: 'nav.results' },
   { path: '/insights', icon: 'user' as const, label: 'nav.profile' },
-  { path: '/hall-of-fame', icon: 'trophy' as const, label: 'nav.hallOfFame' },
+  { path: '/library', icon: 'book' as const, label: 'nav.library' },
 ];
 
 export function BottomNav() {
@@ -19,7 +19,8 @@ export function BottomNav() {
   return (
     <nav className={styles.bottomNav}>
       {tabs.map(({ path, icon, label }) => {
-        const isActive = location.pathname === path;
+        const isActive =
+          location.pathname === path || location.pathname.startsWith(`${path}/`);
         return (
           <Link
             key={path}
