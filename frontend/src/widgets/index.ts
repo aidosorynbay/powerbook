@@ -10,3 +10,4 @@ export { ClaimPicker } from './ClaimPicker';
 export { WrappedCard } from './WrappedCard';
 export { RoundsShowcase } from './RoundsShowcase';
 export { HeroBanner } from './HeroBanner';
+export { LastCallNotice } from './LastCallNotice';

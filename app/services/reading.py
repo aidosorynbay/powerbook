@@ -15,7 +15,9 @@ from app.repositories.claims import ClaimsRepository
 from app.repositories.reading_logs import ReadingLogRepository
 from app.services.rounds import RoundService
 
-CORRECTION_DEADLINE_HOUR = 20  # 8 PM
+# Corrections run to the end of the final day. An earlier cut-off stranded
+# people who only sat down to fill in the week that evening.
+CORRECTION_DEADLINE_HOUR = 24
 CORRECTION_TZ = ZoneInfo("Asia/Almaty")  # GMT+5
 
 
