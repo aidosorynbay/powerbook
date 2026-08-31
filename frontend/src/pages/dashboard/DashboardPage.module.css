@@ -637,27 +637,93 @@
 }
 
 /* Correction notice (inside Today panel) */
+/* The correction window is the one deadline in the product that cannot be
+   recovered from, so it is styled to be seen rather than to sit quietly. */
 .correctionNotice {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: var(--spacing-2);
-  padding: var(--spacing-2) var(--spacing-3);
+  padding: var(--spacing-3);
   border-radius: var(--radius-md);
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border-primary);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
+  background: linear-gradient(135deg, var(--color-warning-muted), var(--color-danger-muted));
+  border: 1px solid var(--color-warning);
+  color: var(--color-text-primary);
+}
+
+.correctionHead {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.correctionFlame {
+  font-size: 18px;
+  line-height: 1;
+  animation: flameFlicker 1.6s ease-in-out infinite;
 }
 
 .correctionLabel {
-  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
 }
 
-.correctionTimer {
+/* The clock itself: numbers large and tabular, units small beside them. */
+.correctionClock {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.clockPart {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.clockValue {
+  font-size: 30px;
+  font-weight: var(--font-weight-bold);
   font-variant-numeric: tabular-nums;
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  line-height: 1;
+  color: var(--color-warning);
+}
+
+.clockUnit {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.clockLeft {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-left: 2px;
+}
+
+/* Final hour: the same block, escalated. */
+.correctionUrgent {
+  border-color: var(--color-danger);
+  animation: correctionPulse 2s ease-in-out infinite;
+}
+
+.correctionUrgent .clockValue {
+  color: var(--color-danger);
+}
+
+@keyframes flameFlicker {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.14) rotate(-4deg); opacity: 0.85; }
+}
+
+@keyframes correctionPulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--color-danger-muted); }
+  50% { box-shadow: 0 0 0 6px transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .correctionFlame, .correctionUrgent { animation: none; }
 }
 
 /* Next round registration section */

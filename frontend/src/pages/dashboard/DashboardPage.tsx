@@ -90,6 +90,18 @@ function formatCountdown(ms: number): string {
   return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+/** Countdown split into labelled parts, so "5 h 12 m" reads at a glance
+ *  where "5:12:44" has to be decoded. Seconds only appear in the final hour,
+ *  when they are the thing that actually matters. */
+function countdownParts(ms: number): { value: number; unit: 'h' | 'm' | 's' }[] {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) return [{ value: h, unit: 'h' }, { value: m, unit: 'm' }];
+  return [{ value: m, unit: 'm' }, { value: s, unit: 's' }];
+}
+
 type LastDayPhase = 'normal' | 'correction' | 'registration';
 
 export function DashboardPage() {
@@ -692,11 +704,27 @@ export function DashboardPage() {
                     <div className={styles.todayPanel}>
                       <div className={styles.todayDate}>{todayStr}</div>
 
-                      {/* Correction countdown — subtle, inside Today panel */}
+                      {/* Correction countdown. Loud on purpose: this is the last
+                          chance to fix the month, and it expires tonight. */}
                       {correctionsOpen && countdownMs !== null && (
-                        <div className={styles.correctionNotice}>
-                          <span className={styles.correctionLabel}>{t('dashboard.correctionPeriod')}</span>
-                          <span className={styles.correctionTimer}>{formatCountdown(countdownMs)}</span>
+                        <div
+                          className={`${styles.correctionNotice} ${countdownMs < 3600_000 ? styles.correctionUrgent : ''}`}
+                          role="timer"
+                          aria-live="off"
+                        >
+                          <div className={styles.correctionHead}>
+                            <span className={styles.correctionFlame} aria-hidden="true">🔥</span>
+                            <span className={styles.correctionLabel}>{t('dashboard.correctionPeriod')}</span>
+                          </div>
+                          <div className={styles.correctionClock}>
+                            {countdownParts(countdownMs).map(({ value, unit }) => (
+                              <span key={unit} className={styles.clockPart}>
+                                <span className={styles.clockValue}>{value}</span>
+                                <span className={styles.clockUnit}>{t(`countdown.${unit}`)}</span>
+                              </span>
+                            ))}
+                            <span className={styles.clockLeft}>{t('countdown.left')}</span>
+                          </div>
                         </div>
                       )}
 
