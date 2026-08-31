@@ -562,8 +562,8 @@ export function DashboardPage() {
         <div className={styles.page}>
           <Header />
         <main className={styles.main}>
+          <LastCallNotice />
           <Container>
-            <LastCallNotice />
             <div className={styles.loading}>{t('dashboard.loading')}</div>
           </Container>
         </main>

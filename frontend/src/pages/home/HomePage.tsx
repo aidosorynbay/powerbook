@@ -18,7 +18,7 @@ export function HomePage() {
         <Header />
 
         <main className={styles.main}>
-          <Container><LastCallNotice /></Container>
+          <LastCallNotice />
           <HeroBanner />
           <Hero onJoinClick={handleJoin} />
           <Stats />
