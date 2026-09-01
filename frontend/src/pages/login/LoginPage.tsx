@@ -70,6 +70,7 @@ export function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 required
               />
+              <div className={styles.hint}>{t('login.usernameHint')}</div>
             </div>
 
             <div className={styles.field}>

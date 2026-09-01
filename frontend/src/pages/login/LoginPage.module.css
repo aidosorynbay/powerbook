@@ -153,3 +153,13 @@
   border-color: var(--color-accent-primary);
   cursor: default;
 }
+
+
+/* Which form of the handle to type. People arrive with the "@madik_o" that
+   Telegram shows them, and a failed sign-in looks identical to a wrong
+   password. */
+.hint {
+  margin-top: var(--spacing-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}

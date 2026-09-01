@@ -30,10 +30,20 @@ class UserRepository(BaseRepository[User]):
         return self.db.execute(stmt).scalar_one_or_none()
 
     def get_by_login(self, login: str) -> User | None:
-        """Look up by username first, then telegram_id, then email."""
-        user = self.get_by_username(login)
+        """Look up by username first, then telegram_id, then email.
+
+        A leading "@" is dropped before matching. Telegram shows handles that
+        way, so people type them that way, and registration already strips it
+        before storing — without this, signing in with the same string you
+        registered with failed as "invalid credentials".
+        """
+        login = login.strip()
+        handle = login[1:] if login.startswith("@") else login
+
+        user = self.get_by_username(handle)
         if user is None:
-            user = self.get_by_telegram_id(login)
+            user = self.get_by_telegram_id(handle)
+        # An address keeps its "@", which is never in first position.
         if user is None and "@" in login:
             user = self.get_by_email(login)
         return user
