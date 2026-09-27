@@ -16,6 +16,7 @@ import {
   type Locale,
 } from '@/shared/lib';
 import { Avatar } from '@/shared/ui';
+import { Header } from '@/widgets';
 import { extractCover } from '../extractCover';
 import { EditBookSheet } from './EditBookSheet';
 import { loadShelfFonts, type VolumeArt } from './bookArt';
@@ -29,7 +30,8 @@ type Filter = 'all' | 'files';
 const MB = 1024 * 1024;
 const FONTS_HREF =
   'https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Literata:ital,opsz,wght@0,7..72,300..700;1,7..72,300..700&display=swap';
-const PAPER = '#efe9dd';
+// The app's page colour: the shelf now sits in the same dark room as every other page.
+const ROOM = '#0d1117';
 
 const MONTHS: Record<Locale, string[]> = {
   ru: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
@@ -136,16 +138,45 @@ export function BookcasePage({ ownerId }: Props) {
   const [manualError, setManualError] = useState<string | null>(null);
 
   const isSelf = !!data?.is_self;
+  const siteHeaderRef = useRef<HTMLDivElement>(null);
+
+  // The room is fixed to the viewport; it starts under the site header,
+  // whatever height the header has on this screen. The phone header can hang
+  // a one-off menu hint below itself, so the lowest edge of anything in it counts.
+  useEffect(() => {
+    const el = siteHeaderRef.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const apply = () => {
+      const top = el.getBoundingClientRect().top;
+      let bottom = el.getBoundingClientRect().bottom;
+      el.querySelectorAll('*').forEach((node) => {
+        const r = node.getBoundingClientRect();
+        if (r.height > 0) bottom = Math.max(bottom, r.bottom);
+      });
+      root.style.setProperty('--shelf-top', `${Math.round(bottom - top)}px`);
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    const mo = new MutationObserver(apply);
+    mo.observe(el, { childList: true, subtree: true });
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+      root.style.removeProperty('--shelf-top');
+    };
+  }, []);
   const inspecting = mode !== 'browse';
 
   // ---------- page chrome ----------
 
   useEffect(() => {
-    // The shelf is a light room inside a dark app: match the browser chrome
-    // and the page behind the canvas while it is open.
+    // Match the browser chrome and the page behind the canvas while the
+    // shelf is open.
     const meta = document.querySelector('meta[name="theme-color"]');
     const previous = meta?.getAttribute('content') ?? null;
-    meta?.setAttribute('content', PAPER);
+    meta?.setAttribute('content', ROOM);
     document.documentElement.classList.add('pb-paper-room');
 
     if (!document.querySelector('link[data-shelf-fonts]')) {
@@ -536,6 +567,10 @@ export function BookcasePage({ ownerId }: Props) {
   const fellowList = current?.match_key ? fellows[current.match_key] : undefined;
 
   return (
+    <>
+    <div ref={siteHeaderRef}>
+      <Header />
+    </div>
     <main
       className={[
         styles.room,
@@ -554,15 +589,10 @@ export function BookcasePage({ ownerId }: Props) {
 
       <header className={styles.header}>
         <div className={styles.brand} ref={brandRef}>
-          {ownerId ? (
+          {ownerId && (
             <Link className={styles.homeLink} to={`/readers/${ownerId}`}>
               <span aria-hidden="true">←</span>
               <span>{t('shelf.backToProfile')}</span>
-            </Link>
-          ) : (
-            <Link className={styles.homeLink} to="/round">
-              <span aria-hidden="true">←</span>
-              <span>PowerBook</span>
             </Link>
           )}
           <span className={styles.wordmark}>
@@ -619,7 +649,7 @@ export function BookcasePage({ ownerId }: Props) {
                 <span aria-hidden="true">↗</span>
               </button>
               {isSelf && current.upload_id && (
-                <Link className={styles.inspect} to={`/library/${current.upload_id}`}>
+                <Link className={`${styles.inspect} ${styles.inspectPrimary}`} to={`/library/${current.upload_id}`}>
                   <span>{current.progress_percent > 0 && current.progress_percent < 100 ? t('shelf.continue') : t('shelf.read')}</span>
                   <span aria-hidden="true">→</span>
                 </Link>
@@ -982,5 +1012,6 @@ export function BookcasePage({ ownerId }: Props) {
 
       <input ref={fileInput} type="file" onChange={onPickFile} hidden />
     </main>
+    </>
   );
 }

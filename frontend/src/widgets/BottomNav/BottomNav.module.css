@@ -67,23 +67,3 @@
   padding-left: 2px;
   padding-right: 2px;
 }
-
-
-
-/* On the bookcase, the bar takes the room's paper and ink. */
-.paper {
-  background: #efe9dd;
-  border-top-color: rgba(37, 34, 30, 0.14);
-}
-
-.paper .tab {
-  color: rgba(37, 34, 30, 0.5);
-}
-
-.paper .tab:hover {
-  color: rgba(37, 34, 30, 0.78);
-}
-
-.paper .tabActive {
-  color: #25221e;
-}

@@ -1,33 +1,36 @@
-/* The bookcase is a light room inside a dark app: warm paper, walnut, ink.
-   Everything here is scoped to .room so none of it leaks into the rest of
-   PowerBook, which keeps its own dark theme. */
+/* The bookcase wears the same dark look as the rest of PowerBook: the page
+   colours, pills, badges and orange buttons of theme.css, with a reading lamp
+   over the walnut shelf. Everything here is scoped to .room. The token names
+   (--paper, --ink) are kept from the first, light version of the room. */
 
 :global(html.pb-paper-room),
 :global(html.pb-paper-room body) {
-  background: #efe9dd;
+  background: var(--color-bg-primary);
 }
 
 .room {
-  --paper: #efe9dd;
-  --paper-deep: #e5ddcd;
-  --paper-light: #f7f2e8;
-  --ink: #25221e;
-  --ink-soft: rgba(37, 34, 30, 0.62);
-  --hairline: rgba(37, 34, 30, 0.18);
-  --accent: #f26430;
-  --serif: 'Literata', 'Iowan Old Style', Georgia, serif;
-  --sans: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --paper: var(--color-bg-primary);
+  --paper-deep: var(--color-bg-secondary);
+  --paper-light: var(--color-bg-elevated);
+  --ink: var(--color-text-primary);
+  --ink-soft: var(--color-text-secondary);
+  --hairline: var(--color-border-primary);
+  --accent: var(--color-accent-primary);
+  --serif: var(--font-family-primary);
+  --sans: var(--font-family-primary);
   /* Room left for PowerBook's own tab bar on phones. */
   --nav: 0px;
 
   position: fixed;
-  inset: 0;
+  /* Starts under the site header; BookcasePage measures it. */
+  inset: var(--shelf-top, 0px) 0 0;
   z-index: 1;
   overflow: hidden;
   isolation: isolate;
   color: var(--ink);
+  /* The lamp's pool on the wall; the scene moves it with the light. */
   background:
-    radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.34), transparent 48%),
+    radial-gradient(circle at var(--lamp-x, 40%) var(--lamp-y, 45%), rgba(255, 196, 128, 0.17), rgba(255, 170, 90, 0.06) 22%, rgba(255, 170, 90, 0) 44%),
     var(--paper);
   font-family: var(--sans);
   line-height: normal;
@@ -1738,5 +1741,448 @@
     transition-delay: 0ms !important;
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+/* ================================================================
+   Site look: the rest of PowerBook's buttons, pills and badges.
+   Written as a layer over the rules above so the light room's layout
+   (caption, details, sheets) stays exactly where it was.
+   ================================================================ */
+
+/* No paper grain on a dark page. */
+.room::after {
+  display: none;
+}
+
+.header {
+  padding-top: 18px;
+  padding-inline: max(var(--container-padding), calc((100% - var(--container-max-width)) / 2 + var(--container-padding)));
+}
+
+.homeLink {
+  padding: 6px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-full);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.homeLink:hover {
+  color: var(--ink) !important;
+  background: var(--paper-light);
+}
+
+.wordmark {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+.segment {
+  gap: 6px;
+  border: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.segment button,
+.segment button:first-child,
+.segmentLabel + button {
+  padding: 7px 14px;
+  border: 1px solid var(--hairline) !important;
+  border-radius: var(--radius-full);
+  color: var(--ink-soft);
+  text-transform: none;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.segment button:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.segment button[aria-pressed='true'] {
+  border-color: var(--color-border-accent) !important;
+  color: var(--accent) !important;
+  background: var(--color-accent-primary-muted) !important;
+}
+
+.segmentLabel {
+  align-self: center;
+  padding: 0 2px 0 6px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.addButton {
+  padding: 9px 16px !important;
+  border: 0 !important;
+  border-radius: var(--radius-lg);
+  color: #fff !important;
+  background: var(--accent) !important;
+  font-size: 14.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.addButton:hover:not(:disabled) {
+  background: var(--color-accent-primary-hover) !important;
+}
+
+.ghostButton {
+  padding: 9px 16px !important;
+  border-radius: var(--radius-lg);
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.caption::before {
+  background: linear-gradient(90deg, rgba(13, 17, 23, 0.94), rgba(13, 17, 23, 0.8) 58%, rgba(13, 17, 23, 0));
+}
+
+/* The status line reads as the site's badges do. */
+.kicker,
+.eyebrow {
+  width: fit-content;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  color: var(--accent);
+  background: var(--color-accent-primary-muted);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.caption h1,
+.copy h2 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.caption h1 {
+  font-size: clamp(30px, 3.6vw, 52px);
+}
+
+.caption h1.titleMedium {
+  font-size: clamp(26px, 2.9vw, 42px);
+  line-height: 1.06;
+}
+
+.caption h1.titleLong {
+  font-size: clamp(20px, 2.2vw, 30px);
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+}
+
+.copy h2 {
+  font-size: clamp(28px, 3vw, 44px);
+}
+
+.author,
+.detailsAuthor {
+  font-size: 16px;
+  font-style: normal;
+}
+
+.captionActions {
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.inspect {
+  gap: 8px;
+  padding: 9px 16px !important;
+  border: 1px solid var(--hairline) !important;
+  border-radius: var(--radius-lg);
+  background: rgba(22, 27, 34, 0.7);
+  font-size: 14.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0;
+  text-transform: none;
+  transition: background-color 0.2s ease;
+}
+
+.inspect:hover {
+  background: var(--paper-light);
+}
+
+.inspectPrimary {
+  border-color: var(--accent) !important;
+  color: #fff !important;
+  background: var(--accent);
+}
+
+.inspectPrimary:hover {
+  background: var(--color-accent-primary-hover);
+}
+
+.arrow {
+  border: 1px solid var(--hairline) !important;
+  background: rgba(28, 33, 40, 0.85) !important;
+}
+
+.arrow:hover:not(:disabled) {
+  color: var(--accent);
+  background: var(--paper-light) !important;
+}
+
+.ticks button span {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.ticks button.tickActive span {
+  background: var(--accent);
+}
+
+.hint {
+  color: var(--color-text-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.hint span:first-child {
+  color: var(--ink-soft);
+}
+
+.details::before {
+  background: linear-gradient(90deg, rgba(13, 17, 23, 0), rgba(13, 17, 23, 0.9) 60px, var(--paper) 18%);
+}
+
+.detailsInner {
+  border-left: 1px solid var(--color-border-secondary);
+}
+
+.back,
+.position,
+.sourceLink,
+.editLink,
+.sheetClose,
+.fieldLabel span,
+.fieldLabelText,
+.fallbackMeta,
+.fallbackRead,
+.loading p,
+.copy blockquote cite {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.editLink {
+  color: var(--accent) !important;
+  text-decoration: none;
+}
+
+/* Facts become the site's small stat cards. */
+.facts {
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  border-top: 0;
+}
+
+.facts > div {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-lg);
+  background: var(--paper-light);
+}
+
+.facts dt {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.facts dd {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.progressTrack {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.copy blockquote {
+  border-left: 3px solid var(--accent);
+}
+
+.copy blockquote p {
+  color: var(--ink-soft);
+  font-size: 15px;
+  font-style: normal;
+}
+
+.fellowsLine {
+  color: var(--ink-soft);
+  font-size: 14.5px;
+}
+
+.primaryLink {
+  justify-content: center;
+  gap: 10px;
+  padding: 13px 16px !important;
+  border: 0 !important;
+  border-radius: var(--radius-lg);
+  color: #fff !important;
+  background: var(--accent);
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0;
+  text-transform: none;
+  transition: background-color 0.2s ease;
+}
+
+.primaryLink:hover:not(:disabled) {
+  background: var(--color-accent-primary-hover);
+}
+
+.focusControls {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.focusControls button {
+  padding: 7px 14px !important;
+  border-radius: var(--radius-full);
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.emptyState h1 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.emptyState p,
+.fallbackAuthor {
+  font-style: normal;
+}
+
+.toast {
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.sheetBackdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.sheet {
+  border-radius: var(--radius-xl);
+  background: var(--paper-deep);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+.sheetSection h3 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.sheetSection p {
+  font-size: 14.5px;
+}
+
+.field {
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--paper);
+  font-size: 15px;
+}
+
+.field::placeholder {
+  color: var(--color-text-muted);
+}
+
+.field:focus {
+  border-color: var(--accent);
+}
+
+.formError {
+  color: #e8695a !important;
+}
+
+.coverGrid img,
+.coverNowImg,
+.coverNowPainted {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.coverGridBusy {
+  background: rgba(13, 17, 23, 0.9);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+@media (max-width: 760px) {
+  .header {
+    padding-top: 14px;
+  }
+
+  .wordmark {
+    font-size: 18px;
+    letter-spacing: -0.01em;
+  }
+
+  .segment button,
+  .segment button:first-child,
+  .segmentLabel + button {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .headerAdd {
+    top: 12px;
+    width: 38px;
+    height: 34px;
+  }
+
+  .caption {
+    background: linear-gradient(180deg, rgba(13, 17, 23, 0), rgba(13, 17, 23, 0.94) 45px, var(--paper) 64px);
+  }
+
+  .details::before {
+    background: linear-gradient(180deg, rgba(13, 17, 23, 0), rgba(13, 17, 23, 0.94) 39px, var(--paper) 40px);
+  }
+
+  .detailsInner {
+    border-top: 1px solid var(--color-border-secondary);
+    border-left: 0;
+  }
+
+  .facts {
+    grid-template-columns: 1fr;
   }
 }

@@ -40,7 +40,11 @@ export type SceneCallbacks = {
   focusArea: () => { left: number; top: number; right: number; bottom: number };
 };
 
-const PAPER = '#efe9dd';
+// The site's page colour: the canvas is transparent and the page shows through.
+const ROOM = '#0d1117';
+// The reading lamp: warm light that follows the mouse, or rests on the chosen book.
+const LAMP_COLOR = '#ffc98c';
+const LAMP_POWER = 55;
 const PAGES = '#f2e8d4';
 const RIBBON = '#f26430';
 
@@ -155,17 +159,25 @@ export class BookcaseScene {
   private reducedMotion: boolean;
   private resizeObserver: ResizeObserver;
 
+  private lamp = new THREE.SpotLight(LAMP_COLOR, LAMP_POWER, 0, 0.42, 0.85, 2);
+  private lampAim = new THREE.Vector3(Number.NaN, 0, 0);
+  private lampGoal = new THREE.Vector3();
+  private lampFollowsPointer = false;
+  // Roughly the plane of the spines, so the pool lands where the mouse points.
+  private lampPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.35);
+  private lampScreen = new THREE.Vector3();
+
   constructor(canvas: HTMLCanvasElement, volumes: SceneVolume[], callbacks: SceneCallbacks, startIndex = 0) {
     this.canvas = canvas;
     this.callbacks = callbacks;
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // Transparent: the page's own paper shows through, so the room and the
+    // Transparent: the page's own background shows through, so the room and the
     // panels around it are one colour, not two that nearly match.
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    // Neutral keeps the paper the colour of the page around it.
+    // Neutral keeps the covers the colours they are in the 2D lists.
     this.renderer.toneMapping = THREE.NeutralToneMapping;
     this.renderer.toneMappingExposure = 1;
     this.renderer.shadowMap.enabled = true;
@@ -225,11 +237,12 @@ export class BookcaseScene {
   }
 
   private setupScene() {
-    this.scene.fog = new THREE.Fog(PAPER, 11, 28);
+    this.scene.fog = new THREE.Fog(ROOM, 11, 28);
 
-    this.scene.add(new THREE.HemisphereLight('#fffaf2', '#6e5848', 2.1));
+    // A dim evening room: enough light to read every spine, the lamp does the rest.
+    this.scene.add(new THREE.HemisphereLight('#9aa6bd', '#2b2119', 1.05));
 
-    const key = new THREE.DirectionalLight('#fff7ec', 3.1);
+    const key = new THREE.DirectionalLight('#dfe6f2', 1.35);
     key.position.set(-4.2, 7.4, 5.5);
     key.castShadow = true;
     const small = window.innerWidth < 760;
@@ -239,18 +252,22 @@ export class BookcaseScene {
     key.shadow.normalBias = 0.02;
     this.scene.add(key);
 
-    const fill = new THREE.DirectionalLight('#cfdbe8', 1.3);
+    const fill = new THREE.DirectionalLight('#6c7a92', 0.55);
     fill.position.set(5, 3, -4);
     this.scene.add(fill);
 
-    const warm = new THREE.PointLight('#e2a27a', 0.7, 10, 2);
+    const warm = new THREE.PointLight('#e2a27a', 0.35, 10, 2);
     warm.position.set(-3, 0.5, 3.2);
     this.scene.add(warm);
+
+    // No shadow from the lamp: a second shadow map would cost phones too much.
+    this.lamp.penumbra = 0.85;
+    this.scene.add(this.lamp, this.lamp.target);
 
     // Only behind the books: below the shelf a shadow has nothing to explain.
     const wallGeo = new THREE.PlaneGeometry(40, 14);
     // Wall and floor only exist to catch shadows; their colour is the page's.
-    const wall = new THREE.Mesh(wallGeo, new THREE.ShadowMaterial({ color: '#3a2a1c', opacity: 0.16 }));
+    const wall = new THREE.Mesh(wallGeo, new THREE.ShadowMaterial({ color: '#000000', opacity: 0.4 }));
     wall.position.set(0, 7.3, -2.2);
     wall.receiveShadow = true;
     this.scene.add(wall);
@@ -916,7 +933,11 @@ export class BookcaseScene {
       this.invalidate();
       return;
     }
-    if (e.pointerType === 'mouse') this.hoverDirty = true;
+    if (e.pointerType === 'mouse') {
+      this.hoverDirty = true;
+      this.lampFollowsPointer = true;
+      this.invalidate();
+    }
   };
 
   private handlePointerUp = (e: PointerEvent) => {
@@ -942,6 +963,8 @@ export class BookcaseScene {
   };
 
   private handlePointerLeave = () => {
+    this.lampFollowsPointer = false;
+    this.invalidate();
     if (this.pointerDown) return;
     this.books.forEach((b) => (b.hoverTarget = 0));
     this.canvas.style.cursor = '';
@@ -1006,6 +1029,37 @@ export class BookcaseScene {
     this.callbacks.onContextLost();
   };
 
+  private updateLamp(dt: number): boolean {
+    const goal = this.lampGoal;
+    let onPointer = false;
+    if (this.lampFollowsPointer && this.mode === 'browse' && !this.pointerDown) {
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+      onPointer = this.raycaster.ray.intersectPlane(this.lampPlane, goal) !== null;
+    }
+    if (!onPointer) {
+      const book = this.books[this.activeIndex];
+      if (!book) return false;
+      book.content.getWorldPosition(goal);
+      goal.y += book.height * 0.55;
+    }
+    goal.y = clamp(goal.y, 0.6, 2.6);
+    if (Number.isNaN(this.lampAim.x)) this.lampAim.copy(goal);
+    const dx = goal.x - this.lampAim.x, dy = goal.y - this.lampAim.y, dz = goal.z - this.lampAim.z;
+    const moving = dx * dx + dy * dy + dz * dz > 1e-6;
+    this.lampAim.lerp(goal, moving ? 1 - Math.exp(-(this.reducedMotion ? 40 : 7) * dt) : 1);
+    this.lamp.position.set(this.lampAim.x - 0.4, this.lampAim.y + 3.2, this.lampAim.z + 2.8);
+    this.lamp.target.position.copy(this.lampAim);
+    this.lamp.target.updateMatrixWorld();
+    // The same pool of light, drawn by the page on the wall behind the books.
+    this.lampScreen.copy(this.lampAim).project(this.camera);
+    const room = this.canvas.parentElement;
+    if (room) {
+      room.style.setProperty('--lamp-x', `${(((this.lampScreen.x + 1) / 2) * 100).toFixed(1)}%`);
+      room.style.setProperty('--lamp-y', `${(((1 - this.lampScreen.y) / 2) * 100).toFixed(1)}%`);
+    }
+    return moving;
+  }
+
   private animate = (time: number) => {
     if (this.disposed) return;
     this.frame = requestAnimationFrame(this.animate);
@@ -1013,9 +1067,10 @@ export class BookcaseScene {
     this.lastTime = time;
     if (this.hoverDirty) this.updateHover();
     const moving = this.update(dt, time);
+    const lampMoving = this.updateLamp(dt);
     this.updateTextures(time);
     // Nothing moving, nothing to draw: a still shelf costs no battery.
-    if (moving || this.needsRender || this.controls.enabled) {
+    if (moving || lampMoving || this.needsRender || this.controls.enabled) {
       this.renderer.render(this.scene, this.camera);
       this.needsRender = false;
     }
