@@ -30,7 +30,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -158,6 +158,7 @@ class _Candidate:
     creators: list[str]
     has_thumbnail: bool
     source: str = "google"
+    isbns: list[str] = field(default_factory=list)
 
 
 def _get(url: str, timeout: int = 15) -> tuple[bytes, str]:
@@ -190,6 +191,11 @@ def _search_api(query: str, key: str) -> list[_Candidate]:
                 titles=[info["title"]] + ([info["subtitle"]] if info.get("subtitle") else []),
                 creators=list(info.get("authors") or []),
                 has_thumbnail=bool(info.get("imageLinks")),
+                isbns=[
+                    x["identifier"]
+                    for x in info.get("industryIdentifiers") or []
+                    if x.get("type") in ("ISBN_13", "ISBN_10") and x.get("identifier")
+                ],
             )
         )
     return found
@@ -211,6 +217,11 @@ def _search_feed(query: str) -> list[_Candidate]:
                 has_thumbnail=any(
                     (link.get("rel") or "").endswith("/thumbnail") for link in entry.findall("a:link", _NS)
                 ),
+                isbns=[
+                    i.text[5:]
+                    for i in entry.findall("dc:identifier", _NS)
+                    if i.text and i.text.startswith("ISBN:")
+                ],
             )
         )
     return found
@@ -423,14 +434,24 @@ def _fetch_images(candidate: _Candidate, min_width: int = 250) -> tuple[bytes, b
         return full, _cover_bytes(f"{base}-M.jpg", min_width=60, portrait=False) or full
 
     quoted = urllib.parse.quote(candidate.volume_id)
-    full = _cover_bytes(
-        f"https://books.google.com/books/publisher/content/images/frontcover/{quoted}?fife=w600-h900&source=gbs_api",
-        min_width=min_width,
-    ) or _cover_bytes(
-        f"https://books.google.com/books/content?id={quoted}&printsec=frontcover&img=1&zoom=3&source=gbs_api",
-        min_width=min_width,
-    )
+    full = None
+    if candidate.has_thumbnail:
+        full = _cover_bytes(
+            f"https://books.google.com/books/publisher/content/images/frontcover/{quoted}?fife=w600-h900&source=gbs_api",
+            min_width=min_width,
+        ) or _cover_bytes(
+            f"https://books.google.com/books/content?id={quoted}&printsec=frontcover&img=1&zoom=3&source=gbs_api",
+            min_width=min_width,
+        )
     if not full:
+        # Google knows the edition but has no picture of it; Open Library
+        # often does, filed under the same ISBN.
+        for isbn in candidate.isbns[:3]:
+            base = f"https://covers.openlibrary.org/b/isbn/{urllib.parse.quote(isbn)}"
+            full = _cover_bytes(f"{base}-L.jpg?default=false", min_width=min_width)
+            if full:
+                small = _cover_bytes(f"{base}-M.jpg?default=false", min_width=60, portrait=False)
+                return full, small or full
         return None
     small = _cover_bytes(
         f"https://books.google.com/books/content?id={quoted}&printsec=frontcover&img=1&zoom=1&source=gbs_api",
@@ -506,6 +527,8 @@ def resolve_image(name: str) -> Path | None:
 # Enough attempts to get past a page of editions without covers, few enough
 # that one stubborn title can't hold up everyone else's.
 _MAX_IMAGE_TRIES = 8
+# And a clock: past this, settle for what has been found.
+_LOOKUP_SECONDS = 40
 
 
 def _look_up(row: BookCover, author_hint: str | None) -> None:
@@ -529,6 +552,7 @@ def _look_up(row: BookCover, author_hint: str | None) -> None:
     if _script(core) == "lat":
         searches.append((core, _search_open_library))
 
+    started = time.monotonic()
     seen: set[tuple[str, str]] = set()
     fallback: _Match | None = None
     with_picture: list[_Match] = []
@@ -543,8 +567,10 @@ def _look_up(row: BookCover, author_hint: str | None) -> None:
         seen.update((c.source, c.volume_id) for c in candidates)
         for match in judged(candidates):
             fallback = fallback or match
-            if not match.candidate.has_thumbnail or tries >= _MAX_IMAGE_TRIES:
+            if not (match.candidate.has_thumbnail or match.candidate.isbns) or tries >= _MAX_IMAGE_TRIES:
                 continue
+            if time.monotonic() - started > _LOOKUP_SECONDS:
+                break
             with_picture.append(match)
             tries += 1
             images = _fetch_images(match.candidate)
