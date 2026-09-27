@@ -12,7 +12,7 @@ from app.models.manual_book import ManualBook
 from app.models.enums import ClaimStatus, RoundParticipantStatus
 from app.models.round import ReadingLog, Round, RoundParticipant, RoundResult
 from app.models.user import User
-from app.core.booktitles import canonical_key
+from app.core.booktitles import canonical_key, matching_key, matching_title
 from app.repositories.base import BaseRepository
 
 _TRAILING_ASIDE_RE = re.compile(r"\s*[\(\[][^\(\)\[\]]*[\)\]]\s*$")
@@ -125,6 +125,63 @@ class InsightsRepository(BaseRepository[None]):
                 if key:
                     by_user[user_id].add(key)
         return dict(by_user)
+
+    def matching_book_keys_for_user(self, *, user_ids: list[uuid.UUID]) -> set[str]:
+        """Books this reader can be matched on.
+
+        Private comments are left out: a comment marked private is hidden from
+        the circle on the calendar, and surfacing the same text as a shared
+        book title would hand it to a stranger through the back door.
+        """
+        stmt = select(ReadingLog.comment).where(
+            ReadingLog.user_id.in_(user_ids),
+            ReadingLog.book_finished.is_(True),
+            ReadingLog.comment.is_not(None),
+            ReadingLog.is_comment_private.is_(False),
+        )
+        keys = (matching_key(row[0]) for row in self.db.execute(stmt).all() if row[0])
+        return {k for k in keys if k}
+
+    def all_users_matching_books(
+        self, *, exclude_user_ids: list[uuid.UUID] | None = None
+    ) -> dict[uuid.UUID, set[str]]:
+        stmt = select(ReadingLog.user_id, ReadingLog.comment).where(
+            ReadingLog.book_finished.is_(True),
+            ReadingLog.comment.is_not(None),
+            ReadingLog.is_comment_private.is_(False),
+        )
+        exclude = set(exclude_user_ids or [])
+        by_user: dict[uuid.UUID, set[str]] = defaultdict(set)
+        for user_id, comment in self.db.execute(stmt).all():
+            if user_id in exclude or not comment:
+                continue
+            key = matching_key(comment)
+            if key:
+                by_user[user_id].add(key)
+        return dict(by_user)
+
+    def matching_title_display_map(self, *, user_ids: list[uuid.UUID] | None = None) -> dict[str, str]:
+        """Matching key -> a readable title, preferring the reader's own wording."""
+        stmt = select(ReadingLog.user_id, ReadingLog.comment).where(
+            ReadingLog.book_finished.is_(True),
+            ReadingLog.comment.is_not(None),
+            ReadingLog.is_comment_private.is_(False),
+        )
+        preferred: dict[str, str] = {}
+        fallback: dict[str, str] = {}
+        own = set(user_ids or [])
+        for uid, comment in self.db.execute(stmt).all():
+            if not comment:
+                continue
+            key = matching_key(comment)
+            title = matching_title(comment)
+            if not key or not title:
+                continue
+            if uid in own:
+                preferred.setdefault(key, title)
+            else:
+                fallback.setdefault(key, title)
+        return {**fallback, **preferred}
 
     def title_display_map(self, *, user_ids: list[uuid.UUID] | None = None) -> dict[str, str]:
         """Match key -> a human title to show for it.

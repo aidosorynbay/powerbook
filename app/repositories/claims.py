@@ -64,6 +64,18 @@ class ClaimsRepository(BaseRepository[UsernameClaim]):
         )
         return [row[0] for row in self.db.execute(stmt).all()]
 
+    def approved_owner_by_ghost(self) -> dict[uuid.UUID, uuid.UUID]:
+        """Every claimed archive account mapped to the reader who owns it.
+
+        Used when looking at *other* people: without this a reader who has
+        claimed four old nicknames shows up as four different people, each
+        holding a quarter of their books.
+        """
+        stmt = select(UsernameClaim.ghost_user_id, UsernameClaim.claimant_user_id).where(
+            UsernameClaim.status == ClaimStatus.approved,
+        )
+        return {row[0]: row[1] for row in self.db.execute(stmt).all()}
+
     def effective_user_ids(self, *, user_id: uuid.UUID) -> list[uuid.UUID]:
         return [user_id, *self.approved_ghost_ids_for_claimant(claimant_user_id=user_id)]
 

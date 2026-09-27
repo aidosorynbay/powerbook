@@ -12,10 +12,11 @@ import {
   type LeaderboardEntry,
   type CalendarResponse,
   type RosterResponse,
+  type AllTimeProfile,
 } from '@/shared/lib';
 import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition } from '@/shared/ui';
-import { Header, Footer } from '@/widgets';
+import { Header, Footer, ActivityRings, type ActivityRing, type RingTotal } from '@/widgets';
 import anim from '@/shared/styles/animations.module.css';
 import { quietDayIcon, quietDayQuoteKeys, finishFlagIcon } from '@/shared/lib/quietDays';
 import styles from './DashboardPage.module.css';
@@ -26,6 +27,9 @@ function getStatusVariant(status: RoundStatus): 'success' | 'accent' | 'default'
   return 'default';
 }
 
+/** Minutes a day has to reach to score a point. */
+const DAILY_GOAL_MINUTES = 30;
+
 function getDayColorClass(minutes: number, dateStr: string, isLastDay: boolean, s: Record<string, string>): string {
   if (isLastDay) return s.dayLastDay;
 
@@ -34,7 +38,7 @@ function getDayColorClass(minutes: number, dateStr: string, isLastDay: boolean, 
   const day = new Date(dateStr + 'T00:00:00');
 
   if (day > today) return s.dayFuture;
-  if (minutes >= 30) return s.dayGreen;
+  if (minutes >= DAILY_GOAL_MINUTES) return s.dayGreen;
   if (minutes >= 2) return s.dayYellow;
   return s.dayRed;
 }
@@ -70,15 +74,6 @@ function RoundProgressRing({ daysLeft, daysTotal }: { daysLeft: number; daysTota
   // full ring and empties as the days are used up.
   const pct = daysTotal > 0 ? daysLeft / daysTotal : 0;
   return <ProgressRing pct={pct}>{daysLeft}</ProgressRing>;
-}
-
-// Personal round-completion ring: how many of the days that have already
-// happened this round were "good" days (30+ min logged). Missed days pull
-// this down immediately — same daily-accountability signal as a Duolingo
-// streak or an Apple Fitness ring, using data we already have client-side.
-function PersonalProgressRing({ scoreDays, daysElapsed }: { scoreDays: number; daysElapsed: number }) {
-  const pct = daysElapsed > 0 ? scoreDays / daysElapsed : 0;
-  return <ProgressRing pct={pct}>{Math.round(pct * 100)}%</ProgressRing>;
 }
 
 function formatCountdown(ms: number): string {
@@ -127,6 +122,7 @@ export function DashboardPage() {
     return ranks;
   }, [leaderboard]);
   const [calendar, setCalendar] = useState<CalendarResponse | null>(null);
+  const [allTime, setAllTime] = useState<AllTimeProfile | null>(null);
   const [roster, setRoster] = useState<RosterResponse | null>(null);
   const [rosterModalDate, setRosterModalDate] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -152,6 +148,8 @@ export function DashboardPage() {
   const lastDayPhaseRef = useRef<LastDayPhase>('normal');
 
   // User calendar panel (clicking leaderboard entry — shown inline, not modal)
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const statusMenuRef = useRef<HTMLDivElement>(null);
   const [viewUser, setViewUser] = useState<{ id: string; name: string } | null>(null);
   const [viewUserCalendar, setViewUserCalendar] = useState<CalendarResponse | null>(null);
   const [isLoadingUserCal, setIsLoadingUserCal] = useState(false);
@@ -190,6 +188,13 @@ export function DashboardPage() {
     if (data) setCalendar(data);
   }, []);
 
+  // All-time minutes for the tally under the rings. It is a nice-to-have:
+  // if it never arrives the rings still render, just without that line.
+  const fetchAllTime = useCallback(async () => {
+    const { data } = await apiGet<AllTimeProfile>('/insights/profile', { requireAuth: true });
+    if (data) setAllTime(data);
+  }, []);
+
   const fetchRoster = useCallback(async (roundId: string) => {
     const { data } = await apiGet<RosterResponse>(
       `/rounds/${roundId}/roster`,
@@ -214,9 +219,10 @@ export function DashboardPage() {
       fetchRoster(roundStatus.round.id);
       if (roundStatus.participation?.is_participant) {
         fetchCalendar(roundStatus.round.id);
+        fetchAllTime();
       }
     }
-  }, [roundStatus, fetchLeaderboard, fetchCalendar, fetchRoster]);
+  }, [roundStatus, fetchLeaderboard, fetchCalendar, fetchRoster, fetchAllTime]);
 
   // Last day of the round's month
   const lastDayOfMonth = useMemo(() => {
@@ -528,6 +534,22 @@ export function DashboardPage() {
   const joinHookKey = useMemo(() => `dashboard.joinHook${1 + Math.floor(Math.random() * 5)}`, []);
   const revealClass = `${anim.scrollReveal} ${sectionsVisible ? anim.scrollRevealVisible : ''}`;
 
+  // The status menu closes the way every menu should: a click anywhere else,
+  // or Escape.
+  useEffect(() => {
+    if (!statusMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!statusMenuRef.current?.contains(e.target as Node)) setStatusMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setStatusMenuOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [statusMenuOpen]);
+
   // Today's date string
   const todayStr = useMemo(() => {
     const now = new Date();
@@ -538,6 +560,72 @@ export function DashboardPage() {
   const todayData = useMemo(() => {
     return calendar?.days.find(d => d.date === todayStr) ?? null;
   }, [calendar, todayStr]);
+
+  // The round put as three goals, drawn as concentric rings. Ordered outside
+  // in by the span of time each one covers: the whole round on the outer ring,
+  // the current run inside it, today in the middle. A reader can read the
+  // picture without the labels — the further out, the longer the horizon.
+  const activityRings = useMemo<ActivityRing[]>(() => [
+    {
+      key: 'days',
+      label: t('rings.days'),
+      value: calendar?.total_score ?? 0,
+      // Before the first day of the window there is nothing to be behind on,
+      // and a zero target would divide the ring by nothing.
+      target: Math.max(roundDaysElapsed, 1),
+      unit: t('rings.unitDays'),
+      color: 'var(--color-success)',
+    },
+    {
+      key: 'streak',
+      label: t('rings.streak'),
+      value: personalStreak,
+      // Closing this one takes the whole round without a miss.
+      target: Math.max(roundWindow.total, 1),
+      unit: t('rings.unitDays'),
+      color: 'var(--color-warning)',
+    },
+    {
+      key: 'today',
+      label: t('rings.today'),
+      value: todayData?.minutes ?? 0,
+      target: DAILY_GOAL_MINUTES,
+      unit: t('rings.unitMin'),
+      color: 'var(--color-accent-primary)',
+    },
+  ], [t, todayData, calendar, roundDaysElapsed, personalStreak, roundWindow]);
+
+  // Hours and minutes, e.g. "8 ч 20 мин". A bare minute count stops being
+  // readable somewhere around the second week of a round.
+  const formatDuration = useCallback((minutes: number) => {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h === 0) return `${m} ${t('rings.minutesShort')}`;
+    if (m === 0) return `${h} ${t('rings.hoursShort')}`;
+    // Past a hundred hours the minutes are noise — a fiftieth of a percent of
+    // the number beside them — and they are what pushes the tally out of its
+    // panel. Precision drops as the figure grows.
+    if (h >= 100) return `${h} ${t('rings.hoursShort')}`;
+    return `${h} ${t('rings.hoursShort')} ${m} ${t('rings.minutesShort')}`;
+  }, [t]);
+
+  const ringTotals = useMemo<RingTotal[]>(() => {
+    const totals: RingTotal[] = [
+      {
+        key: 'round',
+        label: t('rings.roundTotal'),
+        value: formatDuration(calendar?.total_minutes ?? 0),
+      },
+    ];
+    if (allTime) {
+      totals.push({
+        key: 'allTime',
+        label: t('rings.allTimeTotal'),
+        value: formatDuration(allTime.total_minutes),
+      });
+    }
+    return totals;
+  }, [t, formatDuration, calendar, allTime]);
 
   useEffect(() => {
     if (todayData) {
@@ -637,24 +725,85 @@ export function DashboardPage() {
                   <div className={styles.roundTitle}>
                     {monthName} {roundStatus.round.year}
                   </div>
-                  {roundStatus.round.status === 'registration_open' && !isParticipant ? (
-                    <button
-                      type="button"
-                      className={styles.statusJoinBtn}
-                      onClick={handleJoin}
-                      disabled={isJoining}
-                    >
-                      {statusLabel}
-                    </button>
-                  ) : (
-                    <Badge variant={getStatusVariant(displayStatus!)}>
-                      {statusLabel}
-                    </Badge>
-                  )}
+                  <div className={styles.roundHeaderActions}>
+                    {roundStatus.round.status === 'registration_open' && !isParticipant ? (
+                      <button
+                        type="button"
+                        className={styles.statusJoinBtn}
+                        onClick={handleJoin}
+                        disabled={isJoining}
+                      >
+                        {statusLabel}
+                      </button>
+                    ) : (
+                      <div className={styles.statusMenuWrap} ref={statusMenuRef}>
+                        <button
+                          type="button"
+                          className={styles.statusTrigger}
+                          onClick={() => setStatusMenuOpen((open) => !open)}
+                          aria-haspopup="menu"
+                          aria-expanded={statusMenuOpen}
+                        >
+                          <Badge variant={getStatusVariant(displayStatus!)}>
+                            {statusLabel}
+                          </Badge>
+                          <span
+                            className={`${styles.statusCaret} ${statusMenuOpen ? styles.statusCaretOpen : ''}`}
+                            aria-hidden="true"
+                          >
+                            &#9662;
+                          </span>
+                        </button>
+
+                        {statusMenuOpen && (
+                          <div className={styles.statusMenu} role="menu">
+                            <div className={styles.statusMenuRow}>
+                              <span>{t('dashboard.statDaysLeft')}</span>
+                              <b>{roundDaysLeft}</b>
+                            </div>
+                            <div className={styles.statusMenuRow}>
+                              <span>{t('dashboard.statParticipants')}</span>
+                              <b>{leaderboard.length}</b>
+                            </div>
+                            {canLeave && (
+                              <>
+                                <div className={styles.statusMenuSep} />
+                                <button
+                                  type="button"
+                                  role="menuitem"
+                                  className={styles.statusMenuLeave}
+                                  onClick={() => { setStatusMenuOpen(false); openLeaveModal(); }}
+                                  disabled={isLeaving}
+                                >
+                                  {isLeaving ? t('dashboard.leaving') : t('dashboard.leaveBtn')}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {canLeave && (
+                      <button
+                        type="button"
+                        className={styles.statusLeaveBtn}
+                        onClick={openLeaveModal}
+                        disabled={isLeaving}
+                      >
+                        {isLeaving ? t('dashboard.leaving') : t('dashboard.leaveBtn')}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {isBeforeDeadline && roundStatus.round.status === 'registration_open' && (
                   <div className={styles.roundMeta}>
-                    <span>{t('dashboard.registrationUntil', { day: roundStatus.round.registration_open_until_day })}</span>
+                    {/* Both deadlines fall on the same day; a participant is
+                        told the one that is still theirs to act on. */}
+                    <span>
+                      {canLeave
+                        ? t('dashboard.leaveDeadline', { day: roundStatus.round.registration_open_until_day })
+                        : t('dashboard.registrationUntil', { day: roundStatus.round.registration_open_until_day })}
+                    </span>
                   </div>
                 )}
               </div>
@@ -942,7 +1091,7 @@ export function DashboardPage() {
                                 <span className={styles.dayNumber}>{cell.day}</span>
                               )}
                               {cell.minutes > 0 && !cellIsLastDay && (
-                                <span className={styles.dayMinutes}>{cell.minutes}m</span>
+                                <span className={styles.dayMinutes}>{cell.minutes} {t('rings.minutesShort')}</span>
                               )}
                               {cell.book_finished && <span className={styles.dayStar}>&#9733;</span>}
                               {cell.comment && <span className={styles.dayCommentDot} />}
@@ -976,33 +1125,9 @@ export function DashboardPage() {
                   <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay2}`}>
                     <div className={styles.calendarHeaderRow}>
                       <div className={styles.sectionTitle}>{t('dashboard.myRound')}</div>
-                      {canLeave && (
-                        <div className={styles.leaveActions}>
-                          <span className={styles.leaveHint}>
-                            {t('dashboard.leaveDeadline', { day: roundStatus.round.registration_open_until_day })}
-                          </span>
-                          <Button variant="ghost" size="sm" onClick={openLeaveModal} disabled={isLeaving}>
-                            {isLeaving ? t('dashboard.leaving') : t('dashboard.leaveBtn')}
-                          </Button>
-                        </div>
-                      )}
                     </div>
 
-                    {calendar && (
-                      <div className={styles.roundOverview}>
-                        <div className={styles.roundOverviewRing}>
-                          <PersonalProgressRing scoreDays={calendar.total_score} daysElapsed={roundDaysElapsed} />
-                          <span className={styles.roundOverviewRingLabel}>{t('dashboard.statOnTrack')}</span>
-                        </div>
-                        <div className={styles.roundOverviewSide}>
-                          <span className={`${styles.roundOverviewBig} ${styles.streakBig}`}>
-                            {personalStreak > 0 && <span className={styles.streakFlame}>&#128293;</span>}
-                            {personalStreak}
-                          </span>
-                          <span className={styles.roundOverviewLabel}>{t('dashboard.statStreak')}</span>
-                        </div>
-                      </div>
-                    )}
+                    {calendar && <ActivityRings rings={activityRings} totals={ringTotals} />}
 
                     <div className={styles.calTabs}>
                       <button
@@ -1102,7 +1227,7 @@ export function DashboardPage() {
                               <span className={styles.dayNumber}>{cell.day}</span>
                             )}
                             {cell.minutes > 0 && !cellIsLastDay && (
-                              <span className={styles.dayMinutes}>{cell.minutes}m</span>
+                              <span className={styles.dayMinutes}>{cell.minutes} {t('rings.minutesShort')}</span>
                             )}
                             {cell.book_finished && <span className={styles.dayStar}>&#9733;</span>}
                             {cell.comment && <span className={styles.dayCommentDot} />}

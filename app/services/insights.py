@@ -361,22 +361,67 @@ class InsightsService:
             and first_half_avg > 0 and second_half_avg >= first_half_avg * 1.3
         )
 
+        # Where inside the month the minutes land. Rounds run by calendar month,
+        # so the same three windows mean the same thing for everyone.
+        late_minutes = sum(m for d, m in active if d.day >= 21)
+        early_minutes = sum(m for d, m in active if d.day <= 10)
+        late_share = late_minutes / total_minutes if total_minutes else 0
+        early_share = early_minutes / total_minutes if total_minutes else 0
+
+        # Sittings long enough to be a session rather than a check-in.
+        long_days = sum(1 for m in minutes_list if m >= 90)
+        long_share = long_days / len(minutes_list)
+
+        # Days that land on the daily norm and stop there.
+        norm_days = sum(1 for m in minutes_list if 30 <= m <= 39)
+        norm_share = norm_days / len(minutes_list)
+
+        # The longest silence in their history, and whether they broke it.
+        dates = sorted(d for d, _ in active)
+        max_gap = max(
+            ((dates[i] - dates[i - 1]).days for i in range(1, len(dates))),
+            default=0,
+        )
+        days_since_last = (date.today() - dates[-1]).days
+
         profile = self.all_time_profile(user_id=user_id)
 
+        # Ordered rarest first: a reader who fits several of these is told the
+        # most particular thing true about them, not the most common one.
+        if max_gap >= 90 and days_since_last <= 45 and len(active) >= 20:
+            return out("comeback", {"gap_days": max_gap})
+        if profile.longest_streak_days >= 60:
+            return out("ironclad", {"streak": profile.longest_streak_days})
+        if long_share >= 0.25 and profile.consistency_percent < 70:
+            return out("deep_diver", {"long_pct": int(round(long_share * 100))})
         if avg_minutes >= 75:
             return out("marathoner", {"avg_minutes": int(avg_minutes)})
-        if finish_rate >= 0.5 and rounds_n >= 3:
-            return out("finisher", {"finish_pct": int(round(finish_rate * 100))})
+        if burstiness < 0.25 and profile.consistency_percent >= 80:
+            return out("metronome", {"consistency_pct": profile.consistency_percent})
+        if norm_share >= 0.6:
+            return out("norm_keeper", {"norm_pct": int(round(norm_share * 100))})
+        if late_share >= 0.5:
+            return out("deadline_dancer", {"late_pct": int(round(late_share * 100))})
+        if early_share >= 0.5:
+            return out("fast_starter", {"early_pct": int(round(early_share * 100))})
         if dominant_weekday is not None:
             return out("weekday_loyalist", {"weekday": dominant_weekday})
         if weekend_share >= 0.40:
-            return out("weekend_reader", {})
+            return out("weekend_reader", {"weekend_pct": int(round(weekend_share * 100))})
+        if finish_rate >= 0.5 and rounds_n >= 3:
+            return out("finisher", {"finish_pct": int(round(finish_rate * 100))})
+        if len(books) >= 12:
+            return out("omnivore", {"books": len(books)})
         if is_leveling_up:
             return out("on_the_rise", {"second_half_avg": int(second_half_avg), "first_half_avg": int(first_half_avg)})
         if profile.consistency_percent >= 85 and burstiness < 0.6:
             return out("steady", {"consistency_pct": profile.consistency_percent})
         if burstiness >= 1.0:
             return out("sprinter", {})
+        if avg_minutes < 25 and profile.consistency_percent >= 70:
+            return out("slow_burn", {"avg_minutes": int(avg_minutes)})
+        if rounds_n >= 24:
+            return out("veteran", {"rounds": rounds_n})
         return out("reader", {})
 
     # ---------- bookshelf ----------
@@ -481,25 +526,41 @@ class InsightsService:
 
     def reading_twins(self, *, user_id: uuid.UUID, limit: int = 5) -> list[ReadingTwinOut]:
         ids = self._effective_ids(user_id)
-        mine = self.repo.finished_book_titles_for_user(user_ids=ids)
+        mine = self.repo.matching_book_keys_for_user(user_ids=ids)
         if not mine:
             return []
-        others = self.repo.all_users_finished_books(exclude_user_ids=ids)
-        display = self.repo.title_display_map(user_ids=ids)
+
+        # Fold every claimed archive nickname into the reader who owns it,
+        # otherwise one person arrives as several half-empty strangers.
+        owner_of = self.claims.approved_owner_by_ghost()
+        own = set(ids)
+        merged: dict[uuid.UUID, set[str]] = defaultdict(set)
+        for account_id, books in self.repo.all_users_matching_books(exclude_user_ids=ids).items():
+            owner = owner_of.get(account_id, account_id)
+            if owner in own:
+                continue
+            merged[owner] |= books
+
+        display = self.repo.matching_title_display_map(user_ids=ids)
 
         scored = []
-        for other_id, other_books in others.items():
+        for other_id, other_books in merged.items():
             shared = mine & other_books
             if not shared:
                 continue
-            union = mine | other_books
-            match_pct = int(round((len(shared) / len(union)) * 100)) if union else 0
-            scored.append((other_id, shared, match_pct))
+            # Share of the smaller shelf rather than of the two combined. The
+            # union punished exactly the people this page is for: read two
+            # hundred books and every match collapses to a couple of percent.
+            overlap = len(shared) / min(len(mine), len(other_books))
+            scored.append((other_id, shared, overlap))
 
-        scored.sort(key=lambda x: (-x[2], -len(x[1])))
+        # Evidence first. Two books in common say more about two readers than
+        # any ratio does, and a one-book account sharing its only title is a
+        # coincidence, not a twin.
+        scored.sort(key=lambda x: (-len(x[1]), -x[2]))
 
         out = []
-        for other_id, shared, pct in scored[:limit]:
+        for other_id, shared, overlap in scored[:limit]:
             info = self.repo.display_name_and_telegram(user_id=other_id)
             if not info:
                 continue
@@ -510,7 +571,7 @@ class InsightsService:
                     display_name=display_name,
                     telegram_id=telegram_id,
                     shared_books=sorted(display.get(k, k) for k in shared)[:10],
-                    match_percent=pct,
+                    match_percent=max(1, int(round(overlap * 100))),
                 )
             )
         return out

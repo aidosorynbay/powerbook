@@ -87,4 +87,8 @@ export type {
   LibraryBook,
   LibraryStats,
   ShelfBook,
+  BookcaseBook,
+  Bookcase,
+  FellowReader,
+  CoverOption,
 } from './types';

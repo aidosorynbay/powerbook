@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { AuthProvider, useAuth, I18nProvider, useI18n } from '@/shared/lib';
-import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage } from '@/pages';
+import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage } from '@/pages';
 import { BottomNav, LastCallNotice } from '@/widgets';
 import '@/app/styles/theme.css';
 
@@ -82,6 +82,10 @@ function AppRoutes() {
         <Route
           path="/readers/:userId"
           element={isAuthenticated ? <PublicProfilePage /> : <Navigate to="/login" replace />}
+        />
+        <Route
+          path="/readers/:userId/shelf"
+          element={isAuthenticated ? <ReaderShelfPage /> : <Navigate to="/login" replace />}
         />
         <Route
           path="/profile"

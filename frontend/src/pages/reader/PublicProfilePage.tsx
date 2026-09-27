@@ -4,6 +4,8 @@ import { useParams, Link } from 'react-router-dom';
 import { useI18n, apiGet, apiPost, apiDelete, type PublicProfile, type ShelfBook } from '@/shared/lib';
 import { Container, PageTransition, Avatar, Button, Card, BookCard, ProgressBar } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
+import { paletteFor, dimensionsFor } from '@/pages/library/bookcase/bookArt';
+import { bookCount } from '@/pages/library/bookcase/plural';
 import styles from './PublicProfilePage.module.css';
 
 function getMusicEmbedUrl(url: string): string | null {
@@ -29,7 +31,7 @@ function getMusicEmbedUrl(url: string): string | null {
 
 export function PublicProfilePage() {
   const { userId } = useParams<{ userId: string }>();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -139,6 +141,40 @@ export function PublicProfilePage() {
                     )}
                   </div>
                 </div>
+
+                {(profile.books_finished > 0 || shelf.length > 0) && (
+                  <Link to={profile.is_self ? '/library' : `/readers/${profile.user_id}/shelf`} className={styles.shelfCta}>
+                    <span className={styles.shelfCtaText}>
+                      <span className={styles.shelfCtaKicker}>{t('nav.library')}</span>
+                      <span className={styles.shelfCtaTitle}>{t('shelf.profileCta')}</span>
+                      <span className={styles.shelfCtaHint}>
+                        {t('shelf.profileCtaHint', {
+                          count: bookCount(locale, Math.max(profile.books_finished, shelf.length), t),
+                        })}
+                      </span>
+                    </span>
+                    {/* A few spines in the colours those books wear on the shelf itself. */}
+                    <span className={styles.shelfCtaSpines} aria-hidden="true">
+                      {[...profile.recent_books, ...shelf.map((b) => b.title)].slice(0, 7).map((title, i) => {
+                        const seed = title.trim().toLowerCase();
+                        const p = paletteFor(seed);
+                        const d = dimensionsFor(seed);
+                        return (
+                          <span
+                            key={i}
+                            style={{
+                              background: p.cover,
+                              borderTopColor: p.accent,
+                              height: `${Math.round(d.height * 26)}px`,
+                              width: `${Math.round(d.thickness * 44)}px`,
+                            }}
+                          />
+                        );
+                      })}
+                    </span>
+                    <span className={styles.shelfCtaArrow} aria-hidden="true">→</span>
+                  </Link>
+                )}
 
                 {profile.recommendation_text && (
                   <Card variant="glass" padding="lg" className={styles.recCard}>

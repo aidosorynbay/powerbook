@@ -304,6 +304,14 @@ export function InsightsPage() {
                     <div className={styles.archetypeKicker}>{t('insights.yourType')}</div>
                     <div className={styles.archetypeTitle}>{archetypeTitle}</div>
                     <div className={styles.archetypeDesc}>{archetypeDesc}</div>
+                    {/* The figure is tied to the archetype, not to the books
+                        read — it names the habit the reader shares, which is
+                        what the type is about in the first place. */}
+                    <div className={styles.kindred}>
+                      <div className={styles.kindredLabel}>{t('insights.kindred')}</div>
+                      <div className={styles.kindredName}>{t(`archetype.${archetype.key}.kindred`)}</div>
+                      <div className={styles.kindredWhy}>{t(`archetype.${archetype.key}.kindredWhy`)}</div>
+                    </div>
                     {funFactText && <div className={styles.archetypeFunFact}>{funFactText}</div>}
                   </Card>
                 )}
@@ -383,7 +391,10 @@ export function InsightsPage() {
                       <ul className={styles.bookList}>
                         {visibleBooks.map((b, i) => (
                           <li key={i} className={styles.bookRow}>
-                            <Link to="/library" className={styles.bookTitleLink}>
+                            <Link
+                              to={`/library?book=${encodeURIComponent(b.source === 'manual' && b.id ? `m:${b.id}` : b.title)}&open=1`}
+                              className={styles.bookTitleLink}
+                            >
                               {b.title}
                               {b.author && <span className={styles.bookAuthor}> — {b.author}</span>}
                             </Link>

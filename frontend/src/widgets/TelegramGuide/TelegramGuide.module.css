@@ -1,0 +1,231 @@
+.guide {
+  margin-top: var(--spacing-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+/* Why the handle is needed — always visible, because it is a requirement
+   and not a tip. */
+.why {
+  display: flex;
+  gap: var(--spacing-3);
+  align-items: flex-start;
+  padding: var(--spacing-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-accent-primary-muted);
+  border: 1px solid var(--color-border-accent);
+}
+
+.whyIcon {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+  font-weight: var(--font-weight-extrabold);
+  font-size: var(--font-size-sm);
+  line-height: 1;
+}
+
+.whyTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+}
+
+.whyText {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-relaxed, 1.6);
+  color: var(--color-text-secondary);
+}
+
+.details {
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  overflow: hidden;
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  list-style: none;
+}
+
+/* Safari still draws its own marker without this. */
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.summary:hover {
+  background: var(--color-bg-card-hover);
+}
+
+.chevron {
+  color: var(--color-accent-primary);
+  font-size: var(--font-size-lg);
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.details[open] .chevron {
+  transform: rotate(90deg);
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-3);
+  margin: 0;
+  padding: 0 var(--spacing-3) var(--spacing-2);
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+
+.mock {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-md);
+}
+
+.stepBody {
+  display: flex;
+  gap: var(--spacing-2);
+  align-items: flex-start;
+}
+
+.stepNum {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+  font-size: 0.6875rem;
+  font-weight: var(--font-weight-extrabold);
+  line-height: 1;
+}
+
+.stepText {
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-snug, 1.4);
+  color: var(--color-text-secondary);
+}
+
+.done {
+  margin: 0;
+  padding: 0 var(--spacing-3) var(--spacing-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.android {
+  margin: 0;
+  padding: 0 var(--spacing-3) var(--spacing-3);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+/* Diagram parts. Everything is a flat placeholder — no logo, no photo,
+   no name — so the drawing reads as an instruction, not a screenshot. */
+.mockFrame {
+  fill: var(--color-bg-primary);
+  stroke: var(--color-border-primary);
+  stroke-width: 2;
+}
+
+.mockFaint {
+  fill: var(--color-text-muted);
+  opacity: 0.45;
+}
+
+.mockBar {
+  fill: var(--color-text-secondary);
+  opacity: 0.6;
+}
+
+.mockAvatar {
+  fill: var(--color-bg-elevated);
+}
+
+.mockRow {
+  fill: var(--color-bg-secondary);
+}
+
+.mockRowOn {
+  fill: var(--color-accent-primary-muted);
+  stroke: var(--color-accent-primary);
+  stroke-width: 1.5;
+}
+
+.mockTarget {
+  fill: var(--color-accent-primary);
+}
+
+.mockTargetBox {
+  fill: var(--color-accent-primary-muted);
+  stroke: var(--color-accent-primary);
+  stroke-width: 1.5;
+}
+
+.mockTypedBar {
+  fill: var(--color-accent-primary);
+  opacity: 0.75;
+}
+
+.mockCaret {
+  fill: var(--color-accent-primary);
+}
+
+.mockText {
+  fill: var(--color-accent-primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.arrow {
+  fill: var(--color-success);
+  stroke: var(--color-success);
+}
+
+@media (max-width: 480px) {
+  .steps {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-4);
+  }
+  .step {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-3);
+  }
+  .mock {
+    width: 88px;
+    flex-shrink: 0;
+  }
+  .stepBody {
+    align-items: center;
+  }
+}

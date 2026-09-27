@@ -14,10 +14,11 @@ const tabs = [
 export function BottomNav() {
   const { t } = useI18n();
   const location = useLocation();
-
+  // The bookcase is a light room; a dark bar under it would cut it in half.
+  const onShelf = location.pathname === '/library' || /^\/readers\/[^/]+\/shelf$/.test(location.pathname);
 
   return (
-    <nav className={styles.bottomNav}>
+    <nav className={`${styles.bottomNav} ${onShelf ? styles.paper : ''}`}>
       {tabs.map(({ path, icon, label }) => {
         const isActive =
           location.pathname === path || location.pathname.startsWith(`${path}/`);

@@ -321,3 +321,101 @@
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
 .shelfMeta { font-size: 10px; color: var(--color-text-muted); margin-top: 2px; }
+
+/* A window into the reader's bookcase: the same paper and walnut as the
+   3D shelf it opens, so the jump into the light room feels expected. */
+.shelfCta {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 18px 20px 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  color: #25221e;
+  background:
+    radial-gradient(circle at 70% 20%, rgba(255, 255, 255, 0.4), transparent 55%),
+    #efe9dd;
+  text-decoration: none;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.shelfCta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+}
+
+.shelfCta::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 8px;
+  content: '';
+  background: linear-gradient(180deg, #6a452e, #4f321f);
+}
+
+.shelfCtaText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-bottom: 26px;
+}
+
+.shelfCtaKicker {
+  color: rgba(37, 34, 30, 0.6);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.shelfCtaTitle {
+  font-family: 'Literata', Georgia, serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.shelfCtaHint {
+  color: rgba(37, 34, 30, 0.62);
+  font-size: 12px;
+}
+
+.shelfCtaSpines {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-end;
+  gap: 2px;
+  padding-bottom: 8px;
+}
+
+.shelfCtaSpines span {
+  display: block;
+  min-width: 7px;
+  border-top: 3px solid;
+  border-radius: 1px 1px 0 0;
+  box-shadow: inset -2px 0 0 rgba(0, 0, 0, 0.12);
+}
+
+.shelfCtaArrow {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  font-size: 18px;
+  transition: transform var(--transition-fast);
+}
+
+.shelfCta:hover .shelfCtaArrow {
+  transform: translateX(3px);
+}
+
+@media (max-width: 420px) {
+  .shelfCtaSpines span:nth-child(n + 6) {
+    display: none;
+  }
+}

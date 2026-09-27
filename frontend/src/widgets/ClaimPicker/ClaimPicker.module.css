@@ -123,6 +123,22 @@
   font-size: var(--font-size-xs);
 }
 
+/* Sits at the end of the list it opens, so it reads as part of the sentence
+   rather than as a control parked next to it. */
+.roundsToggle {
+  font: inherit;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-accent-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.roundsToggle:hover {
+  text-decoration: underline;
+}
+
 .unclaimBtn {
   background: none;
   border: 1px solid var(--color-border-primary);

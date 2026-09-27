@@ -2,7 +2,7 @@ import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, useI18n, apiPost, type TokenResponse } from '@/shared/lib';
 import { Button, Card, Container, Logo, PageTransition } from '@/shared/ui';
-import { ClaimPicker } from '@/widgets';
+import { ClaimPicker, TelegramGuide } from '@/widgets';
 import styles from './RegisterPage.module.css';
 
 type Gender = 'male' | 'female' | 'unknown';
@@ -174,6 +174,7 @@ export function RegisterPage() {
                 required
               />
               <div className={styles.hint}>{t('register.telegramHint')}</div>
+              <TelegramGuide />
             </div>
 
             <Button type="submit" fullWidth disabled={isSubmitting}>

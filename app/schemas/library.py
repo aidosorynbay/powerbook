@@ -57,3 +57,100 @@ class ShelfBookOut(BaseModel):
     cover_data: str | None
     progress_percent: int
     last_read_at: datetime | None
+
+
+class BookcaseBookOut(BaseModel):
+    """One volume on a reader's bookcase.
+
+    A volume can be finished (a round log or a hand-added entry), readable
+    here (an uploaded file), or both at once when the two name the same book.
+    Owner-only fields are left empty when someone else is looking.
+    """
+
+    key: str
+    title: str
+    author: str | None
+    # The finishing-day comment, when it says more than the title does.
+    note: str | None
+    # Came from a comment marked private: only its owner ever sees it.
+    note_is_private: bool = False
+    # "finished" | "reading" | "unread"
+    status: str
+    # "round" | "manual" | "upload" — where the volume first came from.
+    source: str
+    finished_on: str | None
+    round_year: int | None
+    round_month: int | None
+    times_finished: int
+    # Comparison key used to find other readers of the same book.
+    match_key: str | None
+    fellow_readers: int
+
+    has_file: bool
+    file_format: str | None
+    file_size: int | None
+    cover_data: str | None
+    progress_percent: int
+    last_read_at: datetime | None
+    # The date the shelf is ordered by: finished on, or last opened / added.
+    shelved_on: str | None = None
+
+    # A real cover found online, served from our own domain; the small one
+    # is for spine colours. And where the edition was found.
+    cover_url: str | None = None
+    cover_thumb_url: str | None = None
+    source_url: str | None = None
+
+    # Owner only: how the reader has set this book's cover ("auto", "none",
+    # "image"), and whether they've corrected it at all.
+    cover_mode: str | None = None
+    edited: bool = False
+
+    # Owner only.
+    upload_id: uuid.UUID | None = None
+    manual_id: uuid.UUID | None = None
+    is_visible_to_buddies: bool | None = None
+
+
+class BookcaseOwnerOut(BaseModel):
+    user_id: str
+    username: str
+    display_name: str
+    avatar_data: str | None
+    is_archive: bool
+
+
+class BookcaseOut(BaseModel):
+    owner: BookcaseOwnerOut
+    is_self: bool
+    books: list[BookcaseBookOut]
+
+
+class FellowReaderOut(BaseModel):
+    user_id: str
+    display_name: str
+    avatar_data: str | None
+    is_archive: bool
+    is_viewer: bool
+
+
+class CoverOptionOut(BaseModel):
+    """An edition a reader can take a cover from."""
+
+    source: str
+    volume_id: str
+    title: str
+    author: str | None
+    thumb_url: str
+
+
+class OverrideTextIn(BaseModel):
+    title: str | None = Field(default=None, max_length=300)
+    author: str | None = Field(default=None, max_length=200)
+
+
+class CoverChoiceIn(BaseModel):
+    # "auto" — as found; "none" — painted; "pick" — the edition named below.
+    mode: str = Field(pattern="^(auto|none|pick)$")
+    source: str | None = Field(default=None, max_length=20)
+    volume_id: str | None = Field(default=None, max_length=40)

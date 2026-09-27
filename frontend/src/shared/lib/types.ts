@@ -463,3 +463,69 @@ export type BadgeStats = {
   next_threshold: number | null;
   next_key: string | null;
 };
+
+/** One volume on a reader's bookcase — finished, readable here, or both. */
+export type BookcaseBook = {
+  key: string;
+  title: string;
+  author: string | null;
+  note: string | null;
+  /** Came from a comment marked private: only its owner ever sees it. */
+  note_is_private: boolean;
+  status: 'finished' | 'reading' | 'unread';
+  source: 'round' | 'manual' | 'upload';
+  finished_on: string | null;
+  round_year: number | null;
+  round_month: number | null;
+  times_finished: number;
+  match_key: string | null;
+  fellow_readers: number;
+  has_file: boolean;
+  file_format: 'pdf' | 'epub' | null;
+  file_size: number | null;
+  cover_data: string | null;
+  progress_percent: number;
+  last_read_at: string | null;
+  shelved_on: string | null;
+  /** A real cover found online, served from our API; the thumb is small. */
+  cover_url: string | null;
+  cover_thumb_url: string | null;
+  /** Where that edition was found (Google Books). */
+  source_url: string | null;
+  /** Owner only: how they've set the cover, and whether they corrected anything. */
+  cover_mode: 'auto' | 'none' | 'image' | null;
+  edited: boolean;
+  /** Owner only. */
+  upload_id: string | null;
+  manual_id: string | null;
+  is_visible_to_buddies: boolean | null;
+};
+
+export type Bookcase = {
+  owner: {
+    user_id: string;
+    username: string;
+    display_name: string;
+    avatar_data: string | null;
+    is_archive: boolean;
+  };
+  is_self: boolean;
+  books: BookcaseBook[];
+};
+
+export type FellowReader = {
+  user_id: string;
+  display_name: string;
+  avatar_data: string | null;
+  is_archive: boolean;
+  is_viewer: boolean;
+};
+
+/** An edition a reader can take a cover from. */
+export type CoverOption = {
+  source: 'google' | 'openlibrary';
+  volume_id: string;
+  title: string;
+  author: string | null;
+  thumb_url: string;
+};

@@ -20,7 +20,7 @@
 .subtitle {
   color: var(--color-text-secondary);
   font-size: var(--font-size-base);
-  margin: 0 0 24px;
+  margin: 0;
 }
 
 .loading {
@@ -99,6 +99,35 @@
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-relaxed);
+}
+
+.kindred {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+  border-left: 3px solid var(--color-accent-primary);
+}
+
+.kindredLabel {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.kindredName {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+}
+
+.kindredWhy {
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-text-secondary);
 }
 
 .archetypeFunFact {
@@ -361,6 +390,10 @@
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+  /* The gap below used to sit on .subtitle, which is inside the row. Once
+     the button wrapped onto a second line it was the button, not the
+     subtitle, that ended the row — and it touched the tiles underneath. */
+  margin-bottom: 24px;
 }
 
 .wrappedOverlay {

@@ -1,0 +1,153 @@
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  padding: var(--spacing-4) 0;
+}
+
+.wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-6);
+}
+
+.svg {
+  /* Shrinks with the card rather than holding 180px and crushing the legend
+     beside it — the round page puts this in a one-third-width column. */
+  flex: 0 1 180px;
+  width: 180px;
+  min-width: 96px;
+  height: auto;
+}
+
+/* A neutral groove. Tinting the track with the ring's own colour at low
+   alpha turned orange into brown and green into olive against the near-black
+   page — three muddy rings competing with the three bright ones. */
+.track {
+  stroke: var(--color-bg-elevated);
+}
+
+.arc {
+  transition: stroke-dasharray 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arc {
+    transition: none;
+  }
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  margin: 0;
+  min-width: 0;
+}
+
+.legendRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.legendLabel {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.legendValue {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-1);
+  margin: 0;
+}
+
+.legendNumbers {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-extrabold);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.legendSlash {
+  opacity: 0.5;
+  padding: 0 1px;
+}
+
+.legendUnit {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+}
+
+/* Totals: two equal panels, wide enough that the hours read from across the
+   room. They carry the accent colour precisely because they are the numbers
+   a reader quotes about themselves. */
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.total {
+  /* Sized from its own content, not forced into an equal half: an all-time
+     tally is far longer than one round's, and splitting the row down the
+     middle pushed the longer number through its own border. Two that cannot
+     share a line take one each. */
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-accent-primary-muted);
+  border: 1px solid var(--color-border-accent);
+}
+
+.totalLabel {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.totalValue {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-accent-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+/* On a phone the rings and the numbers no longer fit side by side at full
+   size, so the ring shrinks rather than pushing the legend off the row. */
+@media (max-width: 480px) {
+  .wrap {
+    gap: var(--spacing-4);
+  }
+  .svg {
+    flex-basis: 132px;
+    width: 132px;
+  }
+  .legend {
+    gap: var(--spacing-3);
+  }
+  .legendNumbers {
+    font-size: var(--font-size-xl);
+  }
+  .total {
+    padding: var(--spacing-2) var(--spacing-3);
+  }
+  .totalValue {
+    font-size: var(--font-size-lg);
+  }
+}

@@ -11,3 +11,6 @@ export { WrappedCard } from './WrappedCard';
 export { RoundsShowcase } from './RoundsShowcase';
 export { HeroBanner } from './HeroBanner';
 export { LastCallNotice } from './LastCallNotice';
+export { ActivityRings } from './ActivityRings';
+export { TelegramGuide } from './TelegramGuide';
+export type { ActivityRing, RingTotal } from './ActivityRings';

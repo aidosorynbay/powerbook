@@ -42,12 +42,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-4);
+  flex-wrap: wrap;
+  gap: var(--spacing-2) var(--spacing-4);
 }
 
 .roundTitle {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
+}
+
+.roundHeaderActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--spacing-2);
 }
 
 .roundMeta {
@@ -236,17 +245,118 @@
   color: var(--color-text-primary);
 }
 
-.leaveActions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spacing-3);
-  width: 100%;
+/* The status pill doubles as a menu: it is the one thing on the page that
+   already says what state the round is in, so the round's numbers and the way
+   out of it hang from there. */
+.statusMenuWrap {
+  position: relative;
 }
 
-.leaveHint {
-  font-size: var(--font-size-sm);
+.statusTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.statusCaret {
   color: var(--color-text-muted);
+  font-size: 10px;
+  line-height: 1;
+  transition: transform var(--transition-fast);
+}
+
+.statusCaretOpen {
+  transform: rotate(180deg);
+}
+
+.statusMenu {
+  position: absolute;
+  top: calc(100% + var(--spacing-2));
+  right: 0;
+  min-width: 220px;
+  padding: var(--spacing-2);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-index-dropdown);
+}
+
+.statusMenuRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  padding: var(--spacing-2) var(--spacing-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.statusMenuRow b {
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.statusMenuSep {
+  height: 1px;
+  margin: var(--spacing-2) 0;
+  background: var(--color-border-secondary);
+}
+
+.statusMenuLeave {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--spacing-2) var(--spacing-3);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-danger);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.statusMenuLeave:hover:not(:disabled) {
+  background: var(--color-danger-muted);
+}
+
+.statusMenuLeave:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Leave is a real button next to the round's status, not a ghost link at the
+   bottom of a card. Outlined in the warning colour rather than filled: it is
+   findable at a glance without competing with logging today's minutes. */
+.statusLeaveBtn {
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-full);
+  background: transparent;
+  border: 1px solid color-mix(in oklab, var(--color-danger) 45%, transparent);
+  color: var(--color-danger);
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.statusLeaveBtn:hover:not(:disabled) {
+  background: var(--color-danger-muted);
+  transform: translateY(-1px);
+}
+
+.statusLeaveBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* Leaderboard styles */
@@ -326,6 +436,8 @@
 
 .participantName {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: var(--font-size-sm);
 }
 
@@ -434,7 +546,10 @@
   width: 6px;
   height: 6px;
   border-radius: var(--radius-full);
-  background: var(--color-accent-primary);
+  /* Matches the dot as it actually appears on a day. The orange version only
+     ever shows on an uncoloured cell — a future or empty day, which cannot
+     carry a comment — so the legend was advertising a colour nobody sees. */
+  background: rgba(255, 255, 255, 0.8);
   flex-shrink: 0;
 }
 

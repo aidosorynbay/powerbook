@@ -26,6 +26,18 @@
   scrollbar-width: none;
 }
 
+/* Kazakh labels run about a third longer than the Russian or English ones —
+   "Читатели" against "Оқырмандар" — and the row stopped fitting, which hid
+   the last link behind an invisible scroll. The nav gives back some of its
+   spacing in that language instead of losing a link. */
+:global(html[lang='kk']) .nav {
+  gap: var(--spacing-3);
+}
+
+:global(html[lang='kk']) .navLink {
+  font-size: 0.8125rem;
+}
+
 .nav::-webkit-scrollbar {
   display: none;
 }

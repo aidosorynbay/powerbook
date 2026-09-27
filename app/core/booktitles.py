@@ -109,6 +109,46 @@ _build_aliases()
 _MIN_KEY = 3
 
 
+# People write the day's comment, not a title field: some type "Хайди" кітабы,
+# some write three sentences about what the book did to them. A whole paragraph
+# used as a comparison key can only ever match itself, which is why so many
+# finished books in the data have exactly one reader.
+_QUOTED = re.compile(r"[\u00ab\u201c\"']([^\u00bb\u201d\"']{3,120})[\u00bb\u201d\"']")
+
+# Above this a first line is an impression rather than a title.
+_TITLE_MAX_CHARS = 70
+_TITLE_MAX_WORDS = 10
+
+
+def matching_title(raw: str) -> str | None:
+    """The part of a finished-day comment that can stand as a book title.
+
+    A quoted fragment wins: whoever wrote «Грозовой перевал» Эмили Бронте told
+    us exactly which part is the title. Failing that, a short first line is
+    taken at face value. A long one is left alone and matches nothing —
+    reporting two readers as sharing a book because they wrote similar
+    paragraphs would be worse than reporting no match at all.
+    """
+    first = raw.strip().split("\n", 1)[0].strip()
+    if not first:
+        return None
+
+    quoted = _QUOTED.findall(first)
+    if quoted:
+        return max(quoted, key=len).strip()
+
+    if len(first) <= _TITLE_MAX_CHARS and len(first.split()) <= _TITLE_MAX_WORDS:
+        return first
+    return None
+
+
+def matching_key(raw: str) -> str | None:
+    """Comparison key for reader-to-reader matching, or None when the comment
+    holds no usable title."""
+    title = matching_title(raw)
+    return canonical_key(title) if title else None
+
+
 def canonical_key(title: str) -> str | None:
     """Comparison key, or None when the text holds no recognisable title.
 

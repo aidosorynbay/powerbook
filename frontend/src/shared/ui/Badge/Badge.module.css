@@ -5,7 +5,13 @@
   font-family: var(--font-family-primary);
   font-weight: var(--font-weight-medium);
   border-radius: var(--radius-full);
-  white-space: nowrap;
+  text-align: center;
+  /* Kazakh runs about a third longer than Russian for the same label —
+     "Раунд идёт" becomes "Раунд жүріп жатыр". With nowrap the pill could not
+     give way, so it pushed the round title out of its header instead. Let it
+     take a second line and balance the break rather than distort the row. */
+  white-space: normal;
+  text-wrap: balance;
 }
 
 /* Sizes */

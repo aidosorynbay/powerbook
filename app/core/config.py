@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_bot_username: str = "PowerbookKZBot"
 
+    # Google Books API key for cover lookups (app/services/covers.py). Empty
+    # means the keyless public feed, which works but searches less well.
+    google_books_api_key: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

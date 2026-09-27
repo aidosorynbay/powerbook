@@ -3,6 +3,42 @@ import { useI18n, apiGet, apiPost, apiDelete, type ClaimCandidate, type MyClaim 
 import { Button } from '@/shared/ui';
 import styles from './ClaimPicker.module.css';
 
+/** How many round labels a collapsed list shows before the toggle. */
+const COLLAPSED_ROUNDS = 4;
+
+/**
+ * A reader who has been around since 2021 carries fifty-odd round labels, and
+ * printed in full they bury the name they belong to. Four of them plus a count
+ * says the same thing; the rest are one tap away for anyone checking.
+ */
+function RoundList({ rounds, className }: { rounds: string[]; className: string }) {
+  const { t } = useI18n();
+  const [expanded, setExpanded] = useState(false);
+
+  if (rounds.length <= COLLAPSED_ROUNDS + 2) {
+    return <span className={className}>{rounds.join(', ')}</span>;
+  }
+
+  const shown = expanded ? rounds : rounds.slice(0, COLLAPSED_ROUNDS);
+
+  return (
+    <span className={className}>
+      {shown.join(', ')}
+      {expanded ? ' ' : '… '}
+      <button
+        type="button"
+        className={styles.roundsToggle}
+        onClick={() => setExpanded((open) => !open)}
+        aria-expanded={expanded}
+      >
+        {expanded
+          ? t('claims.roundsCollapse')
+          : t('claims.roundsMore', { count: rounds.length - COLLAPSED_ROUNDS })}
+      </button>
+    </span>
+  );
+}
+
 interface ClaimPickerProps {
   onChange?: () => void;
 }
@@ -89,7 +125,7 @@ export function ClaimPicker({ onChange }: ClaimPickerProps) {
                 <div className={styles.resultName}>
                   {c.display_name} <span className={styles.resultUsername}>@{c.username}</span>
                 </div>
-                <div className={styles.resultRounds}>{c.rounds.join(', ')}</div>
+                <RoundList rounds={c.rounds} className={styles.resultRounds} />
               </div>
               <Button
                 size="sm"
@@ -127,7 +163,7 @@ export function ClaimPicker({ onChange }: ClaimPickerProps) {
             <div key={c.id} className={styles.myClaimRow}>
               <div className={styles.myClaimInfo}>
                 <span className={styles.myClaimName}>{c.ghost_display_name}</span>
-                <span className={styles.myClaimRounds}>{c.rounds.join(', ')}</span>
+                <RoundList rounds={c.rounds} className={styles.myClaimRounds} />
               </div>
               <button className={styles.unclaimBtn} onClick={() => unclaim(c.id)}>
                 {t('claims.cancelRequest')}
@@ -144,7 +180,7 @@ export function ClaimPicker({ onChange }: ClaimPickerProps) {
             <div key={c.id} className={styles.myClaimRow}>
               <div className={styles.myClaimInfo}>
                 <span className={styles.myClaimName}>{c.ghost_display_name}</span>
-                <span className={styles.myClaimRounds}>{c.rounds.join(', ')}</span>
+                <RoundList rounds={c.rounds} className={styles.myClaimRounds} />
               </div>
               <button className={styles.unclaimBtn} onClick={() => unclaim(c.id)}>
                 {t('claims.unclaim')}
