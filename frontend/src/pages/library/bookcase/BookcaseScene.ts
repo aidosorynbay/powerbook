@@ -167,6 +167,11 @@ export class BookcaseScene {
   private lampPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.35);
   private lampScreen = new THREE.Vector3();
 
+  // On a phone: the band the page leaves free between its header row and the
+  // caption, in canvas pixels. The shelf is framed inside it while browsing.
+  private browseBand: { top: number; bottom: number } | null = null;
+  private tallest = 1.2;
+
   constructor(canvas: HTMLCanvasElement, volumes: SceneVolume[], callbacks: SceneCallbacks, startIndex = 0) {
     this.canvas = canvas;
     this.callbacks = callbacks;
@@ -237,7 +242,7 @@ export class BookcaseScene {
   }
 
   private setupScene() {
-    this.scene.fog = new THREE.Fog(ROOM, 11, 28);
+    this.scene.fog = new THREE.Fog(ROOM, 14, 34);
 
     // A dim evening room: enough light to read every spine, the lamp does the rest.
     this.scene.add(new THREE.HemisphereLight('#9aa6bd', '#2b2119', 1.05));
@@ -343,6 +348,7 @@ export class BookcaseScene {
       widest = Math.max(widest, 0.5 * Math.hypot(dims.width, dims.thickness));
       thickest = Math.max(thickest, dims.thickness);
     });
+    this.tallest = Math.max(1, ...this.books.map((b) => b.height));
     this.laneZ = SPINE_Z + widest * 1.06 + 0.05;
     this.presentZ = SPINE_Z + thickest / 2 + 0.22;
     this.buildFurniture(Math.max(x, 1));
@@ -767,7 +773,24 @@ export class BookcaseScene {
    * the band between the header and the caption rather than dead centre.
    */
   private browseOffsetY(): number {
-    return this.canvas.clientWidth < 760 ? Math.round(this.canvas.clientHeight * 0.15) : 0;
+    const h = this.canvas.clientHeight;
+    if (this.canvas.clientWidth >= 760) return 0;
+    if (!this.browseBand) return Math.round(h * 0.15);
+    // Where the middle of the books lands with no offset, then slide the
+    // picture so it lands in the middle of the band instead.
+    const tanV = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
+    const distance = this.browseCamera.z - LOOK_AT.z;
+    const middle = BOTTOM + this.tallest / 2 - 0.05;
+    const shelfY = h / 2 - ((middle - LOOK_AT.y) / (2 * distance * tanV)) * h;
+    return Math.round(shelfY - (this.browseBand.top + this.browseBand.bottom) / 2);
+  }
+
+  /** The page reports the free band on phones; the shelf reframes to fit it. */
+  setBrowseArea(top: number, bottom: number) {
+    const prev = this.browseBand;
+    if (prev && Math.abs(prev.top - top) < 1 && Math.abs(prev.bottom - bottom) < 1) return;
+    this.browseBand = { top, bottom };
+    this.handleResize();
   }
 
   private setOffset(x: number, y: number) {
@@ -1008,12 +1031,19 @@ export class BookcaseScene {
     const w = Math.max(1, this.canvas.clientWidth);
     const h = Math.max(1, this.canvas.clientHeight);
     const narrow = w < 760;
-    this.browseCamera.set(0, narrow ? 1.5 : 1.46, narrow ? 8.4 : 6.9);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, narrow ? 1.5 : 1.75));
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.fov = w < 600 ? 33 : w < 920 ? 30 : 27;
     this.camera.updateProjectionMatrix();
+    let distance = narrow ? 8.4 : 6.9;
+    if (narrow && this.browseBand) {
+      // Far enough back that the tallest book and the plank fit the band.
+      const band = Math.max(120, this.browseBand.bottom - this.browseBand.top);
+      const tanV = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
+      distance = Math.max(distance, ((this.tallest + 0.45) * h) / (2 * tanV * band) + LOOK_AT.z);
+    }
+    this.browseCamera.set(0, narrow ? 1.5 : 1.46, distance);
     if (this.mode === 'browse' && this.focusT < 0.01) {
       this.setOffset(0, this.browseOffsetY());
       this.camera.position.copy(this.browseCamera);

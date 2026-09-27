@@ -139,6 +139,8 @@ export function BookcasePage({ ownerId }: Props) {
 
   const isSelf = !!data?.is_self;
   const siteHeaderRef = useRef<HTMLDivElement>(null);
+  const headerRowRef = useRef<HTMLElement>(null);
+  const captionRef = useRef<HTMLElement>(null);
 
   // The room is fixed to the viewport; it starts under the site header,
   // whatever height the header has on this screen. The phone header can hang
@@ -348,11 +350,13 @@ export function BookcasePage({ ownerId }: Props) {
                 const w = canvas.clientWidth;
                 const h = canvas.clientHeight;
                 const panel = detailsRef.current;
-                const top = (brandRef.current?.getBoundingClientRect().bottom ?? 56) + 12;
+                const canvasTop = canvas.getBoundingClientRect().top;
+                const top = (brandRef.current ? brandRef.current.getBoundingClientRect().bottom - canvasTop : 56) + 12;
                 // offsetTop/offsetLeft ignore the panel's slide-in transform,
                 // so this is where it will be, not where it is mid-animation.
                 // The sheet fades in over the last 40px above its edge.
-                if (w < 760) return { left: 0, right: w, top, bottom: panel ? panel.offsetTop - 40 : h * 0.5 };
+                // On a phone the header row hides while a book is held up.
+                if (w < 760) return { left: 0, right: w, top: 12, bottom: panel ? panel.offsetTop - 40 : h * 0.5 };
                 return { left: 0, right: panel ? panel.offsetLeft : w * 0.6, top: top + 10, bottom: h - 24 };
               },
             },
@@ -566,6 +570,24 @@ export function BookcasePage({ ownerId }: Props) {
   const showScene = !!data && !noWebgl && !empty;
   const fellowList = current?.match_key ? fellows[current.match_key] : undefined;
 
+  // Phones: tell the shelf how much room is left between the header row and
+  // the caption, so it frames the books there instead of under the caption.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const head = headerRowRef.current;
+    const caption = captionRef.current;
+    if (!sceneReady || !showScene || !canvas || !head || !caption) return;
+    const push = () => {
+      const top = canvas.getBoundingClientRect().top;
+      // The caption fades in over its first ~40px; books may show through that.
+      sceneRef.current?.setBrowseArea(head.getBoundingClientRect().bottom - top + 8, caption.getBoundingClientRect().top - top + 28);
+    };
+    push();
+    const ro = new ResizeObserver(push);
+    [canvas, head, caption].forEach((el) => ro.observe(el));
+    return () => ro.disconnect();
+  }, [sceneReady, showScene]);
+
   return (
     <>
     <div ref={siteHeaderRef}>
@@ -587,7 +609,7 @@ export function BookcasePage({ ownerId }: Props) {
         hidden={!showScene}
       />
 
-      <header className={styles.header}>
+      <header className={styles.header} ref={headerRowRef}>
         <div className={styles.brand} ref={brandRef}>
           {ownerId && (
             <Link className={styles.homeLink} to={`/readers/${ownerId}`}>
@@ -636,7 +658,7 @@ export function BookcasePage({ ownerId }: Props) {
 
       {showScene && current && (
         <>
-          <section className={styles.caption} aria-hidden={inspecting}>
+          <section className={styles.caption} ref={captionRef} aria-hidden={inspecting}>
             <p className={styles.kicker}>
               {current.has_file && <span className={styles.ribbonDot} aria-hidden="true" />}
               {statusLine(current)}

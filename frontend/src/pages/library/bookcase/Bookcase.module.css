@@ -2185,4 +2185,80 @@
   .facts {
     grid-template-columns: 1fr;
   }
+
+  /* Leave the books most of the screen: one scrolling row of pills and a
+     shorter caption lower down. */
+  .actions {
+    flex-wrap: nowrap;
+    max-width: calc(100% + 48px);
+    margin-inline: -24px;
+    padding: 2px 24px 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .segment {
+    flex: none;
+  }
+
+  .caption {
+    bottom: calc(var(--nav) + 78px);
+    padding: 40px 24px 12px;
+  }
+
+  .caption h1 {
+    font-size: clamp(24px, 7.4vw, 34px);
+    -webkit-line-clamp: 2;
+  }
+
+  .caption h1.titleMedium {
+    font-size: clamp(21px, 6.2vw, 28px);
+  }
+
+  .caption h1.titleLong {
+    font-size: clamp(18px, 5.2vw, 23px);
+  }
+
+  .kicker {
+    margin-bottom: 10px;
+    padding: 3px 10px;
+    font-size: 12px;
+  }
+
+  .author {
+    margin-top: 6px;
+    font-size: 14px;
+  }
+
+  .captionActions {
+    margin-top: 12px;
+  }
+
+  .inspect {
+    padding: 8px 14px !important;
+    font-size: 14px !important;
+  }
+
+  .arrow {
+    bottom: calc(var(--nav) + 18px);
+  }
+
+  /* Holding a book up: the header row steps aside and the details sheet is
+     a little shorter, so the book gets most of the screen. */
+  .isFocused .header {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .details {
+    height: min(44dvh, 440px);
+  }
+
+  .index {
+    bottom: calc(var(--nav) + 32px);
+  }
 }
