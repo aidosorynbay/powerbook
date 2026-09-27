@@ -47,6 +47,13 @@ class Settings(BaseSettings):
     # catalogues (Google Books, Open Library, Wikipedia).
     book_facts_enabled: bool = True
 
+    # Sentry error monitoring (app/core/sentry.py). Empty DSN means off.
+    # SENTRY_RELEASE is the git commit, passed in by the deploy.
+    sentry_dsn: str = ""
+    sentry_environment: str = "production"
+    sentry_release: str = ""
+    sentry_traces_sample_rate: float = 0.1
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

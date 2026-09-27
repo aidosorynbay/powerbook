@@ -4,6 +4,9 @@ services:
     container_name: powerbook-backend
     network_mode: host
     env_file: .env
+    environment:
+      # Git commit for Sentry; the deploy exports it before `compose up`.
+      - SENTRY_RELEASE
     restart: unless-stopped
     volumes:
       # Uploaded books live on the host: the image is rebuilt on every deploy

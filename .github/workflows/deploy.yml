@@ -19,6 +19,7 @@ jobs:
             cd /opt/powerbook
             git fetch origin master
             git reset --hard origin/master
+            export SENTRY_RELEASE=$(git rev-parse --short HEAD)
             docker compose -f docker-compose.prod.yml up --build -d
             cd frontend
             echo "VITE_API_BASE_URL=https://powerbook.kz/api" > .env.production

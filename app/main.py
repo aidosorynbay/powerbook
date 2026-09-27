@@ -14,6 +14,7 @@ from app.api.routes.health import router as health_router
 from app.api.routes.root import router as root_router
 from app.core.config import settings
 from app.core.logging import configure_logging
+from app.core.sentry import init_sentry
 from app.db.session import get_session_factory
 from app.models.enums import RoundStatus
 from app.models.round import Round
@@ -174,6 +175,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     configure_logging()
+    init_sentry()
 
     app = FastAPI(title=settings.app_name, lifespan=lifespan)
 

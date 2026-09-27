@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 
+import sentry_sdk
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -40,6 +41,8 @@ def get_current_user(
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
+    # Id only, so Sentry can count affected readers without personal data.
+    sentry_sdk.set_user({"id": str(user.id)})
     return user
 
 
@@ -72,5 +75,6 @@ def get_current_user_optional(
     user = UserRepository(db).get(user_id)
     if user is None or not user.is_active:
         return None
+    sentry_sdk.set_user({"id": str(user.id)})
     return user
 

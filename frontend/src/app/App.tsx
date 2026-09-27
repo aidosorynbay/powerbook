@@ -1,9 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
+import * as Sentry from '@sentry/react';
 import { AuthProvider, useAuth, I18nProvider, useI18n } from '@/shared/lib';
 import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage, JoinPage } from '@/pages';
 import { BottomNav, JoinPrompt, LastCallNotice } from '@/widgets';
 import '@/app/styles/theme.css';
+
+// Lets Sentry name traces by route pattern (/readers/:userId).
+const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 // Loaded only when a book is actually opened.
 const ReaderPage = lazy(() =>
@@ -11,8 +15,14 @@ const ReaderPage = lazy(() =>
 );
 
 function AppRoutes() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const { t } = useI18n();
+
+  // Tag errors with the reader's id only (no name or email), so Sentry can
+  // count how many readers an error hits.
+  useEffect(() => {
+    Sentry.setUser(user ? { id: user.id } : null);
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -30,7 +40,7 @@ function AppRoutes() {
 
   return (
     <>
-      <Routes>
+      <SentryRoutes>
         <Route path="/" element={<HomePage />} />
         <Route
           path="/round"
@@ -121,7 +131,7 @@ function AppRoutes() {
           path="/register"
           element={isAuthenticated ? <Navigate to="/" replace /> : <RegisterPage />}
         />
-      </Routes>
+      </SentryRoutes>
       <BottomNav />
       {/* Mounted at the root, not per page: the reader should see it on the
           last day whichever page they happen to open. */}
@@ -132,15 +142,41 @@ function AppRoutes() {
   );
 }
 
+// Shown when rendering crashes. It sits outside I18nProvider (which may be
+// what failed), so the text is fixed in the two main languages.
+function CrashFallback() {
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '12px',
+      padding: '24px',
+      textAlign: 'center',
+      color: 'var(--color-text-secondary)'
+    }}>
+      <p>Что-то пошло не так. Попробуйте обновить страницу.</p>
+      <p>Бірдеңе дұрыс болмады. Бетті жаңартып көріңіз.</p>
+      <button type="button" onClick={() => window.location.reload()}>
+        Обновить / Жаңарту
+      </button>
+    </div>
+  );
+}
+
 export function App() {
   return (
-    <BrowserRouter>
-      <I18nProvider>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </I18nProvider>
-    </BrowserRouter>
+    <Sentry.ErrorBoundary fallback={<CrashFallback />}>
+      <BrowserRouter>
+        <I18nProvider>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </I18nProvider>
+      </BrowserRouter>
+    </Sentry.ErrorBoundary>
   );
 }
 
