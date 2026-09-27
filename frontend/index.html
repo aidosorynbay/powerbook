@@ -17,7 +17,7 @@
         try { choice = localStorage.getItem('pb.theme') || 'dark'; } catch (e) {}
         var light = choice === 'light' || (choice === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches);
         document.documentElement.dataset.theme = light ? 'light' : 'dark';
-        if (light) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#F5F6F8');
+        if (light) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#EEE8DB');
       })();
     </script>
 

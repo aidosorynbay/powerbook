@@ -163,47 +163,50 @@
 :root[data-theme="light"] {
     color-scheme: light;
 
-    --color-bg-primary: #F5F6F8;
-    --color-bg-secondary: #FFFFFF;
-    --color-bg-card: rgba(255, 255, 255, 0.9);
-    --color-bg-card-hover: #FFFFFF;
-    --color-bg-elevated: #FFFFFF;
+    /* Soft paper and ink, after the original bookshelf this library was
+       modelled on (jcarbonell.com/bookshelf): warm, low-glare, calm. */
+    --color-bg-primary: #EEE8DB;
+    --color-bg-secondary: #F6F1E7;
+    --color-bg-card: rgba(246, 241, 231, 0.92);
+    --color-bg-card-hover: #F6F1E7;
+    --color-bg-elevated: #F6F1E7;
 
-    /* A shade deeper than the dark theme's orange: on white, #F26430
-       reads at 3.2:1; this is the same brand at 3.8:1. */
-    --color-accent-primary: #E0561E;
-    --color-accent-primary-hover: #C94A15;
-    --color-accent-primary-muted: rgba(224, 86, 30, 0.12);
+    /* The brand orange, a shade deeper so white on it and it on paper both
+       read; small orange-ish text takes the bookshelf's brick instead. */
+    --color-accent-primary: #D9531F;
+    --color-accent-primary-hover: #BF4718;
+    --color-accent-primary-muted: rgba(217, 83, 31, 0.12);
 
-    --color-text-primary: #16191E;
-    --color-text-secondary: #555D68;
-    --color-text-muted: #646C78;
-    --color-text-accent: #C2410C;
+    --color-text-primary: #25231F;
+    --color-text-secondary: #67635B;
+    --color-text-muted: #6A655D;
+    --color-text-accent: #A74735;
 
-    --color-border-primary: rgba(22, 25, 30, 0.13);
-    --color-border-secondary: rgba(22, 25, 30, 0.07);
-    --color-border-accent: rgba(224, 86, 30, 0.45);
+    --color-border-primary: rgba(37, 35, 31, 0.19);
+    --color-border-secondary: rgba(37, 35, 31, 0.1);
+    --color-border-accent: rgba(217, 83, 31, 0.42);
 
-    --color-success: #1A7F4B;
-    --color-success-muted: rgba(26, 127, 75, 0.12);
-    --color-warning: #9A6700;
-    --color-warning-muted: rgba(154, 103, 0, 0.12);
-    --color-danger: #C43D33;
-    --color-danger-muted: rgba(196, 61, 51, 0.1);
+    --color-success: #276B42;
+    --color-success-muted: rgba(39, 107, 66, 0.12);
+    --color-warning: #8A6100;
+    --color-warning-muted: rgba(138, 97, 0, 0.12);
+    --color-danger: #B23A2E;
+    --color-danger-muted: rgba(178, 58, 46, 0.1);
 
-    --color-success-fill: #39D98A;
-    --color-warning-fill: #F0C929;
-    --color-danger-fill: #E8695A;
-    --color-on-status: #0D1117;
-    --color-on-status-dot: rgba(13, 17, 23, 0.55);
+    /* Calendar days: softer than the dark theme's neon, still dark numbers. */
+    --color-success-fill: #7CC896;
+    --color-warning-fill: #EBC96A;
+    --color-danger-fill: #E48A79;
+    --color-on-status: #25231F;
+    --color-on-status-dot: rgba(37, 35, 31, 0.55);
 
-    --color-header-bg: rgba(245, 246, 248, 0.86);
+    --color-header-bg: rgba(238, 232, 219, 0.9);
 
-    --shadow-sm: 0 1px 2px rgba(22, 25, 30, 0.06);
-    --shadow-md: 0 4px 12px rgba(22, 25, 30, 0.08);
-    --shadow-lg: 0 8px 24px rgba(22, 25, 30, 0.1);
-    --shadow-xl: 0 16px 48px rgba(22, 25, 30, 0.12);
-    --shadow-glow-accent: 0 0 40px rgba(224, 86, 30, 0.14);
+    --shadow-sm: 0 1px 2px rgba(45, 35, 24, 0.06);
+    --shadow-md: 0 4px 12px rgba(45, 35, 24, 0.08);
+    --shadow-lg: 0 8px 24px rgba(45, 35, 24, 0.1);
+    --shadow-xl: 0 16px 48px rgba(45, 35, 24, 0.12);
+    --shadow-glow-accent: 0 0 40px rgba(217, 83, 31, 0.14);
 }
 
 :root:not([data-theme="light"]) {
