@@ -59,6 +59,23 @@ class ShelfBookOut(BaseModel):
     last_read_at: datetime | None
 
 
+class BookNoteOut(BaseModel):
+    id: uuid.UUID
+    text: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class BookNoteIn(BaseModel):
+    text: str = Field(min_length=1, max_length=4000)
+
+
+class BookNoteCreate(BookNoteIn):
+    volume_key: str = Field(min_length=3, max_length=80)
+
+
 class BookcaseBookOut(BaseModel):
     """One volume on a reader's bookcase.
 
@@ -105,6 +122,9 @@ class BookcaseBookOut(BaseModel):
     # "image"), and whether they've corrected it at all.
     cover_mode: str | None = None
     edited: bool = False
+
+    # Owner only: the reader's own notes on this book, oldest first.
+    notes: list[BookNoteOut] = []
 
     # Owner only.
     upload_id: uuid.UUID | None = None

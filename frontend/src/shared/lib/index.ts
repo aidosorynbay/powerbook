@@ -88,6 +88,7 @@ export type {
   LibraryStats,
   ShelfBook,
   BookcaseBook,
+  BookNote,
   Bookcase,
   FellowReader,
   CoverOption,

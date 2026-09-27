@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.booktitles import canonical_key, matching_key, matching_title
-from app.services import covers, shelf_overrides
+from app.services import book_notes, covers, shelf_overrides
 from app.models.library import LibraryBook
 from app.models.manual_book import ManualBook
 from app.models.round import ReadingLog, Round
@@ -29,6 +29,7 @@ from app.repositories.library import LibraryRepository
 from app.repositories.users import UserRepository
 from app.schemas.library import (
     BookcaseBookOut,
+    BookNoteOut,
     BookcaseOut,
     BookcaseOwnerOut,
     FellowReaderOut,
@@ -327,6 +328,12 @@ class BookcaseService:
             if is_self:
                 vol.cover_mode = override.cover_mode
                 vol.edited = True
+
+        # The owner's own notes, never anyone else's.
+        if is_self and not owner.is_claimable:
+            notes = book_notes.notes_for(self.db, owner.id)
+            for vol in volumes:
+                vol.notes = [BookNoteOut.model_validate(n) for n in notes.get(vol.key, [])]
 
         for vol in volumes:
             vol.fellow_readers = fellow_count(vol.match_key)

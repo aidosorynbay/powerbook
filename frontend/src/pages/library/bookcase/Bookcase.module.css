@@ -2146,6 +2146,117 @@
   text-transform: none;
 }
 
+/* The reader's own notes, in the details panel. */
+.notes {
+  display: grid;
+  gap: 10px;
+  max-width: 500px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border-secondary);
+}
+
+.notesTitle {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.notesHint {
+  margin: -4px 0 4px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.noteList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.noteItem {
+  padding: 12px 14px;
+  border: 1px solid var(--color-border-secondary);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-lg);
+  background: var(--paper-light);
+}
+
+.noteText {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.noteMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin-top: 8px;
+  color: var(--color-text-muted);
+  font-size: 12.5px;
+}
+
+.noteMeta span {
+  margin-right: auto;
+}
+
+.noteMeta button {
+  color: var(--ink-soft) !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+}
+
+.noteMeta button:hover:not(:disabled) {
+  color: var(--accent) !important;
+}
+
+.noteForm {
+  display: grid;
+  gap: 10px;
+}
+
+.noteForm textarea {
+  min-height: 84px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.noteActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.noteAddButton {
+  display: inline-flex;
+  justify-self: start;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px !important;
+  border: 1px dashed var(--color-border-accent) !important;
+  border-radius: var(--radius-lg);
+  color: var(--accent) !important;
+  background: var(--color-accent-primary-muted);
+  font-size: 14.5px !important;
+  font-weight: 600 !important;
+  transition: background-color 0.2s ease;
+}
+
+.noteAddButton:hover {
+  background: rgba(242, 100, 48, 0.22);
+}
+
+.noteAddButton span {
+  font-size: 17px;
+  line-height: 1;
+}
+
 @media (max-width: 760px) {
   .header {
     padding-top: 14px;

@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, FormEvent, KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   useI18n,
@@ -10,6 +10,7 @@ import {
   getApiBaseUrl,
   type Bookcase,
   type BookcaseBook,
+  type BookNote,
   type FellowReader,
   type LibraryBook,
   type LibraryStats,
@@ -74,6 +75,163 @@ function findBook(list: BookcaseBook[], wanted: string): number {
     }
   });
   return best;
+}
+
+/**
+ * The reader's own notes on the book held up: the list, a form to add one,
+ * and edit / delete on each. Only rendered on the reader's own shelf.
+ */
+function BookNotes({ book, locale, onNotes }: { book: BookcaseBook; locale: Locale; onNotes: (key: string, notes: BookNote[]) => void }) {
+  const { t } = useI18n();
+  const notes = book.notes ?? [];
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Another book in the hands: start clean.
+  useEffect(() => {
+    setAdding(false);
+    setDraft('');
+    setEditingId(null);
+    setError(null);
+  }, [book.key]);
+
+  const add = async (e: FormEvent) => {
+    e.preventDefault();
+    const text = draft.trim();
+    if (!text || busy) return;
+    setBusy(true);
+    setError(null);
+    const { data } = await apiPost<BookNote>('/library/notes', { volume_key: book.key, text }, { requireAuth: true });
+    setBusy(false);
+    if (!data) return setError(t('shelf.noteError'));
+    onNotes(book.key, [...notes, data]);
+    setDraft('');
+    setAdding(false);
+  };
+
+  const save = async (e: FormEvent, id: string) => {
+    e.preventDefault();
+    const text = editDraft.trim();
+    if (!text || busy) return;
+    setBusy(true);
+    setError(null);
+    const { data } = await apiPatch<BookNote>(`/library/notes/${id}`, { text }, { requireAuth: true });
+    setBusy(false);
+    if (!data) return setError(t('shelf.noteError'));
+    onNotes(book.key, notes.map((n) => (n.id === id ? data : n)));
+    setEditingId(null);
+  };
+
+  const remove = async (id: string) => {
+    if (busy || !window.confirm(t('shelf.noteConfirmDelete'))) return;
+    setBusy(true);
+    setError(null);
+    const { error: failed } = await apiDelete(`/library/notes/${id}`, { requireAuth: true });
+    setBusy(false);
+    if (failed) return setError(t('shelf.noteError'));
+    onNotes(book.key, notes.filter((n) => n.id !== id));
+  };
+
+  // Escape inside a note closes the form, not the book (and keeps the draft safe).
+  const escape = (close: () => void) => (e: ReactKeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      close();
+    }
+  };
+
+  return (
+    <section className={styles.notes} aria-label={t('shelf.notesTitle')}>
+      <h3 className={styles.notesTitle}>{t('shelf.notesTitle')}</h3>
+      <p className={styles.notesHint}>{t('shelf.notesHint')}</p>
+      {notes.length > 0 && (
+        <ul className={styles.noteList}>
+          {notes.map((n) => {
+            const edited = new Date(n.updated_at).getTime() - new Date(n.created_at).getTime() > 60_000;
+            return (
+              <li key={n.id} className={styles.noteItem}>
+                {editingId === n.id ? (
+                  <form className={styles.noteForm} onSubmit={(e) => save(e, n.id)}>
+                    <textarea
+                      className={styles.field}
+                      rows={3}
+                      maxLength={4000}
+                      value={editDraft}
+                      onChange={(e) => setEditDraft(e.target.value)}
+                      onKeyDown={escape(() => setEditingId(null))}
+                      aria-label={t('shelf.noteEdit')}
+                      autoFocus
+                    />
+                    <div className={styles.noteActions}>
+                      <button type="submit" className={styles.addButton} disabled={busy || !editDraft.trim()}>
+                        {t('shelf.noteSave')}
+                      </button>
+                      <button type="button" className={styles.ghostButton} onClick={() => setEditingId(null)}>
+                        {t('shelf.noteCancel')}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <p className={styles.noteText}>{n.text}</p>
+                    <div className={styles.noteMeta}>
+                      <span>
+                        {formatDate(n.created_at, locale)}
+                        {edited && ` · ${t('shelf.noteEdited')}`}
+                      </span>
+                      <button type="button" onClick={() => { setEditingId(n.id); setEditDraft(n.text); setAdding(false); }} disabled={busy}>
+                        {t('shelf.noteEdit')}
+                      </button>
+                      <button type="button" onClick={() => remove(n.id)} disabled={busy}>
+                        {t('shelf.noteDelete')}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {adding ? (
+        <form className={styles.noteForm} onSubmit={add}>
+          <textarea
+            className={styles.field}
+            rows={3}
+            maxLength={4000}
+            placeholder={t('shelf.notePlaceholder')}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={escape(() => setAdding(false))}
+            aria-label={t('shelf.noteAdd')}
+            autoFocus
+          />
+          <div className={styles.noteActions}>
+            <button type="submit" className={styles.addButton} disabled={busy || !draft.trim()}>
+              {t('shelf.noteSave')}
+            </button>
+            <button type="button" className={styles.ghostButton} onClick={() => setAdding(false)}>
+              {t('shelf.noteCancel')}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button type="button" className={styles.noteAddButton} onClick={() => { setAdding(true); setEditingId(null); }}>
+          <span aria-hidden="true">+</span>
+          {t('shelf.noteAdd')}
+        </button>
+      )}
+      {error && (
+        <p className={styles.formError} role="alert">
+          {error}
+        </p>
+      )}
+    </section>
+  );
 }
 
 function formatDate(iso: string | null, locale: Locale): string | null {
@@ -141,6 +299,9 @@ export function BookcasePage({ ownerId }: Props) {
   const [manualError, setManualError] = useState<string | null>(null);
 
   const isSelf = !!data?.is_self;
+  const setNotes = useCallback((key: string, notes: BookNote[]) => {
+    setData((prev) => (prev ? { ...prev, books: prev.books.map((b) => (b.key === key ? { ...b, notes } : b)) } : prev));
+  }, []);
   const siteHeaderRef = useRef<HTMLDivElement>(null);
   const headerRowRef = useRef<HTMLElement>(null);
   const captionRef = useRef<HTMLElement>(null);
@@ -391,7 +552,8 @@ export function BookcasePage({ ownerId }: Props) {
   useEffect(() => {
     if (!inspecting) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') sceneRef.current?.returnToShelf();
+      const typing = e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement;
+      if (e.key === 'Escape' && !typing) sceneRef.current?.returnToShelf();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -792,6 +954,8 @@ export function BookcasePage({ ownerId }: Props) {
                       </cite>
                     </blockquote>
                   )}
+
+                  {isSelf && <BookNotes book={current} locale={locale} onNotes={setNotes} />}
 
                   <div className={styles.fellows}>
                     <p className={styles.fellowsLine}>

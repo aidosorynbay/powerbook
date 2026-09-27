@@ -465,6 +465,14 @@ export type BadgeStats = {
 };
 
 /** One volume on a reader's bookcase — finished, readable here, or both. */
+/** A reader's own note on a book on their shelf; only they see it. */
+export type BookNote = {
+  id: string;
+  text: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type BookcaseBook = {
   key: string;
   title: string;
@@ -472,6 +480,8 @@ export type BookcaseBook = {
   note: string | null;
   /** Came from a comment marked private: only its owner ever sees it. */
   note_is_private: boolean;
+  /** Owner only: the reader's own notes, oldest first. */
+  notes?: BookNote[];
   status: 'finished' | 'reading' | 'unread';
   source: 'round' | 'manual' | 'upload';
   finished_on: string | null;

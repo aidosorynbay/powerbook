@@ -10,6 +10,9 @@ from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.library import (
+    BookNoteCreate,
+    BookNoteIn,
+    BookNoteOut,
     BookcaseOut,
     CoverChoiceIn,
     CoverOptionOut,
@@ -21,7 +24,7 @@ from app.schemas.library import (
     ProgressUpdate,
     ShelfBookOut,
 )
-from app.services import covers, shelf_overrides
+from app.services import book_notes, covers, shelf_overrides
 from app.services.bookcase import BookcaseService
 from app.services.library import LibraryService
 
@@ -236,4 +239,37 @@ def reset_override(
 ) -> dict:
     """Forget every correction to this book."""
     shelf_overrides.reset(db, user.id, volume_key)
+    return {"ok": True}
+
+
+# ---------- notes ----------
+
+
+@router.post("/notes", response_model=BookNoteOut)
+def add_note(
+    payload: BookNoteCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> BookNoteOut:
+    """Write a note on a book on your own shelf. Only you ever see it."""
+    return BookNoteOut.model_validate(book_notes.add(db, user.id, payload.volume_key, payload.text))
+
+
+@router.patch("/notes/{note_id}", response_model=BookNoteOut)
+def edit_note(
+    note_id: uuid.UUID,
+    payload: BookNoteIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> BookNoteOut:
+    return BookNoteOut.model_validate(book_notes.update(db, user.id, note_id, payload.text))
+
+
+@router.delete("/notes/{note_id}")
+def delete_note(
+    note_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict:
+    book_notes.delete(db, user.id, note_id)
     return {"ok": True}

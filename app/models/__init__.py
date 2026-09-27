@@ -7,6 +7,7 @@ from app.models.manual_book import ManualBook
 from app.models.reaction import ReadingLogReaction
 from app.models.round import BookExchangePair, ReadingLog, Round, RoundParticipant, RoundResult
 from app.models.shelf_override import ShelfOverride
+from app.models.book_note import BookNote
 from app.models.suggestion import Suggestion
 from app.models.user import User
 
@@ -27,5 +28,6 @@ __all__ = [
     "LibraryBook",
     "BookCover",
     "ShelfOverride",
+    "BookNote",
 ]
 
