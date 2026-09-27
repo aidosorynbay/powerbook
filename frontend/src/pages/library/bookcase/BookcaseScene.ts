@@ -171,6 +171,8 @@ export class BookcaseScene {
   // caption, in canvas pixels. The shelf is framed inside it while browsing.
   private browseBand: { top: number; bottom: number } | null = null;
   private tallest = 1.2;
+  private viewOffsetY = 0;
+  private framedWidth = 0;
 
   constructor(canvas: HTMLCanvasElement, volumes: SceneVolume[], callbacks: SceneCallbacks, startIndex = 0) {
     this.canvas = canvas;
@@ -788,12 +790,31 @@ export class BookcaseScene {
   /** The page reports the free band on phones; the shelf reframes to fit it. */
   setBrowseArea(top: number, bottom: number) {
     const prev = this.browseBand;
-    if (prev && Math.abs(prev.top - top) < 1 && Math.abs(prev.bottom - bottom) < 1) return;
+    // Small shifts (a font settling, a toolbar) are not worth moving the camera for.
+    if (prev && Math.abs(prev.top - top) < 12 && Math.abs(prev.bottom - bottom) < 12) return;
     this.browseBand = { top, bottom };
-    this.handleResize();
+    // The first report frames the shelf at once; later ones glide there
+    // (updateCamera eases both the distance and the offset).
+    if (!prev) {
+      this.framedWidth = 0;
+      this.handleResize();
+    } else {
+      this.browseCamera.z = this.browseDistance(this.canvas.clientWidth, this.canvas.clientHeight);
+      this.invalidate();
+    }
+  }
+
+  private browseDistance(w: number, h: number): number {
+    if (w >= 760) return 6.9;
+    if (!this.browseBand) return 8.4;
+    // Far enough back that the tallest book and the plank fit the band.
+    const band = Math.max(120, this.browseBand.bottom - this.browseBand.top);
+    const tanV = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
+    return Math.max(8.4, ((this.tallest + 0.45) * Math.max(1, h)) / (2 * tanV * band) + LOOK_AT.z);
   }
 
   private setOffset(x: number, y: number) {
+    this.viewOffsetY = y;
     const w = Math.max(1, this.canvas.clientWidth);
     const h = Math.max(1, this.canvas.clientHeight);
     if (Math.abs(x) < 0.5 && Math.abs(y) < 0.5) this.camera.clearViewOffset();
@@ -806,6 +827,14 @@ export class BookcaseScene {
         this.camera.position.lerp(this.browseCamera, 1 - Math.exp(-(this.reducedMotion ? 20 : 8) * dt));
         this.camera.lookAt(LOOK_AT);
         this.needsRender = true;
+      }
+      if (this.focusT < 0.01) {
+        const goal = this.browseOffsetY();
+        const gap = goal - this.viewOffsetY;
+        if (Math.abs(gap) > 0.5) {
+          this.setOffset(0, Math.abs(gap) < 1 ? goal : damp(this.viewOffsetY, goal, this.reducedMotion ? 30 : 8, dt));
+          this.needsRender = true;
+        }
       }
       return;
     }
@@ -1036,18 +1065,20 @@ export class BookcaseScene {
     this.camera.aspect = w / h;
     this.camera.fov = w < 600 ? 33 : w < 920 ? 30 : 27;
     this.camera.updateProjectionMatrix();
-    let distance = narrow ? 8.4 : 6.9;
-    if (narrow && this.browseBand) {
-      // Far enough back that the tallest book and the plank fit the band.
-      const band = Math.max(120, this.browseBand.bottom - this.browseBand.top);
-      const tanV = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
-      distance = Math.max(distance, ((this.tallest + 0.45) * h) / (2 * tanV * band) + LOOK_AT.z);
-    }
-    this.browseCamera.set(0, narrow ? 1.5 : 1.46, distance);
+    this.browseCamera.set(0, narrow ? 1.5 : 1.46, this.browseDistance(w, h));
+    // A new width (a rotation, a desktop window) reframes at once. A new
+    // height alone is a phone toolbar sliding in or out: glide instead.
+    const snap = w !== this.framedWidth;
+    this.framedWidth = w;
     if (this.mode === 'browse' && this.focusT < 0.01) {
-      this.setOffset(0, this.browseOffsetY());
-      this.camera.position.copy(this.browseCamera);
-      this.camera.lookAt(LOOK_AT);
+      if (snap) {
+        this.setOffset(0, this.browseOffsetY());
+        this.camera.position.copy(this.browseCamera);
+        this.camera.lookAt(LOOK_AT);
+      } else {
+        // Same offset at the new size; updateCamera eases the rest.
+        this.setOffset(0, this.viewOffsetY);
+      }
     } else if (this.mode === 'inspect') {
       this.frameSelected(1);
     }

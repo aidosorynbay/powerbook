@@ -32,6 +32,9 @@ const FONTS_HREF =
   'https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Literata:ital,opsz,wght@0,7..72,300..700;1,7..72,300..700&display=swap';
 // The app's page colour: the shelf now sits in the same dark room as every other page.
 const ROOM = '#0d1117';
+// Phones: height kept free above the caption's bottom edge for its tallest
+// form (badge, two-line title, author, buttons), less the fade books show through.
+const CAPTION_ROOM = 200;
 
 const MONTHS: Record<Locale, string[]> = {
   ru: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
@@ -579,12 +582,14 @@ export function BookcasePage({ ownerId }: Props) {
     if (!sceneReady || !showScene || !canvas || !head || !caption) return;
     const push = () => {
       const top = canvas.getBoundingClientRect().top;
-      // The caption fades in over its first ~40px; books may show through that.
-      sceneRef.current?.setBrowseArea(head.getBoundingClientRect().bottom - top + 8, caption.getBoundingClientRect().top - top + 28);
+      // Measured from the caption's bottom edge, which stays put, with room
+      // kept for its tallest form (a two-line title). Its top edge moves with
+      // every book, and following it made the shelf zoom in and out.
+      sceneRef.current?.setBrowseArea(head.getBoundingClientRect().bottom - top + 8, caption.getBoundingClientRect().bottom - top - CAPTION_ROOM);
     };
     push();
     const ro = new ResizeObserver(push);
-    [canvas, head, caption].forEach((el) => ro.observe(el));
+    [canvas, head].forEach((el) => ro.observe(el));
     return () => ro.disconnect();
   }, [sceneReady, showScene]);
 
