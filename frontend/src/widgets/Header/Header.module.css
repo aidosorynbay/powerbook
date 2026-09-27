@@ -5,7 +5,7 @@
   /* Installed on iOS the status bar is translucent and draws over the page,
      so without the inset the row sits under the clock and the notch. */
   padding: calc(var(--spacing-4) + env(safe-area-inset-top, 0px)) 0 var(--spacing-4);
-  background: rgba(13, 17, 23, 0.8);
+  background: var(--color-header-bg);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border-secondary);
 }
@@ -191,7 +191,7 @@
     -webkit-backdrop-filter: none;
     /* Fully opaque: blending a translucent bar over scrolling content is
        what tore holes in it during momentum scroll on iOS. */
-    background: #0D1117;
+    background: var(--color-bg-primary);
     /* Own compositor layer, so scrolling never has to repaint the bar.
        Deliberately not transform/will-change: those would make the header a
        containing block for .menuBackdrop, which is fixed to the viewport. */
@@ -524,4 +524,23 @@
   .navTelegram span {
     display: none;
   }
+}
+
+/* Light / dark / system. Sized like the language chip beside it. */
+.themeBtn {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 32px;
+  flex: none;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  background: transparent;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.themeBtn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-accent);
 }

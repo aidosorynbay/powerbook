@@ -1,8 +1,38 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth, useI18n, LOCALES } from '@/shared/lib';
+import { useAuth, useI18n, useTheme, LOCALES, type ThemeChoice } from '@/shared/lib';
 import { Logo, Button, Icon, Container } from '@/shared/ui';
 import styles from './Header.module.css';
+
+// One button, three states: tap to go dark → light → as the system says.
+const THEME_ICON: Record<ThemeChoice, JSX.Element> = {
+  dark: <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />,
+  light: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" />
+    </>
+  ),
+  system: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" />
+    </>
+  ),
+};
+
+function ThemeButton({ className }: { className: string }) {
+  const { t } = useI18n();
+  const { choice, cycle } = useTheme();
+  const label = `${t('theme.label')}: ${t(`theme.${choice}`)}`;
+  return (
+    <button type="button" className={className} onClick={cycle} aria-label={label} title={label}>
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {THEME_ICON[choice]}
+      </svg>
+    </button>
+  );
+}
 
 const HINT_KEY = 'pb.menuHintSeen';
 
@@ -161,6 +191,7 @@ export function Header() {
           {/* Phones: the row holds only the logo, so language and account fit
               here as compact chips instead of hiding inside the menu. */}
           <div className={styles.mobileActions}>
+            <ThemeButton className={styles.themeBtn} />
             <select
               className={styles.mobileLang}
               value={locale}
@@ -194,6 +225,8 @@ export function Header() {
                 {isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCtaShort')}
               </span>
             </Link>
+
+            <ThemeButton className={styles.themeBtn} />
 
             <select
               className={styles.langSelect}

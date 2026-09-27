@@ -9,10 +9,10 @@
   left: 0;
   right: 0;
   z-index: var(--z-index-sticky);
-  background: #0D1117;
+  background: var(--color-bg-primary);
   /* Solid rather than blurred: a fixed bar with backdrop-filter is
      recomposited on every scroll frame, which phones feel. */
-  background: #0D1117;
+  background: var(--color-bg-primary);
   border-top: 1px solid var(--color-border-secondary);
   padding-bottom: env(safe-area-inset-bottom);
 }

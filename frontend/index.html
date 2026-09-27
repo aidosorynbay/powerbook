@@ -8,7 +8,18 @@
 
     <!-- Installable app -->
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#0f0f0f" />
+    <meta name="theme-color" content="#0D1117" />
+    <!-- Light or dark before the first paint, so the page never flashes the
+         wrong colours. Mirrors src/shared/lib/theme.ts; dark is the default. -->
+    <script>
+      (function () {
+        var choice = 'dark';
+        try { choice = localStorage.getItem('pb.theme') || 'dark'; } catch (e) {}
+        var light = choice === 'light' || (choice === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches);
+        document.documentElement.dataset.theme = light ? 'light' : 'dark';
+        if (light) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#F5F6F8');
+      })();
+    </script>
 
     <!-- iOS has no manifest support for these, so they are declared directly -->
     <meta name="apple-mobile-web-app-capable" content="yes" />

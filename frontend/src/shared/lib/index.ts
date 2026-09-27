@@ -93,3 +93,4 @@ export type {
   FellowReader,
   CoverOption,
 } from './types';
+export { useTheme, readThemeChoice, resolveTheme, applyTheme, THEME_KEY, type ThemeChoice } from './theme';

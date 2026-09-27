@@ -37,6 +37,18 @@
     --color-danger: #E8695A;
     --color-danger-muted: rgba(232, 105, 90, 0.12);
 
+    /* Status as a fill (calendar days), with the text that sits on it.
+       Kept apart from the text colours above: light theme needs darker text
+       greens and reds, but its day cells stay bright. */
+    --color-success-fill: #39D98A;
+    --color-warning-fill: #F0C929;
+    --color-danger-fill: #E8695A;
+    --color-on-status: #0D1117;
+    --color-on-status-dot: rgba(255, 255, 255, 0.8);
+
+    /* Bars that float over the page. */
+    --color-header-bg: rgba(13, 17, 23, 0.8);
+
     /* ========== Typography ========== */
 
     /* Font families */
@@ -143,6 +155,59 @@
     --z-index-sticky: 200;
     --z-index-modal: 300;
     --z-index-tooltip: 400;
+}
+
+/* ========== Light theme ==========
+   Same names, daylight values. Chosen by the reader (Settings / header
+   toggle) or by the system; index.html applies it before the first paint. */
+:root[data-theme="light"] {
+    color-scheme: light;
+
+    --color-bg-primary: #F5F6F8;
+    --color-bg-secondary: #FFFFFF;
+    --color-bg-card: rgba(255, 255, 255, 0.9);
+    --color-bg-card-hover: #FFFFFF;
+    --color-bg-elevated: #FFFFFF;
+
+    /* A shade deeper than the dark theme's orange: on white, #F26430
+       reads at 3.2:1; this is the same brand at 3.8:1. */
+    --color-accent-primary: #E0561E;
+    --color-accent-primary-hover: #C94A15;
+    --color-accent-primary-muted: rgba(224, 86, 30, 0.12);
+
+    --color-text-primary: #16191E;
+    --color-text-secondary: #555D68;
+    --color-text-muted: #646C78;
+    --color-text-accent: #C2410C;
+
+    --color-border-primary: rgba(22, 25, 30, 0.13);
+    --color-border-secondary: rgba(22, 25, 30, 0.07);
+    --color-border-accent: rgba(224, 86, 30, 0.45);
+
+    --color-success: #1A7F4B;
+    --color-success-muted: rgba(26, 127, 75, 0.12);
+    --color-warning: #9A6700;
+    --color-warning-muted: rgba(154, 103, 0, 0.12);
+    --color-danger: #C43D33;
+    --color-danger-muted: rgba(196, 61, 51, 0.1);
+
+    --color-success-fill: #39D98A;
+    --color-warning-fill: #F0C929;
+    --color-danger-fill: #E8695A;
+    --color-on-status: #0D1117;
+    --color-on-status-dot: rgba(13, 17, 23, 0.55);
+
+    --color-header-bg: rgba(245, 246, 248, 0.86);
+
+    --shadow-sm: 0 1px 2px rgba(22, 25, 30, 0.06);
+    --shadow-md: 0 4px 12px rgba(22, 25, 30, 0.08);
+    --shadow-lg: 0 8px 24px rgba(22, 25, 30, 0.1);
+    --shadow-xl: 0 16px 48px rgba(22, 25, 30, 0.12);
+    --shadow-glow-accent: 0 0 40px rgba(224, 86, 30, 0.14);
+}
+
+:root:not([data-theme="light"]) {
+    color-scheme: dark;
 }
 
 /* ========== Base Styles ========== */
