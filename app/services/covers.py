@@ -291,13 +291,27 @@ def _same_words(ours: str, theirs: str) -> bool:
     return True
 
 
+def _same_word_set(ours: str, theirs: str) -> bool:
+    a = sorted(match_key(w) for w in re.split(r"[\s,.:;!?—–-]+", ours) if match_key(w))
+    b = sorted(match_key(w) for w in re.split(r"[\s,.:;!?—–-]+", theirs) if match_key(w))
+    return len(a) >= 3 and a == b
+
+
 def _author_in(rest_key: str, author: str) -> bool:
     """Whether a leftover piece of the reader's title (as a skeleton) names
-    the edition's author."""
+    the edition's author — allowing a slip of the keyboard, since "Хэл
+    Элорд" is plainly Хэл Элрод."""
     if not rest_key or len(rest_key) > 40:
         return False
-    tokens = [match_key(t) for t in re.split(r"[\s,.]+", author)]
-    return any(len(t) >= 4 and t in rest_key for t in tokens)
+    for token in (match_key(t) for t in re.split(r"[\s,.]+", author)):
+        if len(token) < 4:
+            continue
+        if token in rest_key:
+            return True
+        for i in range(0, max(1, len(rest_key) - len(token) + 1)):
+            if SequenceMatcher(None, token, rest_key[i : i + len(token)]).ratio() >= 0.8:
+                return True
+    return False
 
 
 def _pick_author(creators: list[str], script: str) -> str | None:
@@ -349,6 +363,11 @@ def _judge(query: str, author_hint: str | None, candidate: _Candidate) -> _Match
         # The same words with a typo in one of them: "Теори игр".
         if same_script:
             title = head
+    elif _same_word_set(query, head):
+        # The same words, remembered in another order: "Думай как мужчина,
+        # поступай как женщина" is «Поступай как женщина, думай как мужчина».
+        if same_script:
+            title = head
     elif len(theirs) >= 6 and ours.startswith(theirs) and _author_in(ours[len(theirs):], all_authors):
         # The author after the title: "Атомные привычки Клир", "Код да Винчи. Дэн Браун".
         title = head if same_script else None
@@ -380,6 +399,86 @@ def _split_author(query: str, candidate: _Candidate) -> _Match | None:
             match.title = match.title or title_part
             match.score += 0.1
             return match
+    return None
+
+
+# ---------- Wikidata: famous books Google files badly ----------
+
+_WIKIDATA = "https://www.wikidata.org/w/api.php"
+# Literary work, novel, book, written work, novella, short story, poem,
+# literary series, novel series.
+_WORK_CLASSES = {"Q7725634", "Q8261", "Q571", "Q47461344", "Q149537", "Q49084", "Q5185279", "Q1667921", "Q277759"}
+
+
+def _wikidata_cover(query: str) -> tuple[_Match, tuple[bytes, bytes]] | None:
+    """A cover from the book's Wikipedia article, for well-known titles —
+    classics and bestsellers whose translations Google holds no picture of.
+    Only an item that is a literary work and whose name is the reader's
+    title counts."""
+    lang = "ru" if _script(query) == "cyr" else "en"
+    found = json.loads(
+        _paced(
+            f"{_WIKIDATA}?"
+            + urllib.parse.urlencode(
+                {"action": "wbsearchentities", "search": query, "language": lang, "uselang": lang,
+                 "type": "item", "limit": 7, "format": "json"}
+            )
+        )
+    ).get("search", [])
+    ours = match_key(query)
+    ids = [x["id"] for x in found if match_key(x.get("label", "")) == ours or match_key(x.get("match", {}).get("text", "")) == ours]
+    if not ids:
+        return None
+    entities = json.loads(
+        _paced(
+            f"{_WIKIDATA}?"
+            + urllib.parse.urlencode(
+                {"action": "wbgetentities", "ids": "|".join(ids[:5]), "props": "claims|sitelinks|labels", "format": "json"}
+            )
+        )
+    ).get("entities", {})
+    for qid in ids[:5]:
+        entity = entities.get(qid, {})
+        claims = entity.get("claims", {})
+        kinds = {c["mainsnak"].get("datavalue", {}).get("value", {}).get("id") for c in claims.get("P31", [])}
+        if not kinds & _WORK_CLASSES:
+            continue
+        urls = []
+        for claim in claims.get("P18", [])[:1]:
+            name = claim["mainsnak"].get("datavalue", {}).get("value")
+            if name:
+                urls.append(f"https://commons.wikimedia.org/wiki/Special:FilePath/{urllib.parse.quote(name)}?width=600")
+        # The article's own infobox picture. Book covers on Wikipedia are
+        # non-free files, which the page-images API leaves out, so the page
+        # property naming the picture is read instead.
+        for wiki in dict.fromkeys((f"{lang}wiki", "enwiki", "ruwiki")):
+            page = entity.get("sitelinks", {}).get(wiki, {}).get("title")
+            if not page:
+                continue
+            api = f"https://{wiki[:-4]}.wikipedia.org/w/api.php?"
+            props = json.loads(
+                _paced(api + urllib.parse.urlencode(
+                    {"action": "query", "titles": page, "prop": "pageprops", "ppprop": "page_image", "redirects": 1, "format": "json"}
+                ))
+            )
+            image = next(iter(props.get("query", {}).get("pages", {}).values()), {}).get("pageprops", {}).get("page_image")
+            if not image:
+                continue
+            info = json.loads(
+                _paced(api + urllib.parse.urlencode(
+                    {"action": "query", "titles": f"File:{image}", "prop": "imageinfo", "iiprop": "url|mime",
+                     "iiurlwidth": 600, "format": "json"}
+                ))
+            )
+            file_info = (next(iter(info.get("query", {}).get("pages", {}).values()), {}).get("imageinfo") or [{}])[0]
+            if file_info.get("mime") == "image/jpeg":
+                urls.append(file_info.get("thumburl") or file_info.get("url"))
+        for url in urls:
+            full = _cover_bytes(url, min_width=200)
+            if full:
+                label = entity.get("labels", {}).get(lang, {}).get("value")
+                candidate = _Candidate(volume_id=qid, titles=[label or query], creators=[], has_thumbnail=True, source="wikidata")
+                return _Match(candidate=candidate, score=1.0, title=None, author=None), (full, full)
     return None
 
 
@@ -577,8 +676,17 @@ def _look_up(row: BookCover, author_hint: str | None) -> None:
             if images:
                 _keep(row, match, images, keep_title=core == query, fallback=fallback)
                 return
-    # No sharp cover anywhere: a small one still beats a painted stand-in on
-    # the shelf, and only looks soft when held right up to the camera.
+    # No sharp cover anywhere: a well-known book's Wikipedia article usually
+    # shows one; failing that, a small cover still beats a painted stand-in
+    # on the shelf, and only looks soft when held right up to the camera.
+    try:
+        found = _wikidata_cover(core)
+    except Exception:
+        found = None
+    if found:
+        match, images = found
+        _keep(row, match, images, keep_title=core == query, fallback=fallback)
+        return
     for match in with_picture[:3]:
         images = _fetch_images(match.candidate, min_width=110)
         if images:
@@ -714,7 +822,7 @@ def wants_lookup(row: BookCover | None) -> bool:
 # ---------- backfill ----------
 
 
-def _backfill(retry_misses: bool = False) -> None:
+def _backfill(retry_misses: bool = False, prune: bool = False) -> None:
     from app.db.session import get_session_factory
     from app.models.library import LibraryBook
     from app.models.manual_book import ManualBook
@@ -743,6 +851,21 @@ def _backfill(retry_misses: bool = False) -> None:
         if title:
             wanted.setdefault(cover_key(title), (title, author))
 
+    if prune:
+        # Rows keyed by titles as they were cleaned before the cleaning got
+        # better ("The giver 9.2/10"): nothing looks them up any more.
+        stale = [
+            row.key
+            for row in db.execute(select(BookCover)).scalars().all()
+            if row.key not in wanted and clean_title(row.query) != row.query
+        ]
+        for start in range(0, len(stale), 200):
+            for row in db.execute(select(BookCover).where(BookCover.key.in_(stale[start : start + 200]))).scalars():
+                if row.image:
+                    delete_image(row.image)
+                db.delete(row)
+        db.commit()
+        print(f"pruned {len(stale)} stale rows", flush=True)
     known = cached(db, list(wanted))
     todo = {k: v for k, v in wanted.items() if wants_lookup(known.get(k))}
     if retry_misses:
@@ -774,6 +897,6 @@ def _backfill(retry_misses: bool = False) -> None:
 
 if __name__ == "__main__":
     if sys.argv[1:2] == ["backfill"]:
-        _backfill(retry_misses="--retry-misses" in sys.argv)
+        _backfill(retry_misses="--retry-misses" in sys.argv, prune="--prune" in sys.argv)
     else:
         print(__doc__)
