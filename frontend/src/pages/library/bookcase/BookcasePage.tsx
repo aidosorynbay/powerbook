@@ -8,6 +8,7 @@ import {
   apiDelete,
   apiUploadWithProgress,
   getApiBaseUrl,
+  useResolvedTheme,
   type Bookcase,
   type BookcaseBook,
   type BookNote,
@@ -31,8 +32,6 @@ type Filter = 'all' | 'files';
 const MB = 1024 * 1024;
 const FONTS_HREF =
   'https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Literata:ital,opsz,wght@0,7..72,300..700;1,7..72,300..700&display=swap';
-// The app's page colour: the shelf now sits in the same dark room as every other page.
-const ROOM = '#0d1117';
 // Phones: height kept free above the caption's bottom edge for its tallest
 // form (badge, two-line title, author, buttons), less the fade books show through.
 const CAPTION_ROOM = 200;
@@ -299,6 +298,10 @@ export function BookcasePage({ ownerId }: Props) {
   const [manualError, setManualError] = useState<string | null>(null);
 
   const isSelf = !!data?.is_self;
+  const theme = useResolvedTheme();
+  useEffect(() => {
+    sceneRef.current?.setLook(theme);
+  }, [theme]);
   const setNotes = useCallback((key: string, notes: BookNote[]) => {
     setData((prev) => (prev ? { ...prev, books: prev.books.map((b) => (b.key === key ? { ...b, notes } : b)) } : prev));
   }, []);
@@ -338,11 +341,8 @@ export function BookcasePage({ ownerId }: Props) {
   // ---------- page chrome ----------
 
   useEffect(() => {
-    // Match the browser chrome and the page behind the canvas while the
-    // shelf is open.
-    const meta = document.querySelector('meta[name="theme-color"]');
-    const previous = meta?.getAttribute('content') ?? null;
-    meta?.setAttribute('content', ROOM);
+    // The page behind the canvas takes the site's colour (theme.css); the
+    // browser bar is already set by the theme switcher.
     document.documentElement.classList.add('pb-paper-room');
 
     if (!document.querySelector('link[data-shelf-fonts]')) {
@@ -358,7 +358,6 @@ export function BookcasePage({ ownerId }: Props) {
     });
     return () => {
       cancelled = true;
-      if (previous !== null) meta?.setAttribute('content', previous);
       document.documentElement.classList.remove('pb-paper-room');
     };
   }, []);

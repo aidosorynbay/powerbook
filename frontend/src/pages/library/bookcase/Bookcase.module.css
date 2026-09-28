@@ -20,6 +20,9 @@
   --sans: var(--font-family-primary);
   /* Room left for PowerBook's own tab bar on phones. */
   --nav: 0px;
+  /* The lamp in the evening; by day the same pool is sunlight on paper. */
+  --lamp-glow: rgba(255, 196, 128, 0.17);
+  --lamp-glow-soft: rgba(255, 170, 90, 0.06);
 
   position: fixed;
   /* Starts under the site header; BookcasePage measures it. */
@@ -30,7 +33,7 @@
   color: var(--ink);
   /* The lamp's pool on the wall; the scene moves it with the light. */
   background:
-    radial-gradient(circle at var(--lamp-x, 40%) var(--lamp-y, 45%), rgba(255, 196, 128, 0.17), rgba(255, 170, 90, 0.06) 22%, rgba(255, 170, 90, 0) 44%),
+    radial-gradient(circle at var(--lamp-x, 40%) var(--lamp-y, 45%), var(--lamp-glow), var(--lamp-glow-soft) 22%, transparent 44%),
     var(--paper);
   font-family: var(--sans);
   line-height: normal;
@@ -42,6 +45,11 @@
   .room {
     --nav: calc(57px + env(safe-area-inset-bottom));
   }
+}
+
+:global(html[data-theme='light']) .room {
+  --lamp-glow: rgba(255, 252, 240, 0.75);
+  --lamp-glow-soft: rgba(255, 246, 225, 0.3);
 }
 
 /* Paper tooth over everything, never over the controls' hit areas. */
@@ -1847,7 +1855,7 @@
 }
 
 .caption::before {
-  background: linear-gradient(90deg, rgba(13, 17, 23, 0.94), rgba(13, 17, 23, 0.8) 58%, rgba(13, 17, 23, 0));
+  background: linear-gradient(90deg, rgba(var(--color-page-rgb), 0.94), rgba(var(--color-page-rgb), 0.8) 58%, rgba(var(--color-page-rgb), 0));
 }
 
 /* The status line reads as the site's badges do. */
@@ -1906,7 +1914,7 @@
   padding: 9px 16px !important;
   border: 1px solid var(--hairline) !important;
   border-radius: var(--radius-lg);
-  background: rgba(22, 27, 34, 0.7);
+  background: rgba(var(--color-surface-rgb), 0.7);
   font-size: 14.5px !important;
   font-weight: 600 !important;
   letter-spacing: 0;
@@ -1930,7 +1938,7 @@
 
 .arrow {
   border: 1px solid var(--hairline) !important;
-  background: rgba(28, 33, 40, 0.85) !important;
+  background: rgba(var(--color-surface-rgb), 0.88) !important;
 }
 
 .arrow:hover:not(:disabled) {
@@ -1959,7 +1967,7 @@
 }
 
 .details::before {
-  background: linear-gradient(90deg, rgba(13, 17, 23, 0), rgba(13, 17, 23, 0.9) 60px, var(--paper) 18%);
+  background: linear-gradient(90deg, rgba(var(--color-page-rgb), 0), rgba(var(--color-page-rgb), 0.9) 60px, var(--paper) 18%);
 }
 
 .detailsInner {
@@ -2140,7 +2148,7 @@
 }
 
 .coverGridBusy {
-  background: rgba(13, 17, 23, 0.9);
+  background: rgba(var(--color-page-rgb), 0.9);
   font-size: 12px;
   letter-spacing: 0;
   text-transform: none;
@@ -2281,11 +2289,11 @@
   }
 
   .caption {
-    background: linear-gradient(180deg, rgba(13, 17, 23, 0), rgba(13, 17, 23, 0.94) 45px, var(--paper) 64px);
+    background: linear-gradient(180deg, rgba(var(--color-page-rgb), 0), rgba(var(--color-page-rgb), 0.94) 45px, var(--paper) 64px);
   }
 
   .details::before {
-    background: linear-gradient(180deg, rgba(13, 17, 23, 0), rgba(13, 17, 23, 0.94) 39px, var(--paper) 40px);
+    background: linear-gradient(180deg, rgba(var(--color-page-rgb), 0), rgba(var(--color-page-rgb), 0.94) 39px, var(--paper) 40px);
   }
 
   .detailsInner {

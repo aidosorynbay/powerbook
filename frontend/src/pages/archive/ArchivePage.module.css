@@ -394,12 +394,12 @@
    --intensity (0..1) is set inline per day by ArchivePage.tsx. */
 .circleDayActive {
   --intensity: 1;
-  --heat-1: #2E1B45;
-  --heat-2: #5C2A6E;
-  --heat-3: #9B3172;
-  --heat-4: #D2443F;
-  --heat-5: var(--color-accent-primary);
-  --heat-6: #F5B72E;
+  --heat-1: var(--heat-ramp-1);
+  --heat-2: var(--heat-ramp-2);
+  --heat-3: var(--heat-ramp-3);
+  --heat-4: var(--heat-ramp-4);
+  --heat-5: var(--heat-ramp-5);
+  --heat-6: var(--heat-ramp-6);
 
   /* Piecewise blend across five segments of the ramp */
   --seg: calc(var(--intensity) * 5);
@@ -428,7 +428,7 @@
   width: 150px;
   height: 10px;
   border-radius: var(--radius-full);
-  background: linear-gradient(90deg, #2E1B45, #5C2A6E, #9B3172, #D2443F, var(--color-accent-primary), #F5B72E);
+  background: linear-gradient(90deg, var(--heat-ramp-1), var(--heat-ramp-2), var(--heat-ramp-3), var(--heat-ramp-4), var(--heat-ramp-5), var(--heat-ramp-6));
   box-shadow: 0 0 14px color-mix(in oklab, var(--color-accent-primary) 22%, transparent);
 }
 
@@ -445,7 +445,7 @@
   font-size: 7px;
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
-  background: rgba(13, 17, 23, 0.55);
+  background: rgba(var(--color-page-rgb), 0.55);
   border-radius: 3px;
   padding: 0 3px;
   line-height: 1.4;

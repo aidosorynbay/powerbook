@@ -84,7 +84,7 @@
   width: 120px;
   height: 8px;
   border-radius: var(--radius-full);
-  background: linear-gradient(90deg, #2E1B45, #5C2A6E, #9B3172, #D2443F, var(--color-accent-primary), #F5B72E);
+  background: linear-gradient(90deg, var(--heat-ramp-1), var(--heat-ramp-2), var(--heat-ramp-3), var(--heat-ramp-4), var(--heat-ramp-5), var(--heat-ramp-6));
 }
 
 .calScaleEnd {
@@ -131,12 +131,12 @@
 /* Same multi-hue ramp as the archive so the preview matches the real thing */
 .dayActive {
   --intensity: 1;
-  --h1: #2E1B45;
-  --h2: #5C2A6E;
-  --h3: #9B3172;
-  --h4: #D2443F;
-  --h5: var(--color-accent-primary);
-  --h6: #F5B72E;
+  --h1: var(--heat-ramp-1);
+  --h2: var(--heat-ramp-2);
+  --h3: var(--heat-ramp-3);
+  --h4: var(--heat-ramp-4);
+  --h5: var(--heat-ramp-5);
+  --h6: var(--heat-ramp-6);
 
   --seg: calc(var(--intensity) * 5);
   --t1: clamp(0, var(--seg), 1);

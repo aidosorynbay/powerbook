@@ -40,11 +40,29 @@ export type SceneCallbacks = {
   focusArea: () => { left: number; top: number; right: number; bottom: number };
 };
 
-// The site's page colour: the canvas is transparent and the page shows through.
-const ROOM = '#0d1117';
 // The reading lamp: warm light that follows the mouse, or rests on the chosen book.
 const LAMP_COLOR = '#ffc98c';
 const LAMP_POWER = 55;
+
+/**
+ * The room's light for each site theme. The canvas is transparent, so the
+ * page colour shows through; fog fades distant books into that colour.
+ * Evening: a dim room and a warm lamp. Day: the paper room in daylight, the
+ * lamp softened into a patch of sun.
+ */
+const LOOKS = {
+  dark: {
+    fog: '#0d1117', hemiSky: '#9aa6bd', hemiGround: '#2b2119', hemi: 1.05, key: '#dfe6f2', keyI: 1.35,
+    fill: '#6c7a92', fillI: 0.55, warmI: 0.35, shadow: '#000000', shadowOpacity: 0.4,
+    lamp: LAMP_COLOR, lampI: LAMP_POWER, lampAngle: 0.42,
+  },
+  light: {
+    fog: '#eee8db', hemiSky: '#fffaf2', hemiGround: '#6e5848', hemi: 2.1, key: '#fff7ec', keyI: 3.1,
+    fill: '#cfdbe8', fillI: 1.3, warmI: 0.7, shadow: '#3a2a1c', shadowOpacity: 0.16,
+    lamp: '#fff4de', lampI: 22, lampAngle: 0.52,
+  },
+} as const;
+export type SceneLook = keyof typeof LOOKS;
 const PAGES = '#f2e8d4';
 const RIBBON = '#f26430';
 
@@ -160,6 +178,11 @@ export class BookcaseScene {
   private resizeObserver: ResizeObserver;
 
   private lamp = new THREE.SpotLight(LAMP_COLOR, LAMP_POWER, 0, 0.42, 0.85, 2);
+  private hemi = new THREE.HemisphereLight('#9aa6bd', '#2b2119', 1.05);
+  private key = new THREE.DirectionalLight('#dfe6f2', 1.35);
+  private fill = new THREE.DirectionalLight('#6c7a92', 0.55);
+  private warm = new THREE.PointLight('#e2a27a', 0.35, 10, 2);
+  private wallShadow = new THREE.ShadowMaterial({ color: '#000000', opacity: 0.4 });
   private lampAim = new THREE.Vector3(Number.NaN, 0, 0);
   private lampGoal = new THREE.Vector3();
   private lampFollowsPointer = false;
@@ -244,12 +267,11 @@ export class BookcaseScene {
   }
 
   private setupScene() {
-    this.scene.fog = new THREE.Fog(ROOM, 14, 34);
+    this.scene.fog = new THREE.Fog(LOOKS.dark.fog, 14, 34);
 
-    // A dim evening room: enough light to read every spine, the lamp does the rest.
-    this.scene.add(new THREE.HemisphereLight('#9aa6bd', '#2b2119', 1.05));
+    this.scene.add(this.hemi);
 
-    const key = new THREE.DirectionalLight('#dfe6f2', 1.35);
+    const key = this.key;
     key.position.set(-4.2, 7.4, 5.5);
     key.castShadow = true;
     const small = window.innerWidth < 760;
@@ -259,13 +281,11 @@ export class BookcaseScene {
     key.shadow.normalBias = 0.02;
     this.scene.add(key);
 
-    const fill = new THREE.DirectionalLight('#6c7a92', 0.55);
-    fill.position.set(5, 3, -4);
-    this.scene.add(fill);
+    this.fill.position.set(5, 3, -4);
+    this.scene.add(this.fill);
 
-    const warm = new THREE.PointLight('#e2a27a', 0.35, 10, 2);
-    warm.position.set(-3, 0.5, 3.2);
-    this.scene.add(warm);
+    this.warm.position.set(-3, 0.5, 3.2);
+    this.scene.add(this.warm);
 
     // No shadow from the lamp: a second shadow map would cost phones too much.
     this.lamp.penumbra = 0.85;
@@ -274,7 +294,7 @@ export class BookcaseScene {
     // Only behind the books: below the shelf a shadow has nothing to explain.
     const wallGeo = new THREE.PlaneGeometry(40, 14);
     // Wall and floor only exist to catch shadows; their colour is the page's.
-    const wall = new THREE.Mesh(wallGeo, new THREE.ShadowMaterial({ color: '#000000', opacity: 0.4 }));
+    const wall = new THREE.Mesh(wallGeo, this.wallShadow);
     wall.position.set(0, 7.3, -2.2);
     wall.receiveShadow = true;
     this.scene.add(wall);
@@ -289,6 +309,27 @@ export class BookcaseScene {
 
     this.scene.add(this.shelfGroup);
     this.shelfGroup.add(this.furniture);
+    this.setLook(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+  }
+
+  /** Relight the room for the site theme (called again when it switches). */
+  setLook(look: SceneLook) {
+    const l = LOOKS[look];
+    (this.scene.fog as THREE.Fog).color.set(l.fog);
+    this.hemi.color.set(l.hemiSky);
+    this.hemi.groundColor.set(l.hemiGround);
+    this.hemi.intensity = l.hemi;
+    this.key.color.set(l.key);
+    this.key.intensity = l.keyI;
+    this.fill.color.set(l.fill);
+    this.fill.intensity = l.fillI;
+    this.warm.intensity = l.warmI;
+    this.wallShadow.color.set(l.shadow);
+    this.wallShadow.opacity = l.shadowOpacity;
+    this.lamp.color.set(l.lamp);
+    this.lamp.intensity = l.lampI;
+    this.lamp.angle = l.lampAngle;
+    this.invalidate();
   }
 
   private clearFurniture() {

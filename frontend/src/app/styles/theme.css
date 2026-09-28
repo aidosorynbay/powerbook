@@ -17,6 +17,10 @@
     --color-accent-primary: #F26430;
     --color-accent-primary-hover: #FF7A45;
     --color-accent-primary-muted: rgba(242, 100, 48, 0.15);
+    /* Text on an orange fill: white buttons and badges, and the few dark
+       glyphs the dark theme puts on orange. Both white on paper. */
+    --color-on-accent: #FFFFFF;
+    --color-on-accent-alt: #0D1117;
 
     /* Text colors */
     --color-text-primary: #FFFFFF;
@@ -48,6 +52,20 @@
 
     /* Bars that float over the page. */
     --color-header-bg: rgba(13, 17, 23, 0.8);
+
+    /* The page and card colours as r, g, b, for translucent layers
+       (fades, glass): rgba(var(--color-page-rgb), 0.8). */
+    --color-page-rgb: 13, 17, 23;
+    --color-surface-rgb: 22, 27, 34;
+
+    /* Activity heatmaps (home, archive): quiet → busy. On dark, busier is
+       brighter; on paper, busier is deeper. */
+    --heat-ramp-1: #2E1B45;
+    --heat-ramp-2: #5C2A6E;
+    --heat-ramp-3: #9B3172;
+    --heat-ramp-4: #D2443F;
+    --heat-ramp-5: #F26430;
+    --heat-ramp-6: #F5B72E;
 
     /* ========== Typography ========== */
 
@@ -176,6 +194,8 @@
     --color-accent-primary: #D9531F;
     --color-accent-primary-hover: #BF4718;
     --color-accent-primary-muted: rgba(217, 83, 31, 0.12);
+    --color-on-accent: #FFFFFF;
+    --color-on-accent-alt: #FFFFFF;
 
     --color-text-primary: #25231F;
     --color-text-secondary: #67635B;
@@ -201,6 +221,15 @@
     --color-on-status-dot: rgba(37, 35, 31, 0.55);
 
     --color-header-bg: rgba(238, 232, 219, 0.9);
+    --color-page-rgb: 238, 232, 219;
+    --color-surface-rgb: 246, 241, 231;
+
+    --heat-ramp-1: #F3DEC6;
+    --heat-ramp-2: #EBC19A;
+    --heat-ramp-3: #E09C6C;
+    --heat-ramp-4: #D9531F;
+    --heat-ramp-5: #A74735;
+    --heat-ramp-6: #6A2C20;
 
     --shadow-sm: 0 1px 2px rgba(45, 35, 24, 0.06);
     --shadow-md: 0 4px 12px rgba(45, 35, 24, 0.08);

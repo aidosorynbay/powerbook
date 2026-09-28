@@ -63,3 +63,15 @@ export function useTheme(): { choice: ThemeChoice; theme: 'dark' | 'light'; cycl
 
   return { choice, theme: resolveTheme(choice), cycle };
 }
+
+/** The theme in force right now ('dark' or 'light'), following every switch. */
+export function useResolvedTheme(): 'dark' | 'light' {
+  const read = () => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>(read);
+  useEffect(() => {
+    const onChange = () => setTheme(read());
+    window.addEventListener('pb:theme', onChange);
+    return () => window.removeEventListener('pb:theme', onChange);
+  }, []);
+  return theme;
+}

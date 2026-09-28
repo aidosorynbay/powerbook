@@ -121,7 +121,7 @@
 
 .suggestionsBtn:hover {
   background: var(--color-accent-primary);
-  color: var(--color-bg-primary);
+  color: var(--color-on-accent-alt);
   transform: translateY(-1px);
 }
 
