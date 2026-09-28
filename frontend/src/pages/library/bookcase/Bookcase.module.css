@@ -1768,6 +1768,20 @@
   padding-inline: max(var(--container-padding), calc((100% - var(--container-max-width)) / 2 + var(--container-padding)));
 }
 
+/* The title keeps its width; the controls wrap under it if they must.
+   Desktop only: on a phone the header is a column and this would squash
+   the row of pills to nothing. */
+@media (min-width: 761px) {
+  .brand {
+    flex-shrink: 0;
+  }
+
+  .actions {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
 .homeLink {
   padding: 6px 12px;
   border: 1px solid var(--hairline);
@@ -2152,6 +2166,316 @@
   font-size: 12px;
   letter-spacing: 0;
   text-transform: none;
+}
+
+/* ---------- the bookcase: shelves by theme ---------- */
+
+/* The 3D shelf steps aside; the bookcase takes the room. */
+.isSections .canvas,
+.isSections .caption,
+.isSections .arrow,
+.isSections .index,
+.isSections .loading {
+  display: none !important;
+}
+
+.room {
+  --cab-back: #10151c;
+  --cab-back-shade: rgba(0, 0, 0, 0.35);
+}
+
+:global(html[data-theme='light']) .room {
+  --cab-back: #e4dccd;
+  --cab-back-shade: rgba(58, 42, 28, 0.14);
+}
+
+.sectionsView {
+  position: absolute;
+  z-index: 15;
+  inset: var(--sections-top, 96px) 0 var(--nav) 0;
+  padding: 6px max(var(--container-padding), calc((100% - var(--container-max-width)) / 2 + var(--container-padding))) 28px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cabToolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.cabinet {
+  padding: 16px 16px 10px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #74472b, #57341f 60%, #45291a);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 220, 180, 0.18);
+}
+
+.cabinetInner {
+  padding: 0 14px;
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, var(--cab-back-shade), transparent 12%, transparent 88%, var(--cab-back-shade)),
+    var(--cab-back);
+  box-shadow: inset 0 8px 18px var(--cab-back-shade);
+}
+
+.cabShelf {
+  position: relative;
+  padding-top: 14px;
+}
+
+.cabLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* A brass name plate, the way old library cases label a shelf. */
+.plate {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 3px 10px;
+  border-radius: 3px;
+  color: #3a2a14;
+  background: linear-gradient(180deg, #ecd497, #c9a24e);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plateQuiet {
+  color: var(--ink-soft);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+.cabCount {
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cabBooks {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  min-height: 150px;
+  padding: 0 2px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.cabSpine {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 0 !important;
+  border-radius: 2px 2px 0 0;
+  overflow: hidden;
+  box-shadow: inset -3px 0 0 rgba(0, 0, 0, 0.2), inset 2px 0 0 rgba(255, 255, 255, 0.14);
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.1;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  transition: transform 0.18s ease;
+}
+
+.cabSpine span {
+  max-height: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Rotated half a turn, so this lifts the book off the shelf. */
+.cabSpine:hover,
+.cabSpinePicked {
+  transform: rotate(180deg) translateY(8px);
+}
+
+.cabSpinePicked {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The ribbon of a book with its text inside, as on the 3D shelf. */
+.cabSpineFile {
+  border-bottom: 4px solid var(--accent) !important;
+}
+
+.cabBoard {
+  height: 12px;
+  margin: 0 -14px;
+  background: linear-gradient(180deg, #8a5634, #5f3822 55%, #432716);
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
+}
+
+.cabEmpty {
+  align-self: center;
+  margin: 0;
+  padding: 0 6px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.cabAdd {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px !important;
+  border: 1px dashed var(--color-border-accent) !important;
+  border-radius: var(--radius-lg);
+  color: var(--accent) !important;
+  background: var(--color-accent-primary-muted);
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+.cabHint {
+  margin: 14px 0 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  text-align: center;
+}
+
+.cabBar {
+  position: sticky;
+  bottom: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  max-width: 760px;
+  margin: 16px auto 0;
+  padding: 12px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  background: var(--paper-light);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+
+.cabBarTitle {
+  display: grid;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.cabBarTitle strong {
+  overflow: hidden;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cabBarTitle span {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.cabBarShelf,
+.shelfPick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.cabBarShelf select,
+.shelfPick select {
+  width: auto;
+  min-width: 150px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.shelfPick {
+  margin-top: 18px;
+}
+
+/* The shelves sheet. */
+.shelfList {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shelfRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 10px;
+  background: var(--paper);
+}
+
+.shelfTools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.shelfTools button {
+  color: var(--ink-soft) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+.shelfTools button:hover:not(:disabled) {
+  color: var(--accent) !important;
+}
+
+.shelfTools button:disabled {
+  opacity: 0.35;
+}
+
+.shelfEdit {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.shelfEdit input {
+  flex: 1 1 200px;
+}
+
+.shelfPresets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.shelfPresets button {
+  padding: 5px 12px !important;
+  border: 1px solid var(--hairline) !important;
+  border-radius: var(--radius-full);
+  color: var(--ink) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+.shelfPresets button:hover:not(:disabled) {
+  border-color: var(--color-border-accent) !important;
+  color: var(--accent) !important;
 }
 
 /* The reader's own notes, in the details panel. */

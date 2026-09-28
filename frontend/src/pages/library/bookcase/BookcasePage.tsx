@@ -6,12 +6,14 @@ import {
   apiPost,
   apiPatch,
   apiDelete,
+  apiPut,
   apiUploadWithProgress,
   getApiBaseUrl,
   useResolvedTheme,
   type Bookcase,
   type BookcaseBook,
   type BookNote,
+  type CustomShelf,
   type FellowReader,
   type LibraryBook,
   type LibraryStats,
@@ -21,6 +23,7 @@ import { Avatar } from '@/shared/ui';
 import { Header } from '@/widgets';
 import { extractCover } from '../extractCover';
 import { EditBookSheet } from './EditBookSheet';
+import { BookcaseSections, ShelvesSheet } from './BookcaseSections';
 import { loadShelfFonts, type VolumeArt } from './bookArt';
 import { bookCount, plural } from './plural';
 import type { BookcaseScene, SceneMode, SceneVolume } from './BookcaseScene';
@@ -298,6 +301,52 @@ export function BookcasePage({ ownerId }: Props) {
   const [manualError, setManualError] = useState<string | null>(null);
 
   const isSelf = !!data?.is_self;
+  // One long shelf, or the bookcase: the reader's shelves stacked by theme.
+  const [view, setView] = useState<'shelf' | 'sections'>(() => {
+    try {
+      return localStorage.getItem('pb.shelfView') === 'sections' ? 'sections' : 'shelf';
+    } catch {
+      return 'shelf';
+    }
+  });
+  const [shelvesOpen, setShelvesOpen] = useState(false);
+  const changeView = useCallback((next: 'shelf' | 'sections') => {
+    setView(next);
+    try {
+      localStorage.setItem('pb.shelfView', next);
+    } catch {
+      // storage blocked: the choice lasts for this visit
+    }
+  }, []);
+  const shelves = useMemo(() => data?.shelves ?? [], [data]);
+  const setShelves = useCallback((next: CustomShelf[], removedId?: string) => {
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            shelves: next,
+            books: removedId ? prev.books.map((b) => (b.shelf_id === removedId ? { ...b, shelf_id: null } : b)) : prev.books,
+          }
+        : prev
+    );
+  }, []);
+  const placeBook = useCallback(async (key: string, shelfId: string | null) => {
+    let before: string | null | undefined;
+    setData((prev) => {
+      if (!prev) return prev;
+      before = prev.books.find((b) => b.key === key)?.shelf_id;
+      return { ...prev, books: prev.books.map((b) => (b.key === key ? { ...b, shelf_id: shelfId } : b)) };
+    });
+    const { error } = await apiPut(`/library/placements/${encodeURIComponent(key)}`, { shelf_id: shelfId }, { requireAuth: true });
+    if (error) {
+      // Put it back where it was; the shelf never moved.
+      setData((prev) => (prev ? { ...prev, books: prev.books.map((b) => (b.key === key ? { ...b, shelf_id: before ?? null } : b)) } : prev));
+      const text = t('shelf.editError');
+      setNotice(text);
+      window.setTimeout(() => setNotice((n) => (n === text ? null : n)), 4200);
+    }
+  }, [t]);
+
   const theme = useResolvedTheme();
   useEffect(() => {
     sceneRef.current?.setLook(theme);
@@ -448,6 +497,35 @@ export function BookcasePage({ ownerId }: Props) {
       }),
     [books, locale, t]
   );
+
+  // From the bookcase to the book: back to the 3D shelf, held up in hand.
+  const inspectFromSections = useCallback(
+    (key: string) => {
+      const index = books.findIndex((b) => b.key === key);
+      if (index < 0) return;
+      changeView('shelf');
+      setActive(index);
+      window.setTimeout(() => {
+        sceneRef.current?.browseTo(index, true);
+        sceneRef.current?.focus(index);
+      }, 80);
+    },
+    [books, changeView]
+  );
+
+  // The bookcase view starts under the header row, whatever height it has.
+  useEffect(() => {
+    const head = headerRowRef.current;
+    const room = head?.parentElement;
+    if (!head || !room) return;
+    const apply = () =>
+      room.style.setProperty('--sections-top', `${Math.round(head.getBoundingClientRect().bottom - room.getBoundingClientRect().top + 6)}px`);
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(head);
+    ro.observe(room);
+    return () => ro.disconnect();
+  }, []);
 
   // ---------- the scene ----------
 
@@ -764,6 +842,7 @@ export function BookcasePage({ ownerId }: Props) {
         styles.room,
         sceneReady || empty || noWebgl || loadError ? styles.isReady : '',
         inspecting ? styles.isFocused : styles.isBrowsing,
+        view === 'sections' && !empty ? styles.isSections : '',
       ].join(' ')}
     >
       <canvas
@@ -788,6 +867,15 @@ export function BookcasePage({ ownerId }: Props) {
           </span>
         </div>
         <div className={styles.actions}>
+          {!empty && (
+            <div className={styles.segment} role="group" aria-label={t('shelf.viewLabel')}>
+              {(['shelf', 'sections'] as const).map((v) => (
+                <button key={v} type="button" aria-pressed={view === v} disabled={inspecting} onClick={() => changeView(v)}>
+                  {t(v === 'shelf' ? 'shelf.viewShelf' : 'shelf.viewSections')}
+                </button>
+              ))}
+            </div>
+          )}
           {hasFiles && (
             <div className={styles.segment} role="group" aria-label={t('shelf.filterLabel')}>
               {(['all', 'files'] as Filter[]).map((f) => (
@@ -821,6 +909,18 @@ export function BookcasePage({ ownerId }: Props) {
           )}
         </div>
       </header>
+
+      {data && !empty && view === 'sections' && (
+        <BookcaseSections
+          books={books}
+          volumes={volumes}
+          shelves={shelves}
+          isSelf={isSelf}
+          onInspect={inspectFromSections}
+          onPlace={placeBook}
+          onManage={() => setShelvesOpen(true)}
+        />
+      )}
 
       {showScene && current && (
         <>
@@ -943,6 +1043,24 @@ export function BookcasePage({ ownerId }: Props) {
                       </div>
                     )}
                   </dl>
+
+                  {isSelf && shelves.length > 0 && (
+                    <label className={styles.shelfPick}>
+                      <span>{t('shelf.shelfOf')}</span>
+                      <select
+                        className={styles.field}
+                        value={current.shelf_id && shelves.some((sh) => sh.id === current.shelf_id) ? current.shelf_id : ''}
+                        onChange={(e) => placeBook(current.key, e.target.value || null)}
+                      >
+                        <option value="">{t('shelf.unsorted')}</option>
+                        {shelves.map((sh) => (
+                          <option key={sh.id} value={sh.id}>
+                            {sh.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
 
                   {current.note && (
                     <blockquote>
@@ -1109,6 +1227,10 @@ export function BookcasePage({ ownerId }: Props) {
         <div className={styles.toast} role="status">
           {notice}
         </div>
+      )}
+
+      {shelvesOpen && isSelf && (
+        <ShelvesSheet shelves={shelves} onClose={() => setShelvesOpen(false)} onShelves={setShelves} />
       )}
 
       {addOpen && isSelf && (

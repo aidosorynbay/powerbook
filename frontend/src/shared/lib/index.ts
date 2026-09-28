@@ -89,6 +89,7 @@ export type {
   ShelfBook,
   BookcaseBook,
   BookNote,
+  CustomShelf,
   Bookcase,
   FellowReader,
   CoverOption,

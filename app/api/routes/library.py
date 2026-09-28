@@ -10,6 +10,10 @@ from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.library import (
+    CustomShelfOut,
+    PlacementIn,
+    ShelfNameIn,
+    ShelfOrderIn,
     BookNoteCreate,
     BookNoteIn,
     BookNoteOut,
@@ -24,7 +28,7 @@ from app.schemas.library import (
     ProgressUpdate,
     ShelfBookOut,
 )
-from app.services import book_notes, covers, shelf_overrides
+from app.services import book_notes, covers, custom_shelves, shelf_overrides
 from app.services.bookcase import BookcaseService
 from app.services.library import LibraryService
 
@@ -272,4 +276,42 @@ def delete_note(
     user: User = Depends(get_current_user),
 ) -> dict:
     book_notes.delete(db, user.id, note_id)
+    return {"ok": True}
+
+
+# ---------- shelves in the bookcase ----------
+
+
+@router.post("/shelves", response_model=CustomShelfOut)
+def create_shelf(payload: ShelfNameIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> CustomShelfOut:
+    """Add a shelf to your bookcase, named for its theme."""
+    return CustomShelfOut.model_validate(custom_shelves.create(db, user.id, payload.name))
+
+
+@router.put("/shelves/order", response_model=list[CustomShelfOut])
+def order_shelves(payload: ShelfOrderIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> list[CustomShelfOut]:
+    """Put your shelves in this order, top to bottom."""
+    return [CustomShelfOut.model_validate(s) for s in custom_shelves.reorder(db, user.id, payload.ids)]
+
+
+@router.patch("/shelves/{shelf_id}", response_model=CustomShelfOut)
+def rename_shelf(
+    shelf_id: uuid.UUID, payload: ShelfNameIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+) -> CustomShelfOut:
+    return CustomShelfOut.model_validate(custom_shelves.rename(db, user.id, shelf_id, payload.name))
+
+
+@router.delete("/shelves/{shelf_id}")
+def delete_shelf(shelf_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+    """Take a shelf out; its books go back to unsorted."""
+    custom_shelves.remove(db, user.id, shelf_id)
+    return {"ok": True}
+
+
+@router.put("/placements/{volume_key}")
+def place_book(
+    volume_key: str, payload: PlacementIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+) -> dict:
+    """Stand a book on one of your shelves, or back on unsorted."""
+    custom_shelves.place(db, user.id, volume_key, payload.shelf_id)
     return {"ok": True}

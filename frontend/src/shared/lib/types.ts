@@ -465,6 +465,13 @@ export type BadgeStats = {
 };
 
 /** One volume on a reader's bookcase — finished, readable here, or both. */
+/** One shelf in a reader's bookcase, named for its theme. */
+export type CustomShelf = {
+  id: string;
+  name: string;
+  position: number;
+};
+
 /** A reader's own note on a book on their shelf; only they see it. */
 export type BookNote = {
   id: string;
@@ -482,6 +489,8 @@ export type BookcaseBook = {
   note_is_private: boolean;
   /** Owner only: the reader's own notes, oldest first. */
   notes?: BookNote[];
+  /** Which of the owner's shelves it stands on; null is unsorted. */
+  shelf_id?: string | null;
   status: 'finished' | 'reading' | 'unread';
   source: 'round' | 'manual' | 'upload';
   finished_on: string | null;
@@ -520,6 +529,8 @@ export type Bookcase = {
     is_archive: boolean;
   };
   is_self: boolean;
+  /** The owner's shelves, top to bottom (the sections view). */
+  shelves?: CustomShelf[];
   books: BookcaseBook[];
 };
 

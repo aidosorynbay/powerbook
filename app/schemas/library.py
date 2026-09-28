@@ -59,6 +59,27 @@ class ShelfBookOut(BaseModel):
     last_read_at: datetime | None
 
 
+class CustomShelfOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    position: int
+
+    model_config = {"from_attributes": True}
+
+
+class ShelfNameIn(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+
+
+class ShelfOrderIn(BaseModel):
+    ids: list[uuid.UUID] = Field(max_length=50)
+
+
+class PlacementIn(BaseModel):
+    # None puts the book back on the unsorted shelf.
+    shelf_id: uuid.UUID | None = None
+
+
 class BookNoteOut(BaseModel):
     id: uuid.UUID
     text: str
@@ -126,6 +147,9 @@ class BookcaseBookOut(BaseModel):
     # Owner only: the reader's own notes on this book, oldest first.
     notes: list[BookNoteOut] = []
 
+    # Which of the owner's shelves the book stands on; None is unsorted.
+    shelf_id: uuid.UUID | None = None
+
     # Owner only.
     upload_id: uuid.UUID | None = None
     manual_id: uuid.UUID | None = None
@@ -144,6 +168,8 @@ class BookcaseOut(BaseModel):
     owner: BookcaseOwnerOut
     is_self: bool
     books: list[BookcaseBookOut]
+    # The owner's shelves, top to bottom, for the bookcase ("sections") view.
+    shelves: list[CustomShelfOut] = []
 
 
 class FellowReaderOut(BaseModel):
