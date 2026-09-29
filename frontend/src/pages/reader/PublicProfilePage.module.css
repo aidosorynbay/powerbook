@@ -322,8 +322,8 @@
 }
 .shelfMeta { font-size: 10px; color: var(--color-text-muted); margin-top: 2px; }
 
-/* A window into the reader's bookcase: the same paper and walnut as the
-   3D shelf it opens, so the jump into the light room feels expected. */
+/* A window into the reader's bookcase: the walnut of the 3D shelf it opens, on
+   the site's own card, lit like that room: a warm lamp at night, daylight by day. */
 .shelfCta {
   position: relative;
   display: flex;
@@ -332,11 +332,12 @@
   margin-bottom: 20px;
   padding: 18px 20px 0;
   overflow: hidden;
+  border: 1px solid var(--color-border-primary);
   border-radius: var(--radius-lg);
-  color: #25221e;
+  color: var(--color-text-primary);
   background:
-    radial-gradient(circle at 70% 20%, rgba(255, 255, 255, 0.4), transparent 55%),
-    #efe9dd;
+    radial-gradient(circle at 78% 0%, rgba(255, 190, 110, 0.14), transparent 60%),
+    var(--color-bg-card);
   text-decoration: none;
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
@@ -344,6 +345,16 @@
 .shelfCta:hover {
   transform: translateY(-2px);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+}
+
+:global(html[data-theme='light']) .shelfCta {
+  background:
+    radial-gradient(circle at 70% 20%, rgba(255, 255, 255, 0.45), transparent 55%),
+    var(--color-bg-card);
+}
+
+:global(html[data-theme='light']) .shelfCta:hover {
+  box-shadow: 0 14px 34px rgba(58, 42, 28, 0.16);
 }
 
 .shelfCta::after {
@@ -366,7 +377,7 @@
 }
 
 .shelfCtaKicker {
-  color: rgba(37, 34, 30, 0.6);
+  color: var(--color-text-secondary);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -382,7 +393,7 @@
 }
 
 .shelfCtaHint {
-  color: rgba(37, 34, 30, 0.62);
+  color: var(--color-text-secondary);
   font-size: 12px;
 }
 

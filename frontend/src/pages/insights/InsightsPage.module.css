@@ -630,17 +630,27 @@
   margin-bottom: 14px;
   padding: 18px 20px 0;
   overflow: hidden;
+  border: 1px solid var(--color-border-primary);
   border-radius: var(--radius-lg);
-  color: #25221e;
+  color: var(--color-text-primary);
+  /* the site's own card, lit like the library: a warm lamp at night, daylight by day */
   background:
-    radial-gradient(circle at 70% 20%, rgba(255, 255, 255, 0.4), transparent 55%),
-    #efe9dd;
+    radial-gradient(circle at 78% 0%, rgba(255, 190, 110, 0.14), transparent 60%),
+    var(--color-bg-card);
   text-decoration: none;
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 .shelfPeek:hover {
   transform: translateY(-2px);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
+}
+:global(html[data-theme='light']) .shelfPeek {
+  background:
+    radial-gradient(circle at 70% 20%, rgba(255, 255, 255, 0.45), transparent 55%),
+    var(--color-bg-card);
+}
+:global(html[data-theme='light']) .shelfPeek:hover {
+  box-shadow: 0 14px 34px rgba(58, 42, 28, 0.16);
 }
 .shelfPeek::after {
   position: absolute;
@@ -660,7 +670,7 @@
   padding-bottom: 26px;
 }
 .shelfPeekKicker {
-  color: rgba(37, 34, 30, 0.6);
+  color: var(--color-text-secondary);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -674,7 +684,7 @@
   line-height: 1.1;
 }
 .shelfPeekHint {
-  color: rgba(37, 34, 30, 0.62);
+  color: var(--color-text-secondary);
   font-size: 12px;
 }
 .shelfPeekSpines {
@@ -694,8 +704,8 @@
 /* an empty shelf: pale places for the books to come */
 .shelfPeekGhost span {
   min-width: 10px;
-  background: rgba(106, 69, 46, 0.12) !important;
-  border-top-color: rgba(106, 69, 46, 0.22) !important;
+  background: color-mix(in srgb, var(--color-text-primary) 9%, transparent) !important;
+  border-top-color: color-mix(in srgb, var(--color-text-primary) 18%, transparent) !important;
   box-shadow: none;
 }
 .shelfPeekArrow {
