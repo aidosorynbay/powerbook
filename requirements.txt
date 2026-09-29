@@ -5,7 +5,10 @@ python-dotenv>=1.0,<2.0
 email-validator>=2.1,<3.0
 
 # Database (MVP foundation)
-SQLAlchemy>=2.0,<3.0
+# 2.1 stopped bringing greenlet along, and sqladmin needs it (sqlalchemy.ext.asyncio);
+# the site ran on 2.0 until the image was rebuilt on 2026-09-30.
+SQLAlchemy>=2.0,<2.1
+greenlet>=3.0
 alembic>=1.13,<2.0
 psycopg[binary]>=3.1,<4.0
 
