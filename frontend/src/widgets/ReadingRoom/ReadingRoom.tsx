@@ -29,6 +29,9 @@ type Reader = {
   me: boolean;
 };
 type Message = { id: string; user_id: string; display_name: string; text: string; created_at: string; me: boolean };
+/* the hall's day, for the chat: each reader sitting down with a book and getting up with their minutes */
+type RoomEvent = { kind: 'sit' | 'finish'; at: string; user_id: string; display_name: string; gender: string; book: string; minutes?: number };
+type HallDay = { date: string; readers: number; names: string[]; minutes: number; events: RoomEvent[] };
 type MySession = { id: string; hall: HallName; seat: number; book: string; status: 'reading' | 'paused'; elapsed_seconds: number };
 type RoomState = {
   hall: HallName;
@@ -40,8 +43,11 @@ type RoomState = {
   readers: Reader[];
   my_session: MySession | null;
   messages: Message[];
+  /* the reading day minutes go to: it turns at 03:00 Astana time, so after midnight it is still the day before */
+  reading_day: string;
+  day: HallDay | null;
 };
-type Finished = { sessionId: string; minutes: number; credited: boolean; reason: string | null };
+type Finished = { sessionId: string; minutes: number; credited: boolean; reason: string | null; date: string | null };
 
 const HALL_KEY: Record<HallName, HallKey> = { round: 'a', library: 'b' };
 const PHONE_HALL: Record<HallName, HallKey> = { round: 'mr', library: 'ml' };
@@ -86,6 +92,8 @@ const clock = (s: number) => {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
   return h ? `${h}:${pad(m)}:${pad(s % 60)}` : `${pad(m)}:${pad(s % 60)}`;
 };
+/** 2026-09-29 -> { d: 29, m: 9 } */
+const dayOf = (iso: string) => ({ d: Number(iso.slice(8, 10)), m: Number(iso.slice(5, 7)) });
 const hhmm = (iso: string) => {
   const d = new Date(iso);
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -234,6 +242,13 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   const since0 = (performance.now() - stamp.current) / 1000;
   const elapsed = (s: { status: string; elapsed_seconds: number }) => s.elapsed_seconds + (s.status === 'reading' ? since0 : 0);
   const readers = state?.readers ?? [];
+  // «за 29 сентября»: the day minutes are written for, said outright instead of «сегодня»
+  const dayLabel = useCallback((iso?: string | null) => {
+    if (!iso) return '';
+    const { d, m } = dayOf(iso);
+    return `${d} ${t(`month.gen.${m}`)}`;
+  }, [t]);
+  const readingDay = dayLabel(state?.reading_day);
 
   /* ---------- the day's thirty minutes ---------- */
   const todayTotal = (state?.today_minutes ?? 0) + (mine && state?.in_round ? Math.floor(elapsed(mine) / 60) : 0);
@@ -408,19 +423,21 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
 
   /* ---------- chat ---------- */
   const lastSeenMsg = useRef<string | null>(null);
+  const eventCount = state?.day?.events.length ?? 0;
   useEffect(() => {
     const open = tab === 'chat' && drawer;
+    // the newest line in view, whether a message or someone sitting down
+    if (open) chatList.current?.scrollTo({ top: chatList.current.scrollHeight });
     const last = messages[messages.length - 1];
     if (!last) return;
     if (open) {
       setUnread(0);
       lastSeenMsg.current = last.id;
-      chatList.current?.scrollTo({ top: chatList.current.scrollHeight });
     } else if (lastSeenMsg.current !== last.id) {
       const idx = messages.findIndex((m) => m.id === lastSeenMsg.current);
       setUnread(messages.slice(idx + 1).filter((m) => !m.me).length);
     }
-  }, [messages, tab, drawer]);
+  }, [messages, tab, drawer, eventCount]);
 
   const sendChat = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -487,14 +504,14 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   const finish = async () => {
     if (!mine || busy) return;
     setBusy(true);
-    const { data } = await apiPost<{ minutes: number; credited: boolean; reason: string | null; today_minutes: number }>(
+    const { data } = await apiPost<{ minutes: number; credited: boolean; reason: string | null; date: string | null; today_minutes: number }>(
       `/reading-room/sessions/${mine.id}/finish`, {}, { requireAuth: true });
     setBusy(false);
     if (data) {
-      const f = { sessionId: mine.id, minutes: data.minutes, credited: data.credited, reason: data.reason };
+      const f = { sessionId: mine.id, minutes: data.minutes, credited: data.credited, reason: data.reason, date: data.date };
       setFinished(f);
       if (data.credited) {
-        say(t('room.savedToday', { min: data.minutes }), { label: t('room.undo'), run: () => undo(f) });
+        say(t('room.savedToday', { min: data.minutes, date: dayLabel(data.date) }), { label: t('room.undo'), run: () => undo(f) });
         onToday?.();
       } else if (data.reason === 'short') say(t('room.tooShort'));
     }
@@ -628,7 +645,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
             </span>
             <span className={styles.rdTime}>
               <b>{clock(elapsed(r))}</b>
-              {r.in_round && <small>{t('room.todayMin', { min: r.today_minutes })}</small>}
+              {r.in_round && <small>{t('room.todayMin', { min: r.today_minutes, date: readingDay })}</small>}
             </span>
           </button>
         </li>
@@ -637,21 +654,48 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     </ul>
   );
 
+  // the chat's messages and the day's comings and goings, in one line of time
+  const day = state?.day ?? null;
+  const timeline = [
+    ...messages.map((m) => ({ at: Date.parse(m.created_at), msg: m, ev: null as RoomEvent | null })),
+    ...(day?.events ?? []).map((e) => ({ at: Date.parse(e.at), msg: null as Message | null, ev: e })),
+  ].sort((a, b) => a.at - b.at);
+  const evText = (e: RoomEvent) => {
+    const g = e.gender === 'male' ? 'm' : e.gender === 'female' ? 'f' : 'u';
+    return e.kind === 'sit'
+      ? t(`room.ev.sit.${g}`, { name: e.display_name, book: e.book })
+      : t(`room.ev.finish.${g}`, { name: e.display_name, min: e.minutes ?? 0 });
+  };
+
   const chat = (
     <>
       <div className={styles.chatList} ref={chatList} role="log" aria-live="polite">
-        {messages.map((m) => (
-          <div key={m.id} className={`${styles.msg} ${m.me ? styles.msgMine : ''}`}>
-            {!m.me && (
-              <button type="button" className={styles.who} style={{ '--c': colorFromSeed(m.user_id) } as CSSProperties} onClick={() => navigate(`/readers/${m.user_id}`)}>
-                {m.display_name}
+        {day && day.readers > 0 && (
+          <div className={styles.daySum}>
+            {t('room.daySummary', {
+              date: dayLabel(day.date),
+              names: day.readers > day.names.length ? t('room.andMore', { names: day.names.join(', '), n: day.readers - day.names.length }) : day.names.join(', '),
+              min: day.minutes,
+            })}
+          </div>
+        )}
+        {timeline.map(({ ev, msg }) => ev ? (
+          <div key={`${ev.kind}-${ev.user_id}-${ev.at}`} className={styles.ev}>
+            <time>{hhmm(ev.at)}</time>
+            {evText(ev)}
+          </div>
+        ) : msg && (
+          <div key={msg.id} className={`${styles.msg} ${msg.me ? styles.msgMine : ''}`}>
+            {!msg.me && (
+              <button type="button" className={styles.who} style={{ '--c': colorFromSeed(msg.user_id) } as CSSProperties} onClick={() => navigate(`/readers/${msg.user_id}`)}>
+                {msg.display_name}
               </button>
             )}
-            {m.text}
-            <time>{hhmm(m.created_at)}</time>
+            {msg.text}
+            <time>{hhmm(msg.created_at)}</time>
           </div>
         ))}
-        {!messages.length && <div className={styles.msgSys}>{state?.can_sit ? t('room.chatEmpty') : t('room.chatClosed')}</div>}
+        {!timeline.length && <div className={styles.msgSys}>{state?.can_sit ? t('room.chatEmpty') : t('room.chatClosed')}</div>}
       </div>
       {state?.can_sit && (
         <form className={styles.chatForm} onSubmit={sendChat}>
@@ -701,7 +745,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
         <span className={styles.clock} aria-label={t('room.timer')}>{clock(elapsed(mineHere))}</span>
         <span className={styles.dockBook}>
           <i>{mineHere.book}</i>
-          {state?.in_round && <small>{t('room.todayPlus', { today: state.today_minutes, min: Math.floor(elapsed(mineHere) / 60) })}</small>}
+          {state?.in_round && <small>{t('room.todayPlus', { today: state.today_minutes, min: Math.floor(elapsed(mineHere) / 60), date: readingDay })}</small>}
         </span>
         {mineHere.status === 'reading'
           ? <button className={styles.btn} type="button" onClick={() => act('pause')}>{t('room.pause')}</button>
@@ -733,7 +777,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     dock = (
       <>
         <span className={styles.done}>
-          {finished.credited ? t('room.savedToday', { min: finished.minutes }) : finished.reason === 'short' ? t('room.tooShort') : t('room.readFor', { min: finished.minutes })}
+          {finished.credited ? t('room.savedToday', { min: finished.minutes, date: dayLabel(finished.date) }) : finished.reason === 'short' ? t('room.tooShort') : t('room.readFor', { min: finished.minutes })}
         </span>
         {finished.credited && <button className={`${styles.btn} ${styles.link}`} type="button" onClick={() => undo(finished)}>{t('room.undo')}</button>}
         <button className={styles.btn} type="button" onClick={() => openPick(null)}>{t('room.readMore')}</button>
@@ -746,7 +790,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" /></svg>
           {t('room.sitDown')}
         </button>
-        <span className={`${styles.dockNote} ${styles.dockHint}`}>{hall === 'round' || state?.in_round ? t('room.dockNote') : t('room.dockNoteGuest')}</span>
+        <span className={`${styles.dockNote} ${styles.dockHint}`}>{hall === 'round' || state?.in_round ? t('room.dockNote', { date: readingDay }) : t('room.dockNoteGuest')}</span>
       </>
     );
   }
@@ -873,7 +917,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
           <div className={styles.goalIn}>
             <svg viewBox="0 0 110 110" aria-hidden="true"><circle className={styles.gRing} cx="55" cy="55" r="48" /><path className={styles.gTick} d="M33 57l15 15 29-32" /></svg>
             <div className={styles.goalT}>{t('room.goalTitle', { min: GOAL })}</div>
-            <div className={styles.goalS}>{t('room.goalSub')}</div>
+            <div className={styles.goalS}>{t('room.goalSub', { date: readingDay })}</div>
           </div>
           {Array.from({ length: 16 }, (_, i) => (
             <i key={i} style={{ '--x': `${Math.round((Math.random() * 2 - 1) * 90)}px`, '--y': `${Math.round(-90 - Math.random() * 120)}px`, '--z': `${Math.round(10 + Math.random() * 22)}px`, '--d': `${(1.9 + Math.random() * 0.5).toFixed(2)}s` } as CSSProperties} />

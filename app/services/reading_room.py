@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.constants import DEFAULT_GROUP_SLUG, ROUND_TZ
@@ -27,6 +27,11 @@ MAX_SITTING = timedelta(hours=12)
 CHAT_WINDOW = timedelta(hours=12)
 CHAT_LIMIT = 80
 CHAT_GAP = timedelta(seconds=2)
+# The reading day turns at 03:00 Astana time, not at midnight: a sitting finished at 02:00 on the 30th is the 29th's
+# reading, and its minutes go to the 29th.
+DAY_TURNS_AT = timedelta(hours=3)
+# How many of the day's comings and goings the chat shows.
+EVENTS_LIMIT = 60
 IN_CIRCLE = {RoundParticipantStatus.active, RoundParticipantStatus.locked}
 
 
@@ -37,6 +42,16 @@ def _now() -> datetime:
 def _aware(dt: datetime | None) -> datetime | None:
     # SQLite hands timestamps back without a zone; Postgres keeps it. Treat both as UTC.
     return dt.replace(tzinfo=timezone.utc) if dt is not None and dt.tzinfo is None else dt
+
+
+def reading_day(at: datetime | None = None) -> date:
+    """The day a moment's reading belongs to (see DAY_TURNS_AT)."""
+    return ((at or _now()).astimezone(ROUND_TZ) - DAY_TURNS_AT).date()
+
+
+def reading_day_start(day: date) -> datetime:
+    """When that reading day began, in UTC."""
+    return (datetime.combine(day, time(0), tzinfo=ROUND_TZ) + DAY_TURNS_AT).astimezone(timezone.utc)
 
 
 class ReadingRoomService:
@@ -103,10 +118,10 @@ class ReadingRoomService:
                 alive.append(s)
         return alive
 
-    # ---------- «Сегодня» ----------
+    # ---------- the reading day ----------
 
-    def _today(self):
-        return datetime.now(tz=ROUND_TZ).date()
+    def _today(self) -> date:
+        return reading_day()
 
     def today_minutes(self, rnd: Round | None, user_id: uuid.UUID) -> int:
         if rnd is None:
@@ -189,6 +204,8 @@ class ReadingRoomService:
             # A sitting in the other hall still counts as mine: the client offers to go back to it.
             "my_session": self._session_out(mine, now) if mine else None,
             "messages": self.messages(hall=hall, rnd=rnd, user=user, since=since) if can_sit else [],
+            "reading_day": today.isoformat(),
+            "day": self.day(hall=hall, scope=scope, now=now) if can_sit and (hall == "library" or rnd is not None) else None,
             "server_time": now.isoformat(),
         }
 
@@ -264,6 +281,8 @@ class ReadingRoomService:
         rnd = self.current_round()
         return {
             "minutes": minutes, "credited": int(s.credited_minutes) > 0, "reason": why,
+            # the reading day the minutes went to (before 03:00 it is the day before)
+            "date": s.credited_date.isoformat() if s.credited_date else None,
             "today_minutes": self.today_minutes(rnd, user.id),
         }
 
@@ -284,6 +303,46 @@ class ReadingRoomService:
         s.credited_minutes = 0
         self.db.commit()
         return {"today_minutes": self.today_minutes(self.current_round(), user.id)}
+
+    # ---------- the day in the hall, for the chat ----------
+
+    def day(self, *, hall: str, scope: uuid.UUID | None, now: datetime) -> dict:
+        """Who came to the hall this reading day and when: each sitting down with a book and each getting up with
+        its minutes, plus a line for the top of the chat (how many read and for how long together).
+        A sitting under a minute that has ended was a chair taken by mistake and is left out."""
+        today = reading_day(now)
+        start = reading_day_start(today)
+        stmt = (
+            select(ReadingRoomSession, User)
+            .join(User, User.id == ReadingRoomSession.user_id)
+            .where(
+                ReadingRoomSession.hall == hall,
+                ReadingRoomSession.round_id.is_(None) if scope is None else ReadingRoomSession.round_id == scope,
+                or_(ReadingRoomSession.created_at >= start, ReadingRoomSession.ended_at >= start,
+                    ReadingRoomSession.ended_at.is_(None)),
+            )
+            .order_by(ReadingRoomSession.created_at)
+        )
+        events, people, minutes = [], {}, 0
+        for s, u in self.db.execute(stmt).all():
+            ended = _aware(s.ended_at)
+            seconds = self.elapsed_seconds(s, now) if ended is None else int(s.accumulated_seconds)
+            if ended is not None and seconds < 60:
+                continue
+            people.setdefault(u.id, u.display_name)
+            minutes += seconds // 60
+            who = {"user_id": str(u.id), "display_name": u.display_name,
+                   "gender": u.gender.value if u.gender else "unknown", "book": s.book_title}
+            created = _aware(s.created_at)
+            if created is not None and created >= start:
+                events.append({"kind": "sit", "at": created.isoformat(), **who})
+            if ended is not None and ended >= start:
+                events.append({"kind": "finish", "at": ended.isoformat(), "minutes": seconds // 60, **who})
+        events.sort(key=lambda e: e["at"])
+        return {
+            "date": today.isoformat(), "readers": len(people), "names": list(people.values())[:4],
+            "minutes": minutes, "events": events[-EVENTS_LIMIT:],
+        }
 
     # ---------- chat ----------
 

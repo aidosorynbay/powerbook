@@ -1,4 +1,4 @@
-"""The reading room against a throwaway SQLite database: chairs, the timer, «Сегодня», undo, chat and access."""
+"""The reading room against a throwaway SQLite database: chairs, the timer, the reading day, undo, chat and access."""
 from __future__ import annotations
 
 import uuid
@@ -21,6 +21,7 @@ from app.models.group import Group
 from app.models.reading_room import ReadingRoomSession
 from app.models.round import ReadingLog, Round, RoundParticipant
 from app.models.user import User
+from app.services.reading_room import reading_day
 
 
 @pytest.fixture()
@@ -45,8 +46,8 @@ def env():
     group = Group(name="PowerBook", slug="powerbook", owner_user_id=owner.id)
     db.add(group)
     db.flush()
-    today = datetime.now(tz=ROUND_TZ).date()
-    rnd = Round(group_id=group.id, year=today.year, month=today.month, status=RoundStatus.locked, end_day=None)
+    now_local = datetime.now(tz=ROUND_TZ).date()
+    rnd = Round(group_id=group.id, year=now_local.year, month=now_local.month, status=RoundStatus.locked, end_day=None)
     db.add(rnd)
     db.flush()
     reader, guest, other = user("madik"), user("guest", Gender.female), user("aigerim", Gender.female)
@@ -70,7 +71,7 @@ def env():
         return {"Authorization": f"Bearer {create_access_token(subject=str(u.id))}"}
 
     return type("Env", (), dict(db=db, Session=Session, client=client, h=headers, reader=reader, guest=guest,
-                                other=other, rnd=rnd, today=today))
+                                other=other, rnd=rnd, today=reading_day()))
 
 
 def _age(env, session_id, seconds, *, seen=None):
@@ -184,3 +185,29 @@ def test_chat(env):
     assert c.get("/api/reading-room/library/state", headers=h).json()["messages"] == []
     since = msgs[-1]["created_at"]
     assert c.get("/api/reading-room/round/state", params={"since": since}, headers=h).json()["messages"] == []
+
+
+def test_reading_day_turns_at_three():
+    # Astana is UTC+5: 20:59 UTC on the 29th is 01:59 on the 30th there, still the 29th's reading
+    assert str(reading_day(datetime(2026, 9, 29, 20, 59, tzinfo=timezone.utc))) == "2026-09-29"
+    assert str(reading_day(datetime(2026, 9, 29, 22, 0, tzinfo=timezone.utc))) == "2026-09-30"
+
+
+def test_the_day_in_the_chat(env):
+    c = env.client
+    a = c.post("/api/reading-room/library/sit", json={"seat": 0, "book": "Дюна"}, headers=env.h(env.reader)).json()["id"]
+    _age(env, a, 20 * 60)
+    c.post(f"/api/reading-room/sessions/{a}/finish", headers=env.h(env.reader))
+    # a chair taken by mistake leaves no trace
+    b = c.post("/api/reading-room/library/sit", json={"seat": 1, "book": "x"}, headers=env.h(env.guest)).json()["id"]
+    c.post(f"/api/reading-room/sessions/{b}/finish", headers=env.h(env.guest))
+    c.post("/api/reading-room/library/sit", json={"seat": 2, "book": "Сто лет"}, headers=env.h(env.other))
+    day = c.get("/api/reading-room/library/state", headers=env.h(env.guest)).json()["day"]
+    assert day["date"] == str(env.today) and day["readers"] == 2 and day["minutes"] == 20
+    # (SQLite keeps whole seconds for created_at, so the last two may share a second)
+    ev = [(e["kind"], e["display_name"], e.get("minutes")) for e in day["events"]]
+    assert ev[0] == ("sit", "Madik", None) and sorted(ev[1:]) == [("finish", "Madik", 20), ("sit", "Aigerim", None)]
+    sat = next(e for e in day["events"] if e["display_name"] == "Aigerim")
+    assert sat["gender"] == "female" and sat["book"] == "Сто лет"
+    # the round's chat, and its day, are only the circle's
+    assert c.get("/api/reading-room/round/state", headers=env.h(env.guest)).json()["day"] is None
