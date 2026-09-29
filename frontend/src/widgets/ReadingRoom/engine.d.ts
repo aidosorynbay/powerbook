@@ -1,4 +1,5 @@
-export type HallKey = 'a' | 'b';
+/** a, b: the wide photos of the round and the library; mr, ml: the phones' portrait photo, for the round and the library */
+export type HallKey = 'a' | 'b' | 'mr' | 'ml';
 export type Variant = 'day' | 'night';
 
 export interface HallChar {
@@ -10,6 +11,8 @@ export interface HallChar {
 
 export interface Hall {
   files: string;
+  /** the tall photo shown on phones */
+  portrait?: boolean;
   seats: [number, number, number][];
   chars: Record<number, HallChar>;
 }

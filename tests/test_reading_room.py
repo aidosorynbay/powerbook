@@ -151,7 +151,7 @@ def test_one_sitting_at_a_time_and_bad_chairs(env):
     st = c.get("/api/reading-room/library/state", headers=h).json()
     assert [x["seat"] for x in st["readers"]] == [5]
     assert env.db.get(ReadingRoomSession, uuid.UUID(a)).ended_at is not None
-    assert c.post("/api/reading-room/library/sit", json={"seat": 6, "book": "C"}, headers=h).status_code == 422
+    assert c.post("/api/reading-room/library/sit", json={"seat": 11, "book": "C"}, headers=h).status_code == 422
     assert c.post("/api/reading-room/library/sit", json={"seat": 1, "book": "   "}, headers=h).status_code == 422
     assert c.get("/api/reading-room/cellar/state", headers=h).status_code == 404
     # someone else's sitting is not mine to end

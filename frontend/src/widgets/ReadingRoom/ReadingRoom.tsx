@@ -9,7 +9,8 @@ import styles from './ReadingRoom.module.css';
  * The reading room: the founder's render of a reading hall, alive, with the readers who are reading right now sitting in
  * its chairs. "round" is the current circle's hall (only its participants sit there, and their minutes go into «Сегодня»),
  * "library" is open to everyone. In the "scroll" layout the hall unfolds as the page scrolls into it (under the round
- * page); in "full" it fills its own page (the library's hall).
+ * page); in "full" it fills its own page (the library's hall). Phones show the founder's portrait render of the hall,
+ * the same picture for both halls, with the readers and the chat in a sheet from below.
  */
 export type HallName = 'round' | 'library';
 
@@ -43,6 +44,20 @@ type RoomState = {
 type Finished = { sessionId: string; minutes: number; credited: boolean; reason: string | null };
 
 const HALL_KEY: Record<HallName, HallKey> = { round: 'a', library: 'b' };
+const PHONE_HALL: Record<HallName, HallKey> = { round: 'mr', library: 'ml' };
+const PHONE = '(max-width: 759px)';
+
+function usePhone() {
+  const [phone, setPhone] = useState(() => window.matchMedia?.(PHONE).matches ?? false);
+  useEffect(() => {
+    const mq = window.matchMedia?.(PHONE);
+    if (!mq) return;
+    const on = () => setPhone(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return phone;
+}
 const BASE = '/reading-room/';
 const GOAL = 30;
 const RECENT_KEY = 'pb.room.books';
@@ -86,7 +101,8 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   const { user } = useAuth();
   const navigate = useNavigate();
   const theme = useResolvedTheme();
-  const hk = HALL_KEY[hall];
+  const phone = usePhone();
+  const hk = phone ? PHONE_HALL[hall] : HALL_KEY[hall];
   const H = HALLS[hk];
   const myG = user?.gender === 'male' ? 'm' : user?.gender === 'female' ? 'f' : null;
 
@@ -229,7 +245,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
       frame: frameRef.current, edge: edgeRef.current, teaser: teaserRef.current, ui: uiRef.current, tags: tagsRef.current,
       scrollEl: layout === 'scroll' ? scrollRef.current : null,
       variant: document.documentElement.dataset.theme === 'light' ? 'day' : 'night',
-      small, reduced, phoneShare: 0.62,
+      small, reduced,
       onFlip: (key) => {
         const el = tagEls.current.get(key);
         if (el) {
@@ -293,7 +309,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   /* ---------- chat ---------- */
   const lastSeenMsg = useRef<string | null>(null);
   useEffect(() => {
-    const open = tab === 'chat' && (drawer || window.innerWidth < 760);
+    const open = tab === 'chat' && drawer;
     const last = messages[messages.length - 1];
     if (!last) return;
     if (open) {
@@ -436,7 +452,10 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
 
   const tags = readers.map((r) => {
     const ch = charFor(hk, r.seat, r.gender);
-    const at = ch ? H.chars[ch].head : ([H.seats[r.seat][0], H.seats[r.seat][1] - 0.03] as [number, number]);
+    // a chair this photo does not have (the library's portrait-only chairs, seen on a wide screen) gets no tag
+    const chair = H.seats[r.seat];
+    if (!ch && (!chair || chair[0] < 0)) return null;
+    const at = ch ? H.chars[ch].head : ([chair[0], chair[1] - 0.03] as [number, number]);
     return (
       <button
         key={r.session_id}
@@ -449,6 +468,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
         data-u={at[0]}
         data-v={at[1]}
         data-tf=" translate(-50%,-100%) translateY(-8px)"
+        data-clamp="1"
         onClick={() => navigate(`/readers/${r.user_id}`)}
       >
         <BookIcon />
@@ -527,6 +547,17 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
           <button className={styles.btn} type="submit">{t('room.send')}</button>
         </form>
       )}
+    </>
+  );
+
+  const chips = (
+    <>
+      <button className={styles.ctrlBtn} type="button" aria-pressed={drawer && tab === 'readers'} onClick={() => { setTab('readers'); setDrawer((d) => !(d && tab === 'readers')); }}>
+        {t('room.readers')} <span className={styles.cnt}>{readers.length}</span>
+      </button>
+      <button className={styles.ctrlBtn} type="button" aria-pressed={drawer && tab === 'chat'} onClick={() => { setTab('chat'); setDrawer((d) => !(d && tab === 'chat')); }}>
+        {chatLabel} {unread > 0 && <span className={styles.unread}>{unread}</span>}
+      </button>
     </>
   );
 
@@ -645,6 +676,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
                   {locked ? <>Locked in <kbd>Esc</kbd></> : 'Lock in'}
                 </button>
               )}
+              {phone && chips}
               <div className={styles.snd}>
                 <button className={`${styles.ctrlBtn} ${sound ? styles.sndOn : ''}`} type="button" aria-expanded={soundPop} onClick={toggleSound}>
                   <span className={styles.bars} aria-hidden="true"><i /><i /><i /></span>
@@ -668,14 +700,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
               </div>
             </div>
           </div>
-          <div className={styles.chips}>
-            <button className={styles.ctrlBtn} type="button" onClick={() => { setTab('readers'); setDrawer((d) => !(d && tab === 'readers')); }}>
-              {t('room.readers')} <span className={styles.cnt}>{readers.length}</span>
-            </button>
-            <button className={styles.ctrlBtn} type="button" onClick={() => { setTab('chat'); setDrawer((d) => !(d && tab === 'chat')); }}>
-              {chatLabel} {unread > 0 && <span className={styles.unread}>{unread}</span>}
-            </button>
-          </div>
+          {!phone && <div className={styles.chips}>{chips}</div>}
           <aside className={`${styles.drawer} ${drawer ? styles.drawerOpen : ''}`} aria-label={t('room.readers')}>
             <div className={styles.tabs} role="tablist">
               <button type="button" role="tab" aria-selected={tab === 'readers'} onClick={() => setTab('readers')}>{t('room.readers')} <span className={styles.cnt}>{readers.length}</span></button>

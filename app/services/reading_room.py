@@ -17,7 +17,8 @@ from app.services.groups import GroupService
 from app.services.reading import ReadingService
 
 # Chairs in each hall's photo, in the order the client maps them (frontend/src/widgets/ReadingRoom/engine.js, HALLS).
-SEATS = {"round": 12, "library": 6}
+# The library has eleven: six in the wide photo and all eleven in the phones' portrait one.
+SEATS = {"round": 12, "library": 11}
 # A reader whose page has not checked in for this long has left the room; their sitting is closed and
 # the reading up to their last check-in is counted, as if they had pressed «Закончить».
 STALE_AFTER = timedelta(seconds=180)

@@ -1,7 +1,9 @@
 /* The reading room's living photo: the founder's render of the hall, with every reader cut out of it and brought back to life
    by warping the photo itself (never drawn over). Readers appear in the chairs that are taken and breathe, read along the lines,
    blink, shift in their chairs and turn pages; the room has sun and dust by day, lamps and a fire at night, and steam over the tea.
-   Ported from the prototype (prototypes/reading-room/index.html), where every number here was measured and checked. */
+   Ported from the prototype (prototypes/reading-room/index.html), where every number here was measured and checked.
+   Phones get the founder's portrait render of the hall (m-*, rig in rig-m.js, built by prototypes/reading-room/mobile/). */
+import {RIG_M,PAGES_M} from './rig-m.js';
 const clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v));
 const seg=(p,a,b)=>clamp((p-a)/(b-a));
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -20,13 +22,14 @@ void main(){vec2 uv=vUv;vec2 d=(uv-uSun)/56.;vec2 s=uv;vec3 acc=vec3(0.);float w
 const MAIN_FS=`precision highp float;varying vec2 vUv;
 uniform sampler2D uImg;uniform sampler2D uRay;uniform vec2 uRes;uniform vec2 uOff;uniform vec2 uSize;uniform vec2 uPar;uniform float uTime;uniform float uWake;uniform float uNight;uniform float uRayK;
 uniform vec4 uWin;uniform vec3 uFire;uniform vec4 uFireBox;uniform vec4 uLamp[24];uniform int uNL;uniform vec4 uSway[6];uniform float uLoaded;uniform sampler2D uWith;uniform sampler2D uMask;uniform sampler2D uRig;uniform sampler2D uSoft;uniform sampler2D uPages;
-uniform vec4 uS[${NS*8}];uniform vec4 uPg[${NP*7}];uniform vec4 uEye[${NE}];uniform vec4 uLid[${NE}];uniform vec4 uCup[8];
+uniform vec4 uS[${NS*8}];uniform vec4 uPg[${NP*7}];uniform vec4 uEye[${NE}];uniform vec4 uLid[${NE}];uniform vec4 uCup[8];uniform float uGK;uniform vec2 uSteamK;uniform vec2 uMaskPx;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 vec2 aff(vec4 m,vec2 t,vec2 p){return vec2(m.x*p.x+m.y*p.y,m.z*p.x+m.w*p.y)+t;}
 /* every reader comes from the same render of the hall */
 vec3 photo(vec2 s,float id){return texture2D(uWith,s).rgb;}
-/* the reader's own pixel at s: its colour, and its coverage only where the mask belongs to this reader */
-vec4 person(vec2 s,float id){vec3 mk=texture2D(uMask,s).rgb;return vec4(photo(s,id),mk.r*(1.-step(.04,abs(mk.g*25.5-id))));}
+/* the reader's own pixel at s: its colour, and its coverage only where the mask belongs to this reader. The reader's number
+   is read at the middle of the mask's pixel: filtered between two readers who touch, it would belong to neither */
+vec4 person(vec2 s,float id){float g=texture2D(uMask,(floor(s*uMaskPx)+.5)/uMaskPx).g;return vec4(photo(s,id),texture2D(uMask,s).r*(1.-step(.04,abs(g*25.5-id))));}
 /* a blink: the upper lid comes down over the eye. Its skin takes the colour of the skin at the crease and under the eye,
    and the lash line travels down with the lid's edge, column by column */
 vec3 lid(vec2 s,vec3 col,vec4 E,vec4 L,float w,float id){
@@ -144,7 +147,7 @@ void main(){
  /* steam over the hot cups: a soft plume that rises, widens, curls and thins out */
  float steam=0.;
  for(int i=0;i<8;i++){vec4 cp=uCup[i];if(cp.z<=0.)continue;
-  float hg=cp.w*.075,wd=cp.w*.0075;float dy=(cp.y-uv0.y)/hg;if(dy<0.||dy>1.)continue;
+  float hg=cp.w*.075*uSteamK.x,wd=cp.w*.0075*uSteamK.y;float dy=(cp.y-uv0.y)/hg;if(dy<0.||dy>1.)continue;
   float dx=(uv0.x-cp.x)/wd;if(abs(dx)>4.5)continue;
   float sd=float(i)*3.7;
   float wv=fbm(vec2(dx*.45+sd,dy*1.6-uTime*.33));
@@ -165,11 +168,11 @@ void main(){
  c+=r*rp*uRayK*(1.-uNight)*uWake*inside;
  /* lamps and reading lights */
  vec3 la=vec3(0.);float warm=0.;
- for(int i=0;i<24;i++){if(i>=uNL)break;vec4 L=uLamp[i];if(L.z<=.001)continue;vec2 d=(uv-L.xy)*vec2(ar,1.);float q=dot(d,d);float k=L.w*L.w;
+ for(int i=0;i<24;i++){if(i>=uNL)break;vec4 L=uLamp[i];if(L.z<=.001)continue;vec2 d=(uv-L.xy)*vec2(ar,1.);float q=dot(d,d);float k=L.w*L.w*uGK*uGK;
   la+=vec3(1.,.7,.4)*L.z*(exp(-q/(k*.0011))*.5+exp(-q/(k*.012))*.2+exp(-q/(k*.06))*.05);warm+=L.z*exp(-q/(k*.03));}
  /* fire */
  float fl=.62+.32*noise(vec2(uTime*3.7,0.))+.14*sin(uTime*17.)*noise(vec2(uTime*9.,3.));
- vec2 fd=(uv-uFire.xy)*vec2(ar,1.);float fq=dot(fd,fd);
+ vec2 fd=(uv-uFire.xy)*vec2(ar,1.);float fq=dot(fd,fd)/(uGK*uGK);
  vec3 fire=vec3(1.,.42,.12)*uFire.z*fl*(exp(-fq/.0011)*.45+exp(-fq/.014)*.18+exp(-fq/.06)*.06);
  float wm=smoothstep(1.,.55,length((uv-uWin.xy)/uWin.zw));
  /* the night render is already lit by its lamps and the fire: reading lights and the fire's flicker stay gentle on it */
@@ -183,12 +186,13 @@ void main(){
  c+=(hash(px+fract(uTime*7.)*91.)-.5)*.02;
  gl_FragColor=vec4(c,1.);}`;
 
-const PW=2752,PH=1536;
+/* the photo in use: its size in px and its rig (set by createRoomEngine from the hall) */
+let PW=2752,PH=1536,PAD=[.012,.03];
 /* measured on the renders in uv. box: where the reader can be; hip, neck, book, wrist: what each part turns around; torso: how far the lean reaches;
    eyes: [centre u, corner line v, half width, tilt, opening above and below the corner line, lash thickness, lid skin above];
    amp: how far a new pose may go [torso lean, head tilt, book tilt (rad), book shift x, y (photo px), book scale];
    thumb: where the thumb holds the page (along the spine, across the page) */
-const RIG={
+const RIG_A={
   1:{box:[.25,.268,.403,.493],hip:[.316,.44],torso:[.313,.398,.027,.042],neck:[.316,.372],book:[.342,.378],
      eyes:[[.32125,.3491,.0029,.0003,.0009,.0037,.0014,.0022]],amp:[.022,.04,.025,2,2.5,.012]},
   2:{box:[.572,.234,.693,.483],hip:[.655,.365],torso:[.652,.33,.025,.038],neck:[.646,.311],book:[.63,.335],
@@ -208,7 +212,7 @@ const RIG={
 };
 /* pages: spine start and direction, right and left page, the way up off the page; tiles in pages.png for the sheet's front and back,
    its tint, and the clean page under the thumb (-1: none) */
-const PAGES={
+const PAGES_A={
   3:{s0:[.7074,.5623],d:[.0059,.0386],r:[.02316,-.00098],l:[-.01099,-.02602],up:[.002,-.01],away:1,tiles:[4,4],tint:[.95,1.08,1.43],under:-1},
   4:{s0:[.2571,.7978],d:[-.0203,.0485],r:[.00976,.00703],l:[-.01735,-.02266],up:[-.0015,-.004],away:0,tiles:[2,3],tint:[1,1,1],under:2},
   5:{s0:[.7274,.8132],d:[.01786,.04954],r:[.01533,-.01855],l:[-.00762,.00252],up:[.002,-.004],away:0,tiles:[4,5],tint:[1,1,1],under:4},
@@ -217,6 +221,7 @@ const PAGES={
 };
 /* what the shader gets each frame: a slot per reader in view (box, torso reach, the torso, head and book maps, id, fade, blink),
    a slot per reader who turns pages (the page, its phase and tiles, the wrist map), and every eye with the slot it belongs to */
+let RIG=RIG_A,PAGES=PAGES_A;
 const slotBuf=new Float32Array(NS*32),pgBuf=new Float32Array(NP*28),eyeBuf=new Float32Array(NE*4),lidBuf=new Float32Array(NE*4),cupBuf=new Float32Array(32);
 let frameSlots={ns:0,np:0,ne:0};
 /* affine maps in photo pixels: [a,b,c,d,e,f] is x'=a·x+b·y+e, y'=c·x+d·y+f */
@@ -302,7 +307,7 @@ function motion(id,p,now,vis){
   const T0=aRot(R.hip,tA,1,tX,tY),Th=aMul(T0,aRot(R.neck,hA,1,hX,hY)),Tb=aMul(aRot(R.hip,tA*.6,1,tX*.6,tY*.6),aRot(R.book,bA,bS,bX,bY));
   const Tw=R.wrist?aMul(Tb,aRot(R.wrist,hand[2],hand[3],hand[0],hand[1])):Tb;
   /* the site's masks run a soft seam past each reader's outline, so the box they may be drawn in is padded */
-  const B=R.box;slotBuf.set([B[0]-.012,B[1]-.03,B[2]+.012,B[3]+.03],o);slotBuf.set(R.torso,o+4);putInv(T0,slotBuf,o+8);putInv(Th,slotBuf,o+14);putInv(Tb,slotBuf,o+20);
+  const B=R.box;slotBuf.set([B[0]-PAD[0],B[1]-PAD[1],B[2]+PAD[0],B[3]+PAD[1]],o);slotBuf.set(R.torso,o+4);putInv(T0,slotBuf,o+8);putInv(Th,slotBuf,o+14);putInv(Tb,slotBuf,o+20);
   slotBuf[o+26]=id;slotBuf[o+27]=vis;slotBuf[o+28]=R.eyes?blinkAmt(now-m.blinkT)*m.blinkK:0;
   if(G&&F.np<NP){const q=F.np++*28;
     pgBuf.set([...G.s0,...G.d,...G.r,...G.l,...G.up,G.away,1,ph,G.tiles[0],G.tiles[1],sl,...G.tint,G.under],q);
@@ -336,6 +341,25 @@ export const HALLS={
     sway:[[.5,.14,.18,.16],[.2,.3,.1,.18],[.68,.36,.06,.1],[.04,.85,.06,.16],[.955,.9,.05,.12]],
     dust:{skew:-.04}},
 };
+/* Phones: the founder's portrait render of the same hall, eleven readers, the same picture for both halls. Seat numbers
+   are the server's, as in the wide halls: the round keeps room A's (seat 2 has no chair here either), the library keeps
+   its six and adds the five that only the portrait has */
+const M={files:'m',portrait:true,pw:1536,ph:2752,pad:[.004,.004],gk:.55,steam:[.52,1.6],fitU:[.045,.955],
+  sun:[.5,.06],win:[.5,.1,.3,.12],fire:[.995,.69],fireBox:[.972,.668,1.02,.715],
+  lamps:[[.063,.425,1],[.83,.44,.8],[.592,.328,.7],[.378,.327,.7],[.07,.309,.6]],
+  cups:[[.5501,.456],[.5811,.461],[.5615,.7295],[.6144,.7436]],
+  sway:[[.5,.13,.22,.05],[.45,.3,.1,.05],[.08,.42,.07,.06],[.9,.36,.06,.05],[.97,.73,.05,.05]],
+  dust:{skew:-.02}};
+const MSEAT={1:[.246,.44,0],2:[.711,.418,-1],3:[.752,.565,-1],4:[.15,.77,-1],5:[.843,.775,-1],6:[.293,.40,-1],7:[.11,.54,-1],8:[.426,.79,-1],9:[.615,.80,-1],10:[.727,.465,1],11:[.483,.39,2]};
+const MCHAR={1:{g:'f',head:[.201,.393],ring:[.201,.414]},2:{g:'f',head:[.737,.37],ring:[.737,.388]},3:{g:'m',head:[.815,.496],ring:[.815,.516]},
+  4:{g:'m',head:[.076,.714],ring:[.076,.743]},5:{g:'f',head:[.918,.73],ring:[.918,.76]},6:{g:'m',head:[.253,.36],ring:[.253,.375]},
+  7:{g:'m',head:[.09,.486],ring:[.09,.508]},8:{g:'m',head:[.346,.754],ring:[.346,.779]},9:{g:'m',head:[.671,.757],ring:[.671,.785]},
+  10:{g:'m',head:[.779,.423],ring:[.779,.441]},11:{g:'m',head:[.515,.343],ring:[.515,.357]}};
+/* order: which reader sits in seat 0, 1, 2, ... (0: no chair) */
+const portraitHall=order=>({...M,rig:RIG_M,pages:PAGES_M,seats:order.map(id=>id?MSEAT[id]:[-1,-1,-1]),
+  chars:Object.fromEntries(order.map((id,seat)=>[id,{seat,...MCHAR[id]}]).filter(([id])=>+id))});
+HALLS.mr=portraitHall([6,1,0,7,4,8,9,5,3,10,2,11]);
+HALLS.ml=portraitHall([7,3,4,8,9,5,1,2,6,10,11]);
 /* which reader of the render shows a person in a seat: only one of their own gender */
 export function charFor(hall,seat,gender){
   const g=gender==='male'?'m':gender==='female'?'f':null;if(!g)return 0;
@@ -346,13 +370,13 @@ export function seatChar(hall,seat){for(const [id,c] of Object.entries(HALLS[hal
 
 const DUST=[...Array(170)].map((_,i)=>{const r=rng(i*7+3);return {t:r(),s:r()*2-1,ph:r()*6.28,sp:.2+r()*.6,sz:.5+r()*1.4,a:.25+r()*.75}});
 const EMBERS=[...Array(26)].map((_,i)=>{const r=rng(i*13+5);return {x:r(),t:r(),sp:.35+r()*.6,dr:r()*2-1,sz:.6+r()*1.2}});
-const UNIFORMS=['uImg','uRay','uRes','uOff','uSize','uPar','uTime','uWake','uNight','uRayK','uWin','uFire','uFireBox','uLamp','uNL','uSway','uLoaded','uWith','uMask','uRig','uSoft','uPages','uS','uPg','uEye','uLid','uCup'];
+const UNIFORMS=['uImg','uRay','uRes','uOff','uSize','uPar','uTime','uWake','uNight','uRayK','uWin','uFire','uFireBox','uLamp','uNL','uSway','uLoaded','uWith','uMask','uRig','uSoft','uPages','uS','uPg','uEye','uLid','uCup','uGK','uSteamK','uMaskPx'];
 
 /* opts: hall, base (url of the photos), canvas, fx, stage, frame, edge, teaser, ui, tags, scrollEl (null: the room is shown whole),
    variant ('day' | 'night'), small (phone-sized photos), reduced (less motion), onFlip(key) when a reader turns a page */
 export function createRoomEngine(opts){
   const H=HALLS[opts.hall],{canvas:cv,fx,stage}=opts,fxc=fx.getContext('2d');
-  MOT={};
+  MOT={};RIG=H.rig||RIG_A;PAGES=H.pages||PAGES_A;PW=H.pw||2752;PH=H.ph||1536;PAD=H.pad||[.012,.03];
   const gl=cv.getContext('webgl2',{antialias:false,alpha:false})||cv.getContext('webgl',{antialias:false,alpha:false});
   const GL2=typeof WebGL2RenderingContext!=='undefined'&&gl instanceof WebGL2RenderingContext;
   let progMain=null,progRays=null;const U={};
@@ -393,7 +417,7 @@ export function createRoomEngine(opts){
   const V={};let variant=opts.variant,shown=null,dead=false;
   function loadVariant(v){
     if(V[v])return V[v];
-    const e=V[v]={ready:false,people:null,readyAt:0,img:null,ar:2752/1536};
+    const e=V[v]={ready:false,people:null,readyAt:0,img:null,ar:PW/PH};
     loadImg(url(`${v}-empty`,true)).then(img=>{
       if(dead)return;e.img=img;e.ar=img.naturalWidth/img.naturalHeight;
       if(gl){e.tex=texFrom(img,true);e.ray=bakeRays(e.tex,e.ar)}
@@ -423,9 +447,11 @@ export function createRoomEngine(opts){
   }
   const ro=new ResizeObserver(layout);ro.observe(stage);layout();
   function computeMap(P,ar){
-    const r=view.rect,baseH=Math.max(r.h,r.w/ar),baseW=baseH*ar;
+    const r=view.rect;let baseH=Math.max(r.h,r.w/ar),baseW=baseH*ar;
+    /* the tall photo keeps every chair on a narrow screen: it leaves a band above (under the site's header) rather than cut its sides */
+    if(H.fitU){const need=r.w/(H.fitU[1]-H.fitU[0]);if(baseW>need){baseW=need;baseH=baseW/ar}}
     const maxPan=Math.max(0,(baseW-r.w)/2);view.panX=clamp(view.panX,-maxPan,maxPan);
-    const bx=r.x+(r.w-baseW)/2+view.panX,by=r.y+(r.h-baseH)/2;
+    const bx=r.x+(r.w-baseW)/2+view.panX,by=baseH<r.h?r.y+r.h-baseH:r.y+(r.h-baseH)/2;
     /* the reveal: close on the window first, then back to the whole hall */
     const t=eio(seg(P,.02,.82)),Z=lerp(1.5,1,t);
     const cx=r.x+r.w/2,cy=r.y+r.h/2,fu0=(cx-bx)/baseW,fv0=(cy-by)/baseH;
@@ -464,7 +490,7 @@ export function createRoomEngine(opts){
   /* ---------- dust in the sunbeam, sparks from the fire ---------- */
   function drawFx(time,wake,night){
     const d=view.dpr;fxc.setTransform(1,0,0,1,0,0);fxc.clearRect(0,0,fx.width,fx.height);fxc.setTransform(d,0,0,d,0,0);
-    const scale=view.W/1600,dustA=(1-night)*seg(P,.5,.8)*wake;
+    const scale=Math.hypot(view.W,view.H)/1836,dustA=(1-night)*seg(P,.5,.8)*wake;
     if(dustA>.01){
       fxc.globalCompositeOperation='lighter';
       for(const p of DUST){
@@ -520,7 +546,7 @@ export function createRoomEngine(opts){
       if(tgt>0&&s.target===0)s.flick=.5;s.target=tgt;s.level+=(tgt-s.level)*Math.min(1,dt*2.5);
       let fm=1;if(s.flick>0){s.flick-=dt;fm=Math.random()<.5?.2:1}
       const gate=seg(P,.6+(i%8)*.02,.74+(i%8)*.02);
-      if(n<24){lampBuf.set([s.u,s.v-.02,s.level*fm*gate*(o&&o.char?.22:s.lamp>=0?.35:.62)*(1+Math.sin(T*1.6+i)*.04),s.lamp>=0?.55:.8],n*4);n++}
+      if(n<24&&s.u>=0){lampBuf.set([s.u,s.v-.02,s.level*fm*gate*(o&&o.char?.22:s.lamp>=0?.35:.62)*(1+Math.sin(T*1.6+i)*.04),s.lamp>=0?.55:.8],n*4);n++}
       const ch=o&&o.char?o.char:s.lastChar||0;
       if(ch){const on=o&&o.char?1:0;s.lastChar=ch;s.vis+=(on*seg(P,.55,.75)-s.vis)*Math.min(1,dt*2.4);if(s.vis>.001&&peopleReady)motion(ch,o||{status:'reading',flipAt:null},T,s.vis);if(!on&&s.vis<.002)s.lastChar=0}
     });
@@ -532,7 +558,7 @@ export function createRoomEngine(opts){
       if(!peopleReady)frameSlots.ns=0,slotBuf.fill(0);
       gl.uniform4fv(U.uS,slotBuf);gl.uniform4fv(U.uPg,pgBuf);gl.uniform4fv(U.uEye,eyeBuf);gl.uniform4fv(U.uLid,lidBuf);
       const shown={};for(const s of seats)if(s.lastChar)shown[s.lastChar]=Math.max(shown[s.lastChar]||0,s.vis);
-      cupBuf.fill(0);H.cups.slice(0,8).forEach((cp,i)=>cupBuf.set([cp[0],cp[1]-.004,seg(P,.6,.85)*(1-(cp[2]?shown[cp[2]]||0:0)),.55+cp[1]*.75],i*4));gl.uniform4fv(U.uCup,cupBuf);gl.uniform4f(U.uFireBox,...H.fireBox);
+      cupBuf.fill(0);H.cups.slice(0,8).forEach((cp,i)=>cupBuf.set([cp[0],cp[1]-.004,seg(P,.6,.85)*(1-(cp[2]?shown[cp[2]]||0:0)),.55+cp[1]*.75],i*4));gl.uniform4fv(U.uCup,cupBuf);gl.uniform4f(U.uFireBox,...H.fireBox);gl.uniform1f(U.uGK,H.gk||1);gl.uniform2f(U.uMaskPx,PW,PH);gl.uniform2f(U.uSteamK,...(H.steam||[1,1]));
       gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex.tex);gl.uniform1i(U.uImg,0);
       gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,tex.ray);gl.uniform1i(U.uRay,1);
       gl.uniform2f(U.uRes,view.w,view.h);gl.uniform2f(U.uOff,view.ox,view.oy);gl.uniform2f(U.uSize,view.W,view.H);gl.uniform2f(U.uPar,view.parX,view.parY);
@@ -546,10 +572,15 @@ export function createRoomEngine(opts){
     }
     drawFx(T,wake*loadK,night);
     /* name tags and rings ride on the photo */
-    if(opts.tags)for(const el of opts.tags.querySelectorAll('[data-u]')){
-      const q=toPx(+el.dataset.u,+el.dataset.v),off=q.x<-40||q.x>view.w+40||q.y>view.rect.y+view.rect.h+10||q.y<-10;
-      el.style.transform=`translate(${q.x.toFixed(1)}px,${q.y.toFixed(1)}px)${el.dataset.tf||''}`;
-      if(off!==(el.dataset.off==='1'))el.dataset.off=off?'1':'0';
+    if(opts.tags){
+      /* widths first, then positions: one layout per frame. Name tags near an edge stay whole on the screen */
+      const els=[...opts.tags.querySelectorAll('[data-u]')],ws=els.map(el=>el.dataset.clamp?el.offsetWidth:0);
+      els.forEach((el,i)=>{
+        const q=toPx(+el.dataset.u,+el.dataset.v),off=q.x<-40||q.x>view.w+40||q.y>view.rect.y+view.rect.h+10||q.y<-10;
+        const x=ws[i]?clamp(q.x,ws[i]/2+6,view.w-ws[i]/2-6):q.x;
+        el.style.transform=`translate(${x.toFixed(1)}px,${q.y.toFixed(1)}px)${el.dataset.tf||''}`;
+        if(off!==(el.dataset.off==='1'))el.dataset.off=off?'1':'0';
+      });
     }
   }
   raf=requestAnimationFrame(loop);

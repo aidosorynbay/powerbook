@@ -952,6 +952,17 @@
 }
 
 @media (max-width: 759px) {
+  /* on the tall photo the title sits over the sunlit window: a soft shade keeps it readable */
+  .ui::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: var(--room-top, 0px);
+    height: 210px;
+    background: linear-gradient(rgba(23, 10, 4, 0.62), rgba(23, 10, 4, 0.3) 60%, rgba(23, 10, 4, 0));
+    pointer-events: none;
+  }
   .head {
     left: 12px;
     right: 12px;
@@ -970,6 +981,8 @@
   }
   .ctrl {
     margin-top: 8px;
+    flex-wrap: wrap;
+    gap: 6px;
   }
   .ctrlBtn {
     padding: 6px 11px;
@@ -978,10 +991,11 @@
   .chips {
     display: none;
   }
+  /* the portrait photo fills the phone; the dock rests on the book stacks at its foot */
   .dock {
     left: 12px;
     right: 12px;
-    bottom: calc(38% + 22px);
+    bottom: calc(12px + var(--nav));
     max-width: none;
     padding: 10px 12px;
   }
@@ -994,19 +1008,19 @@
   .clock {
     font-size: 24px;
   }
+  /* readers and chat: a sheet from below, over the dock */
   .drawer {
-    left: 12px;
-    right: 12px;
+    left: 8px;
+    right: 8px;
     top: auto;
-    bottom: calc(12px + var(--nav));
-    height: calc(38% - var(--nav));
+    bottom: calc(8px + var(--nav));
+    height: min(62%, 480px);
     width: auto;
-    transform: none;
-    visibility: visible;
-    transition: none;
+    z-index: 2;
+    transform: translateY(calc(100% + 24px));
   }
-  .tabs .drawerX {
-    display: none;
+  .drawerOpen {
+    transform: none;
   }
 }
 
