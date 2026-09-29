@@ -1203,7 +1203,7 @@ const translations = {
     'room.seatAuto': 'орынды өзіміз табамыз',
     'room.bookPlaceholder': 'Кітап атауы',
     'room.cancel': 'Бас тарту',
-    'room.light': 'Шамды жағу',
+    'room.light': 'Оқуды бастау',
     'room.readFor': 'Сіз {min} мин оқыдыңыз',
     'room.readMore': 'Тағы оқу',
     'room.sitDown': 'Отырып оқу',
