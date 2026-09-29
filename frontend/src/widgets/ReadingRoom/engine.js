@@ -318,13 +318,14 @@ function motion(id,p,now,vis){
 
 /* ---------- the halls, mapped in photo coordinates (0..1) ---------- */
 /* seats: u, v, lamp index or -1; chars: which reader of the render sits in a seat, their gender, where the name tag and the
-   "sit here" ring go. lamps glow brighter when someone reads beside them; cups steam: u, v, and the reader whose head
+   "sit here" ring go (the ring on the chair itself, where it shows in the empty photo: a head can hang over someone
+   else's chair behind it). lamps glow brighter when someone reads beside them; cups steam: u, v, and the reader whose head
    hides that cup in the render (its steam stops while they sit there); sway: leaves that move in the air */
 export const HALLS={
   a:{files:'a',sun:[.5,.05],win:[.5,.1,.13,.17],fire:[.915,.78],fireBox:[.893,.712,.938,.852],
     lamps:[[.15,.66,1],[.705,.38,.75],[.855,.70,1]],
     seats:[[.33,.335,-1],[.355,.44,-1],[.33,.52,-1],[.235,.63,0],[.2,.89,-1],[.42,.905,-1],[.58,.905,-1],[.79,.89,-1],[.735,.62,2],[.65,.5,-1],[.66,.36,1],[.515,.32,-1]],
-    chars:{1:{seat:1,g:'f',head:[.318,.292]},2:{seat:10,g:'f',head:[.644,.252]},3:{seat:8,g:'m',head:[.754,.437],ring:[.757,.49]},4:{seat:4,g:'m',head:[.19,.705],ring:[.205,.79]},5:{seat:7,g:'f',head:[.793,.732]},
+    chars:{1:{seat:1,g:'f',head:[.318,.292],ring:[.325,.394]},2:{seat:10,g:'f',head:[.644,.252],ring:[.6425,.3136]},3:{seat:8,g:'m',head:[.754,.437],ring:[.757,.49]},4:{seat:4,g:'m',head:[.19,.705],ring:[.205,.79]},5:{seat:7,g:'f',head:[.793,.732],ring:[.7825,.851]},
       6:{seat:0,g:'m',head:[.348,.234],ring:[.345,.31]},7:{seat:3,g:'m',head:[.238,.466],ring:[.25,.585]},8:{seat:5,g:'m',head:[.388,.771],ring:[.40,.89]},
       9:{seat:6,g:'m',head:[.614,.768],ring:[.60,.905]},10:{seat:9,g:'m',head:[.677,.349],ring:[.665,.455]},11:{seat:11,g:'m',head:[.511,.199],ring:[.512,.29]}},
     cups:[[.19,.715,4],[.177,.753,4],[.535,.745],[.57,.772],[.81,.772,5],[.53,.415]],
@@ -336,7 +337,7 @@ export const HALLS={
     lamps:[[.15,.66,1],[.855,.7,1]],
     seats:[[.235,.63,0],[.745,.62,1],[.2,.89,-1],[.42,.905,-1],[.58,.905,-1],[.79,.89,-1]],
     chars:{7:{seat:0,g:'m',head:[.238,.466],ring:[.25,.585]},3:{seat:1,g:'m',head:[.754,.437],ring:[.757,.49]},4:{seat:2,g:'m',head:[.19,.705],ring:[.205,.79]},
-      8:{seat:3,g:'m',head:[.388,.771],ring:[.40,.89]},9:{seat:4,g:'m',head:[.614,.768],ring:[.60,.905]},5:{seat:5,g:'f',head:[.793,.732]}},
+      8:{seat:3,g:'m',head:[.388,.771],ring:[.40,.89]},9:{seat:4,g:'m',head:[.614,.768],ring:[.60,.905]},5:{seat:5,g:'f',head:[.793,.732],ring:[.7825,.851]}},
     cups:[[.19,.715,4],[.177,.753,4],[.535,.745],[.57,.772],[.81,.772,5]],
     sway:[[.5,.14,.18,.16],[.2,.3,.1,.18],[.68,.36,.06,.1],[.04,.85,.06,.16],[.955,.9,.05,.12]],
     dust:{skew:-.04}},
@@ -351,10 +352,10 @@ const M={files:'m',portrait:true,pw:1536,ph:2752,pad:[.004,.004],gk:.55,steam:[.
   sway:[[.5,.13,.22,.05],[.45,.3,.1,.05],[.08,.42,.07,.06],[.9,.36,.06,.05],[.97,.73,.05,.05]],
   dust:{skew:-.02}};
 const MSEAT={1:[.246,.44,0],2:[.711,.418,-1],3:[.752,.565,-1],4:[.15,.77,-1],5:[.843,.775,-1],6:[.293,.40,-1],7:[.11,.54,-1],8:[.426,.79,-1],9:[.615,.80,-1],10:[.727,.465,1],11:[.483,.39,2]};
-const MCHAR={1:{g:'f',head:[.201,.393],ring:[.201,.414]},2:{g:'f',head:[.737,.37],ring:[.737,.388]},3:{g:'m',head:[.815,.496],ring:[.815,.516]},
-  4:{g:'m',head:[.076,.714],ring:[.076,.743]},5:{g:'f',head:[.918,.73],ring:[.918,.76]},6:{g:'m',head:[.253,.36],ring:[.253,.375]},
-  7:{g:'m',head:[.09,.486],ring:[.09,.508]},8:{g:'m',head:[.346,.754],ring:[.346,.779]},9:{g:'m',head:[.671,.757],ring:[.671,.785]},
-  10:{g:'m',head:[.779,.423],ring:[.779,.441]},11:{g:'m',head:[.515,.343],ring:[.515,.357]}};
+const MCHAR={1:{g:'f',head:[.201,.393],ring:[.2116,.4526]},2:{g:'f',head:[.737,.37],ring:[.7324,.4072]},3:{g:'m',head:[.815,.496],ring:[.815,.516]},
+  4:{g:'m',head:[.076,.714],ring:[.1042,.7906]},5:{g:'f',head:[.918,.73],ring:[.892,.7942]},6:{g:'m',head:[.253,.36],ring:[.2409,.4034]},
+  7:{g:'m',head:[.09,.486],ring:[.09,.508]},8:{g:'m',head:[.346,.754],ring:[.3548,.8124]},9:{g:'m',head:[.671,.757],ring:[.651,.816]},
+  10:{g:'m',head:[.779,.423],ring:[.7617,.4708]},11:{g:'m',head:[.515,.343],ring:[.5176,.3908]}};
 /* order: which reader sits in seat 0, 1, 2, ... (0: no chair) */
 const portraitHall=order=>({...M,rig:RIG_M,pages:PAGES_M,seats:order.map(id=>id?MSEAT[id]:[-1,-1,-1]),
   chars:Object.fromEntries(order.map((id,seat)=>[id,{seat,...MCHAR[id]}]).filter(([id])=>+id))});
