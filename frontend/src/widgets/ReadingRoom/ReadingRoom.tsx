@@ -571,12 +571,19 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
         data-v={at[1]}
         data-tf=" translate(-50%,-100%) translateY(-8px)"
         data-clamp="1"
+        data-stack="1"
         data-coach-tag={r.me ? undefined : '1'}
         onClick={() => { coachDone('reader'); navigate(`/readers/${r.user_id}`); }}
       >
         <BookIcon />
-        <span>{r.me ? t('room.you') : r.display_name}</span>
-        <b>{r.status === 'paused' ? t('room.paused') : clock(elapsed(r))}</b>
+        {/* who, for how long, and under it the book they are reading right now */}
+        <span className={styles.tagText}>
+          <span className={styles.tagRow}>
+            <span>{r.me ? t('room.you') : r.display_name}</span>
+            <b>{r.status === 'paused' ? t('room.paused') : clock(elapsed(r))}</b>
+          </span>
+          <i className={styles.tagBook} title={r.book}>{r.book}</i>
+        </span>
       </button>
     );
   });

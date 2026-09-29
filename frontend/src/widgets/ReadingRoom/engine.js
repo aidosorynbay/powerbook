@@ -579,12 +579,24 @@ export function createRoomEngine(opts){
       /* widths first, then positions: one layout per frame. Name tags near an edge stay whole on the screen, and so do
          the labels over the rings (the ring stays on its chair, its label slides in) */
       const els=[...opts.tags.querySelectorAll('[data-u]')],ws=els.map(el=>el.dataset.clamp?el.offsetWidth:0),
-        ls=els.map(el=>el.dataset.label&&el.firstElementChild?el.firstElementChild.offsetWidth:0);
-      els.forEach((el,i)=>{
+        ls=els.map(el=>el.dataset.label&&el.firstElementChild?el.firstElementChild.offsetWidth:0),
+        hs=els.map(el=>el.dataset.stack?el.offsetHeight:0);
+      const pos=els.map((el,i)=>{
         const q=toPx(+el.dataset.u,+el.dataset.v),off=q.x<-40||q.x>view.w+40||q.y>view.rect.y+view.rect.h+10||q.y<-10;
-        const x=ws[i]?clamp(q.x,ws[i]/2+6,view.w-ws[i]/2-6):q.x;
+        return {off,x:ws[i]?clamp(q.x,ws[i]/2+6,view.w-ws[i]/2-6):q.x,y:q.y};
+      });
+      /* name tags that would cover each other in a full hall: the lower one (nearer the camera) stays over its reader,
+         the one above it steps up clear of it */
+      const placed=[];
+      for(const i of els.map((_,i)=>i).filter(i=>hs[i]&&!pos[i].off).sort((a,b)=>pos[b].y-pos[a].y)){
+        const p=pos[i],w=ws[i],h=hs[i];let bot=p.y-8;
+        for(let k=0;k<5;k++){const hit=placed.find(r=>p.x-w/2<r.r+3&&p.x+w/2>r.l-3&&bot-h<r.b+3&&bot>r.t-3);if(!hit)break;bot=hit.t-4}
+        p.y=bot+8;placed.push({l:p.x-w/2,r:p.x+w/2,t:bot-h,b:bot});
+      }
+      els.forEach((el,i)=>{
+        const {off,x,y}=pos[i];
         if(ls[i])el.style.setProperty('--lx',(clamp(x,ls[i]/2+8,view.w-ls[i]/2-8)-x).toFixed(1)+'px');
-        el.style.transform=`translate(${x.toFixed(1)}px,${q.y.toFixed(1)}px)${el.dataset.tf||''}`;
+        el.style.transform=`translate(${x.toFixed(1)}px,${y.toFixed(1)}px)${el.dataset.tf||''}`;
         if(off!==(el.dataset.off==='1'))el.dataset.off=off?'1':'0';
       });
     }
