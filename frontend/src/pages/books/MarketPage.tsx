@@ -3,9 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import { apiGet, useAuth, useI18n, type Listing, type MarketPage as Page } from '@/shared/lib';
 import { Container } from '@/shared/ui';
 import { Header } from '@/widgets';
-import { BookFace, LibraryTabs, PbBadge, Shelves, formatPrice, useToast } from './bookUi';
+import { BookFace, PbBadge, Shelves, formatPrice, useToast } from './bookUi';
 import { ListingSheet, SellSheet } from './ListingSheet';
 import styles from './Store.module.css';
+import { LibrarySwitch } from './LibrarySwitch';
 
 type Sort = 'new' | 'cheap' | 'dear';
 const PAGE = 48;
@@ -82,10 +83,11 @@ export function MarketPage() {
       <Header />
       <main className={styles.main}>
         <Container>
-          <LibraryTabs />
           <div className={styles.head}>
             <div>
-              <h1 className={styles.title}>{t('mkt.title')}</h1>
+              <h1 className={styles.title}>
+                <LibrarySwitch current="market" />
+              </h1>
               <p className={styles.subtitle}>{t('mkt.subtitle')}</p>
             </div>
             <button type="button" className={styles.primary} onClick={() => setParam({ new: '1' })}>

@@ -1,0 +1,142 @@
+/* The library's title as a menu of its sections. The trigger wears whatever
+   title it replaces (the bookcase wordmark, a page heading); only the chevron
+   and the list are its own. */
+
+.switch {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  margin: 0;
+  padding: 2px 6px 2px 0;
+  border: 0;
+  border-radius: 8px;
+  color: inherit;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  overflow: visible !important;
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 3px;
+}
+
+.triggerText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chev {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Never smaller than a fingertip's target, even beside a small title. */
+  width: max(1.3em, 24px);
+  height: max(1.3em, 24px);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 50%;
+  color: var(--color-text-accent);
+  background: var(--color-bg-secondary);
+  font-size: max(0.62em, 12px);
+  line-height: 1;
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.trigger:hover .chev {
+  border-color: var(--color-border-accent);
+}
+
+.chevOpen {
+  transform: rotate(180deg);
+}
+
+.menu {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 8px);
+  left: 0;
+  width: max-content;
+  min-width: 260px;
+  max-width: min(340px, calc(100vw - 32px));
+  padding: 6px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 14px;
+  background: var(--color-bg-elevated);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
+  font-family: var(--font-family-primary);
+  letter-spacing: normal;
+  text-transform: none;
+  animation: drop 0.14s ease-out;
+}
+
+@keyframes drop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.item:hover,
+.item:focus-visible {
+  outline: none;
+  background: var(--color-bg-card-hover, var(--color-bg-secondary));
+}
+
+.itemCurrent {
+  background: var(--color-accent-primary-muted);
+}
+
+.itemText {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.itemTitle {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.itemHint {
+  color: var(--color-text-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.check {
+  flex: none;
+  color: var(--color-text-accent);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.divider {
+  height: 1px;
+  margin: 6px 8px;
+  background: var(--color-border-secondary);
+}

@@ -1,5 +1,4 @@
 import { KeyboardEvent as ReactKeyboardEvent, ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
 import { getApiBaseUrl, useI18n, type Locale } from '@/shared/lib';
 import { paletteFor } from '../library/bookcase/bookArt';
 import { plural } from '../library/bookcase/plural';
@@ -146,29 +145,6 @@ export function Sheet({ label, onClose, wide, children }: { label: string; onClo
         <div className={styles.sheetBody}>{children}</div>
       </div>
     </>
-  );
-}
-
-/** The library's sections, as one row of pills at the top of each. */
-export function LibraryTabs() {
-  const { t } = useI18n();
-  const { pathname } = useLocation();
-  const tabs = [
-    { to: '/library', label: t('libtabs.shelf'), active: pathname === '/library' },
-    { to: '/books', label: t('libtabs.books'), active: pathname.startsWith('/books') },
-    { to: '/market', label: t('libtabs.market'), active: pathname.startsWith('/market') },
-    { to: '/library/hall', label: t('room.enterLibrary'), active: pathname === '/library/hall', dot: true },
-    { to: '/reading', label: t('libtabs.reading'), active: pathname.startsWith('/reading') },
-  ];
-  return (
-    <nav className={styles.tabs} aria-label={t('libtabs.label')}>
-      {tabs.map((tab) => (
-        <Link key={tab.to} to={tab.to} className={`${styles.tab} ${tab.active ? styles.tabActive : ''}`} aria-current={tab.active ? 'page' : undefined}>
-          {tab.dot && <i className={styles.tabDot} aria-hidden="true" />}
-          {tab.label}
-        </Link>
-      ))}
-    </nav>
   );
 }
 

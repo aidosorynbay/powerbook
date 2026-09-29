@@ -3,9 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import { apiGet, useI18n, type CatalogItem, type CatalogPage as Page } from '@/shared/lib';
 import { Container } from '@/shared/ui';
 import { Header } from '@/widgets';
-import { BookFace, ExtBadge, LibraryTabs, PbBadge, Shelves, useCount } from './bookUi';
+import { BookFace, ExtBadge, PbBadge, Shelves, useCount } from './bookUi';
 import { WorkSheet } from './WorkSheet';
 import styles from './Store.module.css';
+import { LibrarySwitch } from './LibrarySwitch';
 
 type Filter = 'all' | 'rated' | 'reviewed' | 'sale';
 type Sort = 'popular' | 'pb' | 'ext' | 'new' | 'az';
@@ -86,10 +87,11 @@ export function CatalogPage() {
       <Header />
       <main className={styles.main}>
         <Container>
-          <LibraryTabs />
           <div className={styles.head}>
             <div>
-              <h1 className={styles.title}>{t('cat.title')}</h1>
+              <h1 className={styles.title}>
+                <LibrarySwitch current="books" />
+              </h1>
               <p className={styles.subtitle}>{t('cat.subtitle')}</p>
               {counts && (
                 <p className={styles.headStats}>

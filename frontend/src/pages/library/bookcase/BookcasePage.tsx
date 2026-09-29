@@ -26,6 +26,7 @@ import { extractCover } from '../extractCover';
 import { EditBookSheet } from './EditBookSheet';
 import { MarkForm } from '../../books/MarkForm';
 import { ExtBadge, PbBadge } from '../../books/bookUi';
+import { LibrarySwitch } from '../../books/LibrarySwitch';
 import { BookcaseSections, ShelvesSheet } from './BookcaseSections';
 import { loadShelfFonts, type VolumeArt } from './bookArt';
 import { bookCount, plural } from './plural';
@@ -900,9 +901,14 @@ export function BookcasePage({ ownerId }: Props) {
               <span>{t('shelf.backToProfile')}</span>
             </Link>
           )}
-          <span className={styles.wordmark}>
-            {ownerId && !isSelf ? t('shelf.wordmarkOf', { name: ownerName }) : t('shelf.wordmarkSelf')}
-          </span>
+          {/* The reader's own library: its title is also the way to the other sections. */}
+          {ownLibrary ? (
+            <LibrarySwitch current="shelf" labelClass={styles.wordmark} />
+          ) : (
+            <span className={styles.wordmark}>
+              {ownerId && !isSelf ? t('shelf.wordmarkOf', { name: ownerName }) : t('shelf.wordmarkSelf')}
+            </span>
+          )}
         </div>
         <div className={styles.actions}>
           {!empty && (
@@ -939,16 +945,7 @@ export function BookcasePage({ ownerId }: Props) {
               {t('room.enterLibrary')}
             </Link>
           )}
-          {(isSelf || ownLibrary) && (
-            <Link className={styles.hallLink} to="/books">
-              {t('libtabs.books')}
-            </Link>
-          )}
-          {(isSelf || ownLibrary) && (
-            <Link className={styles.hallLink} to="/market">
-              {t('libtabs.market')}
-            </Link>
-          )}
+
           {isSelf && (
             <button
               type="button"

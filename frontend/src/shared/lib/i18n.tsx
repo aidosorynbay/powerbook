@@ -1015,6 +1015,12 @@ const translations = {
     'about.timeline2026': '1000+ читателей, 64 круга и вся история — теперь на одной платформе.',
 
     // Shared library, book market, reading recap
+    'libswitch.label': 'Разделы библиотеки',
+    'libswitch.shelfHint': 'Ваша полка: прочитанное, файлы, заметки',
+    'libswitch.booksHint': 'Все книги PowerBook с оценками и отзывами',
+    'libswitch.marketHint': 'Купить и продать книги у читателей',
+    'libswitch.hallHint': 'Почитать вместе со всеми',
+    'libswitch.readingHint': 'Месяц и год в книгах, заметки, AI',
     'mkt.fContactHintNoTg': 'Покупатели увидят этот номер',
     'mkt.errPhone': 'Укажите номер телефона — по нему с вами свяжутся покупатели',
     'libtabs.label': 'Разделы библиотеки',
@@ -2258,6 +2264,12 @@ const translations = {
     'about.timeline2026': '1000+ оқырман, 64 раунд және бүкіл тарих — енді бір платформада.',
 
     // Shared library, book market, reading recap
+    'libswitch.label': 'Кітапхана бөлімдері',
+    'libswitch.shelfHint': 'Сіздің сөреңіз: оқығандар, файлдар, жазбалар',
+    'libswitch.booksHint': 'PowerBook-тың барлық кітабы бағаларымен және пікірлерімен',
+    'libswitch.marketHint': 'Оқырмандардан кітап сатып алу және сату',
+    'libswitch.hallHint': 'Барлығымен бірге оқу',
+    'libswitch.readingHint': 'Ай мен жыл кітаптарда, жазбалар, AI',
     'mkt.fContactHintNoTg': 'Сатып алушылар осы нөмірді көреді',
     'mkt.errPhone': 'Телефон нөмірін көрсетіңіз — сатып алушылар сол арқылы хабарласады',
     'libtabs.label': 'Кітапхана бөлімдері',
@@ -3501,6 +3513,12 @@ const translations = {
     'about.timeline2026': '1,000+ readers, 64 circles, and the whole history — now on one platform.',
 
     // Shared library, book market, reading recap
+    'libswitch.label': 'Library sections',
+    'libswitch.shelfHint': 'Your shelf: books read, files, notes',
+    'libswitch.booksHint': 'Every PowerBook book, with marks and reviews',
+    'libswitch.marketHint': 'Buy and sell books among readers',
+    'libswitch.hallHint': 'Read together with everyone',
+    'libswitch.readingHint': 'Your month and year in books, notes, AI',
     'mkt.fContactHintNoTg': 'Buyers will see this number',
     'mkt.errPhone': 'Add a phone number — buyers will reach you on it',
     'libtabs.label': 'Library sections',

@@ -14,10 +14,11 @@ import {
 } from '@/shared/lib';
 import { Container } from '@/shared/ui';
 import { Header } from '@/widgets';
-import { BookFace, ExtBadge, INTL, LibraryTabs, PbBadge, formatDay, useCount } from '../books/bookUi';
+import { BookFace, ExtBadge, INTL, PbBadge, formatDay, useCount } from '../books/bookUi';
 import { WorkSheet } from '../books/WorkSheet';
 import store from '../books/Store.module.css';
 import styles from './Reading.module.css';
+import { LibrarySwitch } from '../books/LibrarySwitch';
 
 type Tab = 'recap' | 'recs' | 'notes';
 
@@ -542,10 +543,11 @@ export function ReadingPage() {
       <Header />
       <main className={store.main}>
         <Container>
-          <LibraryTabs />
           <div className={store.head}>
             <div>
-              <h1 className={store.title}>{t('rd.title')}</h1>
+              <h1 className={store.title}>
+                <LibrarySwitch current="reading" />
+              </h1>
               <p className={store.subtitle}>{t('rd.subtitle')}</p>
             </div>
           </div>
