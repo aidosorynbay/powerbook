@@ -140,6 +140,9 @@ class ListingIn(BaseModel):
     price: int = Field(ge=0, le=10_000_000)
     condition: str = Field(default="good", pattern="^(new|like_new|good|fair)$")
     city: str | None = Field(default=None, max_length=80)
+    # A phone or WhatsApp number. Required — a buyer must always be able to
+    # get in touch — and checked in the service, so a missing one and a
+    # malformed one answer alike ("bad_phone").
     contact: str | None = Field(default=None, max_length=120)
     note: str | None = Field(default=None, max_length=1000)
     # A resized JPEG as a data URL; about 600 KB at most.

@@ -225,6 +225,12 @@ export function SellSheet({ listing, prefill, onClose, onSaved }: FormProps) {
       setError(t('mkt.error'));
       return;
     }
+    // Buyers reach the seller on this number, so it has to be one.
+    const digits = contact.replace(/\D/g, '').length;
+    if (digits < 10 || digits > 15) {
+      setError(t('mkt.errPhone'));
+      return;
+    }
     setBusy(true);
     setError(null);
     const body = {
@@ -233,7 +239,7 @@ export function SellSheet({ listing, prefill, onClose, onSaved }: FormProps) {
       price: Math.round(amount),
       condition,
       city: city.trim() || null,
-      contact: contact.trim() || null,
+      contact: contact.trim(),
       note: note.trim() || null,
       ...(photo ? { photo } : {}),
     };
@@ -242,7 +248,13 @@ export function SellSheet({ listing, prefill, onClose, onSaved }: FormProps) {
       : await apiPost<Listing>('/market', { ...body, volume_key: prefill?.volumeKey ?? null }, { requireAuth: true });
     setBusy(false);
     if (!data) {
-      setError(t(failed === 'too_many_listings' ? 'mkt.errTooMany' : failed === 'bad_photo' || failed === 'photo_too_large' ? 'mkt.errPhoto' : 'mkt.error'));
+      const known: Record<string, string> = {
+        too_many_listings: 'mkt.errTooMany',
+        bad_photo: 'mkt.errPhoto',
+        photo_too_large: 'mkt.errPhoto',
+        bad_phone: 'mkt.errPhone',
+      };
+      setError(t(known[failed ?? ''] ?? 'mkt.error'));
       return;
     }
     try {
@@ -285,11 +297,21 @@ export function SellSheet({ listing, prefill, onClose, onSaved }: FormProps) {
           </label>
           <label>
             {t('mkt.fContact')}
-            <input className={styles.field} value={contact} maxLength={120} inputMode="tel" placeholder="+7 7xx xxx xx xx" onChange={(e) => setContact(e.target.value)} />
+            <input
+              className={styles.field}
+              value={contact}
+              maxLength={120}
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="+7 7xx xxx xx xx"
+              onChange={(e) => setContact(e.target.value)}
+              required
+            />
           </label>
         </div>
         <p className={styles.formNote} style={{ margin: 0 }}>
-          {telegram ? t('mkt.fContactHint', { tg: telegram }) : t('mkt.fNoTelegram')}
+          {telegram ? t('mkt.fContactHint', { tg: telegram }) : t('mkt.fContactHintNoTg')}
         </p>
         <label>
           {t('mkt.fNote')}

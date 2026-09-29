@@ -46,6 +46,16 @@ def _check_photo(photo: str | None) -> str | None:
     return photo
 
 
+def _phone(contact: str | None) -> str:
+    """The seller's number as they wrote it, once it holds a real phone:
+    10 to 15 digits, whatever spaces, brackets or dashes go around them."""
+    value = (contact or "").strip()[:120]
+    digits = re.sub(r"\D", "", value)
+    if not 10 <= len(digits) <= 15:
+        raise _bad("bad_phone")
+    return value
+
+
 def _clean(text: str | None, limit: int) -> str | None:
     value = (text or "").strip()
     return value[:limit] or None
@@ -225,7 +235,7 @@ def create(db: Session, *, seller: User, payload: ListingIn) -> ListingOut:
         price=payload.price,
         condition=payload.condition,
         city=_clean(payload.city, 80),
-        contact=_clean(payload.contact, 120),
+        contact=_phone(payload.contact),
         note=_clean(payload.note, 1000),
         photo=_check_photo(payload.photo),
         status="active",
@@ -261,7 +271,7 @@ def update(db: Session, *, seller: User, listing_id: uuid.UUID, payload: Listing
     if "city" in fields:
         row.city = _clean(payload.city, 80)
     if "contact" in fields:
-        row.contact = _clean(payload.contact, 120)
+        row.contact = _phone(payload.contact)
     if "note" in fields:
         row.note = _clean(payload.note, 1000)
     if payload.remove_photo:

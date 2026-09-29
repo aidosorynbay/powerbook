@@ -214,8 +214,17 @@ def test_market_listing_lifecycle(env):
     assert c.get(f"/api/market/user/{env.madik.id}", headers=env.h(env.aigerim)).json() == []
     assert len(c.get(f"/api/market/user/{env.madik.id}", headers=env.h(env.madik)).json()) == 1
 
-    bad = c.post("/api/market", json={"title": "X", "price": 10, "photo": "data:text/html;base64,AAAA"}, headers=env.h(env.madik))
-    assert bad.status_code == 400
+    bad = c.post("/api/market", json={"title": "X", "price": 10, "contact": "+7 701 000 00 00", "photo": "data:text/html;base64,AAAA"},
+                 headers=env.h(env.madik))
+    assert bad.status_code == 400 and bad.json()["detail"] == "bad_photo"
+    # A way to reach the seller is not optional: a phone of 10–15 digits.
+    for contact in (None, "", "   ", "12345", "+7 (701) 12"):
+        body = {"title": "X", "price": 10} | ({"contact": contact} if contact is not None else {})
+        r = c.post("/api/market", json=body, headers=env.h(env.madik))
+        assert r.status_code == 400 and r.json()["detail"] == "bad_phone", contact
+    ok = c.post("/api/market", json={"title": "X", "price": 10, "contact": "8 (701) 555-12-34"}, headers=env.h(env.madik))
+    assert ok.status_code == 201 and ok.json()["contact"] == "8 (701) 555-12-34"
+    assert c.patch(f"/api/market/{ok.json()['id']}", json={"contact": ""}, headers=env.h(env.madik)).json()["detail"] == "bad_phone"
     assert c.delete(f"/api/market/{listing['id']}", headers=env.h(env.madik)).status_code == 204
 
 
