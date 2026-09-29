@@ -2179,14 +2179,30 @@
   display: none !important;
 }
 
+/* The bookcase by day and by night, like the reading room: at night the case is dark walnut and a small brass lamp
+   over every shelf lights its books; by day the lamps are off and the sun falls across the case from the window. */
 .room {
-  --cab-back: #10151c;
-  --cab-back-shade: rgba(0, 0, 0, 0.35);
+  --cab-back: #1a130d;
+  --cab-back-shade: rgba(0, 0, 0, 0.45);
+  --cab-wood: linear-gradient(180deg, #5e3a22, #43281a 60%, #2f1c11);
+  --cab-board: linear-gradient(180deg, #7a4a2c, #52301d 55%, #36200f);
+  --cab-lamp-glow: radial-gradient(ellipse 72% 125% at 50% 0%, rgba(255, 196, 120, 0.36), rgba(255, 170, 90, 0.14) 50%, rgba(255, 160, 80, 0.04) 78%, transparent 92%);
+  --cab-lamp-shade: #d9b467;
+  --cab-lamp-light: 0 2px 10px 2px rgba(255, 200, 120, 0.55);
+  --cab-sun: none;
 }
 
 :global(html[data-theme='light']) .room {
-  --cab-back: #e4dccd;
+  --cab-back: #e6dccb;
   --cab-back-shade: rgba(58, 42, 28, 0.14);
+  --cab-wood: linear-gradient(180deg, #8a5a37, #6d4428 60%, #583520);
+  --cab-board: linear-gradient(180deg, #9c6840, #734629 55%, #57341e);
+  --cab-lamp-glow: none;
+  --cab-lamp-shade: #b89a5c;
+  --cab-lamp-light: none;
+  --cab-sun:
+    linear-gradient(112deg, rgba(92, 62, 34, 0.18) 8%, rgba(255, 226, 160, 0.75) 22%, rgba(255, 234, 186, 0.55) 34%, rgba(92, 62, 34, 0.12) 44%,
+      rgba(255, 226, 160, 0.6) 56%, rgba(255, 234, 186, 0.35) 64%, rgba(92, 62, 34, 0.2) 80%);
 }
 
 .sectionsView {
@@ -2207,11 +2223,12 @@
 .cabinet {
   padding: 16px 16px 10px;
   border-radius: 10px;
-  background: linear-gradient(180deg, #74472b, #57341f 60%, #45291a);
+  background: var(--cab-wood);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 220, 180, 0.18);
 }
 
 .cabinetInner {
+  position: relative;
   padding: 0 14px;
   border-radius: 4px;
   background:
@@ -2220,9 +2237,49 @@
   box-shadow: inset 0 8px 18px var(--cab-back-shade);
 }
 
+/* the sun from the window, over the books as well as the back of the case */
+.cabinetInner::after {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  background: var(--cab-sun);
+  mix-blend-mode: overlay;
+}
+
 .cabShelf {
   position: relative;
   padding-top: 14px;
+}
+
+/* the shelf's lamp: a brass bar under the board above, and the light it throws on the books below it */
+.cabShelf::before {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: -14px;
+  bottom: 12px;
+  left: -14px;
+  pointer-events: none;
+  content: '';
+  background: var(--cab-lamp-glow);
+  mix-blend-mode: screen;
+}
+
+.cabShelf::after {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 50%;
+  width: 64px;
+  height: 5px;
+  border-radius: 0 0 5px 5px;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(180deg, var(--cab-lamp-shade), color-mix(in srgb, var(--cab-lamp-shade) 55%, #3a2410));
+  box-shadow: var(--cab-lamp-light);
+  transform: translateX(-50%);
 }
 
 .cabLabel {
@@ -2314,7 +2371,7 @@
 .cabBoard {
   height: 12px;
   margin: 0 -14px;
-  background: linear-gradient(180deg, #8a5634, #5f3822 55%, #432716);
+  background: var(--cab-board);
   box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
 }
 
