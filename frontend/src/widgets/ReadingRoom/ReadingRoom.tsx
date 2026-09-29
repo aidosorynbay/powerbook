@@ -62,6 +62,23 @@ const BASE = '/reading-room/';
 const GOAL = 30;
 const RECENT_KEY = 'pb.room.books';
 const SOUND_CHANNELS: SoundChannel[] = ['music', 'fire', 'rain', 'pages'];
+/* first-visit hints: small bobbing arrows at the room's controls, each gone once it has been used */
+const COACH_KEY = 'pb.room.coach.v1';
+type CoachId = 'sit' | 'reader' | 'lock' | 'sound' | 'chat';
+const COACH: { id: CoachId; dir: 'above' | 'below' }[] = [
+  { id: 'sit', dir: 'above' },
+  { id: 'reader', dir: 'above' },
+  { id: 'lock', dir: 'below' },
+  { id: 'sound', dir: 'below' },
+  { id: 'chat', dir: 'below' },
+];
+function coachSeen() {
+  try {
+    return localStorage.getItem(COACH_KEY) === '1';
+  } catch {
+    return true;
+  }
+}
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const clock = (s: number) => {
@@ -121,7 +138,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   const [state, setState] = useState<RoomState | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
   const stamp = useRef(performance.now());
   const since = useRef<string | null>(null);
   const [near, setNear] = useState(layout === 'full');
@@ -145,6 +162,9 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   const goalWas = useRef<number | null>(null);
   const chatList = useRef<HTMLDivElement>(null);
   const reduced = useMemo(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false, []);
+  const [coach, setCoach] = useState<CoachId[] | null>(null);
+  const coachRef = useRef<HTMLDivElement>(null);
+  const coachSaved = useRef(coachSeen());
 
   const say = useCallback((text: string, action?: { label: string; run: () => void }) => {
     setToast({ text, action });
@@ -306,6 +326,86 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     return () => window.removeEventListener('keydown', onKey);
   }, [soundPop, drawer, locked]);
 
+  /* ---------- first-visit hints ---------- */
+  const endCoach = useCallback(() => {
+    coachSaved.current = true;
+    try {
+      localStorage.setItem(COACH_KEY, '1');
+    } catch {
+      // storage blocked: the hints may come back next time
+    }
+    setCoach(null);
+  }, []);
+  const coachDone = useCallback((id: CoachId) => {
+    setCoach((c) => (c ? c.filter((x) => x !== id) : c));
+  }, []);
+  useEffect(() => {
+    if (coach && !coach.length) endCoach();
+  }, [coach, endCoach]);
+  // they appear once the hall is fully open, on the first visit only
+  useEffect(() => {
+    if (coach || coachSaved.current || !loaded) return;
+    // on a phone Lock in sits right above the sound button: one arrow there would cover the other
+    if ((engineRef.current?.progress ?? 0) > 0.97) setCoach(COACH.map((c) => c.id).filter((id) => id !== 'lock' || (layout === 'scroll' && !phone)));
+  }, [tick, loaded, coach, layout, phone]);
+  // each arrow follows what it points at (name tags ride on the photo), its label kept on the screen
+  useEffect(() => {
+    if (!coach) return;
+    let raf = 0;
+    const place = () => {
+      raf = requestAnimationFrame(place);
+      const box = coachRef.current, stage = stageRef.current;
+      if (!box || !stage) return;
+      const fr = box.getBoundingClientRect();
+      const placed: { l: number; r: number; t: number; b: number }[] = [];
+      for (const el of box.querySelectorAll<HTMLElement>('[data-hint]')) {
+        const id = el.dataset.hint;
+        const target = id === 'reader'
+          ? stage.querySelector<HTMLElement>('[data-coach-tag]:not([data-off="1"])')
+          : stage.querySelector<HTMLElement>(`[data-coach="${id}"]`);
+        const rc = target?.getBoundingClientRect();
+        if (!rc || !rc.width) {
+          el.style.visibility = 'hidden';
+          continue;
+        }
+        const above = el.dataset.dir === 'above';
+        const x = rc.left + rc.width / 2 - fr.left;
+        let y = above ? rc.top - fr.top - 4 : rc.bottom - fr.top + 4;
+        const lab = el.firstElementChild as HTMLElement | null;
+        const lw = lab?.offsetWidth ?? 0, lh = lab?.offsetHeight ?? 0, hh = el.offsetHeight;
+        const lx = Math.min(Math.max(x, lw / 2 + 8), fr.width - lw / 2 - 8) - x;
+        // two labels side by side (the chips and the sound button in one row) must not run into each other:
+        // the later one steps further away from its button
+        const box2 = (yy: number) => {
+          const t = above ? yy - hh : yy + hh - lh;
+          return { l: x + lx - lw / 2 - 4, r: x + lx + lw / 2 + 4, t, b: t + lh };
+        };
+        for (let k = 0; k < 3 && placed.some((q) => { const m = box2(y); return m.l < q.r && m.r > q.l && m.t < q.b && m.b > q.t; }); k++) y += above ? -(lh + 6) : lh + 6;
+        placed.push(box2(y));
+        el.style.left = `${x.toFixed(1)}px`;
+        el.style.top = `${y.toFixed(1)}px`;
+        el.style.setProperty('--lx', `${lx.toFixed(1)}px`);
+        el.style.visibility = 'visible';
+      }
+      // on a phone the bar sits inside the dock beside «Сесть и читать», or just above the dock when that is busier
+      const bar = box.querySelector<HTMLElement>('[data-bar]');
+      const dock = stage.querySelector<HTMLElement>(`.${styles.dock}`);
+      if (bar && dock && phone) {
+        const dr = dock.getBoundingClientRect();
+        const inside = !!dock.querySelector('[data-coach="sit"]');
+        bar.style.top = `${(inside ? dr.top + (dr.height - bar.offsetHeight) / 2 : dr.top - bar.offsetHeight - 10) - fr.top}px`;
+      }
+    };
+    raf = requestAnimationFrame(place);
+    return () => cancelAnimationFrame(raf);
+  }, [coach, phone]);
+  useEffect(() => {
+    if (locked) coachDone('lock');
+  }, [locked, coachDone]);
+  useEffect(() => {
+    if (drawer) coachDone('chat');
+  }, [drawer, coachDone]);
+
   /* ---------- chat ---------- */
   const lastSeenMsg = useRef<string | null>(null);
   useEffect(() => {
@@ -339,6 +439,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
 
   /* ---------- my sitting ---------- */
   const openPick = (seat: number | null) => {
+    coachDone('sit');
     setFinished(null);
     setPick({ seat });
     if (!book && suggest[0]) setBook(suggest[0]);
@@ -412,6 +513,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
 
   /* ---------- sound ---------- */
   const toggleSound = () => {
+    coachDone('sound');
     if (!Snd.enabled) {
       Snd.enable();
       setSound(true);
@@ -469,7 +571,8 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
         data-v={at[1]}
         data-tf=" translate(-50%,-100%) translateY(-8px)"
         data-clamp="1"
-        onClick={() => navigate(`/readers/${r.user_id}`)}
+        data-coach-tag={r.me ? undefined : '1'}
+        onClick={() => { coachDone('reader'); navigate(`/readers/${r.user_id}`); }}
       >
         <BookIcon />
         <span>{r.me ? t('room.you') : r.display_name}</span>
@@ -491,6 +594,8 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
             className={`${styles.free} ${styles.freeOwn} ${chosen ? styles.freeChosen : ''} ${pick ? styles.freePicking : ''}`}
             data-u={at[0]}
             data-v={at[1]}
+            data-label="1"
+            data-clamp="1"
             aria-label={t('room.sitSeen')}
             onClick={() => openPick(i)}
           >
@@ -555,7 +660,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
       <button className={styles.ctrlBtn} type="button" aria-pressed={drawer && tab === 'readers'} onClick={() => { setTab('readers'); setDrawer((d) => !(d && tab === 'readers')); }}>
         {t('room.readers')} <span className={styles.cnt}>{readers.length}</span>
       </button>
-      <button className={styles.ctrlBtn} type="button" aria-pressed={drawer && tab === 'chat'} onClick={() => { setTab('chat'); setDrawer((d) => !(d && tab === 'chat')); }}>
+      <button className={styles.ctrlBtn} type="button" data-coach="chat" aria-pressed={drawer && tab === 'chat'} onClick={() => { setTab('chat'); setDrawer((d) => !(d && tab === 'chat')); }}>
         {chatLabel} {unread > 0 && <span className={styles.unread}>{unread}</span>}
       </button>
     </>
@@ -630,11 +735,11 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   } else {
     dock = (
       <>
-        <button className={`${styles.btn} ${styles.primary}`} type="button" onClick={() => openPick(null)}>
+        <button className={`${styles.btn} ${styles.primary}`} type="button" data-coach="sit" onClick={() => openPick(null)}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" /></svg>
           {t('room.sitDown')}
         </button>
-        <span className={styles.dockNote}>{hall === 'round' || state?.in_round ? t('room.dockNote') : t('room.dockNoteGuest')}</span>
+        <span className={`${styles.dockNote} ${styles.dockHint}`}>{hall === 'round' || state?.in_round ? t('room.dockNote') : t('room.dockNoteGuest')}</span>
       </>
     );
   }
@@ -666,19 +771,19 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
             </div>
             <h2 className={styles.title}>{hallTitle}</h2>
             <div className={styles.meta}>
-              <span className={styles.live}><i className={styles.liveDot} />{mineHere ? t('room.youPlus', { n: readers.length - 1 }) : t('room.readingCount', { n: reading })}</span>
+              <span className={styles.live}><i className={styles.liveDot} />{mineHere ? (readers.length > 1 ? t('room.youPlus', { n: readers.length - 1 }) : t('room.youAlone')) : t('room.readingCount', { n: reading })}</span>
               {totalMinutes > 0 && <span>{t('room.together', { min: totalMinutes })}</span>}
             </div>
             <div className={styles.ctrl}>
               {layout === 'scroll' && (
-                <button className={styles.ctrlBtn} type="button" aria-pressed={locked} onClick={() => setLocked((v) => !v)} title={t('room.lockTitle')}>
+                <button className={styles.ctrlBtn} type="button" data-coach="lock" aria-pressed={locked} onClick={() => setLocked((v) => !v)} title={t('room.lockTitle')}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d={locked ? 'M8 11V8a4 4 0 0 1 8 0v3' : 'M8 11V8a4 4 0 0 1 8 0'} /></svg>
                   {locked ? <>Locked in <kbd>Esc</kbd></> : 'Lock in'}
                 </button>
               )}
               {phone && chips}
               <div className={styles.snd}>
-                <button className={`${styles.ctrlBtn} ${sound ? styles.sndOn : ''}`} type="button" aria-expanded={soundPop} onClick={toggleSound}>
+                <button className={`${styles.ctrlBtn} ${sound ? styles.sndOn : ''}`} type="button" data-coach="sound" aria-expanded={soundPop} onClick={toggleSound}>
                   <span className={styles.bars} aria-hidden="true"><i /><i /><i /></span>
                   {sound ? t('room.soundOn') : t('room.sound')}
                 </button>
@@ -717,6 +822,27 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
             </div>
           </aside>
           <div className={`${styles.dock} ${mineHere?.status === 'paused' ? styles.dockPaused : ''}`}>{dock}</div>
+          {coach && (
+            <div className={styles.coach} ref={coachRef}>
+              {COACH.filter((c) => coach.includes(c.id)).map((c, i) => (
+                <div key={c.id} className={styles.hint} data-hint={c.id} data-dir={c.dir} style={{ animationDelay: `${i * 0.22}s`, visibility: 'hidden' }} aria-hidden="true">
+                  <span className={styles.hintL}>{t(`room.coach.${c.id}`)}</span>
+                  <svg className={styles.hintAr} viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v15M6 13l6 6 6-6" /></svg>
+                </div>
+              ))}
+              {!locked && (
+                <div className={styles.coachBar} data-bar="1">
+                  {layout === 'scroll' && !phone && (
+                    <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' })}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M12 20V5M6 11l6-6 6 6" /></svg>
+                      {t('room.coach.up')}
+                    </button>
+                  )}
+                  <button type="button" onClick={endCoach}>{t('room.coach.ok')}</button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

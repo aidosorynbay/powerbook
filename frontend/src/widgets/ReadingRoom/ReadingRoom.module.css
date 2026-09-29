@@ -1,6 +1,8 @@
 /* The reading room keeps its own palette in both site themes: parchment panels and lamplight over the photo. */
 .scroll,
 .full {
+  /* nothing in the hall ever makes the page wider than the screen */
+  overflow-x: clip;
   --doom: #170b06;
   --panel: rgba(245, 233, 213, 0.9);
   --panel-solid: #f4e7d1;
@@ -271,7 +273,8 @@
   position: absolute;
   left: 50%;
   bottom: calc(100% + 6px);
-  transform: translateX(-50%);
+  /* --lx: set by the engine so a ring near the screen's edge keeps its label on the screen */
+  transform: translateX(calc(-50% + var(--lx, 0px)));
   white-space: nowrap;
   background: var(--tag-bg);
   color: var(--ink);
@@ -332,6 +335,103 @@
 .ui[data-live='1'] .drawer {
   pointer-events: auto;
 }
+/* first-visit hints: a label and a bobbing arrow at each control, and a bar to put them away */
+.coach {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.hint {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: var(--hud);
+  opacity: 0.85;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
+  animation: hintIn 0.6s both;
+  transform: translate(-50%, -100%);
+}
+.hint[data-dir='below'] {
+  transform: translate(-50%, 0);
+  flex-direction: column-reverse;
+}
+.hintL {
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(20, 9, 3, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  white-space: nowrap;
+  transform: translateX(var(--lx, 0px));
+}
+.hintAr {
+  display: block;
+  animation: bobDown 1.15s ease-in-out infinite;
+}
+.hint[data-dir='below'] .hintAr {
+  animation-name: bobUp;
+}
+@keyframes hintIn {
+  from { opacity: 0; }
+}
+@keyframes bobDown {
+  0%, 100% { transform: translateY(-3px); opacity: 0.45; }
+  50% { transform: translateY(3px); opacity: 1; }
+}
+@keyframes bobUp {
+  0%, 100% { transform: rotate(180deg) translateY(-3px); opacity: 0.45; }
+  50% { transform: rotate(180deg) translateY(3px); opacity: 1; }
+}
+.coachBar {
+  position: absolute;
+  left: 50%;
+  bottom: calc(22px + var(--nav));
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  opacity: 0.9;
+}
+.ui[data-live='1'] .coachBar {
+  pointer-events: auto;
+}
+.coachBar button {
+  border: 0;
+  border-radius: 999px;
+  background: rgba(20, 9, 3, 0.62);
+  color: var(--hud);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 5px 11px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+.coachBar button:hover {
+  background: rgba(20, 9, 3, 0.8);
+}
+@media (max-width: 759px) {
+  /* on phones the bar rests in the dock or just above it, at the right (its top is set from the dock) */
+  .coachBar {
+    left: auto;
+    right: 24px;
+    bottom: auto;
+    transform: none;
+  }
+}
+
 .head {
   position: absolute;
   left: 20px;
@@ -999,8 +1099,14 @@
     max-width: none;
     padding: 10px 12px;
   }
-  .dockNote {
+  /* the general hint beside «Сесть и читать» is left out; notes that explain why one cannot sit stay */
+  .dockHint {
     display: none;
+  }
+  .dockNote {
+    font-size: 12px;
+    max-width: none;
+    flex: 1 1 180px;
   }
   .dockBook {
     max-width: 150px;
@@ -1151,6 +1257,11 @@
   100% { opacity: 0; transform: translate(calc(var(--x) * 1.8), var(--y)) scale(1.5); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .hintAr {
+    animation: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .scroll {
     height: calc(100vh + 30vh);

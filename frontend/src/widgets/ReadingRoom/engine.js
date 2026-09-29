@@ -473,7 +473,8 @@ export function createRoomEngine(opts){
   const onMove=e=>{if(view.mobile)return;const rc=stage.getBoundingClientRect();parTX=(e.clientX-rc.left)/rc.width-.5;parTY=(e.clientY-rc.top)/rc.height-.5};
   stage.addEventListener('pointermove',onMove);
   let drag=null;
-  const onDown=e=>{if(!view.mobile||P<.9)return;drag={x:e.clientX,y:e.clientY,pan:view.panX,on:false}};
+  /* the tall photo fits the phone as it is: no dragging it sideways */
+  const onDown=e=>{if(!view.mobile||P<.9||H.portrait)return;drag={x:e.clientX,y:e.clientY,pan:view.panX,on:false}};
   const onDrag=e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(!drag.on&&Math.abs(dx)>8&&Math.abs(dx)>Math.abs(dy)){drag.on=true;cv.setPointerCapture?.(e.pointerId)}if(drag.on)view.panX=drag.pan+dx};
   const onUp=()=>{drag=null};
   cv.addEventListener('pointerdown',onDown);cv.addEventListener('pointermove',onDrag);addEventListener('pointerup',onUp);
@@ -530,8 +531,10 @@ export function createRoomEngine(opts){
     const loadK=tex.ready?clamp((now-tex.readyAt)/600):0;
     computeMap(P,tex.ar);
     const live=seg(P,.8,1);
-    view.parX=lerp(view.parX,(parTX*-18+Math.sin(T*.13)*3)*live,Math.min(1,dt*2.2));
-    view.parY=lerp(view.parY,(parTY*-10+Math.cos(T*.11)*2)*live,Math.min(1,dt*2.2));
+    /* a slow drift with the mouse on wide screens; a phone's photo stays put */
+    const drift=H.portrait?0:live;
+    view.parX=lerp(view.parX,(parTX*-18+Math.sin(T*.13)*3)*drift,Math.min(1,dt*2.2));
+    view.parY=lerp(view.parY,(parTY*-10+Math.cos(T*.11)*2)*drift,Math.min(1,dt*2.2));
     const wake=seg(P,.22,.6);
     if(T>nextFlip){nextFlip=T+7+Math.random()*9;const r=[...occ.values()].filter(o=>o.status==='reading');if(r.length)flipNow(r[Math.floor(Math.random()*r.length)])}
     let n=0;
@@ -573,11 +576,14 @@ export function createRoomEngine(opts){
     drawFx(T,wake*loadK,night);
     /* name tags and rings ride on the photo */
     if(opts.tags){
-      /* widths first, then positions: one layout per frame. Name tags near an edge stay whole on the screen */
-      const els=[...opts.tags.querySelectorAll('[data-u]')],ws=els.map(el=>el.dataset.clamp?el.offsetWidth:0);
+      /* widths first, then positions: one layout per frame. Name tags near an edge stay whole on the screen, and so do
+         the labels over the rings (the ring stays on its chair, its label slides in) */
+      const els=[...opts.tags.querySelectorAll('[data-u]')],ws=els.map(el=>el.dataset.clamp?el.offsetWidth:0),
+        ls=els.map(el=>el.dataset.label&&el.firstElementChild?el.firstElementChild.offsetWidth:0);
       els.forEach((el,i)=>{
         const q=toPx(+el.dataset.u,+el.dataset.v),off=q.x<-40||q.x>view.w+40||q.y>view.rect.y+view.rect.h+10||q.y<-10;
         const x=ws[i]?clamp(q.x,ws[i]/2+6,view.w-ws[i]/2-6):q.x;
+        if(ls[i])el.style.setProperty('--lx',(clamp(x,ls[i]/2+8,view.w-ls[i]/2-8)-x).toFixed(1)+'px');
         el.style.transform=`translate(${x.toFixed(1)}px,${q.y.toFixed(1)}px)${el.dataset.tf||''}`;
         if(off!==(el.dataset.off==='1'))el.dataset.off=off?'1':'0';
       });
