@@ -301,7 +301,8 @@ function motion(id,p,now,vis){
   /* parts, parent first: the head rides on the torso, the book on most of the torso's lean, the hand on the book */
   const T0=aRot(R.hip,tA,1,tX,tY),Th=aMul(T0,aRot(R.neck,hA,1,hX,hY)),Tb=aMul(aRot(R.hip,tA*.6,1,tX*.6,tY*.6),aRot(R.book,bA,bS,bX,bY));
   const Tw=R.wrist?aMul(Tb,aRot(R.wrist,hand[2],hand[3],hand[0],hand[1])):Tb;
-  slotBuf.set(R.box,o);slotBuf.set(R.torso,o+4);putInv(T0,slotBuf,o+8);putInv(Th,slotBuf,o+14);putInv(Tb,slotBuf,o+20);
+  /* the site's masks run a soft seam past each reader's outline, so the box they may be drawn in is padded */
+  const B=R.box;slotBuf.set([B[0]-.012,B[1]-.03,B[2]+.012,B[3]+.03],o);slotBuf.set(R.torso,o+4);putInv(T0,slotBuf,o+8);putInv(Th,slotBuf,o+14);putInv(Tb,slotBuf,o+20);
   slotBuf[o+26]=id;slotBuf[o+27]=vis;slotBuf[o+28]=R.eyes?blinkAmt(now-m.blinkT)*m.blinkK:0;
   if(G&&F.np<NP){const q=F.np++*28;
     pgBuf.set([...G.s0,...G.d,...G.r,...G.l,...G.up,G.away,1,ph,G.tiles[0],G.tiles[1],sl,...G.tint,G.under],q);
