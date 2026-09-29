@@ -81,8 +81,10 @@ class ReadingRoomService:
         return rnd.id if hall == "round" and rnd is not None else None
 
     def _require_seatable(self, hall: str, rnd: Round | None, user: User) -> None:
-        if hall == "round" and not self.in_circle(rnd, user.id):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only this circle's readers sit here")
+        # For now the circle's room is open to every reader (the library leads there too); only the circle's own
+        # readers get their minutes into its calendar (see _credit). It needs a circle to belong to.
+        if hall == "round" and rnd is None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="No round")
 
     # ---------- time ----------
 
@@ -168,7 +170,7 @@ class ReadingRoomService:
         hall = self._hall(hall)
         rnd = self.current_round()
         scope = self._scope(hall, rnd)
-        can_sit = hall == "library" or self.in_circle(rnd, user.id)
+        can_sit = hall == "library" or rnd is not None
         sessions = self._sweep(self._open_sessions(hall, scope)) if hall == "library" or rnd is not None else []
         users = {u.id: u for u in self.db.execute(select(User).where(User.id.in_([s.user_id for s in sessions]))).scalars()} if sessions else {}
         today = self._today()

@@ -2724,6 +2724,18 @@
 .hallLink:hover {
   background: rgba(255, 184, 102, 0.16);
 }
+/* on an empty shelf, beside «Добавить» */
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+.hallLinkBig {
+  padding: 11px 18px;
+  font-size: 15px;
+}
 .hallDot {
   width: 7px;
   height: 7px;

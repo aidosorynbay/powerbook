@@ -132,14 +132,17 @@ def test_pause_stops_the_clock(env):
     assert c.post(f"/api/reading-room/sessions/{sid}/resume", headers=h).json()["status"] == "reading"
 
 
-def test_round_hall_is_for_the_circle(env):
+def test_round_hall_is_open_but_only_the_circle_is_counted(env):
     c, h = env.client, env.h(env.guest)
     st = c.get("/api/reading-room/round/state", headers=h).json()
-    assert not st["can_sit"] and st["messages"] == []
-    assert c.post("/api/reading-room/round/sit", json={"seat": 0, "book": "x"}, headers=h).status_code == 403
-    assert c.post("/api/reading-room/round/messages", json={"text": "привет"}, headers=h).status_code == 403
-    # the library is open to everyone, but a guest's minutes have no circle to go to
-    sid = c.post("/api/reading-room/library/sit", json={"seat": 1, "book": "Хюгге"}, headers=h).json()["id"]
+    assert st["can_sit"] and not st["in_round"]
+    # anyone may sit in the circle's room and talk there ...
+    sid = c.post("/api/reading-room/round/sit", json={"seat": 1, "book": "Хюгге"}, headers=h).json()["id"]
+    assert c.post("/api/reading-room/round/messages", json={"text": "привет"}, headers=h).status_code == 200
+    st = c.get("/api/reading-room/round/state", headers=env.h(env.reader)).json()
+    assert [(r["seat"], r["in_round"]) for r in st["readers"]] == [(1, False)]
+    assert [m["text"] for m in st["messages"]] == ["привет"]
+    # ... but a guest's minutes have no circle to go to
     _age(env, sid, 5 * 60)
     r = c.post(f"/api/reading-room/sessions/{sid}/finish", headers=h).json()
     assert r["minutes"] == 5 and not r["credited"] and r["reason"] == "not_in_round"
@@ -209,5 +212,5 @@ def test_the_day_in_the_chat(env):
     assert ev[0] == ("sit", "Madik", None) and sorted(ev[1:]) == [("finish", "Madik", 20), ("sit", "Aigerim", None)]
     sat = next(e for e in day["events"] if e["display_name"] == "Aigerim")
     assert sat["gender"] == "female" and sat["book"] == "Сто лет"
-    # the round's chat, and its day, are only the circle's
-    assert c.get("/api/reading-room/round/state", headers=env.h(env.guest)).json()["day"] is None
+    # the round's hall has its own day
+    assert c.get("/api/reading-room/round/state", headers=env.h(env.guest)).json()["day"]["readers"] == 0

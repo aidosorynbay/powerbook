@@ -301,6 +301,9 @@ export function BookcasePage({ ownerId }: Props) {
   const [manualError, setManualError] = useState<string | null>(null);
 
   const isSelf = !!data?.is_self;
+  // The reader's own library (not someone else's shelf): the way into the reading room is there even before the
+  // shelf has loaded or when it has nothing on it yet
+  const ownLibrary = !ownerId;
   // One long shelf, or the bookcase: the reader's shelves stacked by theme.
   const [view, setView] = useState<'shelf' | 'sections'>(() => {
     try {
@@ -895,7 +898,7 @@ export function BookcasePage({ ownerId }: Props) {
             ))}
           </div>
           )}
-          {isSelf && (
+          {(isSelf || ownLibrary) && (
             <Link className={styles.hallLink} to="/library/hall">
               <i className={styles.hallDot} aria-hidden="true" />
               {t('room.enterLibrary')}
@@ -1176,9 +1179,16 @@ export function BookcasePage({ ownerId }: Props) {
           <h1>{t('shelf.emptyTitle')}</h1>
           <p>{isSelf ? t('shelf.emptySelfText') : t('shelf.emptyOtherText', { name: ownerName })}</p>
           {isSelf && (
-            <button type="button" className={styles.addButton} onClick={openAdd}>
-              <span aria-hidden="true">+</span> {t('shelf.add')}
-            </button>
+            <div className={styles.emptyActions}>
+              <button type="button" className={styles.addButton} onClick={openAdd}>
+                <span aria-hidden="true">+</span> {t('shelf.add')}
+              </button>
+              {/* no books of your own yet: you can still read with everyone in the reading room */}
+              <Link className={`${styles.hallLink} ${styles.hallLinkBig}`} to="/library/hall">
+                <i className={styles.hallDot} aria-hidden="true" />
+                {t('room.enterLibrary')}
+              </Link>
+            </div>
           )}
         </section>
       )}
@@ -1206,9 +1216,17 @@ export function BookcasePage({ ownerId }: Props) {
       {loadError && !data && (
         <section className={styles.emptyState}>
           <h1>{t('shelf.loadError')}</h1>
-          <button type="button" className={styles.addButton} onClick={() => load()}>
-            {t('shelf.retry')}
-          </button>
+          <div className={styles.emptyActions}>
+            <button type="button" className={styles.addButton} onClick={() => load()}>
+              {t('shelf.retry')}
+            </button>
+            {ownLibrary && (
+              <Link className={`${styles.hallLink} ${styles.hallLinkBig}`} to="/library/hall">
+                <i className={styles.hallDot} aria-hidden="true" />
+                {t('room.enterLibrary')}
+              </Link>
+            )}
+          </div>
         </section>
       )}
 

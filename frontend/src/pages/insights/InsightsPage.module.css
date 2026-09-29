@@ -620,3 +620,96 @@
 .badgeHolderValue { color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .badgeNext { margin-top: 16px; }
 .badgeNextValue { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+
+/* «Ваша книжная полка»: a small window onto the library, a few spines standing on a wooden ledge */
+.shelfPeek {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 18px 20px 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  color: #25221e;
+  background:
+    radial-gradient(circle at 70% 20%, rgba(255, 255, 255, 0.4), transparent 55%),
+    #efe9dd;
+  text-decoration: none;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.shelfPeek:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
+}
+.shelfPeek::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 8px;
+  content: '';
+  background: linear-gradient(180deg, #6a452e, #4f321f);
+}
+.shelfPeekText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-bottom: 26px;
+}
+.shelfPeekKicker {
+  color: rgba(37, 34, 30, 0.6);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.shelfPeekTitle {
+  font-family: 'Literata', Georgia, serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.shelfPeekHint {
+  color: rgba(37, 34, 30, 0.62);
+  font-size: 12px;
+}
+.shelfPeekSpines {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-end;
+  gap: 2px;
+  padding-bottom: 8px;
+}
+.shelfPeekSpines span {
+  display: block;
+  min-width: 7px;
+  border-top: 3px solid;
+  border-radius: 1px 1px 0 0;
+  box-shadow: inset -2px 0 0 rgba(0, 0, 0, 0.12);
+}
+/* an empty shelf: pale places for the books to come */
+.shelfPeekGhost span {
+  min-width: 10px;
+  background: rgba(106, 69, 46, 0.12) !important;
+  border-top-color: rgba(106, 69, 46, 0.22) !important;
+  box-shadow: none;
+}
+.shelfPeekArrow {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  font-size: 18px;
+  transition: transform var(--transition-fast);
+}
+.shelfPeek:hover .shelfPeekArrow {
+  transform: translateX(3px);
+}
+@media (max-width: 420px) {
+  .shelfPeekSpines span:nth-child(n + 6) {
+    display: none;
+  }
+}

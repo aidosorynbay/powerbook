@@ -639,7 +639,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
               <span className={styles.rdName}>
                 {r.me ? t('room.you') : r.display_name} <small>@{r.username}</small>
                 {r.status === 'paused' && <span className={styles.chip}>{t('room.paused')}</span>}
-                {hall === 'library' && !r.in_round && <span className={styles.chip}>{t('room.guest')}</span>}
+                {!r.in_round && <span className={styles.chip}>{t('room.guest')}</span>}
               </span>
               <span className={styles.rdBook}><i className={styles.spine} />{r.book}</span>
             </span>
@@ -777,7 +777,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     dock = (
       <>
         <span className={styles.done}>
-          {finished.credited ? t('room.savedToday', { min: finished.minutes, date: dayLabel(finished.date) }) : finished.reason === 'short' ? t('room.tooShort') : t('room.readFor', { min: finished.minutes })}
+          {finished.credited ? t('room.savedToday', { min: finished.minutes, date: dayLabel(finished.date) }) : finished.reason === 'short' ? t('room.tooShort') : finished.reason === 'not_in_round' ? t('room.readForGuest', { min: finished.minutes }) : t('room.readFor', { min: finished.minutes })}
         </span>
         {finished.credited && <button className={`${styles.btn} ${styles.link}`} type="button" onClick={() => undo(finished)}>{t('room.undo')}</button>}
         <button className={styles.btn} type="button" onClick={() => openPick(null)}>{t('room.readMore')}</button>
@@ -790,7 +790,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" /></svg>
           {t('room.sitDown')}
         </button>
-        <span className={`${styles.dockNote} ${styles.dockHint}`}>{hall === 'round' || state?.in_round ? t('room.dockNote', { date: readingDay }) : t('room.dockNoteGuest')}</span>
+        <span className={`${styles.dockNote} ${styles.dockHint}`}>{state?.in_round ? t('room.dockNote', { date: readingDay }) : t('room.dockNoteGuest')}</span>
       </>
     );
   }

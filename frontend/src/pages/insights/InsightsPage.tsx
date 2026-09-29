@@ -19,6 +19,8 @@ import {
 } from '@/shared/lib';
 import { Card, Container, PageTransition, Badge, ProgressBar, Button, BookCard } from '@/shared/ui';
 import { Header, Footer, ClaimPicker, WrappedCard } from '@/widgets';
+import { paletteFor, dimensionsFor } from '@/pages/library/bookcase/bookArt';
+import { bookCount } from '@/pages/library/bookcase/plural';
 import styles from './InsightsPage.module.css';
 
 function StatTile({
@@ -45,7 +47,7 @@ function StatTile({
 }
 
 export function InsightsPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { user } = useAuth();
 
   const [profile, setProfile] = useState<AllTimeProfile | null>(null);
@@ -384,9 +386,41 @@ export function InsightsPage() {
                   )}
                 </section>
 
+                <section className={styles.section}>
+                  <h2 className={styles.sectionTitle}>{t('insights.bookshelf')}</h2>
+                  {/* A small window onto the library: a few spines in the colours those books wear on the 3D
+                      shelf; the whole of it opens the library */}
+                  <Link to="/library" className={styles.shelfPeek}>
+                    <span className={styles.shelfPeekText}>
+                      <span className={styles.shelfPeekKicker}>{t('nav.library')}</span>
+                      <span className={styles.shelfPeekTitle}>{t('insights.openLibrary')}</span>
+                      <span className={styles.shelfPeekHint}>
+                        {bookshelf.length
+                          ? t('shelf.profileCtaHint', { count: bookCount(locale, bookshelf.length, t) })
+                          : t('insights.libraryEmptyHint')}
+                      </span>
+                    </span>
+                    <span className={`${styles.shelfPeekSpines} ${bookshelf.length ? '' : styles.shelfPeekGhost}`} aria-hidden="true">
+                      {(bookshelf.length ? bookshelf.map((b) => b.title) : ['a', 'bb', 'ccc', 'dddd', 'eeeee']).slice(0, 9).map((title, i) => {
+                        const seed = title.trim().toLowerCase();
+                        const p = paletteFor(seed);
+                        const d = dimensionsFor(seed);
+                        return (
+                          <span
+                            key={i}
+                            style={{
+                              background: p.cover,
+                              borderTopColor: p.accent,
+                              height: `${Math.round(d.height * 30)}px`,
+                              width: `${Math.round(d.thickness * 48)}px`,
+                            }}
+                          />
+                        );
+                      })}
+                    </span>
+                    <span className={styles.shelfPeekArrow} aria-hidden="true">→</span>
+                  </Link>
                 {bookshelf.length > 0 && (
-                  <section className={styles.section}>
-                    <h2 className={styles.sectionTitle}>{t('insights.bookshelf')}</h2>
                     <Card variant="default" padding="md">
                       <ul className={styles.bookList}>
                         {visibleBooks.map((b, i) => (
@@ -410,8 +444,8 @@ export function InsightsPage() {
                         </button>
                       )}
                     </Card>
-                  </section>
                 )}
+                </section>
 
                 {popular.length > 0 && (
                   <section className={styles.section}>
