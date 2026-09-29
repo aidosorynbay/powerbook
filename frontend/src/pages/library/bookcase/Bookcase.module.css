@@ -2705,3 +2705,37 @@
     bottom: calc(var(--nav) + 32px);
   }
 }
+
+/* The way into the library's reading room: a lamp that glows while the room is open. */
+.hallLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 184, 102, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 184, 102, 0.08);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.hallLink:hover {
+  background: rgba(255, 184, 102, 0.16);
+}
+.hallDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffb866;
+  box-shadow: 0 0 0 0 rgba(255, 184, 102, 0.55);
+  animation: hallPulse 2.4s infinite;
+}
+@keyframes hallPulse {
+  70% { box-shadow: 0 0 0 8px rgba(255, 184, 102, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 184, 102, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hallDot { animation: none; }
+}

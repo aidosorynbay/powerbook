@@ -896,6 +896,12 @@ export function BookcasePage({ ownerId }: Props) {
           </div>
           )}
           {isSelf && (
+            <Link className={styles.hallLink} to="/library/hall">
+              <i className={styles.hallDot} aria-hidden="true" />
+              {t('room.enterLibrary')}
+            </Link>
+          )}
+          {isSelf && (
             <button
               type="button"
               className={`${styles.addButton} ${styles.headerAdd}`}

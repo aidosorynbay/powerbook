@@ -13,4 +13,5 @@ export { HeroBanner } from './HeroBanner';
 export { LastCallNotice } from './LastCallNotice';
 export { ActivityRings } from './ActivityRings';
 export { TelegramGuide } from './TelegramGuide';
+export { ReadingRoom } from './ReadingRoom';
 export type { ActivityRing, RingTotal } from './ActivityRings';

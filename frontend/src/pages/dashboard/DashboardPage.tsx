@@ -16,7 +16,7 @@ import {
 } from '@/shared/lib';
 import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition } from '@/shared/ui';
-import { Header, Footer, ActivityRings, type ActivityRing, type RingTotal } from '@/widgets';
+import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal } from '@/widgets';
 import anim from '@/shared/styles/animations.module.css';
 import { quietDayIcon, quietDayQuoteKeys, finishFlagIcon } from '@/shared/lib/quietDays';
 import styles from './DashboardPage.module.css';
@@ -1316,6 +1316,17 @@ export function DashboardPage() {
           )}
         </Container>
       </main>
+
+      {/* The circle's reading room unfolds under the round. Minutes from its timer land in «Сегодня», so the page
+          reloads its own numbers when the reader gets up. */}
+      {roundStatus?.round && !inRegistrationWindow && (
+        <ReadingRoom hall="round" layout="scroll" onToday={() => {
+          if (!roundStatus?.round) return;
+          fetchCalendar(roundStatus.round.id);
+          fetchLeaderboard(roundStatus.round.id);
+          fetchRoster(roundStatus.round.id);
+        }} />
+      )}
 
       <Footer />
 
