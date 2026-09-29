@@ -147,6 +147,12 @@ class BookcaseBookOut(BaseModel):
     # Owner only: the reader's own notes on this book, oldest first.
     notes: list[BookNoteOut] = []
 
+    # The owner's mark out of ten and their review: public, like the shelf.
+    rating: int | None = None
+    review: str | None = None
+    # Owner only: to take the mark back.
+    review_id: uuid.UUID | None = None
+
     # Which of the owner's shelves the book stands on; None is unsorted.
     shelf_id: uuid.UUID | None = None
 

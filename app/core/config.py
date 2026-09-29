@@ -34,6 +34,19 @@ class Settings(BaseSettings):
     # means the keyless public feed, which works but searches less well.
     google_books_api_key: str = ""
 
+    # Claude (Anthropic API) for the reading summaries and the book facts
+    # pass. Empty means those features say "not switched on yet" and
+    # everything else works without them.
+    anthropic_api_key: str = ""
+    ai_model: str = "claude-opus-5"
+    # The background pass that asks Claude (with web search) for each
+    # book's Goodreads/LiveLib rating and readers' verdict. Costs money per
+    # book, so it stays off until switched on.
+    ai_book_facts: bool = False
+    # Background fetching of ratings and descriptions from the free
+    # catalogues (Google Books, Open Library, Wikipedia).
+    book_facts_enabled: bool = True
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

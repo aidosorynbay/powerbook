@@ -1,7 +1,7 @@
 import calendar
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -152,6 +152,19 @@ def _tick_round_lifecycle() -> None:
 async def lifespan(app: FastAPI):
     scheduler = BackgroundScheduler()
     scheduler.add_job(_tick_round_lifecycle, "interval", minutes=1, id="round_lifecycle")
+    # Ratings, descriptions and topics for the shared library, a few books
+    # at a time; a file lock keeps the two workers from doing it twice.
+    from app.services import book_facts
+
+    scheduler.add_job(
+        book_facts.scheduled,
+        "interval",
+        minutes=3,
+        id="book_facts",
+        max_instances=1,
+        coalesce=True,
+        next_run_time=datetime.now() + timedelta(seconds=90),
+    )
     scheduler.start()
     logger.info("Round lifecycle scheduler started")
     yield

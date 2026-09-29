@@ -1,4 +1,8 @@
+from app.models.ai_digest import AiDigest
 from app.models.book_cover import BookCover
+from app.models.book_fact import BookFact
+from app.models.book_listing import BookListing
+from app.models.book_review import BookReview
 from app.models.buddy import ReadingBuddy
 from app.models.claim import UsernameClaim
 from app.models.group import Group, GroupMember
@@ -35,5 +39,9 @@ __all__ = [
     "ShelfPlacement",
     "ReadingRoomSession",
     "ReadingRoomMessage",
+    "BookReview",
+    "BookFact",
+    "BookListing",
+    "AiDigest",
 ]
 

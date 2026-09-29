@@ -345,6 +345,22 @@ class BookcaseService:
             for vol in volumes:
                 vol.notes = [BookNoteOut.model_validate(n) for n in notes.get(vol.key, [])]
 
+        # The owner's marks and reviews, on their shelf for anyone to see.
+        if not owner.is_claimable:
+            from app.services import books, catalog
+
+            marks = books.reviews_for_shelf(self.db, owner.id)
+            by_volume = {r.volume_key: r for r in marks if r.volume_key}
+            by_work = {r.work_key: r for r in marks}
+            for vol in volumes:
+                review = by_volume.get(vol.key) or by_work.get(vol.match_key or "") or by_work.get(catalog.work_key(vol.title) or "")
+                if review is None:
+                    continue
+                vol.rating = review.rating
+                vol.review = review.text
+                if is_self:
+                    vol.review_id = review.id
+
         for vol in volumes:
             vol.fellow_readers = fellow_count(vol.match_key)
             if vol.status == "finished" and vol.finished_on:
