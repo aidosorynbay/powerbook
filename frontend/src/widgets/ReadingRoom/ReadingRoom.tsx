@@ -338,12 +338,11 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     const taken = new Set(readers.map((r) => r.seat));
     let seat = pick?.seat ?? null;
     if (seat === null || taken.has(seat)) {
-      // no chair chosen: one where the reader will be seen first, then any free one
-      const free = H.seats.map((_, i) => i).filter((i) => !taken.has(i) && canSit(i));
-      seat = free.find((i) => charFor(hk, i, user?.gender ?? '') > 0) ?? free[0] ?? null;
+      // no chair chosen: the first free one where the reader will be seen
+      seat = H.seats.map((_, i) => i).find((i) => !taken.has(i) && canSit(i)) ?? null;
     }
     if (seat === null) {
-      say(t('room.full'));
+      say(t('room.fullSeen'));
       return;
     }
     setBusy(true);
@@ -411,10 +410,13 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
 
   /* ---------- seats ---------- */
   const taken = new Set(readers.map((r) => r.seat));
+  // For now a reader sits only where the render has a character of their gender, so they are always seen in the photo.
+  // Chairs that would show just a name tag are not offered.
   function canSit(i: number) {
     const sc = seatChar(hk, i);
-    return !sc || !myG || sc.g === myG;
+    return !!sc && !!myG && sc.g === myG;
   }
+  const freeSeen = H.seats.filter((_, i) => !taken.has(i) && canSit(i)).length;
   const showRings = !!state?.can_sit && !mine && !finished;
   const reading = readers.filter((r) => r.status === 'reading').length;
   const totalMinutes = readers.reduce((s, r) => s + Math.floor(elapsed(r) / 60), 0);
@@ -459,21 +461,20 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   const rings = showRings
     ? H.seats.map((s, i) => {
         if (taken.has(i) || !canSit(i)) return null;
-        const sc = seatChar(hk, i);
-        const own = !!(sc && myG && sc.g === myG);
-        const at = own && sc ? sc.ring ?? sc.head : ([s[0], s[1]] as [number, number]);
+        const sc = seatChar(hk, i)!;
+        const at = sc.ring ?? sc.head ?? ([s[0], s[1]] as [number, number]);
         const chosen = pick?.seat === i;
         return (
           <button
             key={`free-${i}`}
             type="button"
-            className={`${styles.free} ${own ? styles.freeOwn : ''} ${chosen ? styles.freeChosen : ''} ${pick ? styles.freePicking : ''}`}
+            className={`${styles.free} ${styles.freeOwn} ${chosen ? styles.freeChosen : ''} ${pick ? styles.freePicking : ''}`}
             data-u={at[0]}
             data-v={at[1]}
-            aria-label={own ? t('room.sitSeen') : t('room.sitPlain')}
+            aria-label={t('room.sitSeen')}
             onClick={() => openPick(i)}
           >
-            <span>{own ? t('room.sitSeen') : t('room.sitPlain')}</span>
+            <span>{t('room.sitSeen')}</span>
           </button>
         );
       })
@@ -534,6 +535,16 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     dock = <span className={styles.dockNote}>{t('room.noRound')}</span>;
   } else if (noAccess) {
     dock = <span className={styles.dockNote}>{t('room.onlyCircle')}</span>;
+  } else if (!mine && !finished && !myG) {
+    // without a gender there is no character to seat
+    dock = (
+      <>
+        <span className={styles.dockNote}>{t('room.needGender')}</span>
+        <button className={`${styles.btn} ${styles.primary}`} type="button" onClick={() => navigate('/profile')}>{t('room.toProfile')}</button>
+      </>
+    );
+  } else if (!mine && !finished && !pick && freeSeen === 0) {
+    dock = <span className={styles.dockNote}>{t('room.fullSeen')}</span>;
   } else if (mine && !mineHere) {
     dock = (
       <>

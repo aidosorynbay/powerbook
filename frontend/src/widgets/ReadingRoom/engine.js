@@ -312,7 +312,8 @@ function motion(id,p,now,vis){
 
 /* ---------- the halls, mapped in photo coordinates (0..1) ---------- */
 /* seats: u, v, lamp index or -1; chars: which reader of the render sits in a seat, their gender, where the name tag and the
-   "sit here" ring go. lamps glow brighter when someone reads beside them; cups steam; sway: leaves that move in the air */
+   "sit here" ring go. lamps glow brighter when someone reads beside them; cups steam: u, v, and the reader whose head
+   hides that cup in the render (its steam stops while they sit there); sway: leaves that move in the air */
 export const HALLS={
   a:{files:'a',sun:[.5,.05],win:[.5,.1,.13,.17],fire:[.915,.78],fireBox:[.893,.712,.938,.852],
     lamps:[[.15,.66,1],[.705,.38,.75],[.855,.70,1]],
@@ -320,7 +321,7 @@ export const HALLS={
     chars:{1:{seat:1,g:'f',head:[.318,.292]},2:{seat:10,g:'f',head:[.644,.252]},3:{seat:8,g:'m',head:[.754,.437],ring:[.757,.49]},4:{seat:4,g:'m',head:[.19,.705],ring:[.205,.79]},5:{seat:7,g:'f',head:[.793,.732]},
       6:{seat:0,g:'m',head:[.348,.234],ring:[.345,.31]},7:{seat:3,g:'m',head:[.238,.466],ring:[.25,.585]},8:{seat:5,g:'m',head:[.388,.771],ring:[.40,.89]},
       9:{seat:6,g:'m',head:[.614,.768],ring:[.60,.905]},10:{seat:9,g:'m',head:[.677,.349],ring:[.665,.455]},11:{seat:11,g:'m',head:[.511,.199],ring:[.512,.29]}},
-    cups:[[.19,.715],[.177,.753],[.535,.745],[.57,.772],[.81,.772],[.455,.44],[.53,.415]],
+    cups:[[.19,.715,4],[.177,.753,4],[.535,.745],[.57,.772],[.81,.772,5],[.53,.415]],
     sway:[[.5,.13,.14,.15],[.22,.3,.09,.17],[.04,.85,.06,.16],[.955,.9,.05,.12],[.73,.32,.05,.1]],
     dust:{skew:-.05}},
   /* the library: its front row is room A's, chair for chair. Its back row and balcony are part of the picture until an
@@ -330,7 +331,7 @@ export const HALLS={
     seats:[[.235,.63,0],[.745,.62,1],[.2,.89,-1],[.42,.905,-1],[.58,.905,-1],[.79,.89,-1]],
     chars:{7:{seat:0,g:'m',head:[.238,.466],ring:[.25,.585]},3:{seat:1,g:'m',head:[.754,.437],ring:[.757,.49]},4:{seat:2,g:'m',head:[.19,.705],ring:[.205,.79]},
       8:{seat:3,g:'m',head:[.388,.771],ring:[.40,.89]},9:{seat:4,g:'m',head:[.614,.768],ring:[.60,.905]},5:{seat:5,g:'f',head:[.793,.732]}},
-    cups:[[.19,.715],[.177,.753],[.535,.745],[.57,.772],[.81,.772]],
+    cups:[[.19,.715,4],[.177,.753,4],[.535,.745],[.57,.772],[.81,.772,5]],
     sway:[[.5,.14,.18,.16],[.2,.3,.1,.18],[.68,.36,.06,.1],[.04,.85,.06,.16],[.955,.9,.05,.12]],
     dust:{skew:-.04}},
 };
@@ -529,7 +530,8 @@ export function createRoomEngine(opts){
       [['uWith',P6&&P6.tex,2],['uMask',P6&&P6.mask,3],['uRig',shared.rig,4],['uSoft',shared.soft,5],['uPages',P6&&P6.pages,6]].forEach(([u,t,i])=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,peopleReady&&t?t:tex.ray);gl.uniform1i(U[u],i)});
       if(!peopleReady)frameSlots.ns=0,slotBuf.fill(0);
       gl.uniform4fv(U.uS,slotBuf);gl.uniform4fv(U.uPg,pgBuf);gl.uniform4fv(U.uEye,eyeBuf);gl.uniform4fv(U.uLid,lidBuf);
-      cupBuf.fill(0);H.cups.slice(0,8).forEach((cp,i)=>cupBuf.set([cp[0],cp[1]-.004,seg(P,.6,.85),.55+cp[1]*.75],i*4));gl.uniform4fv(U.uCup,cupBuf);gl.uniform4f(U.uFireBox,...H.fireBox);
+      const shown={};for(const s of seats)if(s.lastChar)shown[s.lastChar]=Math.max(shown[s.lastChar]||0,s.vis);
+      cupBuf.fill(0);H.cups.slice(0,8).forEach((cp,i)=>cupBuf.set([cp[0],cp[1]-.004,seg(P,.6,.85)*(1-(cp[2]?shown[cp[2]]||0:0)),.55+cp[1]*.75],i*4));gl.uniform4fv(U.uCup,cupBuf);gl.uniform4f(U.uFireBox,...H.fireBox);
       gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex.tex);gl.uniform1i(U.uImg,0);
       gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,tex.ray);gl.uniform1i(U.uRay,1);
       gl.uniform2f(U.uRes,view.w,view.h);gl.uniform2f(U.uOff,view.ox,view.oy);gl.uniform2f(U.uSize,view.W,view.H);gl.uniform2f(U.uPar,view.parX,view.parY);
