@@ -5,6 +5,18 @@ import styles from './LibrarySwitch.module.css';
 
 type Section = 'shelf' | 'books' | 'market' | 'hall' | 'reading';
 
+// Set once the reader has opened the list: until then its chevron pulses, so
+// nobody takes the title for a plain heading.
+const SEEN_KEY = 'pb.libSwitchSeen';
+
+function seenBefore(): boolean {
+  try {
+    return localStorage.getItem(SEEN_KEY) === '1';
+  } catch {
+    return true;
+  }
+}
+
 const SECTIONS: { key: Section; to: string; title: string; hint: string; group: 1 | 2 }[] = [
   { key: 'shelf', to: '/library', title: 'shelf.wordmarkSelf', hint: 'libswitch.shelfHint', group: 1 },
   { key: 'books', to: '/books', title: 'cat.title', hint: 'libswitch.booksHint', group: 1 },
@@ -21,7 +33,20 @@ export function LibrarySwitch({ current, labelClass }: { current: Section; label
   const { t } = useI18n();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  const [hint, setHint] = useState(() => !seenBefore());
   const box = useRef<HTMLDivElement>(null);
+
+  const toggle = () => {
+    setOpen((o) => !o);
+    if (hint) {
+      setHint(false);
+      try {
+        localStorage.setItem(SEEN_KEY, '1');
+      } catch {
+        // storage blocked: the pulse stops for this visit
+      }
+    }
+  };
 
   useEffect(() => setOpen(false), [pathname]);
 
@@ -54,10 +79,10 @@ export function LibrarySwitch({ current, labelClass }: { current: Section; label
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`${t(here.title)} — ${t('libswitch.label')}`}
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
       >
         <span className={styles.triggerText}>{t(here.title)}</span>
-        <span className={`${styles.chev} ${open ? styles.chevOpen : ''}`} aria-hidden="true">
+        <span className={`${styles.chev} ${open ? styles.chevOpen : ''} ${hint ? styles.chevHint : ''}`} aria-hidden="true">
           ▾
         </span>
       </button>

@@ -62,6 +62,35 @@
   transform: rotate(180deg);
 }
 
+/* Until the list has been opened once: a soft ring breathes out of the
+   chevron, so the title reads as something to press. */
+.chevHint {
+  border-color: var(--color-border-accent);
+  animation: hintPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes hintPulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent-primary) 55%, transparent);
+    transform: scale(1);
+  }
+  45% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--color-accent-primary) 0%, transparent);
+    transform: scale(1.08);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent-primary) 0%, transparent);
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevHint {
+    animation: none;
+    box-shadow: 0 0 0 3px var(--color-accent-primary-muted);
+  }
+}
+
 .menu {
   position: absolute;
   z-index: 80;

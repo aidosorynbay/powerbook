@@ -929,15 +929,18 @@ export function BookcasePage({ ownerId }: Props) {
               ))}
             </div>
           )}
+          {/* The order as one list rather than three pills: the header has room for what matters more. */}
           {!empty && (
-          <div className={styles.segment} role="group" aria-label={t('shelf.sort')}>
-            <span className={styles.segmentLabel}>{t('shelf.sort')}</span>
-            {(['recent', 'az', 'popular'] as Sort[]).map((s) => (
-              <button key={s} type="button" aria-pressed={sort === s} disabled={inspecting} onClick={() => changeSort(s)}>
-                {t(s === 'recent' ? 'shelf.sortRecent' : s === 'az' ? 'shelf.sortAz' : 'shelf.sortPopular')}
-              </button>
-            ))}
-          </div>
+            <label className={styles.sortPick}>
+              <span>{t('shelf.sort')}</span>
+              <select value={sort} disabled={inspecting} onChange={(e) => changeSort(e.target.value as Sort)} aria-label={t('shelf.sort')}>
+                {(['recent', 'az', 'popular'] as Sort[]).map((s) => (
+                  <option key={s} value={s}>
+                    {t(s === 'recent' ? 'shelf.sortRecent' : s === 'az' ? 'shelf.sortAz' : 'shelf.sortPopular')}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
           {(isSelf || ownLibrary) && (
             <Link className={styles.hallLink} to="/library/hall">

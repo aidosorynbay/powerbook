@@ -2835,3 +2835,58 @@
 .details form[class*='markBox'] {
   margin-top: 16px;
 }
+
+/* The shelf's order, as a pill that opens a list. */
+.sortPick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-full);
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: border-color 0.2s ease;
+}
+
+.sortPick:hover,
+.sortPick:focus-within {
+  border-color: var(--color-border-accent);
+}
+
+.sortPick::after {
+  position: absolute;
+  right: 13px;
+  color: var(--accent);
+  font-size: 11px;
+  pointer-events: none;
+  content: '▾';
+}
+
+.sortPick select {
+  padding: 7px 30px 7px 2px;
+  border: 0;
+  color: var(--accent);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.sortPick select:focus {
+  outline: none;
+}
+
+.sortPick select:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.sortPick option {
+  color: var(--color-text-primary);
+  background: var(--color-bg-elevated);
+}
