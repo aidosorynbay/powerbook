@@ -77,7 +77,8 @@ def _out(
         id=listing.id,
         title=listing.title,
         author=listing.author,
-        work_key=work.key if work else listing.work_key,
+        # Only a book the shared library has: a link to anything else leads nowhere.
+        work_key=work.key if work else None,
         volume_key=listing.volume_key if listing.seller_id == viewer_id else None,
         price=listing.price,
         condition=listing.condition,

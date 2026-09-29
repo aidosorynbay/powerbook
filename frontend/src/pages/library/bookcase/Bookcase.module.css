@@ -2808,3 +2808,30 @@
 @media (prefers-reduced-motion: reduce) {
   .hallDot { animation: none; }
 }
+
+/* The book as the shared library knows it, and the reader's mark on it. */
+.libraryLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  color: var(--ink) !important;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.libraryLine > span:first-child {
+  flex: 1;
+}
+
+.libraryLine:hover {
+  border-color: var(--color-border-accent);
+}
+
+.details form[class*='markBox'] {
+  margin-top: 16px;
+}

@@ -1,0 +1,408 @@
+/* The reading recap. The page, tabs and book strips come from the store's
+   styles; this adds the numbers, the chart and the letters. */
+
+.wrap {
+  /* One series, in the site's data colour (amber by night, brick by day);
+     orange is kept for things you press. Both checked against their surface. */
+  --chart-ink: #c7841f;
+}
+
+:global(html[data-theme='light']) .wrap {
+  --chart-ink: #a74735;
+}
+
+.periods {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.tile {
+  padding: 14px 16px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+}
+
+.tile strong {
+  display: block;
+  font-size: 30px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+
+.tile span {
+  display: block;
+  margin-top: 6px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 860px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+}
+
+.card h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.cardNote {
+  margin: 0 0 12px;
+  color: var(--color-text-muted);
+  font-size: 12.5px;
+}
+
+/* ---------- minutes, one column per month / day / year ---------- */
+
+.chart {
+  position: relative;
+  display: grid;
+  align-items: end;
+  gap: 2px;
+  height: 150px;
+  padding-top: 18px;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.col {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 100%;
+  cursor: default;
+  outline: none;
+}
+
+.bar {
+  width: 100%;
+  max-width: 24px;
+  min-height: 0;
+  border-radius: 4px 4px 0 0;
+  background: var(--chart-ink);
+  transition: opacity var(--transition-fast);
+}
+
+.chart:hover .bar {
+  opacity: 0.55;
+}
+
+.chart .col:hover .bar,
+.chart .col:focus-visible .bar {
+  opacity: 1;
+}
+
+.peak {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tip {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  display: none;
+  padding: 6px 9px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-md);
+  font-size: 12px;
+  line-height: 1.35;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.col:hover .tip,
+.col:focus-visible .tip {
+  display: block;
+}
+
+.ticks {
+  display: grid;
+  gap: 2px;
+  margin-top: 6px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+/* Only every fifth day is named, so a label may spill over its neighbours. */
+.ticks span {
+  display: flex;
+  justify-content: center;
+  overflow: visible;
+  white-space: nowrap;
+}
+
+/* ---------- topics ---------- */
+
+.topicList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.topicRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  font-size: 13.5px;
+}
+
+.topicRow b {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.topicTrack {
+  grid-column: 1 / -1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--color-bg-primary);
+}
+
+.topicTrack span {
+  display: block;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  background: var(--chart-ink);
+}
+
+.authors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.authors span {
+  padding: 4px 10px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+}
+
+/* ---------- letters ---------- */
+
+.letter {
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid var(--color-border-accent);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(ellipse at 0% 0%, var(--color-accent-primary-muted), transparent 60%),
+    var(--color-bg-secondary);
+}
+
+.letterHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.letterHead h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.letterIntro {
+  margin: 0 0 12px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.letterBody {
+  display: grid;
+  gap: 14px;
+}
+
+.letterBody h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.headline {
+  margin: 0;
+  font-family: 'Literata', Georgia, serif;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.prose {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14.5px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.bullets {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.bullets b {
+  color: var(--color-text-primary);
+}
+
+.question {
+  margin: 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--color-accent-primary);
+  border-radius: 0 8px 8px 0;
+  background: var(--color-bg-primary);
+  font-size: 15px;
+  font-style: italic;
+}
+
+.working {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent-primary);
+  animation: pulse 1.2s infinite ease-in-out;
+}
+
+.dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes pulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+/* ---------- notes ---------- */
+
+.notebook {
+  display: grid;
+  gap: 14px;
+}
+
+.entry {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+}
+
+.entry h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.entryMeta {
+  margin: 2px 0 10px;
+  color: var(--color-text-muted);
+  font-size: 12.5px;
+}
+
+.quote {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.quote cite {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.reason {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}

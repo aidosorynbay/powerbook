@@ -518,6 +518,11 @@ export type BookcaseBook = {
   upload_id: string | null;
   manual_id: string | null;
   is_visible_to_buddies: boolean | null;
+  /** The owner's mark out of ten and their review; public, like the shelf. */
+  rating?: number | null;
+  review?: string | null;
+  /** Owner only. */
+  review_id?: string | null;
 };
 
 export type Bookcase = {
@@ -549,4 +554,182 @@ export type CoverOption = {
   title: string;
   author: string | null;
   thumb_url: string;
+};
+
+// ---------- the shared library, marks and the book market ----------
+
+export type CatalogItem = {
+  key: string;
+  title: string;
+  author: string | null;
+  cover_url: string | null;
+  cover_thumb_url: string | null;
+  readers: number;
+  /** PowerBook readers' own marks, out of ten. */
+  pb_rating: number | null;
+  pb_votes: number;
+  pb_reviews: number;
+  /** Elsewhere, on that source's own scale (out of 5). */
+  ext_rating: number | null;
+  ext_scale: number;
+  ext_votes: number | null;
+  ext_source: 'goodreads' | 'livelib' | 'google' | 'openlibrary' | null;
+  for_sale: number;
+  my_rating: number | null;
+  topics: string[];
+};
+
+export type CatalogPage = {
+  items: CatalogItem[];
+  total: number;
+  offset: number;
+  counts: { all: number; rated: number; reviewed: number; sale: number };
+  topics: Record<string, number>;
+};
+
+export type BookReview = {
+  id: string;
+  user_id: string;
+  display_name: string;
+  avatar_data: string | null;
+  rating: number;
+  text: string | null;
+  created_at: string;
+  updated_at: string;
+  is_viewer: boolean;
+};
+
+export type TextWithSource = { text: string; source: string; url: string | null };
+
+export type Seller = { user_id: string; display_name: string; avatar_data?: string | null; telegram: string | null };
+
+export type Listing = {
+  id: string;
+  title: string;
+  author: string | null;
+  work_key: string | null;
+  volume_key: string | null;
+  price: number;
+  condition: 'new' | 'like_new' | 'good' | 'fair';
+  city: string | null;
+  contact: string | null;
+  note: string | null;
+  photo_url: string | null;
+  cover_url: string | null;
+  cover_thumb_url: string | null;
+  status: 'active' | 'reserved' | 'sold' | 'hidden';
+  created_at: string;
+  seller: Seller;
+  is_mine: boolean;
+  pb_rating: number | null;
+  ext_rating: number | null;
+  ext_scale: number;
+  ext_source: CatalogItem['ext_source'];
+};
+
+export type Work = CatalogItem & {
+  ext_url: string | null;
+  goodreads_url: string | null;
+  source_url: string | null;
+  about: TextWithSource | null;
+  readers_say: TextWithSource | null;
+  pages: number | null;
+  year: number | null;
+  facts_status: string | null;
+  histogram: number[];
+  reviews: BookReview[];
+  readers_list: { user_id: string; display_name: string; avatar_data: string | null; is_archive: boolean; is_viewer: boolean }[];
+  my_review: BookReview | null;
+  my_volume_key: string | null;
+  listings: Listing[];
+};
+
+export type MarketPage = { items: Listing[]; total: number; offset: number; cities: string[] };
+
+export type ShelfReview = { id: string; work_key: string; volume_key: string | null; rating: number; text: string | null; updated_at: string };
+
+// ---------- reading summaries ----------
+
+export type PeriodBook = {
+  key: string;
+  work_key: string | null;
+  title: string;
+  author: string | null;
+  cover_url: string | null;
+  finished_on: string | null;
+  rating: number | null;
+  topics: string[];
+  notes_count: number;
+  has_comment: boolean;
+};
+
+export type ReadingOverview = {
+  period: string;
+  years: number[];
+  months: number[];
+  minutes: number;
+  days_read: number;
+  longest_streak: number;
+  best_day: { date: string; minutes: number } | null;
+  units: { key: string; minutes: number; books: number }[];
+  books: PeriodBook[];
+  topics: { key: string; count: number; share: number }[];
+  authors: { name: string; count: number }[];
+  avg_rating: number | null;
+  rated_count: number;
+  notes_count: number;
+  ai_available: boolean;
+};
+
+export type Recommendation = {
+  book: CatalogItem;
+  reason: 'co_read' | 'popular';
+  because_title: string | null;
+  because_key: string | null;
+  shared_readers: number;
+};
+
+export type NotebookEntry = {
+  key: string;
+  work_key: string | null;
+  title: string;
+  author: string | null;
+  cover_url: string | null;
+  finished_on: string | null;
+  comment: string | null;
+  comment_private: boolean;
+  notes: { id: string; text: string; created_at: string }[];
+  rating: number | null;
+  review: string | null;
+  last_at: string | null;
+};
+
+export type PeriodLetter = {
+  headline: string;
+  summary: string;
+  themes: { title: string; text: string }[];
+  patterns: string[];
+  from_notes: { book: string; idea: string }[];
+  next_reads: { title: string; author: string; why: string }[];
+  question: string;
+};
+
+export type BookLetter = {
+  summary: string;
+  key_ideas: string[];
+  moments: string[];
+  connections: string[];
+  question: string;
+};
+
+export type Digest = {
+  id: string;
+  kind: 'period' | 'book';
+  scope: string;
+  lang: string;
+  status: 'working' | 'done' | 'error';
+  content: PeriodLetter | BookLetter | null;
+  error: string | null;
+  updated_at: string;
+  stale: boolean;
 };

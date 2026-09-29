@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { AuthProvider, useAuth, I18nProvider, useI18n } from '@/shared/lib';
-import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage } from '@/pages';
+import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage } from '@/pages';
 import { BottomNav, LastCallNotice } from '@/widgets';
 import '@/app/styles/theme.css';
 
@@ -59,6 +59,18 @@ function AppRoutes() {
         <Route
           path="/library/hall"
           element={isAuthenticated ? <LibraryHallPage /> : <Navigate to="/login" replace />}
+        />
+        <Route
+          path="/books"
+          element={isAuthenticated ? <CatalogPage /> : <Navigate to="/login" replace />}
+        />
+        <Route
+          path="/market"
+          element={isAuthenticated ? <MarketPage /> : <Navigate to="/login" replace />}
+        />
+        <Route
+          path="/reading"
+          element={isAuthenticated ? <ReadingPage /> : <Navigate to="/login" replace />}
         />
         <Route
           path="/library/:bookId"

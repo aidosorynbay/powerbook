@@ -7,6 +7,7 @@ import { Header, Footer } from '@/widgets';
 import { paletteFor, dimensionsFor } from '@/pages/library/bookcase/bookArt';
 import { bookCount } from '@/pages/library/bookcase/plural';
 import styles from './PublicProfilePage.module.css';
+import { ProfileListings } from '../books/ProfileBits';
 
 function getMusicEmbedUrl(url: string): string | null {
   try {
@@ -244,6 +245,8 @@ export function PublicProfilePage() {
                     </div>
                   </div>
                 )}
+
+                <ProfileListings userId={profile.user_id} isSelf={profile.is_self} titleClass={styles.musicKicker} />
 
                 {embedUrl && (
                   <div className={styles.musicSection}>

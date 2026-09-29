@@ -22,6 +22,7 @@ import { Header, Footer, ClaimPicker, WrappedCard } from '@/widgets';
 import { paletteFor, dimensionsFor } from '@/pages/library/bookcase/bookArt';
 import { bookCount } from '@/pages/library/bookcase/plural';
 import styles from './InsightsPage.module.css';
+import { ProfileListings, RecapLink } from '../books/ProfileBits';
 
 function StatTile({
   value,
@@ -386,6 +387,8 @@ export function InsightsPage() {
                   )}
                 </section>
 
+                <RecapLink />
+
                 <section className={styles.section}>
                   <h2 className={styles.sectionTitle}>{t('insights.bookshelf')}</h2>
                   {/* A small window onto the library: a few spines in the colours those books wear on the 3D
@@ -446,6 +449,8 @@ export function InsightsPage() {
                     </Card>
                 )}
                 </section>
+
+                {user && <ProfileListings userId={user.id} isSelf titleClass={styles.sectionTitle} />}
 
                 {popular.length > 0 && (
                   <section className={styles.section}>

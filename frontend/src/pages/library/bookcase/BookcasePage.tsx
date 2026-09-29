@@ -18,11 +18,14 @@ import {
   type LibraryBook,
   type LibraryStats,
   type Locale,
+  type Work,
 } from '@/shared/lib';
 import { Avatar } from '@/shared/ui';
 import { Header } from '@/widgets';
 import { extractCover } from '../extractCover';
 import { EditBookSheet } from './EditBookSheet';
+import { MarkForm } from '../../books/MarkForm';
+import { ExtBadge, PbBadge } from '../../books/bookUi';
 import { BookcaseSections, ShelvesSheet } from './BookcaseSections';
 import { loadShelfFonts, type VolumeArt } from './bookArt';
 import { bookCount, plural } from './plural';
@@ -287,6 +290,8 @@ export function BookcasePage({ ownerId }: Props) {
   });
   const [filter, setFilter] = useState<Filter>('all');
   const [fellows, setFellows] = useState<Record<string, FellowReader[] | 'loading'>>({});
+  // The book held up, as the shared library knows it: its PowerBook and world ratings.
+  const [works, setWorks] = useState<Record<string, Work | 'loading' | 'missing'>>({});
 
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<BookcaseBook | null>(null);
@@ -651,6 +656,36 @@ export function BookcasePage({ ownerId }: Props) {
     ).then(({ data: list }) => setFellows((f) => ({ ...f, [key]: list ?? [] })));
   }, [inspecting, current, data, fellows]);
 
+  useEffect(() => {
+    if (!inspecting || !current?.match_key) return;
+    const key = current.match_key;
+    if (works[key]) return;
+    setWorks((w) => ({ ...w, [key]: 'loading' }));
+    apiGet<Work>(`/books/work/${encodeURIComponent(key)}?locale=${locale}`, { requireAuth: true }).then(({ data: work }) =>
+      setWorks((w) => ({ ...w, [key]: work ?? 'missing' }))
+    );
+  }, [inspecting, current, works, locale]);
+
+  const setMark = useCallback((key: string, review: { id: string; rating: number; text: string | null } | null) => {
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            books: prev.books.map((b) =>
+              b.key === key ? { ...b, rating: review?.rating ?? null, review: review?.text ?? null, review_id: review?.id ?? null } : b
+            ),
+          }
+        : prev
+    );
+    // The book's ratings changed; ask again next time it is held up.
+    setWorks((w) => {
+      const next = { ...w };
+      const book = data?.books.find((b) => b.key === key);
+      if (book?.match_key) delete next[book.match_key];
+      return next;
+    });
+  }, [data]);
+
   const changeSort = (next: Sort) => {
     if (next === sort || inspecting) return;
     setSort(next);
@@ -904,6 +939,16 @@ export function BookcasePage({ ownerId }: Props) {
               {t('room.enterLibrary')}
             </Link>
           )}
+          {(isSelf || ownLibrary) && (
+            <Link className={styles.hallLink} to="/books">
+              {t('libtabs.books')}
+            </Link>
+          )}
+          {(isSelf || ownLibrary) && (
+            <Link className={styles.hallLink} to="/market">
+              {t('libtabs.market')}
+            </Link>
+          )}
           {isSelf && (
             <button
               type="button"
@@ -1081,7 +1126,44 @@ export function BookcasePage({ ownerId }: Props) {
                     </blockquote>
                   )}
 
+                  {(() => {
+                    const work = current.match_key ? works[current.match_key] : undefined;
+                    if (!work || work === 'loading' || work === 'missing') return null;
+                    return (
+                      <Link className={styles.libraryLine} to={`/books?book=${encodeURIComponent(work.key)}`}>
+                        <span>{t('shelf.inLibrary')}</span>
+                        {work.pb_rating !== null && <PbBadge value={work.pb_rating} />}
+                        {work.ext_rating !== null && <ExtBadge rating={work.ext_rating} source={work.ext_source} />}
+                        <span aria-hidden="true">→</span>
+                      </Link>
+                    );
+                  })()}
+
+                  {isSelf && (
+                    <MarkForm
+                      volumeKey={current.key}
+                      rating={current.rating ?? null}
+                      text={current.review ?? null}
+                      reviewId={current.review_id ?? null}
+                      onSaved={(review) => setMark(current.key, review)}
+                    />
+                  )}
+                  {!isSelf && current.rating != null && (
+                    <blockquote>
+                      <p>
+                        <PbBadge value={current.rating} />
+                        {current.review ? ` ${current.review}` : ''}
+                      </p>
+                      <cite>{t('shelf.ownerMark')}</cite>
+                    </blockquote>
+                  )}
+
                   {isSelf && <BookNotes book={current} locale={locale} onNotes={setNotes} />}
+                  {isSelf && ((current.notes?.length ?? 0) > 0 || current.note) && (
+                    <Link className={styles.editLink} to={`/reading?tab=notes&book=${encodeURIComponent(current.key)}`}>
+                      ✦ {t('shelf.aiNotes')}
+                    </Link>
+                  )}
 
                   <div className={styles.fellows}>
                     <p className={styles.fellowsLine}>
@@ -1124,6 +1206,15 @@ export function BookcasePage({ ownerId }: Props) {
                     </button>
                   )}
                   {isSelf && !current.has_file && <p className={styles.primaryHint}>{t('shelf.attachHint')}</p>}
+
+                  {isSelf && current.status === 'finished' && (
+                    <Link
+                      className={styles.editLink}
+                      to={`/market?sell=${encodeURIComponent(current.key)}&title=${encodeURIComponent(current.title)}${current.author ? `&author=${encodeURIComponent(current.author)}` : ''}`}
+                    >
+                      ₸ {t('mkt.sellFromShelf')}
+                    </Link>
+                  )}
 
                   {isSelf && (
                     <button type="button" className={styles.editLink} onClick={() => setEditing(current)}>
