@@ -474,6 +474,43 @@ def _book_input(db: Session, user: User, scope: str) -> dict:
     }
 
 
+_ROUND_SYSTEM = (
+    "You are the reading coach of PowerBook, a monthly reading marathon in Kazakhstan: every day a member "
+    "reads at least {goal} minutes counts, and at the end of the month the round is scored. A member's round "
+    "has just ended and they asked you for a personal review. You get their numbers for this round, their "
+    "previous round, the average of their earlier rounds, their personal best, the last rounds in a row, "
+    "what we noticed (strengths and weak spots, as keys with numbers), and the books they finished with "
+    "their own words. Compare honestly with their own past, not with other people. Say plainly what "
+    "improved and what slipped, and why it probably happened, reading it from the shape of the month "
+    "(weekdays, the second half, gaps, short days). Give concrete, practical reading tips for exactly their "
+    "weak spots — small habits that work in real life — and one clear goal for the next round. Warm, direct, "
+    "no flattery, no generic filler. Write everything in {lang}."
+)
+
+_ROUND_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "headline": {"type": "string"},
+        "summary": {"type": "string"},
+        "compared": {"type": "string"},
+        "strengths": {"type": "array", "items": {"type": "string"}},
+        "improve": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"what": {"type": "string"}, "how": {"type": "string"}},
+                "required": ["what", "how"],
+                "additionalProperties": False,
+            },
+        },
+        "lifehacks": {"type": "array", "items": {"type": "string"}},
+        "next_goal": {"type": "string"},
+    },
+    "required": ["headline", "summary", "compared", "strengths", "improve", "lifehacks", "next_goal"],
+    "additionalProperties": False,
+}
+
+
 def _hash(kind: str, lang: str, payload: dict) -> str:
     raw = json.dumps({"kind": kind, "lang": lang, "model": settings.ai_model, "input": payload}, ensure_ascii=False, sort_keys=True, default=str)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -494,15 +531,24 @@ def _digest_out(row: AiDigest, *, stale: bool = False) -> DigestOut:
 
 
 def _check(kind: str, scope: str, lang: str) -> None:
-    if kind not in ("period", "book"):
+    if kind not in ("period", "book", "round"):
         raise _bad("bad_kind")
     if lang not in _LANG_NAMES:
         raise _bad("bad_lang")
     if kind == "period":
         _parse_period(scope)
+    if kind == "round":
+        try:
+            uuid.UUID(scope)
+        except ValueError:
+            raise _bad("bad_round") from None
 
 
 def _input(db: Session, user: User, kind: str, scope: str) -> dict:
+    if kind == "round":
+        from app.services import round_review
+
+        return round_review.letter_input(db, user=user, round_id=uuid.UUID(scope))
     if kind == "period":
         payload = _period_input(db, user, scope)
         if not payload["books_finished"] and not payload["minutes_read"]:
@@ -577,8 +623,12 @@ def _write(digest_id: uuid.UUID, kind: str, lang: str, payload: dict) -> None:
         row = db.get(AiDigest, digest_id)
         if row is None:
             return
-        system = (_PERIOD_SYSTEM if kind == "period" else _BOOK_SYSTEM).format(lang=_LANG_NAMES[lang])
-        schema = _PERIOD_SCHEMA if kind == "period" else _BOOK_SCHEMA
+        from app.repositories.reading_logs import MIN_SCORING_MINUTES
+
+        system = {"period": _PERIOD_SYSTEM, "book": _BOOK_SYSTEM, "round": _ROUND_SYSTEM}[kind].format(
+            lang=_LANG_NAMES[lang], goal=MIN_SCORING_MINUTES
+        )
+        schema = {"period": _PERIOD_SCHEMA, "book": _BOOK_SCHEMA, "round": _ROUND_SCHEMA}[kind]
         try:
             content = claude.ask_json(system=system, prompt=json.dumps(payload, ensure_ascii=False, default=str), schema=schema)
             row.content, row.status, row.error = content, "done", None

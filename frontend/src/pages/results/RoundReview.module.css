@@ -1,0 +1,443 @@
+/* The personal review of a round, under the results. One series per chart, in
+   the site's data colour (amber by night, brick by day); orange stays for
+   things you press, green and red only beside an arrow and a word. */
+
+.review {
+  --chart-ink: #c7841f;
+
+  margin-top: 28px;
+  padding: 20px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-xl);
+  background: var(--color-bg-card, var(--color-bg-secondary));
+}
+
+:global(html[data-theme='light']) .review {
+  --chart-ink: #a74735;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-bottom: 16px;
+}
+
+.head h2 {
+  margin: 0 0 4px;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.muted {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.pick select {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+  font: inherit;
+  font-size: 14px;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.tile {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+}
+
+.tile strong {
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.tile strong small {
+  color: var(--color-text-muted);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.tile span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.tile em {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.delta {
+  color: var(--color-text-secondary) !important;
+  font-size: 12.5px !important;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.up {
+  color: var(--color-success) !important;
+}
+
+.down {
+  color: var(--color-danger) !important;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 860px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.charts {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+}
+
+.card h3,
+.tipsBlock h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.card .second {
+  margin-top: 18px;
+}
+
+.cardNote {
+  margin: -6px 0 8px;
+  color: var(--color-text-muted);
+  font-size: 12.5px;
+}
+
+.list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 8px;
+  align-items: start;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.list i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.good i {
+  color: var(--color-on-status, #0d1117);
+  background: var(--color-success-fill, var(--color-success));
+}
+
+.bad i {
+  color: var(--color-on-status, #0d1117);
+  background: var(--color-warning-fill, var(--color-warning));
+}
+
+/* ---------- charts ---------- */
+
+.chart {
+  position: relative;
+  display: grid;
+  align-items: end;
+  gap: 4px;
+  height: 120px;
+  padding-top: 18px;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+/* A column: its value sits on the bar's cap, the bar grows from the baseline. */
+.col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  outline: none;
+}
+
+.bar {
+  width: 100%;
+  max-width: 24px;
+  border-radius: 4px 4px 0 0;
+  background: var(--chart-ink);
+  opacity: 0.45;
+}
+
+.barNow {
+  opacity: 1;
+}
+
+.colValue {
+  margin-bottom: 3px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tip {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  display: none;
+  padding: 6px 9px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-md);
+  font-size: 12px;
+  line-height: 1.35;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.col:hover .tip,
+.col:focus-visible .tip {
+  display: block;
+}
+
+.col:first-child .tip {
+  left: 0;
+  transform: none;
+}
+
+.col:last-child .tip {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+.ticks {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.ticks span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+}
+
+/* ---------- life hacks ---------- */
+
+.tipsBlock {
+  margin-bottom: 16px;
+}
+
+.tips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.tipCard {
+  padding: 14px;
+  border: 1px solid var(--color-border-secondary);
+  border-left: 3px solid var(--chart-ink);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+}
+
+.tipCard h4 {
+  margin: 0 0 6px;
+  font-size: 14.5px;
+}
+
+.tipCard p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* ---------- the letter ---------- */
+
+.letter {
+  padding: 16px;
+  border: 1px solid var(--color-border-accent);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(ellipse at 0% 0%, var(--color-accent-primary-muted), transparent 60%),
+    var(--color-bg-secondary);
+}
+
+.letterHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.letterHead h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.letterBody {
+  display: grid;
+  gap: 14px;
+}
+
+.letterBody h4 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.headline {
+  margin: 0;
+  font-family: 'Literata', Georgia, serif;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.prose {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14.5px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.bullets {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.bullets b {
+  color: var(--color-text-primary);
+}
+
+.goal {
+  margin: 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--color-accent-primary);
+  border-radius: 0 8px 8px 0;
+  background: var(--color-bg-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.primary,
+.ghost {
+  padding: 9px 16px;
+  border-radius: var(--radius-lg);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary {
+  border: 0;
+  color: var(--color-on-accent);
+  background: var(--color-accent-primary);
+}
+
+.ghost {
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+}
+
+.primary:disabled,
+.ghost:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+@media (max-width: 600px) {
+  .review {
+    padding: 14px;
+  }
+
+  .head h2 {
+    font-size: var(--font-size-xl);
+  }
+
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tile strong {
+    font-size: 23px;
+  }
+}

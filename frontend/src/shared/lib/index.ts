@@ -109,5 +109,9 @@ export type {
   PeriodLetter,
   BookLetter,
   Digest,
+  RoundStats,
+  RoundInsight,
+  RoundReview,
+  RoundLetter,
 } from './types';
 export { useTheme, useResolvedTheme, readThemeChoice, resolveTheme, applyTheme, THEME_KEY, type ThemeChoice } from './theme';

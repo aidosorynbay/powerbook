@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
@@ -7,7 +9,8 @@ from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.reading_ai import DigestIn, DigestOut, NotebookEntryOut, ReadingOverviewOut, RecommendationOut
-from app.services import reading_ai
+from app.schemas.round_review import RoundReviewOut
+from app.services import reading_ai, round_review
 
 router = APIRouter(prefix="/reading", tags=["reading"])
 
@@ -35,9 +38,20 @@ def notebook(db: Session = Depends(get_db), user: User = Depends(get_current_use
     return reading_ai.notebook(db, user=user)
 
 
+@router.get("/round-review", response_model=RoundReviewOut)
+def get_round_review(
+    round_id: uuid.UUID | None = Query(default=None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> RoundReviewOut:
+    """The reader's round looked back on: numbers beside their own past
+    rounds, what went well, where the days went, and habits for that."""
+    return round_review.review(db, user=user, round_id=round_id)
+
+
 @router.get("/digest", response_model=DigestOut | None)
 def get_digest(
-    kind: str = Query(pattern="^(period|book)$"),
+    kind: str = Query(pattern="^(period|book|round)$"),
     scope: str = Query(max_length=80),
     lang: str = Query(default="ru", pattern="^(ru|kk|en)$"),
     db: Session = Depends(get_db),

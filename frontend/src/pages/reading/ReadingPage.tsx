@@ -17,81 +17,16 @@ import { Header } from '@/widgets';
 import { BookFace, ExtBadge, INTL, PbBadge, formatDay, useCount } from '../books/bookUi';
 import { WorkSheet } from '../books/WorkSheet';
 import store from '../books/Store.module.css';
+import { LetterError, Working, useDigest } from './digest';
 import styles from './Reading.module.css';
 import { LibrarySwitch } from '../books/LibrarySwitch';
 
 type Tab = 'recap' | 'recs' | 'notes';
 
-function monthName(month: number, locale: Locale, style: 'short' | 'long' = 'long'): string {
-  const name = new Date(2026, month - 1, 15).toLocaleString(INTL[locale], { month: style });
-  return name.charAt(0).toUpperCase() + name.slice(1).replace('.', '');
-}
-
-// ---------- Claude's letters ----------
-
-/** A letter: fetched if there is one, written on request, polled while Claude writes. */
-function useDigest(kind: 'period' | 'book', scope: string | null) {
-  const { locale } = useI18n();
-  const [digest, setDigest] = useState<Digest | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [starting, setStarting] = useState(false);
-  const poll = useRef<number>();
-
-  const fetchIt = useCallback(async () => {
-    if (!scope) return null;
-    const { data } = await apiGet<Digest | null>(`/reading/digest?kind=${kind}&scope=${encodeURIComponent(scope)}&lang=${locale}`, { requireAuth: true });
-    setDigest(data ?? null);
-    return data ?? null;
-  }, [kind, scope, locale]);
-
-  useEffect(() => {
-    setDigest(null);
-    setError(null);
-    fetchIt();
-    return () => window.clearTimeout(poll.current);
-  }, [fetchIt]);
-
-  useEffect(() => {
-    if (digest?.status !== 'working') return;
-    let tries = 0;
-    const tick = async () => {
-      tries += 1;
-      const next = await fetchIt();
-      if (next?.status === 'working' && tries < 80) poll.current = window.setTimeout(tick, 3000);
-    };
-    poll.current = window.setTimeout(tick, 3000);
-    return () => window.clearTimeout(poll.current);
-  }, [digest?.status, digest?.id, fetchIt]);
-
-  const start = async (force: boolean) => {
-    if (!scope || starting) return;
-    setStarting(true);
-    setError(null);
-    const { data, error: failed } = await apiPost<Digest>('/reading/digest', { kind, scope, lang: locale, force }, { requireAuth: true });
-    setStarting(false);
-    if (data) setDigest(data);
-    else setError(failed);
-  };
-
-  return { digest, error, start, starting };
-}
-
-function LetterError({ code }: { code: string | null }) {
-  const { t } = useI18n();
-  if (!code) return null;
-  const key =
-    code === 'ai_off' ? 'rd.letterOff' : code === 'ai_daily_limit' ? 'rd.letterLimit' : code === 'nothing_to_summarise' ? 'rd.letterNothing' : 'rd.letterError';
-  return <p className={store.formNote}>{t(key)}</p>;
-}
-
-function Working() {
-  const { t } = useI18n();
-  return (
-    <p className={styles.working}>
-      <span className={styles.dots} aria-hidden="true"><i /><i /><i /></span>
-      {t('rd.letterWorking')}
-    </p>
-  );
+/** From the site's own words: browsers without Kazakh month names print "M08". */
+function monthName(month: number, t: (key: string) => string, style: 'short' | 'long' = 'long'): string {
+  const name = t(`month.${month}`);
+  return style === 'long' ? name : name.slice(0, 3);
 }
 
 function PeriodLetterCard({ scope, aiAvailable }: { scope: string; aiAvailable: boolean }) {
@@ -230,7 +165,7 @@ function MinutesChart({ data, period }: { data: ReadingOverview; period: string 
   const kind = period === 'all' ? 'year' : period.length === 4 ? 'month' : 'day';
   const label = (key: string, style: 'short' | 'long') => {
     if (kind === 'year') return key;
-    if (kind === 'month') return monthName(Number(key.slice(5, 7)), locale, style);
+    if (kind === 'month') return monthName(Number(key.slice(5, 7)), t, style);
     return style === 'long' ? formatDay(key, locale) : String(Number(key.slice(8, 10)));
   };
   const showTick = (i: number) => kind !== 'day' || i === 0 || (i + 1) % 5 === 0;
@@ -318,7 +253,7 @@ function Recap({ onOpenBook }: { onOpenBook: (key: string) => void }) {
             <button type="button" className={store.chip} aria-pressed={month === null} onClick={() => setPeriod(String(year))}>{t('rd.wholeYear')}</button>
             {data.months.map((m) => (
               <button key={m} type="button" className={store.chip} aria-pressed={month === m} onClick={() => setPeriod(`${year}-${String(m).padStart(2, '0')}`)}>
-                {monthName(m, locale)}
+                {monthName(m, t)}
               </button>
             ))}
           </div>

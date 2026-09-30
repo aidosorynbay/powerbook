@@ -93,6 +93,7 @@ class NotebookEntryOut(BaseModel):
 
 
 class DigestIn(BaseModel):
+    # "period" | "book" | "round"
     kind: str
     scope: str
     lang: str = "ru"

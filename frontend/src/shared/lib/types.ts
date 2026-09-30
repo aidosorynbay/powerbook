@@ -733,3 +733,57 @@ export type Digest = {
   updated_at: string;
   stale: boolean;
 };
+
+// ---------- the personal review of a round ----------
+
+export type RoundStats = {
+  round_id: string;
+  year: number;
+  month: number;
+  ongoing: boolean;
+  days: number;
+  goal_days: number;
+  partial_days: number;
+  missed_days: number;
+  minutes: number;
+  avg_minutes: number;
+  longest_streak: number;
+  longest_gap: number;
+  best_day: string | null;
+  best_day_minutes: number;
+  books: number;
+  /** Average minutes per weekday, Monday first. */
+  weekday_minutes: number[];
+  first_half_minutes: number;
+  second_half_minutes: number;
+  first_week_goal_days: number;
+  rank: number | null;
+  participants: number | null;
+  group: string | null;
+};
+
+export type RoundInsight = { key: string; params: Record<string, number>; tips: string[] };
+
+export type RoundReview = {
+  round: RoundStats;
+  previous: RoundStats | null;
+  average: RoundStats | null;
+  best: { minutes: number; minutes_year: number; minutes_month: number; goal_days: number; goal_of: number; goal_year: number; goal_month: number; streak: number } | null;
+  trend: { year: number; month: number; minutes: number; goal_days: number; days: number; rank: number | null; participants: number | null }[];
+  rounds: { id: string; year: number; month: number; has_result: boolean }[];
+  rounds_count: number;
+  strengths: RoundInsight[];
+  improve: RoundInsight[];
+  tips: string[];
+  ai_available: boolean;
+};
+
+export type RoundLetter = {
+  headline: string;
+  summary: string;
+  compared: string;
+  strengths: string[];
+  improve: { what: string; how: string }[];
+  lifehacks: string[];
+  next_goal: string;
+};

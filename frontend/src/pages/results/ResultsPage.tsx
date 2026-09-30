@@ -14,6 +14,7 @@ import {
 import { Container, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import styles from './ResultsPage.module.css';
+import { RoundReview } from './RoundReview';
 
 function TrophyIcon({ rank }: { rank: number }) {
   if (rank === 1) return <span className={`${styles.trophy} ${styles.trophyGold}`}>{'\uD83C\uDFC6'}</span>;
@@ -433,8 +434,14 @@ export function ResultsPage() {
                     )}
                   </div>
                 )}
+
+                {/* The reader's own round, looked back on: beside their earlier rounds, with what to do better.
+                    Not in this one: their latest round instead. */}
+                <RoundReview roundId={results.my_result ? lastRound.id : null} />
               </>
             )}
+            {/* No results page yet, but a round in the reader's past or present: its review all the same. */}
+            {!isLoading && (!lastRound || !results) && <RoundReview roundId={null} />}
           </Container>
         </main>
 
