@@ -1,7 +1,9 @@
 import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import { toBlob } from 'html-to-image';
-import { apiGet, inviteLink, useAuth, useI18n, useWaitlist, type MyResult, type RoundReview } from '@/shared/lib';
+import { apiGet, inviteLink, useAuth, useI18n, useWaitlist, type MyResult, type RoundLetter, type RoundReview } from '@/shared/lib';
 import { dayOf } from '@/widgets/JoinPrompt/words';
+import { useDigest } from '../reading/digest';
+import { insightText } from './RoundReview';
 import styles from './RoundStory.module.css';
 
 /** The story is drawn at 360×640 and saved at ×3: 1080×1920, what Instagram and Telegram stories take. */
@@ -16,6 +18,12 @@ function storage(key: string, value?: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** "октябрь" inside a Russian phrase; Kazakh and English keep their capital. */
+function useMonthWord() {
+  const { t, locale } = useI18n();
+  return (m: number) => (locale === 'ru' ? t(`month.${m}`).toLowerCase() : t(`month.${m}`));
 }
 
 function useNumber() {
@@ -52,12 +60,13 @@ function statsOf(result: MyResult, participants: number, review: RoundReview | n
   };
 }
 
-type CardProps = { stats: Stats; month: number; year: number; nextMonth: number; nextLine: string; who: string | null };
+type CardProps = { stats: Stats; month: number; year: number; nextMonth: number; nextLine: string; who: string | null; goal: string | null };
 
 /** The picture itself: the reading room at night, the reader's month, and the way in. */
-const StoryCard = forwardRef<HTMLDivElement, CardProps>(function StoryCard({ stats, month, year, nextMonth, nextLine, who }, ref) {
+const StoryCard = forwardRef<HTMLDivElement, CardProps>(function StoryCard({ stats, month, year, nextMonth, nextLine, who, goal }, ref) {
   const { t } = useI18n();
   const num = useNumber();
+  const monthWord = useMonthWord();
   const hours = Math.round(stats.minutes / 60);
   const better = stats.delta !== null && stats.delta > 0;
   return (
@@ -111,11 +120,19 @@ const StoryCard = forwardRef<HTMLDivElement, CardProps>(function StoryCard({ sta
         </div>
 
         <div className={styles.growth}>
-          {better
-            ? t('story.better', { n: num(stats.delta ?? 0), month: t(`month.${stats.prevMonth ?? month}`).toLowerCase() })
-            : stats.delta === null
-              ? t('story.first')
-              : t('story.kept')}
+          <span>
+            {better
+              ? t('story.better', { n: num(stats.delta ?? 0) })
+              : stats.delta === null
+                ? t('story.first')
+                : t('story.kept')}
+          </span>
+          {goal && (
+            <span className={styles.goal}>
+              <small>{t('story.goalLabel', { month: monthWord(nextMonth) })}</small>
+              {goal}
+            </span>
+          )}
         </div>
 
         <div className={styles.invite}>
@@ -150,6 +167,7 @@ export function RoundStory({ roundId, year, month, result, participants, open, o
   const { user } = useAuth();
   const { state } = useWaitlist();
   const num = useNumber();
+  const monthWord = useMonthWord();
   const [review, setReview] = useState<RoundReview | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -194,7 +212,12 @@ export function RoundStory({ roundId, year, month, result, participants, open, o
     };
   }, [open, onClose]);
 
+  const { digest } = useDigest('round', roundId);
+  const letter = digest?.status === 'done' ? (digest.content as RoundLetter | null) : null;
+
   const stats = statsOf(result, participants, review);
+  const tip = review?.tips[0] ?? null;
+  const goal = tip ? t(`review.tip.${tip}.t`) : null;
   const nextMonth = state?.open_round?.month ?? state?.month ?? (month % 12) + 1;
   const nextLine = state?.open_round
     ? t('story.until', { date: dayOf(state.open_round.registration_until.slice(0, 10), locale, t) })
@@ -233,7 +256,7 @@ export function RoundStory({ roundId, year, month, result, participants, open, o
       cancelled = true;
       window.clearTimeout(id);
     };
-  }, [open, render, review, state?.ref, nextLine]);
+  }, [open, render, review, state?.ref, nextLine, goal]);
 
   const text = t('story.shareText', { month: t(`month.${nextMonth}`) });
 
@@ -278,6 +301,11 @@ export function RoundStory({ roundId, year, month, result, participants, open, o
     window.setTimeout(() => setCopied(false), 2200);
   };
 
+  const toReview = () => {
+    onClose();
+    window.setTimeout(() => document.getElementById('round-review')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  };
+
   if (!open) return null;
 
   const lead =
@@ -298,7 +326,7 @@ export function RoundStory({ roundId, year, month, result, participants, open, o
 
         <div className={styles.stage} style={{ width: W * scale, height: H * scale }}>
           <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-            <StoryCard ref={cardRef} stats={stats} month={month} year={year} nextMonth={nextMonth} nextLine={nextLine} who={who} />
+            <StoryCard ref={cardRef} stats={stats} month={month} year={year} nextMonth={nextMonth} nextLine={nextLine} who={who} goal={goal} />
           </div>
         </div>
 
@@ -315,6 +343,53 @@ export function RoundStory({ roundId, year, month, result, participants, open, o
           {copied ? t('wl.copied') : t('story.copyLink')}
         </button>
         <p className={styles.hint}>{t('story.hint')}</p>
+
+        {review && (
+          <div className={styles.review}>
+            <div className={styles.reviewHead}>
+              <strong>{t('review.title')}</strong>
+              <button type="button" onClick={toReview}>
+                {t('story.more')}
+              </button>
+            </div>
+            <div className={styles.strip}>
+              {letter?.headline && (
+                <article className={styles.ai}>
+                  <small>✦ {t('review.aiTitle')}</small>
+                  <p>
+                    <b>{letter.headline}</b> {letter.next_goal}
+                  </p>
+                </article>
+              )}
+              {!letter && review.ai_available && (
+                <button type="button" className={styles.ai} onClick={toReview}>
+                  <small>✦ {t('review.aiTitle')}</small>
+                  <p>{t('review.aiIntro')}</p>
+                </button>
+              )}
+              {review.strengths[0] && (
+                <article className={styles.good}>
+                  <small>✓ {t('review.good')}</small>
+                  <p>{insightText(review.strengths[0], 's', t)}</p>
+                </article>
+              )}
+              {review.improve[0] && (
+                <article className={styles.bad}>
+                  <small>! {t('review.bad')}</small>
+                  <p>{insightText(review.improve[0], 'i', t)}</p>
+                </article>
+              )}
+              {tip && (
+                <article className={styles.tip}>
+                  <small>💡 {t('story.goalLabel', { month: monthWord(nextMonth) })}</small>
+                  <p>
+                    <b>{goal}.</b> {t(`review.tip.${tip}.d`)}
+                  </p>
+                </article>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

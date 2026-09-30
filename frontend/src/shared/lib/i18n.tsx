@@ -1182,6 +1182,8 @@ const translations = {
     'story.starts': 'старт {date}',
     'story.signup': 'запись с 1 по 10 число',
     'story.who': 'Зовёт {name}',
+    'story.goalLabel': 'Цель на {month}',
+    'story.more': 'Весь разбор ↓',
     'story.shareText': 'Круг в PowerBook пройден: 30 минут чтения каждый день. Айда со мной в круг «{month}»!',
 
     // Personal review of a round
@@ -2680,7 +2682,7 @@ const translations = {
     'story.kicker2': 'Бір қадам алға.',
     'story.minutes': 'минут кітаппен',
     'story.hours': '{n} сағ',
-    'story.goalDays': '30+ минуттық күн',
+    'story.goalDays': '30+ мин күндер',
     'story.streak': 'күн қатарынан',
     'story.place': 'раундтағы орын',
     'story.better': '▲ өткен раундтан +{n} минут — өсіп келемін',
@@ -2692,6 +2694,8 @@ const translations = {
     'story.starts': 'басталуы {date}',
     'story.signup': 'тіркелу 1–10 күндері',
     'story.who': '{name} шақырады',
+    'story.goalLabel': '{month} айына мақсат',
+    'story.more': 'Толық талдау ↓',
     'story.shareText': 'PowerBook раунды аяқталды: күн сайын 30 минут оқу. «{month}» раундына бірге қосыл!',
 
     // Personal review of a round
@@ -4202,6 +4206,8 @@ const translations = {
     'story.starts': 'starts {date}',
     'story.signup': 'sign-up on the 1st–10th',
     'story.who': 'Invited by {name}',
+    'story.goalLabel': 'Goal for {month}',
+    'story.more': 'Full review ↓',
     'story.shareText': 'Finished a PowerBook round: 30 minutes of reading every day. Join me for the {month} circle!',
 
     // Personal review of a round

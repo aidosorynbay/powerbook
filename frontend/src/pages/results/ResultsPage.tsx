@@ -13,7 +13,7 @@ import {
 } from '@/shared/lib';
 import { Container, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
-import { RoundStory } from '@/widgets/RoundStory/RoundStory';
+import { RoundStory } from './RoundStory';
 import styles from './ResultsPage.module.css';
 import { RoundReview } from './RoundReview';
 

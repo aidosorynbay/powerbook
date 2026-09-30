@@ -33,7 +33,7 @@ function Delta({ now, before, lowerIsBetter = false }: { now: number; before: nu
   );
 }
 
-function insightText(insight: RoundInsight, kind: 's' | 'i', t: (key: string, params?: Record<string, string | number>) => string): string {
+export function insightText(insight: RoundInsight, kind: 's' | 'i', t: (key: string, params?: Record<string, string | number>) => string): string {
   const params: Record<string, string | number> = { ...insight.params };
   if (typeof insight.params.weekday === 'number') params.weekday = t(`review.wd.${insight.params.weekday}`);
   return t(`review.${kind}.${insight.key}`, params);
@@ -254,7 +254,7 @@ export function RoundReview({ roundId }: { roundId: string | null }) {
   const hasPast = review.previous !== null;
 
   return (
-    <section className={styles.review} aria-label={t('review.title')}>
+    <section id="round-review" className={styles.review} aria-label={t('review.title')}>
       <div className={styles.head}>
         <div>
           <h2>{t('review.title')}</h2>
