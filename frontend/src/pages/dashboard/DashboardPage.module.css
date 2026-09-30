@@ -561,9 +561,6 @@
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: var(--spacing-1);
-  /* The cells ask how wide the calendar is, not the screen: the same
-     calendar sits in a wide column on desktop and a narrow card on a phone. */
-  container: calendar / inline-size;
 }
 
 .calendarHeader {
@@ -660,13 +657,19 @@
   border-color: transparent;
 }
 
+/* The day and its minutes read as two things at a glance: the day larger and
+   bold, the minutes smaller, lighter and quieter under it. */
 .dayNumber {
-  font-weight: var(--font-weight-medium);
+  font-size: 13px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.1;
 }
 
 .dayMinutes {
   max-width: 100%;
+  overflow: hidden;
   font-size: 9px;
+  font-weight: var(--font-weight-normal);
   color: var(--color-text-muted);
   margin-top: 2px;
   font-variant-numeric: tabular-nums;
@@ -674,23 +677,25 @@
   white-space: nowrap;
 }
 
-/* A narrow calendar (a phone) has no room for "160 мин" in a day: every day
-   shows just its minutes, all alike, rather than some wrapping and some not. */
-@container calendar (max-width: 420px) {
+/* On a coloured day the minutes take the day's ink, a shade softer than the number. */
+.calendarDay.dayGreen .dayMinutes,
+.calendarDay.dayYellow .dayMinutes,
+.calendarDay.dayRed .dayMinutes {
+  color: inherit;
+  opacity: 0.72;
+}
+
+/* A phone has no room for "160 мин" in a day: every day shows just its
+   minutes, all alike, rather than some wrapping and some not. Wider screens
+   keep "45 мин" — it fits there. */
+@media (max-width: 600px) {
   .dayMinutesUnit {
     display: none;
   }
 
   .dayMinutes {
     font-size: 10px;
-    font-weight: var(--font-weight-medium);
   }
-}
-
-.calendarDay.dayGreen .dayMinutes,
-.calendarDay.dayYellow .dayMinutes,
-.calendarDay.dayRed .dayMinutes {
-  color: inherit;
 }
 
 /* Log modal */

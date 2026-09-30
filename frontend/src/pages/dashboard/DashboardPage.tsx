@@ -1091,7 +1091,7 @@ export function DashboardPage() {
                                 <span className={styles.dayNumber}>{cell.day}</span>
                               )}
                               {cell.minutes > 0 && !cellIsLastDay && (
-                                <span className={styles.dayMinutes}>{cell.minutes}<span className={styles.dayMinutesUnit}> {t('rings.minutesShort')}</span></span>
+                                <span className={styles.dayMinutes}>{cell.minutes}{cell.minutes < 1000 && <span className={styles.dayMinutesUnit}> {t('rings.minutesShort')}</span>}</span>
                               )}
                               {cell.book_finished && <span className={styles.dayStar}>&#9733;</span>}
                               {cell.comment && <span className={styles.dayCommentDot} />}
@@ -1227,7 +1227,7 @@ export function DashboardPage() {
                               <span className={styles.dayNumber}>{cell.day}</span>
                             )}
                             {cell.minutes > 0 && !cellIsLastDay && (
-                              <span className={styles.dayMinutes}>{cell.minutes}<span className={styles.dayMinutesUnit}> {t('rings.minutesShort')}</span></span>
+                              <span className={styles.dayMinutes}>{cell.minutes}{cell.minutes < 1000 && <span className={styles.dayMinutesUnit}> {t('rings.minutesShort')}</span>}</span>
                             )}
                             {cell.book_finished && <span className={styles.dayStar}>&#9733;</span>}
                             {cell.comment && <span className={styles.dayCommentDot} />}
