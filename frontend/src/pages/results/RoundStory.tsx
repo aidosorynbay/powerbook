@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
-import { toBlob } from 'html-to-image';
+import { toCanvas } from 'html-to-image';
 import { apiGet, inviteLink, useAuth, useI18n, useWaitlist, type MyResult, type RoundLetter, type RoundReview } from '@/shared/lib';
 import { dayOf } from '@/widgets/JoinPrompt/words';
 import { useDigest } from '../reading/digest';
@@ -9,7 +9,52 @@ import styles from './RoundStory.module.css';
 /** The story is drawn at 360×640 and saved at ×3: 1080×1920, what Instagram and Telegram stories take. */
 const W = 360;
 const H = 640;
+const SCALE = 3;
+const PHOTO = '/reading-room/m-night-m.jpg';
+/** Where the photo sits in the frame, as the card's `object-position`. */
+const PHOTO_Y = 0.28;
 const seenKey = (roundId: string) => `pb.story.seen.${roundId}`;
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+/**
+ * The picture as a file. Safari's html-to-image drops the photo on some passes (a card with no room
+ * behind it), so the photo is drawn onto the canvas here, and html-to-image adds only the text and panels.
+ */
+async function drawStory(node: HTMLElement): Promise<Blob | null> {
+  const photo = await loadImage(PHOTO);
+  const options = {
+    width: W,
+    height: H,
+    skipFonts: true,
+    filter: (el: HTMLElement) => el.tagName !== 'IMG',
+    style: { background: 'transparent' },
+  };
+  // Safari lays out foreignObject properly only from the second pass.
+  await toCanvas(node, { ...options, pixelRatio: 1 }).catch(() => null);
+  const overlay = await toCanvas(node, { ...options, pixelRatio: SCALE });
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W * SCALE;
+  canvas.height = H * SCALE;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.fillStyle = '#0b0805';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const k = Math.max(canvas.width / photo.naturalWidth, canvas.height / photo.naturalHeight);
+  const dw = photo.naturalWidth * k;
+  const dh = photo.naturalHeight * k;
+  ctx.drawImage(photo, (canvas.width - dw) / 2, (canvas.height - dh) * PHOTO_Y, dw, dh);
+  ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+}
 
 function storage(key: string, value?: string): string | null {
   try {
@@ -71,7 +116,7 @@ const StoryCard = forwardRef<HTMLDivElement, CardProps>(function StoryCard({ sta
   const better = stats.delta !== null && stats.delta > 0;
   return (
     <div ref={ref} className={styles.card} style={{ width: W, height: H }}>
-      <img className={styles.photo} src="/reading-room/m-night-m.jpg" alt="" />
+      <img className={styles.photo} src={PHOTO} alt="" />
       <div className={styles.shade} />
 
       <div className={styles.top}>
@@ -170,6 +215,8 @@ export function RoundStory({ roundId, year, month, result, participants, open, o
   const monthWord = useMonthWord();
   const [review, setReview] = useState<RoundReview | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  /** The first drawing is over (a failure too): the buttons then work, drawing on demand if they must. */
+  const [drawn, setDrawn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [scale, setScale] = useState(0.8);
@@ -227,30 +274,31 @@ export function RoundStory({ roundId, year, month, result, participants, open, o
   const refName = state?.ref ?? null;
   const who = refName ? `@${refName}` : user?.display_name ?? null;
   const link = inviteLink(refName);
-  const fileName = `powerbook-${year}-${String(month).padStart(2, '0')}.png`;
+  const fileName = `powerbook-${year}-${String(month).padStart(2, '0')}.jpg`;
 
   const render = useCallback(async (): Promise<File | null> => {
-    if (!cardRef.current) return null;
-    // Safari paints images only on the second pass.
-    await toBlob(cardRef.current, { pixelRatio: 1, cacheBust: false }).catch(() => null);
-    const blob = await toBlob(cardRef.current, { pixelRatio: 3, width: W, height: H });
-    return blob ? new File([blob], fileName, { type: 'image/png' }) : null;
+    const node = cardRef.current;
+    if (!node) return null;
+    const blob = await drawStory(node);
+    return blob ? new File([blob], fileName, { type: 'image/jpeg' }) : null;
   }, [fileName]);
 
   // Draw the file in advance, so the share button keeps the tap (iOS needs it for navigator.share).
   useEffect(() => {
     if (!open) {
       setFile(null);
+      setDrawn(false);
       return;
     }
     let cancelled = false;
     const id = window.setTimeout(async () => {
       try {
         const f = await render();
-        if (!cancelled) setFile(f);
+        if (!cancelled && f) setFile(f);
       } catch {
         /* the buttons draw it on demand */
       }
+      if (!cancelled) setDrawn(true);
     }, 500);
     return () => {
       cancelled = true;
@@ -273,14 +321,23 @@ export function RoundStory({ roundId, year, month, result, participants, open, o
     window.setTimeout(() => URL.revokeObjectURL(url), 4000);
   };
 
+  /** The picture alone: with text beside it, Instagram on iPhone takes the text and drops the picture.
+   * The file is drawn in advance, so the share sheet opens while the tap still counts (iOS needs that). */
   const share = async () => {
     const f = file ?? (await render());
     if (f && navigator.canShare?.({ files: [f] })) {
       try {
-        await navigator.share({ files: [f], text: `${text} ${link}` });
+        await navigator.share({ files: [f] });
         return;
       } catch (e) {
         if ((e as Error).name === 'AbortError') return;
+      }
+    } else if (navigator.share) {
+      // No file sharing here (desktop browsers): the invitation link, then the picture to save.
+      try {
+        await navigator.share({ text, url: link });
+      } catch {
+        /* dismissed */
       }
     }
     await download();
@@ -332,8 +389,8 @@ export function RoundStory({ roundId, year, month, result, participants, open, o
 
         <p className={styles.ask}>{t('story.ask')}</p>
         <div className={styles.actions}>
-          <button type="button" className={styles.primary} onClick={share} disabled={busy}>
-            {t('story.share')}
+          <button type="button" className={styles.primary} onClick={share} disabled={busy || !drawn}>
+            {drawn ? t('story.share') : t('story.preparing')}
           </button>
           <button type="button" className={styles.secondary} onClick={download} disabled={busy}>
             {t('story.download')}
