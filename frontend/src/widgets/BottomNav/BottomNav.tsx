@@ -17,7 +17,7 @@ export function BottomNav() {
   const { t } = useI18n();
   const location = useLocation();
   return (
-    <nav className={styles.bottomNav}>
+    <nav className={styles.bottomNav} data-bottom-nav>
       {tabs.map(({ path, icon, label, also }) => {
         const isActive = [path, ...also].some(
           (p) => location.pathname === p || location.pathname.startsWith(`${p}/`)

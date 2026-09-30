@@ -441,7 +441,8 @@ export function createRoomEngine(opts){
   const view={w:1,h:1,dpr:1,mobile:false,rect:{x:0,y:0,w:1,h:1},panX:0,ox:0,oy:0,W:1,H:1,parX:0,parY:0};
   function layout(){
     const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;
-    const dpr=Math.min(devicePixelRatio||1,1.6);
+    // phones have 3× screens and a small canvas: drawn at 1.6× they looked soft
+    const dpr=Math.min(devicePixelRatio||1,w<760?2.5:1.6);
     view.w=w;view.h=h;view.dpr=dpr;view.mobile=w<760;
     cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);fx.width=cv.width;fx.height=cv.height;
     view.rect=view.mobile&&opts.phoneShare?{x:0,y:0,w,h:h*opts.phoneShare}:{x:0,y:0,w,h};

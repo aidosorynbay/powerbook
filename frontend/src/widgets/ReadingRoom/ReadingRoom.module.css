@@ -102,6 +102,10 @@
   overflow: hidden;
   overscroll-behavior: none;
 }
+/* Locked in on a phone: the bottom menu steps aside too. */
+.lockedRoot [data-bottom-nav] {
+  display: none;
+}
 .loading {
   position: absolute;
   left: 50%;

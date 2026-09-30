@@ -325,10 +325,24 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     return window.scrollY + rc.top + (reduced ? 0 : (rc.height - window.innerHeight) * 0.8);
   }, [reduced]);
   useEffect(() => {
-    if (layout !== 'scroll') return;
-    document.documentElement.classList.toggle(styles.lockedRoot, locked);
-    if (locked) window.scrollTo({ top: revealEnd(), behavior: 'instant' as ScrollBehavior });
-    return () => document.documentElement.classList.remove(styles.lockedRoot);
+    if (!locked) return;
+    const root = document.documentElement;
+    root.classList.add(styles.lockedRoot);
+    if (layout === 'scroll') window.scrollTo({ top: revealEnd(), behavior: 'instant' as ScrollBehavior });
+    // Safari on iPhone scrolls the page by touch whatever overflow says: hold it still here,
+    // except inside the hall's own lists (the chat, the readers), which still scroll.
+    const hold = (e: TouchEvent) => {
+      for (let el = e.target as HTMLElement | null; el && el !== document.body; el = el.parentElement) {
+        const oy = getComputedStyle(el).overflowY;
+        if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) return;
+      }
+      e.preventDefault();
+    };
+    document.addEventListener('touchmove', hold, { passive: false });
+    return () => {
+      root.classList.remove(styles.lockedRoot);
+      document.removeEventListener('touchmove', hold);
+    };
   }, [locked, layout, revealEnd]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -829,7 +843,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
               {layout === 'scroll' && (
                 <button className={styles.ctrlBtn} type="button" data-coach="lock" aria-pressed={locked} onClick={() => setLocked((v) => !v)} title={t('room.lockTitle')}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d={locked ? 'M8 11V8a4 4 0 0 1 8 0v3' : 'M8 11V8a4 4 0 0 1 8 0'} /></svg>
-                  {locked ? <>Locked in <kbd>Esc</kbd></> : 'Lock in'}
+                  {locked ? <>Locked in {!phone && <kbd>Esc</kbd>}</> : 'Lock in'}
                 </button>
               )}
               {phone && chips}
