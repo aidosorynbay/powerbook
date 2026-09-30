@@ -237,7 +237,11 @@ export function DashboardPage() {
     const r = roundStatus?.round;
     const start = Math.max(1, r?.start_day ?? 1);
     const end = Math.min(r?.end_day ?? lastDayOfMonth, lastDayOfMonth);
-    return { start, end, total: Math.max(1, end - start + 1) };
+    // The round's last day is for corrections only and scores nothing (the
+    // server's resync_scores), so the days that count stop the day before:
+    // a 30-day September is 29 days to read, as the leaderboard's "29 дн." says.
+    const scoringEnd = Math.max(start, end - 1);
+    return { start, end, scoringEnd, total: Math.max(1, scoringEnd - start + 1) };
   }, [roundStatus?.round, lastDayOfMonth]);
 
   const roundDaysLeft = useMemo(() => {
@@ -247,7 +251,7 @@ export function DashboardPage() {
     if (now.getFullYear() !== r.year || now.getMonth() + 1 !== r.month) return 0;
     // Before the round opens every day is still ahead of you.
     if (now.getDate() < roundWindow.start) return roundWindow.total;
-    return Math.max(0, roundWindow.end - now.getDate());
+    return Math.max(0, roundWindow.scoringEnd - now.getDate());
   }, [roundStatus?.round, roundWindow]);
 
   const roundDaysElapsed = useMemo(() => {
@@ -260,7 +264,7 @@ export function DashboardPage() {
     if (inThisMonth) {
       const today = now.getDate();
       if (today < roundWindow.start) return 0;
-      return Math.min(today, roundWindow.end) - roundWindow.start + 1;
+      return Math.min(today, roundWindow.scoringEnd) - roundWindow.start + 1;
     }
     return now > new Date(year, month - 1, 1) ? roundWindow.total : 0;
   }, [roundStatus?.round, roundWindow]);
@@ -587,13 +591,14 @@ export function DashboardPage() {
     },
     {
       key: 'today',
-      label: t('rings.today'),
+      // The last day is for corrections: what is read on it is kept but not scored.
+      label: isLastDay ? t('rings.todayOff') : t('rings.today'),
       value: todayData?.minutes ?? 0,
       target: DAILY_GOAL_MINUTES,
       unit: t('rings.unitMin'),
       color: 'var(--color-accent-primary)',
     },
-  ], [t, todayData, calendar, roundDaysElapsed, personalStreak, roundWindow]);
+  ], [t, todayData, calendar, roundDaysElapsed, personalStreak, roundWindow, isLastDay]);
 
   // Hours and minutes, e.g. "8 ч 20 мин". A bare minute count stops being
   // readable somewhere around the second week of a round.
