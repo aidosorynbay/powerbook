@@ -13,13 +13,6 @@ type PublicCalendar = {
   active_days: number;
 };
 
-const STEP_KEYS = [
-  'showcase.step1',
-  'showcase.step2',
-  'showcase.step3',
-  'showcase.step4',
-] as const;
-
 /** Same power curve the archive uses, so both views read alike. */
 function intensity(count: number, max: number): number {
   if (count <= 0) return 0;
@@ -111,17 +104,6 @@ export function RoundsShowcase() {
           <h2 className={styles.title}>{t('showcase.title')}</h2>
           <p className={styles.subtitle}>{t('showcase.subtitle')}</p>
         </div>
-
-        {/* One flowing line rather than four boxes — the steps are a
-            sentence, not four separate things to compare. */}
-        <p className={styles.stepsLine}>
-          {STEP_KEYS.map((key, i) => (
-            <span key={key}>
-              {i > 0 && <span className={styles.stepSep}>&nbsp;→&nbsp;</span>}
-              <span className={styles.stepPhrase}>{t(key)}</span>
-            </span>
-          ))}
-        </p>
 
         <div className={styles.calendarCard}>
           <div className={styles.calHead}>

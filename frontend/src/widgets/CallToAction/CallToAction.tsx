@@ -14,7 +14,7 @@ export function CallToAction({ onJoinClick }: CallToActionProps) {
 
   const features = [
     t('cta.freeRegistration'),
-    t('cta.startAnytime'),
+    t('cta.signUpWindow'),
     t('cta.noHiddenFees'),
   ];
 

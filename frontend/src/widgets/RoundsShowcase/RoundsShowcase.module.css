@@ -22,25 +22,6 @@
   margin: 0 auto;
 }
 
-/* ---- how a round works: one line, not four boxes ---- */
-.stepsLine {
-  max-width: 78ch;
-  margin: 0 auto var(--spacing-8);
-  text-align: center;
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-relaxed);
-  color: var(--color-text-secondary);
-}
-
-.stepPhrase {
-  white-space: normal;
-}
-
-.stepSep {
-  color: var(--color-accent-primary);
-  font-weight: var(--font-weight-bold);
-}
-
 /* ---- the calendar, a preview of the full archive ---- */
 .calendarCard {
   background: var(--color-bg-card);

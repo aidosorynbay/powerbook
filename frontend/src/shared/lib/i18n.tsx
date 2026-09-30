@@ -685,17 +685,13 @@ const translations = {
     'footer.terms': 'Условия',
     'footer.copyright': '© {year} PowerBook. Все права защищены.',
 
-    // Reward
-    'reward.badge': 'Награда каждый месяц',
-    'reward.title': 'участников получают книгу бесплатно',
-    'reward.description': 'Прочитай заданное количество страниц — получи реальную награду. Это не геймификация. Это дисциплина с результатом.',
 
     // CTA
     'cta.title': 'Начните читать сегодня',
     'cta.subtitle': 'Присоединяйтесь к текущему кругу и формируйте привычку читать каждый день',
     'cta.joinButton': 'Присоединиться к кругу',
     'cta.freeRegistration': 'Бесплатная регистрация',
-    'cta.startAnytime': 'Начните в любой момент',
+    'cta.signUpWindow': 'Запись с 1 по 10 число',
     'cta.noHiddenFees': 'Без скрытых платежей',
 
     // Profile
@@ -963,17 +959,12 @@ const translations = {
     'about.title': 'От гугл-таблицы до платформы',
     'about.p1': 'PowerBook начался в локдаун. Трое друзей — Айсултан, Нурбол и Мадияр — жили в разных городах и решили читать вместе: не гнаться за количеством книг, а просто читать каждый день и вечером отчитываться друг перед другом. Никакого приложения — только общая таблица и обещание не бросать.',
     'about.p2': 'После первого месяца мы рассказали о марафоне другим, и многие захотели присоединиться. Стало ясно, что это не только наша история, а система, которая помогает выстроить привычку. Дальше сообщество росло почти целиком из уст в уста.',
-    'about.p3': 'Правила намеренно простые: каждый месяц новый круг, минимум 30 минут в день, отметка за день даёт балл. В конце месяца ранжируем по постоянству, а не по скорости. Нижняя половина дарит книгу случайному участнику из верхней — это добавляет ответственности и сохраняет дружелюбную атмосферу.',
     'about.p4': 'Но главное — не статистика. Есть люди, которые в этом месяце не прочитали бы ни минуты, если бы PowerBook не существовало. Ноль превратился в тридцать минут, тридцать минут — в ещё один день, а день — в привычку, которая может остаться на всю жизнь.',
     'about.growthTitle': 'Как росло сообщество',
     'about.growthHint': 'читателей в год',
     'about.growthFoot': '* текущий год ещё идёт. Каждый год — это люди, которые читали хотя бы один день.',
     'showcase.title': 'Как проходили наши круги',
     'showcase.subtitle': 'Каждый квадрат — это день, когда кто-то читал. Чем ярче, тем больше людей отметились.',
-    'showcase.step1': 'Записываетесь в круг до начала месяца.',
-    'showcase.step2': 'Читаете минимум 30 минут в день.',
-    'showcase.step3': 'Отмечаете минуты — 30 и больше дают балл.',
-    'showcase.step4': 'В конце месяца итоги и обмен книгами.',
     'showcase.calTitle': 'Активность за',
     'showcase.calLegend': 'участников в день',
     'showcase.calFoot': 'Это только часть истории — в архиве есть каждый год и каждый день.',
@@ -2173,17 +2164,13 @@ const translations = {
     'footer.terms': 'Шарттар',
     'footer.copyright': '© {year} PowerBook. Барлық құқықтар қорғалған.',
 
-    // Reward
-    'reward.badge': 'Ай сайын сыйлық',
-    'reward.title': 'қатысушылар кітапты тегін алады',
-    'reward.description': 'Берілген бет санын оқыңыз — нақты сыйлық алыңыз. Бұл ойын емес. Бұл нәтижесі бар тәртіп.',
 
     // CTA
     'cta.title': 'Бүгін оқуды бастаңыз',
     'cta.subtitle': 'Ағымдағы раундқа қосылып, күн сайын оқу әдетін қалыптастыр',
     'cta.joinButton': 'Раундқа қосылу',
     'cta.freeRegistration': 'Тегін тіркелу',
-    'cta.startAnytime': 'Кез келген уақытта бастаңыз',
+    'cta.signUpWindow': 'Жазылу айдың 1–10 күндері',
     'cta.noHiddenFees': 'Жасырын төлемдер жоқ',
 
     // Profile
@@ -2451,17 +2438,12 @@ const translations = {
     'about.title': 'Google-кестеден платформаға дейін',
     'about.p1': 'PowerBook локдаун кезінде басталды. Үш дос — Айсұлтан, Нұрбол және Мадияр — әртүрлі қалада тұрып, бірге кітап оқу әдетін қалыптастыруды жөн көрді. Олар жәй ғана күн сайын кітап оқып, кешке бір-біріне есеп беріп отырды. Басты ереже: кітап оқу және оны тұрақты түрде іске асыру.',
     'about.p2': 'Бірінші айдан кейін олар марафон туралы өзге достарына айтты, көпшілігі қызығып, қосылғылары келді. Бұл тек кітап оқу емес, әдет қалыптастыруға көмектесетін таптырмас жүйе екені бесенеден белгілі еді. PowerBook ауыздан-ауызға тарап, кітапкеміргіштердің саны күн сайын артты.',
-    'about.p3': 'Ережелер өте қарапайым болды. Олар әр ай сайын жаңа раунд, күніне кемінде 30 минуттан кітап оқыды. Ай соңында кемінде 30 минуттан бастысы үздіксіз кітап оқыған жеңімпаздар анықталды. Айналымға қатысып, ережені сақтамаған қатысушылар жеңімпаздарға сыйлыққа «кітап» ұсынды. Бұл ортадағы жауапкершілікті арттырып, достық көңіл-күйді сақтады.',
     'about.p4': 'Дегенмен, ең бастысы — статистика емес. PowerBook болмаса, осы айда бір минут та кітап оқымайтын адамдар болатын. Нөл отыз минутқа айналды, отыз минут тағы бір күнге, ал күн — өмір бойы қалуы мүмкін әдетке айналды. PowerBook тек кітап оқу әдетін қалыптастырмады, ол адамның өзіне деген сенімін арттырып, тұрақтылыққа үйретті.',
     'about.growthTitle': 'Қауымдастық қалай өсті',
     'about.growthHint': 'жылына оқырман',
     'about.growthFoot': '* ағымдағы жыл әлі жүріп жатыр. Әр жыл — кемінде бір күн оқыған адамдар.',
     'showcase.title': 'Раундтарымыз қалай өтті',
     'showcase.subtitle': 'Әр шаршы — біреу оқыған күн. Неғұрлым жарық болса, соғұрлым көп адам белгі қойған.',
-    'showcase.step1': 'Ай басталғанға дейін раундқа тіркелесіз.',
-    'showcase.step2': 'Күніне кемінде 30 минут оқисыз.',
-    'showcase.step3': 'Минуттарды белгілейсіз — 30 және одан көбі ұпай береді.',
-    'showcase.step4': 'Ай соңында қорытынды және кітап алмасу.',
     'showcase.calTitle': 'Белсенділік:',
     'showcase.calLegend': 'күніне қатысушы',
     'showcase.calFoot': 'Бұл тарихтың бір бөлігі ғана — мұрағатта әр жыл мен әр күн бар.',
@@ -3661,17 +3643,13 @@ const translations = {
     'footer.terms': 'Terms',
     'footer.copyright': '© {year} PowerBook. All rights reserved.',
 
-    // Reward
-    'reward.badge': 'Monthly reward',
-    'reward.title': 'of participants get a free book',
-    'reward.description': 'Read the required number of pages — get a real reward. No gamification. Just discipline with results.',
 
     // CTA
     'cta.title': 'Start reading today',
     'cta.subtitle': 'Join the current round and build a habit of reading every day',
     'cta.joinButton': 'Join the round',
     'cta.freeRegistration': 'Free registration',
-    'cta.startAnytime': 'Start anytime',
+    'cta.signUpWindow': 'Sign-up from the 1st to the 10th',
     'cta.noHiddenFees': 'No hidden fees',
 
     // Profile
@@ -3939,17 +3917,12 @@ const translations = {
     'about.title': 'From a spreadsheet to a platform',
     'about.p1': 'PowerBook started during lockdown. Three friends — Aisultan, Nurbol and Madiyar — were living in different cities and decided to read together: not to race through as many books as possible, but simply to read every day and tell each other about it in the evening. No app — just a shared spreadsheet and a promise not to quit.',
     'about.p2': 'After the first month we told other people about the marathon, and many of them wanted to join. It became clear this wasn\'t only our story, but a system that helps people build the habit. From there the community grew almost entirely by word of mouth.',
-    'about.p3': 'The rules are deliberately simple: a new round every month, at least 30 minutes a day, and each logged day earns a point. At the end of the month we rank by consistency rather than speed. The bottom half gifts a book to a randomly assigned reader from the top half — it adds accountability while keeping the mood friendly.',
     'about.p4': 'But the point was never the statistics. There are people who wouldn\'t have read a single minute this month if PowerBook didn\'t exist. Zero became thirty minutes, thirty minutes became another day, and a day became a habit that can stay with someone for life.',
     'about.growthTitle': 'How the community grew',
     'about.growthHint': 'readers per year',
     'about.growthFoot': '* the current year is still running. Each year counts people who read on at least one day.',
     'showcase.title': 'How our rounds have run',
     'showcase.subtitle': 'Every square is a day someone read. The brighter it is, the more people logged that day.',
-    'showcase.step1': 'Sign up for the round before it starts.',
-    'showcase.step2': 'Read at least 30 minutes a day.',
-    'showcase.step3': 'Log your minutes — 30 or more earns a point.',
-    'showcase.step4': 'At month end: results and a book exchange.',
     'showcase.calTitle': 'Activity in',
     'showcase.calLegend': 'readers per day',
     'showcase.calFoot': "That's only part of it — the archive has every year and every day.",

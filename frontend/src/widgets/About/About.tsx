@@ -43,7 +43,6 @@ export function About() {
 
         <p className={styles.paragraph}>{t('about.p1')}</p>
         <p className={styles.paragraph}>{t('about.p2')}</p>
-        <p className={styles.paragraph}>{t('about.p3')}</p>
         <p className={styles.paragraph}>{t('about.p4')}</p>
 
         {years.length > 0 && (
