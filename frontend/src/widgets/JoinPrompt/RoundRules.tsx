@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useI18n } from '@/shared/lib';
+import { Icon, type IconName } from '@/shared/ui';
 import styles from './RoundRules.module.css';
 
 /**
@@ -9,12 +10,12 @@ import styles from './RoundRules.module.css';
  */
 export function RoundRules({ compact = false }: { compact?: boolean }) {
   const { t } = useI18n();
-  const items: [string, string][] = [
-    ['📖', t('wl.what1')],
-    ['✍️', t('rules.log')],
-    ['👥', t('wl.what2')],
-    ['🎁', t('wl.what3')],
-    ['📅', t('rules.dates')],
+  const items: [IconName, string][] = [
+    ['clock', t('wl.what1')],
+    ['pen', t('rules.log')],
+    ['users', t('wl.what2')],
+    ['gift', t('wl.what3')],
+    ['calendar', t('rules.dates')],
   ];
   return (
     <section className={`${styles.rules} ${compact ? styles.compact : ''}`} aria-label={t('rules.title')}>
@@ -22,7 +23,9 @@ export function RoundRules({ compact = false }: { compact?: boolean }) {
       <ul>
         {items.map(([icon, text]) => (
           <li key={icon}>
-            <span aria-hidden="true">{icon}</span>
+            <span className={styles.icon} aria-hidden="true">
+              <Icon name={icon} size="sm" />
+            </span>
             {text}
           </li>
         ))}

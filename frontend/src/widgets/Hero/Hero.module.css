@@ -385,10 +385,7 @@
     0 0 40px -18px rgba(242, 100, 48, 0.45);
 }
 
-/* "Уже записались на круг «Октябрь»: 14" under the button while sign-up is open. */
+/* The sign-up count, above the button while sign-up is open. */
 .joined {
-  margin: 14px 0 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
+  margin-bottom: 18px;
 }

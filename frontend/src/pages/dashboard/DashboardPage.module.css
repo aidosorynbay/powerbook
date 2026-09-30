@@ -919,13 +919,6 @@
   color: var(--color-text-secondary);
 }
 
-.joinedCount {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-}
-
 .takeoverRules {
   width: 100%;
   max-width: 520px;

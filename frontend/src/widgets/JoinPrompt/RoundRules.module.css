@@ -27,14 +27,21 @@
 .rules li {
   display: grid;
   grid-template-columns: 22px 1fr;
-  gap: 6px;
+  align-items: start;
+  gap: 10px;
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   line-height: 1.45;
 }
 
-.rules li span {
-  line-height: 1.35;
+.icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-accent-primary) 14%, transparent);
+  color: var(--color-text-accent);
 }
 
 .more {

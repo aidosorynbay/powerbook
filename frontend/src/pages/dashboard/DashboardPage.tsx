@@ -18,7 +18,7 @@ import {
 import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard } from '@/widgets';
-import { RoundRules } from '@/widgets/JoinPrompt';
+import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import anim from '@/shared/styles/animations.module.css';
 import { quietDayIcon, quietDayQuoteKeys, finishFlagIcon } from '@/shared/lib/quietDays';
 import styles from './DashboardPage.module.css';
@@ -539,10 +539,8 @@ export function DashboardPage() {
 
   // How many are already in the circle that is open for sign-up.
   const { state: wait, refresh: refreshWait } = useWaitlist();
-  const joinedLine =
-    wait?.phase === 'registration' && wait.joined > 0
-      ? `👥 ${t('wl.joinedN', { month: t(`month.${wait.month}`), n: wait.joined })}`
-      : null;
+  const joinedCount =
+    wait?.phase === 'registration' && wait.joined > 0 ? <JoinedCount n={wait.joined} month={wait.month} /> : null;
 
   // Scroll reveal for sections
   const { ref: sectionsRef, isVisible: sectionsVisible } = useScrollReveal<HTMLDivElement>();
@@ -717,7 +715,7 @@ export function DashboardPage() {
               {countdownMs !== null && (
                 <div className={styles.nextRoundTakeoverTimer}>{formatCountdown(countdownMs)}</div>
               )}
-              {joinedLine && <p className={styles.joinedCount}>{joinedLine}</p>}
+              {joinedCount}
               {roundStatus?.next_round && roundStatus.next_round.status === 'registration_open' ? (
                 roundStatus.next_round_participation?.is_participant ? (
                   <p className={styles.nextRoundTakeoverRegistered}>{t('dashboard.registeredNextRound')}</p>
@@ -855,7 +853,7 @@ export function DashboardPage() {
                   {(canJoin ||
                     (roundStatus.next_round?.status === 'registration_open' &&
                       !roundStatus.next_round_participation?.is_participant)) && <RoundRules compact />}
-                  {joinedLine && <p className={styles.joinedCount}>{joinedLine}</p>}
+                  {joinedCount}
                   {canJoin ? (
                     <Button onClick={handleJoin} disabled={isJoining}>
                       {isJoining ? t('dashboard.joining') : t('dashboard.joinBtn')}

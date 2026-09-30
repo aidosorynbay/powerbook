@@ -13,7 +13,10 @@ export type IconName =
   | 'check'
   | 'star'
   | 'trophy'
-  | 'book';
+  | 'book'
+  | 'calendar'
+  | 'gift'
+  | 'pen';
 
 interface IconProps extends SVGAttributes<SVGElement> {
   name: IconName;
@@ -66,6 +69,25 @@ const icons: Record<IconName, JSX.Element> = {
       <path d="M2 21v-2a4 4 0 014-4h6a4 4 0 014 4v2" stroke="currentColor" strokeWidth="1.5" fill="none" />
       <circle cx="17" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
       <path d="M17 11.5a3 3 0 013 3V16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </>
+  ),
+  'calendar': (
+    <>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      <path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </>
+  ),
+  'gift': (
+    <>
+      <rect x="3.5" y="8.5" width="17" height="4" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      <path d="M5 12.5v7a1 1 0 001 1h12a1 1 0 001-1v-7M12 8.5v12" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      <path d="M12 8.5C10.5 5 7 4.5 7 6.5S10 8.5 12 8.5zM12 8.5c1.5-3.5 5-4 5-2s-3 2-5 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
+    </>
+  ),
+  'pen': (
+    <>
+      <path d="M15.5 4.5l4 4L9 19H5v-4L15.5 4.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
+      <path d="M13.5 6.5l4 4" stroke="currentColor" strokeWidth="1.5" fill="none" />
     </>
   ),
   'clock': (

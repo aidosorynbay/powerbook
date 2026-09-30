@@ -1,0 +1,64 @@
+/* The sign-up count: an orange mark, the number large, two short lines beside it. */
+
+.joined {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 18px 8px 8px;
+  border: 1px solid color-mix(in srgb, var(--color-accent-primary) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-accent-primary) 12%, transparent);
+  text-align: left;
+}
+
+.icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-accent-primary);
+  color: var(--color-on-accent, #1a1206);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent-primary) 18%, transparent);
+  animation: live 2.4s ease-in-out infinite;
+}
+
+.n {
+  color: var(--color-text-accent);
+  font-size: 30px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.label span:first-child {
+  font-weight: var(--font-weight-bold);
+}
+
+.label span:last-child {
+  color: var(--color-text-secondary);
+}
+
+@keyframes live {
+  50% {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--color-accent-primary) 8%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon {
+    animation: none;
+  }
+}

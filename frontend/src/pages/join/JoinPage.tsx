@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { markJoinIntent, rememberInvite, useAuth, useI18n, useWaitlist } from '@/shared/lib';
 import { Avatar, Container } from '@/shared/ui';
 import { Footer, Header } from '@/widgets';
-import { RoundRules, ShareInvite, dayOf, monthOf } from '@/widgets/JoinPrompt';
+import { JoinedCount, RoundRules, ShareInvite, dayOf, monthOf } from '@/widgets/JoinPrompt';
 import styles from './JoinPage.module.css';
 
 /**
@@ -66,7 +66,7 @@ export function JoinPage() {
               <RoundRules />
 
               {registration && state.joined > 0 && (
-                <p className={styles.count}>👥 {t('wl.joinedN', { month, n: state.joined })}</p>
+                <JoinedCount n={state.joined} month={state.month} />
               )}
 
               {!registration && (

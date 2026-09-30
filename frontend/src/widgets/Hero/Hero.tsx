@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n, apiGet, useAuth, useWaitlist, type PublicStats } from '@/shared/lib';
 import { Button, Badge, ProgressBar, Container, Icon } from '@/shared/ui';
+import { JoinedCount } from '@/widgets/JoinPrompt';
 import styles from './Hero.module.css';
 
 interface HeroProps {
@@ -99,6 +100,9 @@ export function Hero({ onJoinClick, onLearnMoreClick }: HeroProps) {
               {t('hero.subtitle2')}
             </p>
 
+            {wait?.phase === 'registration' && wait.joined > 0 && (
+              <JoinedCount n={wait.joined} month={wait.month} className={styles.joined} />
+            )}
             <div className={styles.actions}>
               <Button
                 variant="primary"
@@ -112,11 +116,6 @@ export function Hero({ onJoinClick, onLearnMoreClick }: HeroProps) {
                 {t('hero.learnMore')}
               </button>
             </div>
-            {wait?.phase === 'registration' && wait.joined > 0 && (
-              <p className={styles.joined}>
-                <span aria-hidden="true">👥</span> {t('wl.joinedN', { month: t(`month.${wait.month}`), n: wait.joined })}
-              </p>
-            )}
           </div>
 
           <div className={`${styles.statsCard} ${isMiniRound ? styles.statsCardAccent : ''}`}>
