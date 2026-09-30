@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { AuthProvider, useAuth, I18nProvider, useI18n } from '@/shared/lib';
-import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage } from '@/pages';
-import { BottomNav, LastCallNotice } from '@/widgets';
+import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage, JoinPage } from '@/pages';
+import { BottomNav, JoinPrompt, LastCallNotice } from '@/widgets';
 import '@/app/styles/theme.css';
 
 // Loaded only when a book is actually opened.
@@ -49,6 +49,8 @@ function AppRoutes() {
           element={isAuthenticated ? <InsightsPage /> : <Navigate to="/login" replace />}
         />
         <Route path="/claim" element={<ClaimPage />} />
+        {/* Open to anyone: it is the page members send to friends. */}
+        <Route path="/join" element={<JoinPage />} />
         <Route path="/hall-of-fame" element={<HallOfFamePage />} />
         {/* Public and unauthenticated on purpose: both app stores need a
             policy URL reachable without an account. */}
@@ -124,6 +126,8 @@ function AppRoutes() {
       {/* Mounted at the root, not per page: the reader should see it on the
           last day whichever page they happen to open. */}
       {isAuthenticated && <LastCallNotice />}
+      {/* For whoever is not reading in this month's circle: the way into the next one. */}
+      <JoinPrompt />
     </>
   );
 }

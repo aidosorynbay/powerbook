@@ -12,6 +12,7 @@ from app.models.enums import ClaimStatus, RoundStatus, SystemRole
 from app.models.group import Group, GroupMember
 from app.models.round import BookExchangePair, ReadingLog, Round, RoundParticipant, RoundResult
 from app.models.user import User
+from app.models.waitlist import WaitlistEntry
 
 
 class AdminAuth(AuthenticationBackend):
@@ -226,6 +227,14 @@ class RoundParticipantAdmin(ModelView, model=RoundParticipant):
     icon = "fa-solid fa-user-check"
 
 
+class WaitlistAdmin(ModelView, model=WaitlistEntry):
+    column_list = [WaitlistEntry.year, WaitlistEntry.month, WaitlistEntry.user_id, WaitlistEntry.invited_by, WaitlistEntry.created_at]
+    column_sortable_list = [WaitlistEntry.year, WaitlistEntry.month, WaitlistEntry.created_at]
+    name = "Waitlist entry"
+    name_plural = "Waiting list"
+    icon = "fa-solid fa-hourglass-half"
+
+
 class ReadingLogAdmin(ModelView, model=ReadingLog):
     column_list = [ReadingLog.id, ReadingLog.round_id, ReadingLog.user_id, ReadingLog.date, ReadingLog.minutes, ReadingLog.score, ReadingLog.book_finished, ReadingLog.comment]
     column_sortable_list = [ReadingLog.date, ReadingLog.minutes, ReadingLog.score]
@@ -361,6 +370,7 @@ def setup_admin(app):
     admin.add_view(GroupMemberAdmin)
     admin.add_view(RoundAdmin)
     admin.add_view(RoundParticipantAdmin)
+    admin.add_view(WaitlistAdmin)
     admin.add_view(ReadingLogAdmin)
     admin.add_view(RoundResultAdmin)
     admin.add_view(BookExchangePairAdmin)

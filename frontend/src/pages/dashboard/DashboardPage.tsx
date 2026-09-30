@@ -16,7 +16,7 @@ import {
 } from '@/shared/lib';
 import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition } from '@/shared/ui';
-import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal } from '@/widgets';
+import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard } from '@/widgets';
 import anim from '@/shared/styles/animations.module.css';
 import { quietDayIcon, quietDayQuoteKeys, finishFlagIcon } from '@/shared/lib/quietDays';
 import styles from './DashboardPage.module.css';
@@ -1108,6 +1108,8 @@ export function DashboardPage() {
                   </div>
                 ) : !isParticipant ? (
                   <>
+                    {/* Outside this circle once sign-up has closed: the next one and its waiting list. */}
+                    <WaitlistCard />
                     {/* Round stats — for non-participants */}
                     <div className={`${styles.section} ${styles.orderStats} ${revealClass} ${anim.scrollRevealDelay3}`}>
                       <div className={styles.sectionTitle}>{t('dashboard.roundStats')}</div>

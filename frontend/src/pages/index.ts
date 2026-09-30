@@ -17,3 +17,4 @@ export { PrivacyPage, TermsPage } from './legal';
 export { LibraryPage, ReaderShelfPage, LibraryHallPage } from './library';
 export { CatalogPage, MarketPage } from './books';
 export { ReadingPage } from './reading';
+export { JoinPage } from './join';

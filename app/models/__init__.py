@@ -16,6 +16,7 @@ from app.models.custom_shelf import CustomShelf, ShelfPlacement
 from app.models.reading_room import ReadingRoomMessage, ReadingRoomSession
 from app.models.suggestion import Suggestion
 from app.models.user import User
+from app.models.waitlist import WaitlistEntry
 
 __all__ = [
     "User",
@@ -43,5 +44,6 @@ __all__ = [
     "BookFact",
     "BookListing",
     "AiDigest",
+    "WaitlistEntry",
 ]
 

@@ -15,3 +15,4 @@ export { ActivityRings } from './ActivityRings';
 export { TelegramGuide } from './TelegramGuide';
 export { ReadingRoom } from './ReadingRoom';
 export type { ActivityRing, RingTotal } from './ActivityRings';
+export { JoinPrompt, WaitlistCard } from './JoinPrompt';

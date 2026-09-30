@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useI18n, apiGet, useAuth, type PublicStats } from '@/shared/lib';
+import { useNavigate } from 'react-router-dom';
+import { useI18n, apiGet, useAuth, useWaitlist, type PublicStats } from '@/shared/lib';
 import { Button, Badge, ProgressBar, Container, Icon } from '@/shared/ui';
 import styles from './Hero.module.css';
 
@@ -21,6 +22,30 @@ export function Hero({ onJoinClick, onLearnMoreClick }: HeroProps) {
   const { isAuthenticated } = useAuth();
   const [stats, setStats] = useState<PublicStats | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const { state: wait, join, joinRound } = useWaitlist();
+  const navigate = useNavigate();
+
+  // For someone outside this month's circle the button leads into the next
+  // one: the circle itself while sign-up is open, else its waiting list.
+  const nextStep = useMemo(() => {
+    if (!wait || wait.in_current_round) return null;
+    const month = t(`month.${wait.month}`);
+    if (wait.phase === 'registration') {
+      if (!isAuthenticated || wait.in_open_round) return null;
+      return {
+        label: t('wl.heroJoin', { month }),
+        run: async () => navigate((await joinRound()) ? '/join' : '/round'),
+      };
+    }
+    if (wait.on_waitlist) return { label: t('wl.heroOnList'), run: () => navigate('/join') };
+    return {
+      label: t('wl.heroWait', { month }),
+      run: async () => {
+        if (isAuthenticated) await join();
+        navigate('/join');
+      },
+    };
+  }, [wait, isAuthenticated, t, join, joinRound, navigate]);
 
   useEffect(() => {
     async function fetchStats() {
@@ -79,9 +104,9 @@ export function Hero({ onJoinClick, onLearnMoreClick }: HeroProps) {
                 variant="primary"
                 size="lg"
                 icon={<Icon name="arrow-right" size="sm" />}
-                onClick={onJoinClick}
+                onClick={nextStep ? nextStep.run : onJoinClick}
               >
-                {isAuthenticated ? t('hero.goToRound') : t('hero.joinBtn')}
+                {nextStep ? nextStep.label : isAuthenticated ? t('hero.goToRound') : t('hero.joinBtn')}
               </Button>
               <button className={styles.learnMoreBtn} onClick={onLearnMoreClick}>
                 {t('hero.learnMore')}
@@ -144,9 +169,11 @@ export function Hero({ onJoinClick, onLearnMoreClick }: HeroProps) {
               variant="primary"
               size="lg"
               className={styles.roundCta}
-              onClick={onJoinClick}
+              onClick={nextStep ? nextStep.run : onJoinClick}
             >
-              {isAuthenticated
+              {nextStep
+                ? nextStep.label
+                : isAuthenticated
                 ? t('hero.goToRound')
                 : stats?.round_registration_open
                   ? t('hero.roundJoin')
