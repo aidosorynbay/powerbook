@@ -112,6 +112,7 @@ export type {
   RoundStats,
   RoundInsight,
   RoundReview,
+  MyResult,
   RoundLetter,
 } from './types';
 export { useTheme, useResolvedTheme, readThemeChoice, resolveTheme, applyTheme, THEME_KEY, type ThemeChoice } from './theme';

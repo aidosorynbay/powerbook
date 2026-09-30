@@ -13,6 +13,7 @@ import {
 } from '@/shared/lib';
 import { Container, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
+import { RoundStory } from '@/widgets/RoundStory/RoundStory';
 import styles from './ResultsPage.module.css';
 import { RoundReview } from './RoundReview';
 
@@ -145,6 +146,9 @@ export function ResultsPage() {
   const [viewedCalendar, setViewedCalendar] = useState<CalendarResponse | null>(null);
   const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
   const [showPairs, setShowPairs] = useState(false);
+  const [storyOpen, setStoryOpen] = useState(false);
+  const openStory = useCallback(() => setStoryOpen(true), []);
+  const closeStory = useCallback(() => setStoryOpen(false), []);
 
   const fetchCalendar = useCallback(async (roundId: string, userId: string) => {
     setIsLoadingCalendar(true);
@@ -290,6 +294,9 @@ export function ResultsPage() {
                             </span>
                           </div>
                         )}
+                        <button type="button" className={styles.storyBtn} onClick={openStory}>
+                          {t('story.open')}
+                        </button>
                         {myExchange && (
                           <label className={styles.exchangeCheckbox}>
                             <input
@@ -438,6 +445,19 @@ export function ResultsPage() {
                 {/* The reader's own round, looked back on: beside their earlier rounds, with what to do better.
                     Not in this one: their latest round instead. */}
                 <RoundReview roundId={results.my_result ? lastRound.id : null} />
+
+                {results.my_result && (
+                  <RoundStory
+                    roundId={lastRound.id}
+                    year={results.year}
+                    month={results.month}
+                    result={results.my_result}
+                    participants={results.results.length}
+                    open={storyOpen}
+                    onOpen={openStory}
+                    onClose={closeStory}
+                  />
+                )}
               </>
             )}
             {/* No results page yet, but a round in the reader's past or present: its review all the same. */}
