@@ -96,3 +96,8 @@ class User(TimestampMixin, Base):
         foreign_keys="BookExchangePair.receiver_user_id",
         cascade="all, delete-orphan",
     )
+
+    def __str__(self) -> str:
+        # How the admin names a reader: the username, and the Telegram handle when it differs.
+        tg = f" · tg @{self.telegram_id}" if self.telegram_id and self.telegram_id != self.username else ""
+        return f"@{self.username}{tg}"

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from datetime import timezone
+
 from sqladmin import Admin, ModelView, action
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
+from app.core.constants import ROUND_TZ
 from app.core.security import hash_password, verify_password
 from app.db.session import get_engine, get_session_factory
 from app.models.claim import UsernameClaim
@@ -50,8 +53,21 @@ class AdminAuth(AuthenticationBackend):
 # --- Model Views ---
 
 
+def _astana(model: object, attr: object) -> str:
+    """A moment as Astana reads it: 30.09.2026 20:14."""
+    value = getattr(model, getattr(attr, "key", str(attr)), None)
+    if value is None:
+        return ""
+    if value.tzinfo is None:  # stored in UTC
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(ROUND_TZ).strftime("%d.%m.%Y %H:%M")
+
+
 class UserAdmin(ModelView, model=User):
     column_list = [User.id, User.username, User.display_name, User.telegram_id, User.gender, User.system_role, User.is_claimable, User.is_active, User.created_at]
+    column_labels = {User.created_at: "registered (Astana)"}
+    column_formatters = {User.created_at: _astana}
+    column_default_sort = [(User.created_at, True)]
     column_searchable_list = [User.username, User.display_name, User.telegram_id]
     column_sortable_list = [User.username, User.display_name, User.created_at]
     form_excluded_columns = [
@@ -221,22 +237,31 @@ class RoundAdmin(ModelView, model=Round):
 
 
 class RoundParticipantAdmin(ModelView, model=RoundParticipant):
-    column_list = [RoundParticipant.id, RoundParticipant.round_id, RoundParticipant.user_id, RoundParticipant.status, RoundParticipant.joined_at]
+    column_list = [RoundParticipant.round, RoundParticipant.user, RoundParticipant.status, RoundParticipant.joined_at]
+    column_labels = {RoundParticipant.round: "round", RoundParticipant.user: "reader", RoundParticipant.joined_at: "joined (Astana)"}
+    column_formatters = {RoundParticipant.joined_at: _astana}
+    column_sortable_list = [RoundParticipant.joined_at, RoundParticipant.status]
+    column_default_sort = [(RoundParticipant.joined_at, True)]
     name = "Participant"
     name_plural = "Participants"
     icon = "fa-solid fa-user-check"
 
 
 class WaitlistAdmin(ModelView, model=WaitlistEntry):
-    column_list = [WaitlistEntry.year, WaitlistEntry.month, WaitlistEntry.user_id, WaitlistEntry.invited_by, WaitlistEntry.created_at]
+    column_list = [WaitlistEntry.year, WaitlistEntry.month, WaitlistEntry.user, WaitlistEntry.inviter, WaitlistEntry.created_at]
+    column_labels = {WaitlistEntry.user: "reader", WaitlistEntry.inviter: "invited by", WaitlistEntry.created_at: "signed up (Astana)"}
+    column_formatters = {WaitlistEntry.created_at: _astana}
     column_sortable_list = [WaitlistEntry.year, WaitlistEntry.month, WaitlistEntry.created_at]
+    column_default_sort = [(WaitlistEntry.created_at, True)]
+    form_excluded_columns = [WaitlistEntry.user, WaitlistEntry.inviter]
     name = "Waitlist entry"
     name_plural = "Waiting list"
     icon = "fa-solid fa-hourglass-half"
 
 
 class ReadingLogAdmin(ModelView, model=ReadingLog):
-    column_list = [ReadingLog.id, ReadingLog.round_id, ReadingLog.user_id, ReadingLog.date, ReadingLog.minutes, ReadingLog.score, ReadingLog.book_finished, ReadingLog.comment]
+    column_list = [ReadingLog.round, ReadingLog.user, ReadingLog.date, ReadingLog.minutes, ReadingLog.score, ReadingLog.book_finished, ReadingLog.comment]
+    column_labels = {ReadingLog.user: "reader"}
     column_sortable_list = [ReadingLog.date, ReadingLog.minutes, ReadingLog.score]
     name = "Reading Log"
     name_plural = "Reading Logs"
@@ -244,7 +269,8 @@ class ReadingLogAdmin(ModelView, model=ReadingLog):
 
 
 class RoundResultAdmin(ModelView, model=RoundResult):
-    column_list = [RoundResult.id, RoundResult.round_id, RoundResult.user_id, RoundResult.total_score, RoundResult.rank, RoundResult.group]
+    column_list = [RoundResult.round, RoundResult.user, RoundResult.total_score, RoundResult.rank, RoundResult.group]
+    column_labels = {RoundResult.user: "reader"}
     column_sortable_list = [RoundResult.rank, RoundResult.total_score]
     name = "Round Result"
     name_plural = "Round Results"
@@ -252,7 +278,8 @@ class RoundResultAdmin(ModelView, model=RoundResult):
 
 
 class BookExchangePairAdmin(ModelView, model=BookExchangePair):
-    column_list = [BookExchangePair.id, BookExchangePair.round_id, BookExchangePair.giver_user_id, BookExchangePair.receiver_user_id, BookExchangePair.giver_marked_given_at, BookExchangePair.receiver_marked_received_at]
+    column_list = [BookExchangePair.round, BookExchangePair.giver, BookExchangePair.receiver, BookExchangePair.giver_marked_given_at, BookExchangePair.receiver_marked_received_at]
+    column_formatters = {BookExchangePair.giver_marked_given_at: _astana, BookExchangePair.receiver_marked_received_at: _astana}
     name = "Book Exchange"
     name_plural = "Book Exchanges"
     icon = "fa-solid fa-book-open"

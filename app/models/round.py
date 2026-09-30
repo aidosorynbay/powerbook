@@ -129,6 +129,9 @@ class Round(TimestampMixin, Base):
         cascade="all, delete-orphan",
     )
 
+    def __str__(self) -> str:
+        return f"{self.year}-{self.month:02d}"
+
 
 class RoundParticipant(TimestampMixin, Base):
     __tablename__ = "round_participants"

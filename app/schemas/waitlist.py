@@ -27,6 +27,8 @@ class WaitlistStateOut(BaseModel):
     month: int
     starts_on: str
     count: int
+    # Readers already in the open round (0 when none is open): the number people see beside the sign-up.
+    joined: int = 0
     in_current_round: bool
     in_open_round: bool
     on_waitlist: bool

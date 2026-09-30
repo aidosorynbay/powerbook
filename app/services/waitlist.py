@@ -132,6 +132,15 @@ def state(db: Session, *, user: User | None) -> WaitlistStateOut:
         ]
 
     in_open = _in_round(db, open_round, user)
+    joined = (
+        db.execute(
+            select(func.count()).where(
+                RoundParticipant.round_id == open_round.id, RoundParticipant.status.in_(_IN_ROUND)
+            )
+        ).scalar_one()
+        if open_round is not None
+        else 0
+    )
     last_day = calendar.monthrange(today.year, today.month)[1]
     return WaitlistStateOut(
         phase="registration" if open_round is not None else "waitlist",
@@ -148,6 +157,7 @@ def state(db: Session, *, user: User | None) -> WaitlistStateOut:
         month=month,
         starts_on=date(year, month, 1).isoformat(),
         count=int(count),
+        joined=int(joined),
         in_current_round=_in_round(db, current, user),
         in_open_round=in_open,
         on_waitlist=mine is not None,

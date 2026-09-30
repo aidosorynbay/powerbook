@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 
 from sqlalchemy import ForeignKey, Index, SmallInteger, UniqueConstraint, Uuid
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.mixins import TimestampMixin
@@ -38,3 +38,7 @@ class WaitlistEntry(TimestampMixin, Base):
     invited_by: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, default=None
     )
+
+    # Read in the admin: whose entry, and who brought them.
+    user: Mapped["User"] = relationship(foreign_keys=[user_id], viewonly=True)
+    inviter: Mapped["User | None"] = relationship(foreign_keys=[invited_by], viewonly=True)
