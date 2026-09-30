@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Suspense, lazy, useEffect } from 'react';
 import * as Sentry from '@sentry/react';
 import { AuthProvider, useAuth, I18nProvider, useI18n } from '@/shared/lib';
@@ -13,6 +13,19 @@ const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 const ReaderPage = lazy(() =>
   import('@/pages/library/ReaderPage').then((m) => ({ default: m.ReaderPage }))
 );
+
+/** A page that needs an account: sign in, then come back to it. */
+function ToLogin() {
+  const { pathname, search } = useLocation();
+  return <Navigate to={`/login?redirect=${encodeURIComponent(pathname + search)}`} replace />;
+}
+
+/** The round, opened by someone without an account (it is shared around):
+ * the invitation page, which says what a circle is and how to get in. */
+function ToJoin() {
+  const { search } = useLocation();
+  return <Navigate to={`/join${search}`} replace />;
+}
 
 function AppRoutes() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -44,19 +57,19 @@ function AppRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route
           path="/round"
-          element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <DashboardPage /> : <ToJoin />}
         />
         <Route
           path="/archive"
-          element={isAuthenticated ? <ArchivePage /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <ArchivePage /> : <ToLogin />}
         />
         <Route
           path="/results"
-          element={isAuthenticated ? <ResultsPage /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <ResultsPage /> : <ToLogin />}
         />
         <Route
           path="/insights"
-          element={isAuthenticated ? <InsightsPage /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <InsightsPage /> : <ToLogin />}
         />
         <Route path="/claim" element={<ClaimPage />} />
         {/* Open to anyone: it is the page members send to friends. */}
@@ -66,23 +79,23 @@ function AppRoutes() {
             policy URL reachable without an account. */}
         <Route
           path="/library"
-          element={isAuthenticated ? <LibraryPage /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <LibraryPage /> : <ToLogin />}
         />
         <Route
           path="/library/hall"
-          element={isAuthenticated ? <LibraryHallPage /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <LibraryHallPage /> : <ToLogin />}
         />
         <Route
           path="/books"
-          element={isAuthenticated ? <CatalogPage /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <CatalogPage /> : <ToLogin />}
         />
         <Route
           path="/market"
-          element={isAuthenticated ? <MarketPage /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <MarketPage /> : <ToLogin />}
         />
         <Route
           path="/reading"
-          element={isAuthenticated ? <ReadingPage /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <ReadingPage /> : <ToLogin />}
         />
         <Route
           path="/library/:bookId"
@@ -92,7 +105,7 @@ function AppRoutes() {
                 <ReaderPage />
               </Suspense>
             ) : (
-              <Navigate to="/login" replace />
+              <ToLogin />
             )
           }
         />
@@ -101,23 +114,23 @@ function AppRoutes() {
         <Route path="/suggestions" element={<SuggestionsPage />} />
         <Route
           path="/suggestions/admin"
-          element={isAuthenticated ? <AdminSuggestionsPage /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <AdminSuggestionsPage /> : <ToLogin />}
         />
         <Route
           path="/readers"
-          element={isAuthenticated ? <DirectoryPage /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <DirectoryPage /> : <ToLogin />}
         />
         <Route
           path="/readers/:userId"
-          element={isAuthenticated ? <PublicProfilePage /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <PublicProfilePage /> : <ToLogin />}
         />
         <Route
           path="/readers/:userId/shelf"
-          element={isAuthenticated ? <ReaderShelfPage /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <ReaderShelfPage /> : <ToLogin />}
         />
         <Route
           path="/profile"
-          element={isAuthenticated ? <ProfilePage /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <ProfilePage /> : <ToLogin />}
         />
         <Route
           path="/login"

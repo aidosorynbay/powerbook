@@ -112,6 +112,11 @@ export function Hero({ onJoinClick, onLearnMoreClick }: HeroProps) {
                 {t('hero.learnMore')}
               </button>
             </div>
+            {wait?.phase === 'registration' && wait.joined > 0 && (
+              <p className={styles.joined}>
+                <span aria-hidden="true">👥</span> {t('wl.joinedN', { month: t(`month.${wait.month}`), n: wait.joined })}
+              </p>
+            )}
           </div>
 
           <div className={`${styles.statsCard} ${isMiniRound ? styles.statsCardAccent : ''}`}>

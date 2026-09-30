@@ -1,0 +1,59 @@
+/* "Как устроен круг": five lines and a link, the same on /join and on the round page. */
+
+.rules {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  background: rgba(var(--color-page-rgb), 0.45);
+  text-align: left;
+}
+
+.rules h3 {
+  margin: 0 0 8px;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+}
+
+.rules ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rules li {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
+.rules li span {
+  line-height: 1.35;
+}
+
+.more {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--color-text-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.more:hover {
+  text-decoration: underline;
+}
+
+.compact {
+  padding: 12px 14px;
+}
+
+.compact li {
+  font-size: 13px;
+}

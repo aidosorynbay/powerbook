@@ -118,6 +118,9 @@ export function LastCallNotice() {
         next = isParticipant ? 'deadlineStay' : 'deadlineJoin';
       }
       if (!next) return;
+      // After 20:00 on the final day the results are out and the next circle is open: nothing left to warn about.
+      const cutoff = data.correction_deadline_utc ? Date.parse(data.correction_deadline_utc) : NaN;
+      if ((next === 'lastCall' || next === 'lastCallOut') && now.getTime() >= cutoff) return;
 
       setRoundId(r.id);
       setNextMonth((r.month % 12) + 1);

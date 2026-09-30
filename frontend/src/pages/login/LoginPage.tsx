@@ -111,7 +111,7 @@ export function LoginPage() {
 
           <div className={styles.footer}>
             <span>{t('login.noAccount')}</span>
-            <Link className={styles.link} to="/register">
+            <Link className={styles.link} to={searchParams.get('redirect') ? `/register?redirect=${encodeURIComponent(searchParams.get('redirect') ?? '/')}` : '/register'}>
               {t('login.goRegister')}
             </Link>
           </div>

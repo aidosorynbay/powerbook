@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth, useI18n, apiPost, type TokenResponse } from '@/shared/lib';
 import { Button, Card, Container, Logo, PageTransition } from '@/shared/ui';
 import { ClaimPicker, TelegramGuide } from '@/widgets';
@@ -9,6 +9,9 @@ type Gender = 'male' | 'female' | 'unknown';
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get('redirect');
+  const next = redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/';
   const { login } = useAuth();
   const { t } = useI18n();
 
@@ -65,7 +68,7 @@ export function RegisterPage() {
 
               <ClaimPicker />
 
-              <Button type="button" fullWidth onClick={() => navigate('/')} className={styles.claimContinueBtn}>
+              <Button type="button" fullWidth onClick={() => navigate(next)} className={styles.claimContinueBtn}>
                 {t('register.claimContinue')}
               </Button>
             </Card>
@@ -184,7 +187,7 @@ export function RegisterPage() {
 
           <div className={styles.footer}>
             <span>{t('register.hasAccount')}</span>
-            <Link className={styles.link} to="/login">
+            <Link className={styles.link} to={redirect ? `/login?redirect=${encodeURIComponent(next)}` : '/login'}>
               {t('register.goLogin')}
             </Link>
           </div>

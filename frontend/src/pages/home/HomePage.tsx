@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/lib';
 import { Container, PageTransition } from '@/shared/ui';
@@ -9,13 +10,20 @@ export function HomePage() {
   const navigate = useNavigate();
 
   const handleJoin = () => {
-    navigate(isAuthenticated ? '/round' : '/register');
+    navigate(isAuthenticated ? '/round' : '/join');
   };
 
   // «Узнать больше» / «Толығырақ»: down to what PowerBook is.
   const handleLearnMore = () => {
     document.getElementById('powerbook')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  // Links elsewhere point at /#powerbook.
+  useEffect(() => {
+    if (window.location.hash !== '#powerbook') return;
+    const id = window.setTimeout(handleLearnMore, 300);
+    return () => window.clearTimeout(id);
+  }, []);
 
   return (
     <PageTransition>

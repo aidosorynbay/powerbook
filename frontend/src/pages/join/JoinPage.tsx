@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { markJoinIntent, rememberInvite, useAuth, useI18n, useWaitlist } from '@/shared/lib';
 import { Avatar, Container } from '@/shared/ui';
 import { Footer, Header } from '@/widgets';
-import { ShareInvite, dayOf, monthOf } from '@/widgets/JoinPrompt';
+import { RoundRules, ShareInvite, dayOf, monthOf } from '@/widgets/JoinPrompt';
 import styles from './JoinPage.module.css';
 
 /**
@@ -37,7 +37,7 @@ export function JoinPage() {
 
   const signUp = (to: '/register' | '/login') => {
     markJoinIntent();
-    navigate(to);
+    navigate(`${to}?redirect=%2Fjoin`);
   };
 
   const month = state ? monthOf(t, state.month) : '';
@@ -63,11 +63,11 @@ export function JoinPage() {
               <h1 className={styles.title}>
                 {registration ? t('wl.pageTitleReg', { month }) : t('wl.pageTitleWait', { month })}
               </h1>
-              <ul className={styles.rules}>
-                <li>{t('wl.what1')}</li>
-                <li>{t('wl.what2')}</li>
-                <li>{t('wl.what3')}</li>
-              </ul>
+              <RoundRules />
+
+              {registration && state.joined > 0 && (
+                <p className={styles.count}>👥 {t('wl.joinedN', { month, n: state.joined })}</p>
+              )}
 
               {!registration && (
                 <div className={styles.people}>

@@ -10,6 +10,8 @@ export type WaitlistState = {
   month: number;
   starts_on: string;
   count: number;
+  /** Readers already in the open round (0 when none is open). */
+  joined: number;
   in_current_round: boolean;
   in_open_round: boolean;
   on_waitlist: boolean;
