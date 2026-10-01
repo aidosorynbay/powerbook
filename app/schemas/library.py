@@ -120,6 +120,9 @@ class BookcaseBookOut(BaseModel):
     round_year: int | None
     round_month: int | None
     times_finished: int
+    # Minutes the reader's days in the circle put on this book («Что читаю»).
+    minutes_read: int = 0
+    days_read: int = 0
     # Comparison key used to find other readers of the same book.
     match_key: str | None
     fellow_readers: int

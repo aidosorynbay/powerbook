@@ -12,7 +12,7 @@ from app.models.library import LibraryBook
 from app.models.manual_book import ManualBook
 from app.models.notification import BookWatch, Notification
 from app.models.reaction import ReadingLogReaction
-from app.models.round import BookExchangePair, ReadingLog, Round, RoundParticipant, RoundResult
+from app.models.round import BookExchangePair, ReadingLog, ReadingLogBook, Round, RoundParticipant, RoundResult
 from app.models.shelf_override import ShelfOverride
 from app.models.book_note import BookNote
 from app.models.custom_shelf import CustomShelf, ShelfPlacement
@@ -33,6 +33,7 @@ __all__ = [
     "Round",
     "RoundParticipant",
     "ReadingLog",
+    "ReadingLogBook",
     "RoundResult",
     "BookExchangePair",
     "ExchangePhoto",

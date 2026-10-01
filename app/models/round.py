@@ -221,6 +221,43 @@ class ReadingLog(TimestampMixin, Base):
 
     round: Mapped["Round"] = relationship(back_populates="reading_logs")
     user: Mapped["User"] = relationship(back_populates="reading_logs")
+    books: Mapped[list["ReadingLogBook"]] = relationship(
+        back_populates="log",
+        cascade="all, delete-orphan",
+        order_by="ReadingLogBook.position",
+    )
+
+
+class ReadingLogBook(TimestampMixin, Base):
+    """Which book a day's minutes went to.
+
+    Usually one row per day: the book the reader is on. A day read across two
+    books splits its minutes («20 мин на эту, 10 на ту»); the day's total stays
+    on reading_logs, which the score and the leaderboard read. Summed over a
+    title these rows are «сколько минут ушло на эту книгу».
+    """
+
+    __tablename__ = "reading_log_books"
+
+    __table_args__ = (
+        CheckConstraint("minutes >= 0", name="ck_reading_log_books_minutes_non_negative"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    reading_log_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("reading_logs.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
+    # The log's reader again, so per-book totals need no join.
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
+    )
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    title_norm: Mapped[str] = mapped_column(String(300), nullable=False)
+    minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    finished: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+
+    log: Mapped["ReadingLog"] = relationship(back_populates="books")
 
 
 class RoundResult(TimestampMixin, Base):

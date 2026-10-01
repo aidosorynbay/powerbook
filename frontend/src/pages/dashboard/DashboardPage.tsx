@@ -12,6 +12,9 @@ import {
   type CurrentRoundStatusResponse,
   type LeaderboardEntry,
   type CalendarResponse,
+  type CalendarDay,
+  type DayBook,
+  type ReadingBooksResponse,
   type RosterResponse,
   type AllTimeProfile,
   track,
@@ -23,6 +26,7 @@ import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { BarysCard } from '@/widgets/Mascot';
 import anim from '@/shared/styles/animations.module.css';
 import { quietDayIcon, quietDayQuoteKeys, finishFlagIcon } from '@/shared/lib/quietDays';
+import { ReadingBooks, booksPayload, sumMinutes } from './ReadingBooks';
 import styles from './DashboardPage.module.css';
 
 function getStatusVariant(status: RoundStatus): 'success' | 'accent' | 'default' {
@@ -143,7 +147,10 @@ export function DashboardPage() {
   const [modalBookFinished, setModalBookFinished] = useState(false);
   const [modalComment, setModalComment] = useState('');
   const [modalCommentPrivate, setModalCommentPrivate] = useState(false);
+  const [modalBooks, setModalBooks] = useState<DayBook[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  // «Что читаю»: the book the forms start with, and recent others to offer.
+  const [readingBooks, setReadingBooks] = useState<ReadingBooksResponse | null>(null);
 
   // Dual countdown timers
   const [lastDayPhase, setLastDayPhase] = useState<LastDayPhase>('normal');
@@ -167,6 +174,7 @@ export function DashboardPage() {
   const [todayComment, setTodayComment] = useState('');
   const [todayCommentPrivate, setTodayCommentPrivate] = useState(false);
   const [isSavingToday, setIsSavingToday] = useState(false);
+  const [todayBooks, setTodayBooks] = useState<DayBook[]>([]);
 
   const fetchRoundStatus = useCallback(async () => {
     const { data } = await apiGet<CurrentRoundStatusResponse>(
@@ -190,6 +198,8 @@ export function DashboardPage() {
       { requireAuth: true }
     );
     if (data) setCalendar(data);
+    const { data: books } = await apiGet<ReadingBooksResponse>(`/rounds/${roundId}/reading_books`, { requireAuth: true });
+    if (books) setReadingBooks(books);
   }, []);
 
   // All-time minutes for the tally under the rings. It is a nice-to-have:
@@ -369,6 +379,20 @@ export function DashboardPage() {
     setIsLeaving(false);
   };
 
+  /** The books a day's form starts with: what the day was read on, or — for a
+   * day not logged yet, and for today — the book the reader is on. */
+  const startBooks = (day: CalendarDay | null | undefined): DayBook[] => {
+    if (day?.books?.length) return day.books;
+    if (!day || day.minutes === 0 || day.date === todayStr) {
+      return (readingBooks?.current ?? []).map((title) => ({ title, minutes: 0, finished: false }));
+    }
+    return [];
+  };
+  const bookSuggestions = useMemo(
+    () => [...(readingBooks?.current ?? []), ...(readingBooks?.recent ?? [])],
+    [readingBooks],
+  );
+
   const openLogModal = (date: string, currentMinutes: number) => {
     setSelectedDate(date);
     setMinutesInput(currentMinutes > 0 ? String(currentMinutes) : '');
@@ -377,6 +401,7 @@ export function DashboardPage() {
     setModalBookFinished(dayData?.book_finished ?? false);
     setModalComment(dayData?.comment ?? '');
     setModalCommentPrivate(dayData?.comment_private ?? false);
+    setModalBooks(startBooks(dayData));
   };
 
   const closeLogModal = () => {
@@ -385,6 +410,7 @@ export function DashboardPage() {
     setModalBookFinished(false);
     setModalComment('');
     setModalCommentPrivate(false);
+    setModalBooks([]);
   };
 
   const openRosterModal = (date: string) => setRosterModalDate(date);
@@ -416,18 +442,21 @@ export function DashboardPage() {
 
   const handleSaveMinutes = async () => {
     if (!roundStatus?.round || !selectedDate) return;
-    const minutes = parseInt(minutesInput, 10) || 0;
+    const multi = modalBooks.length > 1;
+    const minutes = multi ? sumMinutes(modalBooks) : parseInt(minutesInput, 10) || 0;
+    const finished = multi ? modalBooks.some((b) => b.finished) : modalBookFinished;
     setIsSaving(true);
     const { data } = await apiPost(
       `/rounds/${roundStatus.round.id}/reading_logs`,
       {
-        date: selectedDate, minutes, book_finished: modalBookFinished,
+        date: selectedDate, minutes, book_finished: finished,
         comment: modalComment || null, comment_private: modalCommentPrivate,
+        books: booksPayload(modalBooks, minutes, modalBookFinished),
       },
       { requireAuth: true }
     );
     if (data) {
-      track('minutes_logged', { minutes, where: 'calendar', book_finished: modalBookFinished });
+      track('minutes_logged', { minutes, where: 'calendar', book_finished: finished, books: modalBooks.length });
       await fetchCalendar(roundStatus.round.id);
       await fetchLeaderboard(roundStatus.round.id);
       await fetchRoster(roundStatus.round.id);
@@ -661,20 +690,28 @@ export function DashboardPage() {
     }
   }, [todayData]);
 
+  useEffect(() => {
+    setTodayBooks(startBooks(todayData));
+    // startBooks reads only todayData and readingBooks.
+  }, [todayData, readingBooks]);
+
   const handleSaveToday = async () => {
     if (!roundStatus?.round) return;
-    const minutes = parseInt(todayMinutes, 10) || 0;
+    const multi = todayBooks.length > 1;
+    const minutes = multi ? sumMinutes(todayBooks) : parseInt(todayMinutes, 10) || 0;
+    const finished = multi ? todayBooks.some((b) => b.finished) : todayBookFinished;
     setIsSavingToday(true);
     const { data } = await apiPost(
       `/rounds/${roundStatus.round.id}/reading_logs`,
       {
-        date: todayStr, minutes, book_finished: todayBookFinished,
+        date: todayStr, minutes, book_finished: finished,
         comment: todayComment || null, comment_private: todayCommentPrivate,
+        books: booksPayload(todayBooks, minutes, todayBookFinished),
       },
       { requireAuth: true }
     );
     if (data) {
-      track('minutes_logged', { minutes, where: 'today', book_finished: todayBookFinished });
+      track('minutes_logged', { minutes, where: 'today', book_finished: finished, books: todayBooks.length });
       await fetchCalendar(roundStatus.round.id);
       await fetchLeaderboard(roundStatus.round.id);
       await fetchRoster(roundStatus.round.id);
@@ -970,20 +1007,31 @@ export function DashboardPage() {
                           min="0"
                           max="1440"
                           className={styles.todayInput}
-                          value={todayMinutes}
+                          value={todayBooks.length > 1 ? String(sumMinutes(todayBooks)) : todayMinutes}
+                          readOnly={todayBooks.length > 1}
                           onChange={e => setTodayMinutes(e.target.value)}
                           placeholder="30"
                         />
                       </div>
 
-                      <label className={styles.todayCheckbox}>
-                        <input
-                          type="checkbox"
-                          checked={todayBookFinished}
-                          onChange={e => setTodayBookFinished(e.target.checked)}
-                        />
-                        {t('dashboard.bookFinished')}
-                      </label>
+                      <ReadingBooks
+                        books={todayBooks}
+                        onChange={setTodayBooks}
+                        totalMinutes={parseInt(todayMinutes, 10) || 0}
+                        onTotalChange={(m) => setTodayMinutes(m ? String(m) : '')}
+                        suggestions={bookSuggestions}
+                      />
+
+                      {todayBooks.length <= 1 && (
+                        <label className={styles.todayCheckbox}>
+                          <input
+                            type="checkbox"
+                            checked={todayBookFinished}
+                            onChange={e => setTodayBookFinished(e.target.checked)}
+                          />
+                          {t('dashboard.bookFinished')}
+                        </label>
+                      )}
 
                       <div className={styles.todayField}>
                         <label className={styles.todayLabel}>{t('dashboard.addComment')}</label>
@@ -1394,22 +1442,34 @@ export function DashboardPage() {
                 min="0"
                 max="1440"
                 className={styles.modalInput}
-                value={minutesInput}
+                value={modalBooks.length > 1 ? String(sumMinutes(modalBooks)) : minutesInput}
+                readOnly={modalBooks.length > 1}
                 onChange={e => setMinutesInput(e.target.value)}
                 placeholder="30"
                 autoFocus
               />
             </div>
             <div className={styles.modalField}>
-              <label className={styles.todayCheckbox}>
-                <input
-                  type="checkbox"
-                  checked={modalBookFinished}
-                  onChange={e => setModalBookFinished(e.target.checked)}
-                />
-                {t('dashboard.bookFinished')}
-              </label>
+              <ReadingBooks
+                books={modalBooks}
+                onChange={setModalBooks}
+                totalMinutes={parseInt(minutesInput, 10) || 0}
+                onTotalChange={(m) => setMinutesInput(m ? String(m) : '')}
+                suggestions={bookSuggestions}
+              />
             </div>
+            {modalBooks.length <= 1 && (
+              <div className={styles.modalField}>
+                <label className={styles.todayCheckbox}>
+                  <input
+                    type="checkbox"
+                    checked={modalBookFinished}
+                    onChange={e => setModalBookFinished(e.target.checked)}
+                  />
+                  {t('dashboard.bookFinished')}
+                </label>
+              </div>
+            )}
             <div className={styles.modalField}>
               <label className={styles.modalLabel}>{t('dashboard.addComment')}</label>
               <textarea

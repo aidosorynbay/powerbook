@@ -14,14 +14,14 @@ import uuid
 from collections import defaultdict
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.booktitles import canonical_key, matching_key, matching_title
 from app.services import book_notes, covers, custom_shelves, shelf_overrides
 from app.models.library import LibraryBook
 from app.models.manual_book import ManualBook
-from app.models.round import ReadingLog, Round
+from app.models.round import ReadingLog, ReadingLogBook, Round
 from app.models.user import User
 from app.repositories.claims import ClaimsRepository
 from app.repositories.insights import normalize_book_title
@@ -293,6 +293,23 @@ class BookcaseService:
             if is_self:
                 vol.upload_id = up.id
                 vol.is_visible_to_buddies = up.is_visible_to_buddies
+
+        # 4. Time spent: the minutes each day of the circle gave a book.
+        spent = self.db.execute(
+            select(
+                func.min(ReadingLogBook.title),
+                ReadingLogBook.title_norm,
+                func.sum(ReadingLogBook.minutes),
+                func.count(func.distinct(ReadingLogBook.reading_log_id)),
+            )
+            .where(ReadingLogBook.user_id.in_(ids), ReadingLogBook.minutes > 0)
+            .group_by(ReadingLogBook.title_norm)
+        ).all()
+        for title, norm, total, days in spent:
+            vol = find(norm, matching_key(title))
+            if vol is not None:
+                vol.minutes_read += int(total or 0)
+                vol.days_read += int(days or 0)
 
         # The reader's own corrections: a fixed title is what gets looked up,
         # and then their title, author and cover choice sit over whatever the

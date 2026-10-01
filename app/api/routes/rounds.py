@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, require_admin
 from app.db.session import get_db
 from app.models.enums import RoundStatus
-from app.schemas.reading import LogMinutesRequest, ReactionOut
+from app.schemas.reading import LogMinutesRequest, LogSessionRequest, ReactionOut, ReadingBooksOut
 from app.schemas.rounds import ParticipantOut, RoundCreateRequest, RoundOut
 from app.services.groups import GroupService
 from app.services.reading import ReadingService
@@ -124,13 +124,42 @@ def log_minutes(
     row = ReadingService(db).log_minutes(
         round_id=round_id, user_id=user.id, day=payload.date, minutes=payload.minutes,
         book_finished=payload.book_finished, comment=payload.comment,
-        comment_private=payload.comment_private,
+        comment_private=payload.comment_private, books=payload.books,
     )
+    return _log_out(row)
+
+
+def _log_out(row) -> dict:
     return {
         "id": str(row.id), "date": row.date.isoformat(), "minutes": int(row.minutes),
         "score": int(row.score), "book_finished": bool(row.book_finished), "comment": row.comment,
         "comment_private": bool(row.is_comment_private),
+        "books": [{"title": b.title, "minutes": int(b.minutes), "finished": bool(b.finished)} for b in row.books],
     }
+
+
+@router.post("/{round_id}/reading_logs/session")
+def log_session(
+    round_id: uuid.UUID,
+    payload: LogSessionRequest,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> dict:
+    """The reader's session: minutes added to the day, on the book being read."""
+    row = ReadingService(db).log_session(
+        round_id=round_id, user_id=user.id, day=payload.date, minutes=payload.minutes, title=payload.title,
+    )
+    return _log_out(row)
+
+
+@router.get("/{round_id}/reading_books", response_model=ReadingBooksOut)
+def reading_books(
+    round_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> ReadingBooksOut:
+    """«Что читаю»: the book the minutes form starts with, and recent others."""
+    return ReadingBooksOut(**ReadingService(db).reading_books(user_id=user.id))
 
 
 @router.post("/{round_id}/reading_logs/{reading_log_id}/react", response_model=ReactionOut)

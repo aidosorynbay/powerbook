@@ -77,6 +77,21 @@ export type CalendarDay = {
   book_finished: boolean;
   comment: string | null;
   comment_private: boolean;
+  /** Which book(s) the day's minutes went to — the reader's own days only. */
+  books?: DayBook[];
+};
+
+/** «Что читаю»: one book of a day and the minutes it got. */
+export type DayBook = {
+  title: string;
+  minutes: number;
+  finished: boolean;
+};
+
+/** The book the minutes form starts with, and others read lately. */
+export type ReadingBooksResponse = {
+  current: string[];
+  recent: string[];
 };
 
 export type CalendarResponse = {
@@ -523,6 +538,9 @@ export type BookcaseBook = {
   round_year: number | null;
   round_month: number | null;
   times_finished: number;
+  /** Minutes the reader's days in the circle gave this book, and on how many days. */
+  minutes_read?: number;
+  days_read?: number;
   match_key: string | null;
   fellow_readers: number;
   has_file: boolean;

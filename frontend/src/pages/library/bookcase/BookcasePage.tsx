@@ -53,6 +53,14 @@ const MONTHS: Record<Locale, string[]> = {
 };
 const INTL: Record<Locale, string> = { ru: 'ru-RU', kk: 'kk-KZ', en: 'en-GB' };
 
+/** «14 ч 20 мин»: the time the circle's days gave a book. */
+function formatMinutes(minutes: number, h: string, m: string): string {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest} ${m}`;
+  return rest ? `${hours} ${h} ${rest} ${m}` : `${hours} ${h}`;
+}
+
 function formatSize(bytes: number): string {
   if (bytes < MB) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / MB).toFixed(1)} MB`;
@@ -1089,6 +1097,17 @@ export function BookcasePage({ ownerId }: Props) {
                       <div>
                         <dt>{t('shelf.factTimes')}</dt>
                         <dd>{current.times_finished}</dd>
+                      </div>
+                    )}
+                    {(current.minutes_read ?? 0) > 0 && (
+                      <div>
+                        <dt>{t('shelf.factTime')}</dt>
+                        <dd>
+                          {t('shelf.factTimeDays', {
+                            time: formatMinutes(current.minutes_read ?? 0, t('rings.hoursShort'), t('rings.minutesShort')),
+                            days: current.days_read ?? 0,
+                          })}
+                        </dd>
                       </div>
                     )}
                     {current.has_file && current.file_format && (

@@ -13,7 +13,6 @@ import {
   DEFAULT_GROUP_SLUG,
   type LibraryBook,
   type CurrentRoundStatusResponse,
-  type CalendarResponse,
 } from '@/shared/lib';
 import { Icon } from '@/shared/ui';
 import { BookChat } from '@/widgets/BookChat';
@@ -290,11 +289,11 @@ export function ReaderPage() {
 
   const minutes = Math.floor(seconds / 60);
 
-  /** Add this session to today's entry.
+  /** Add this session to today's entry, on this book.
    *
-   * The log endpoint replaces the day's minutes rather than adding to them,
-   * so today's existing total has to be read first — otherwise a 10-minute
-   * session would wipe an hour already logged by hand.
+   * The session endpoint adds to the day on the server, keeping what the
+   * reader already wrote for it (the comment, «Книга прочитана», the day's
+   * other books) — and the minutes count toward this book's time.
    */
   const logSession = async () => {
     setLogState('saving');
@@ -312,24 +311,19 @@ export function ReaderPage() {
     const today = new Date();
     const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-    const { data: cal } = await apiGet<CalendarResponse>(
-      `/rounds/${round.id}/calendar`, { requireAuth: true }
-    );
-    const existing = cal?.days.find((d) => d.date === iso)?.minutes ?? 0;
-
-    const { error: err } = await apiPost(
-      `/rounds/${round.id}/reading_logs`,
-      { date: iso, minutes: existing + minutes, book_finished: false, comment: null, comment_private: false },
+    const { data: saved, error: err } = await apiPost<{ minutes: number }>(
+      `/rounds/${round.id}/reading_logs/session`,
+      { date: iso, minutes, title: meta?.title || null },
       { requireAuth: true }
     );
-    if (err) {
+    if (err || !saved) {
       setLogState('error');
-      setLogMessage(err);
+      setLogMessage(err ?? t('reader.logNoRound'));
       return;
     }
     setLogState('done');
     track('reader_session_logged', { minutes });
-    setLogMessage(t('reader.logSaved', { total: existing + minutes }));
+    setLogMessage(t('reader.logSaved', { total: saved.minutes }));
   };
 
   const leave = () => {

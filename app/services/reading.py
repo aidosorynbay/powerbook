@@ -7,15 +7,65 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.enums import RoundParticipantStatus, RoundStatus
-from app.models.round import ReadingLog
+from app.models.round import ReadingLog, ReadingLogBook
 from app.repositories.claims import ClaimsRepository
+from app.repositories.insights import normalize_book_title
 from app.repositories.reading_logs import ReadingLogRepository
 from app.services.rounds import RoundService
 
 from app.core.constants import CORRECTION_DEADLINE_HOUR, CORRECTION_TZ
+
+# «Что читаю» offers this many books beyond the current one.
+RECENT_BOOKS = 8
+
+
+def _title_norm(title: str) -> str:
+    return normalize_book_title(title) or title.casefold()
+
+
+def _clean_books(books) -> list[dict]:
+    """The day's books as the form sent them: blank titles dropped, the same
+    book named twice folded into one row."""
+    out: list[dict] = []
+    by_norm: dict[str, dict] = {}
+    for b in books:
+        title = " ".join((b.title or "").split())[:300]
+        if not title:
+            continue
+        norm = _title_norm(title)
+        if norm in by_norm:
+            by_norm[norm]["minutes"] += b.minutes
+            by_norm[norm]["finished"] = by_norm[norm]["finished"] or b.finished
+            continue
+        row = {"title": title, "norm": norm, "minutes": b.minutes, "finished": b.finished}
+        by_norm[norm] = row
+        out.append(row)
+    return out
+
+
+def _comment_with_title(comment: str | None, title: str) -> str:
+    """A finished day's comment starts with the book's title.
+
+    The shelf, the covers and «кто ещё читал» all read the title from the
+    comment's first line, the way readers have written it since the Telegram
+    days. Thoughts the reader wrote stay below it.
+    """
+    text = (comment or "").strip()
+    if not text:
+        return title
+    first = text.split("\n", 1)[0]
+    if normalize_book_title(first) == _title_norm(title):
+        return text
+    return f"{title}\n{text}"
+
+
+class _Book:
+    def __init__(self, title: str, minutes: int, finished: bool) -> None:
+        self.title, self.minutes, self.finished = title, minutes, finished
 
 
 class ReadingService:
@@ -35,6 +85,7 @@ class ReadingService:
         book_finished: bool = False,
         comment: str | None = None,
         comment_private: bool = False,
+        books: list | None = None,
     ) -> ReadingLog:
         rnd = self.rounds.get_round(round_id)
         if rnd is None:
@@ -75,6 +126,21 @@ class ReadingService:
         if participant.status in {RoundParticipantStatus.removed_by_admin}:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed")
 
+        # Which books the minutes went to. One book takes the whole day unless
+        # its own minutes are given; split minutes never exceed the day's
+        # total — if they do, the total grows to match them.
+        day_books = _clean_books(books) if books is not None else None
+        if day_books:
+            if len(day_books) == 1 and day_books[0]["minutes"] == 0:
+                day_books[0]["minutes"] = minutes
+            minutes = max(minutes, sum(b["minutes"] for b in day_books))
+            if book_finished and not any(b["finished"] for b in day_books) and len(day_books) == 1:
+                day_books[0]["finished"] = True
+            done = [b for b in day_books if b["finished"]]
+            if done:
+                book_finished = True
+                comment = _comment_with_title(comment, done[0]["title"])
+
         # Last day date itself: allow logging but score=0
         force_score = 0 if day == last_day_date else None
         before = self.logs.get_for_user_date(round_id=round_id, user_id=user_id, day=day)
@@ -86,12 +152,79 @@ class ReadingService:
             force_score=force_score, book_finished=book_finished, comment=comment,
             comment_private=comment_private,
         )
+        if day_books is not None:
+            row.books.clear()
+            self.db.flush()
+            for i, b in enumerate(day_books):
+                row.books.append(ReadingLogBook(
+                    user_id=user_id, title=b["title"], title_norm=b["norm"],
+                    minutes=b["minutes"], finished=b["finished"], position=i,
+                ))
+            self.db.commit()
+        elif len(row.books) == 1 and row.books[0].minutes != row.minutes:
+            # An older page changed the total of a one-book day: the book follows.
+            row.books[0].minutes = row.minutes
+            self.db.commit()
         # A book finished in the open: whoever watches it hears (app/services/notify.py).
         if book_finished and comment and not comment_private and not was_public_finish:
             from app.services import notify
 
             notify.on_finished(self.db, reader_id=user_id, comment=comment, day=day)
         return row
+
+    def log_session(
+        self, *, round_id: uuid.UUID, user_id: uuid.UUID, day: date, minutes: int, title: str | None,
+    ) -> ReadingLog:
+        """Minutes read in the reader, added to the day without touching what
+        the reader already wrote for it: the comment, «Книга прочитана», the
+        other books of the day."""
+        before = self.logs.get_for_user_date(round_id=round_id, user_id=user_id, day=day)
+        total = (int(before.minutes) if before else 0) + minutes
+        books = None
+        if title and title.strip():
+            norm = _title_norm(" ".join(title.split()))
+            books = [_Book(b.title, b.minutes, b.finished) for b in (before.books if before else [])]
+            for b in books:
+                if _title_norm(b.title) == norm:
+                    b.minutes += minutes
+                    break
+            else:
+                books.append(_Book(title, minutes, False))
+        return self.log_minutes(
+            round_id=round_id, user_id=user_id, day=day, minutes=total,
+            book_finished=bool(before and before.book_finished),
+            comment=before.comment if before else None,
+            comment_private=bool(before and before.is_comment_private),
+            books=books,
+        )
+
+    def reading_books(self, *, user_id: uuid.UUID) -> dict:
+        """The book(s) of the reader's latest day that they have not finished,
+        and other books they read lately and have not finished either."""
+        ids = list(self.claims.effective_user_ids(user_id=user_id))
+        rows = self.db.execute(
+            select(ReadingLogBook.title, ReadingLogBook.title_norm, ReadingLogBook.finished, ReadingLog.date)
+            .join(ReadingLog, ReadingLog.id == ReadingLogBook.reading_log_id)
+            .where(ReadingLogBook.user_id.in_(ids))
+            .order_by(ReadingLog.date.desc(), ReadingLogBook.position.asc())
+            .limit(300)
+        ).all()
+        latest_day = rows[0].date if rows else None
+        current: list[str] = []
+        recent: list[str] = []
+        seen: set[str] = set()
+        for title, norm, finished, d in rows:
+            if norm in seen:
+                continue
+            seen.add(norm)
+            if finished:
+                # Its latest mention is the day it was finished: done with.
+                continue
+            if d == latest_day:
+                current.append(title)
+            elif len(recent) < RECENT_BOOKS:
+                recent.append(title)
+        return {"current": current, "recent": recent}
 
     def calendar_for_user(self, *, round_id: uuid.UUID, user_id: uuid.UUID, viewer_id: uuid.UUID | None = None) -> dict:
         rnd = self.rounds.get_round(round_id)
@@ -126,6 +259,11 @@ class ReadingService:
                 "book_finished": book_finished, "comment": comment,
                 "comment_private": is_private,
                 "in_round": in_round,
+                # What the day was read on is the reader's own business.
+                "books": [
+                    {"title": b.title, "minutes": int(b.minutes), "finished": bool(b.finished)}
+                    for b in row.books
+                ] if row is not None and is_owner else [],
             })
             if in_round:
                 total_minutes += minutes

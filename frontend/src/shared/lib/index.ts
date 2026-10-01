@@ -55,6 +55,8 @@ export type {
   CurrentRoundStatusResponse,
   LeaderboardEntry,
   CalendarDay,
+  DayBook,
+  ReadingBooksResponse,
   CalendarResponse,
   PublicStats,
   ArchiveDay,
