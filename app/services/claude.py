@@ -98,3 +98,23 @@ def ask_json(
         except json.JSONDecodeError:
             continue
     raise ValueError("no JSON in the answer")
+
+
+def chat(*, system: str, messages: list[dict], max_tokens: int = 900) -> str:
+    """One plain reply in a conversation (talking about a book)."""
+    import anthropic
+
+    client = _client()
+    try:
+        response = client.messages.create(model=settings.ai_model, max_tokens=max_tokens, system=system, messages=messages)
+    except (anthropic.AuthenticationError, anthropic.PermissionDeniedError) as exc:
+        raise AiUnavailable("key rejected") from exc
+    except (anthropic.RateLimitError, anthropic.APIConnectionError) as exc:
+        raise AiUnavailable("unreachable") from exc
+    except anthropic.APIStatusError as exc:
+        if exc.status_code >= 500:
+            raise AiUnavailable(f"server error {exc.status_code}") from exc
+        raise
+    if response.stop_reason == "refusal":
+        raise AiRefused("refused")
+    return "".join(block.text for block in response.content if block.type == "text").strip()

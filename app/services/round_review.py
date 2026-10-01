@@ -37,7 +37,7 @@ from app.schemas.round_review import (
     RoundStatsOut,
     TrendPointOut,
 )
-from app.services import claude
+from app.services import llm
 
 # Below this a day was not a reading day at all, the same line the calendar draws.
 _TOUCHED = 2
@@ -320,7 +320,7 @@ def review(db: Session, *, user: User, round_id: uuid.UUID | None = None) -> Rou
         strengths=strengths,
         improve=improve,
         tips=tips,
-        ai_available=claude.available(),
+        ai_available=llm.available(),
     )
 
 

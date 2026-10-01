@@ -187,6 +187,35 @@ class PinWorkIn(BaseModel):
     author: str | None = Field(default=None, max_length=200)
 
 
+
+class BookChatMessageOut(BaseModel):
+    role: str
+    content: str
+    at: str | None = None
+
+
+class BookChatStateOut(BaseModel):
+    """«Обсудить с AI»: the conversation so far about one book."""
+
+    available: bool
+    work_key: str
+    title: str
+    author: str | None
+    messages: list[BookChatMessageOut]
+    left_today: int
+
+
+class BookChatIn(BaseModel):
+    volume_key: str | None = Field(default=None, max_length=80)
+    work_key: str | None = Field(default=None, max_length=120)
+    text: str = Field(max_length=4000)
+    lang: str = Field(default="ru", pattern="^(ru|kk|en)$")
+
+
+class BookChatReplyOut(BaseModel):
+    messages: list[BookChatMessageOut]
+    left_today: int
+
 from app.schemas.library import CoverOptionOut  # noqa: E402
 
 BookMatchOut.model_rebuild()

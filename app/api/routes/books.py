@@ -8,9 +8,18 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.books import BookMatchOut, CatalogPageOut, ReviewIn, ShelfReviewOut, WorkOut
+from app.schemas.books import (
+    BookChatIn,
+    BookChatReplyOut,
+    BookChatStateOut,
+    BookMatchOut,
+    CatalogPageOut,
+    ReviewIn,
+    ShelfReviewOut,
+    WorkOut,
+)
 from app.schemas.library import CoverOptionOut
-from app.services import books, shelf_overrides
+from app.services import book_chat, books, shelf_overrides
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -42,6 +51,41 @@ def match(
     works = books.match_works(db, viewer_id=user.id, query=q)
     found = [CoverOptionOut(**option) for option in shelf_overrides.search_editions(q)[:10]] if editions else []
     return BookMatchOut(works=works, editions=found)
+
+
+@router.get("/chat", response_model=BookChatStateOut)
+def chat_state(
+    volume_key: str | None = Query(default=None, max_length=80),
+    work_key: str | None = Query(default=None, max_length=120),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> BookChatStateOut:
+    """«Обсудить с AI»: the conversation so far about this book, and how many messages are left today."""
+    return BookChatStateOut(**book_chat.state(db, user=user, volume_key=volume_key, work_key=work_key))
+
+
+@router.post("/chat", response_model=BookChatReplyOut)
+def chat_send(
+    payload: BookChatIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> BookChatReplyOut:
+    return BookChatReplyOut(
+        **book_chat.send(
+            db, user=user, volume_key=payload.volume_key, work_key=payload.work_key, text=payload.text, lang=payload.lang
+        )
+    )
+
+
+@router.delete("/chat", status_code=status.HTTP_204_NO_CONTENT)
+def chat_clear(
+    volume_key: str | None = Query(default=None, max_length=80),
+    work_key: str | None = Query(default=None, max_length=120),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> None:
+    """Start the conversation about this book over."""
+    book_chat.clear(db, user=user, volume_key=volume_key, work_key=work_key)
 
 
 @router.get("/work/{key}", response_model=WorkOut)

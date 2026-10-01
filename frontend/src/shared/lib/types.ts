@@ -813,3 +813,19 @@ export type RoundLetter = {
   lifehacks: string[];
   next_goal: string;
 };
+
+// «Обсудить с AI»: a conversation about one book.
+export type BookChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+  at: string | null;
+};
+
+export type BookChatState = {
+  available: boolean;
+  work_key: string;
+  title: string;
+  author: string | null;
+  messages: BookChatMessage[];
+  left_today: number;
+};

@@ -25,6 +25,7 @@ import { Header } from '@/widgets';
 import { bookMeta, extractCover } from '../extractCover';
 import { EditBookSheet } from './EditBookSheet';
 import { WhichBookSheet } from './WorkPicker';
+import { BookChat } from '@/widgets/BookChat';
 import { MarkForm } from '../../books/MarkForm';
 import { ExtBadge, PbBadge } from '../../books/bookUi';
 import { LibrarySwitch } from '../../books/LibrarySwitch';
@@ -299,6 +300,8 @@ export function BookcasePage({ ownerId }: Props) {
   const [editing, setEditing] = useState<BookcaseBook | null>(null);
   // «Какая это книга?» right after a file is brought in.
   const [which, setWhich] = useState<{ key: string; query: string } | null>(null);
+  // «Обсудить с AI» about the book in front.
+  const [talkAbout, setTalkAbout] = useState<{ key: string; title: string } | null>(null);
   const [askRights, setAskRights] = useState(false);
   const [stats, setStats] = useState<LibraryStats | null>(null);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
@@ -1234,6 +1237,10 @@ export function BookcasePage({ ownerId }: Props) {
                         <Icon name="pen" size="em" aria-hidden="true" />
                         {t('shelf.edit')}
                       </button>
+                      <button type="button" className={styles.bookAction} onClick={() => setTalkAbout({ key: current.key, title: current.title })}>
+                        <Icon name="sparkle" size="em" aria-hidden="true" />
+                        {t('chat.open')}
+                      </button>
                     </div>
                   )}
 
@@ -1438,6 +1445,10 @@ export function BookcasePage({ ownerId }: Props) {
             )}
           </div>
         </div>
+      )}
+
+      {talkAbout && (
+        <BookChat volumeKey={talkAbout.key} title={talkAbout.title} from="shelf" onClose={() => setTalkAbout(null)} />
       )}
 
       {which && (

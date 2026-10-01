@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiGet, apiPost, useI18n, type Work } from '@/shared/lib';
-import { Avatar } from '@/shared/ui';
+import { Avatar, Icon } from '@/shared/ui';
+import { BookChat } from '@/widgets/BookChat';
 import { BookFace, PbBadge, Sheet, formatDay, formatPrice, useCount } from './bookUi';
 import { MarkForm } from './MarkForm';
 import styles from './Store.module.css';
@@ -21,6 +22,8 @@ export function WorkSheet({ workKey, title, onClose, onChanged }: Props) {
   const [work, setWork] = useState<Work | null>(null);
   const [failed, setFailed] = useState<'missing' | 'error' | null>(null);
   const [adding, setAdding] = useState(false);
+  // «Обсудить с AI» over this sheet.
+  const [talk, setTalk] = useState(false);
 
   const load = useCallback(async () => {
     const { data, error } = await apiGet<Work>(`/books/work/${encodeURIComponent(workKey)}?locale=${locale}`, { requireAuth: true });
@@ -217,6 +220,9 @@ export function WorkSheet({ workKey, title, onClose, onChanged }: Props) {
           )}
 
           <div className={styles.links}>
+            <button type="button" className={styles.ghost} onClick={() => setTalk(true)}>
+              <Icon name="sparkle" size="em" aria-hidden="true" /> {t('chat.open')}
+            </button>
             {work.my_volume_key && (
               <Link className={styles.ghost} to={`/market?sell=${encodeURIComponent(work.my_volume_key)}&title=${encodeURIComponent(work.title)}${work.author ? `&author=${encodeURIComponent(work.author)}` : ''}`}>
                 ₸ {t('work.sellThis')}
@@ -233,6 +239,7 @@ export function WorkSheet({ workKey, title, onClose, onChanged }: Props) {
               </a>
             )}
           </div>
+          {talk && <BookChat workKey={work.key} title={work.title} from="book" onClose={() => setTalk(false)} />}
         </>
       )}
     </Sheet>

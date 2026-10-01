@@ -16,6 +16,7 @@ import {
   type CalendarResponse,
 } from '@/shared/lib';
 import { Icon } from '@/shared/ui';
+import { BookChat } from '@/widgets/BookChat';
 import styles from './ReaderPage.module.css';
 
 // pdf.js refuses to parse anything without a worker, and Vite needs the URL
@@ -69,6 +70,8 @@ export function ReaderPage() {
   const [toc, setToc] = useState<{ label: string; href: string }[]>([]);
   // Lock in: only the page, the page turns and the time are left on screen.
   const [focus, setFocus] = useState(false);
+  // «Обсудить с AI» while reading.
+  const [talk, setTalk] = useState(false);
   const wakeLock = useRef<ScreenLock | null>(null);
   const focusFullscreen = useRef(false);
   // The tap that ends a swipe must not turn the page a second time.
@@ -519,9 +522,13 @@ export function ReaderPage() {
               )}
             </>
           )}
+          <button className={styles.toolBtn} onClick={() => setTalk(true)} aria-label={t('chat.open')} title={t('chat.open')}>
+            <Icon name="sparkle" size="em" aria-hidden="true" />
+          </button>
           <span className={styles.barPercent}>{percent}%</span>
         </div>
       </header>
+      {talk && <BookChat volumeKey={`u:${bookId}`} title={meta?.title} from="reader" onClose={() => setTalk(false)} />}
 
       {showToc && (
         <>

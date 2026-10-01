@@ -23,7 +23,6 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.models.ai_digest import AiDigest
 from app.models.user import User
 from app.repositories.claims import ClaimsRepository
@@ -43,7 +42,7 @@ from app.schemas.reading_ai import (
     UnitOut,
 )
 from app.services import books as books_service
-from app.services import catalog, claude
+from app.services import catalog, llm
 from app.services.catalog import CatalogIndex
 
 logger = logging.getLogger(__name__)
@@ -203,7 +202,7 @@ def overview(db: Session, *, user: User, period: str) -> ReadingOverviewOut:
         avg_rating=round(sum(ratings) / len(ratings), 1) if ratings else None,
         rated_count=len(ratings),
         notes_count=notes_count,
-        ai_available=claude.available(),
+        ai_available=llm.available(),
     )
 
 
@@ -340,7 +339,7 @@ def notebook(db: Session, *, user: User) -> list[NotebookEntryOut]:
     return out
 
 
-# ---------- Claude's letters ----------
+# ---------- the AI's letters (app/services/llm.py: DeepSeek or Claude) ----------
 
 _PERIOD_SYSTEM = (
     "You are the reading companion of PowerBook, a reading community in Kazakhstan. A member asked you to "
@@ -512,7 +511,7 @@ _ROUND_SCHEMA = {
 
 
 def _hash(kind: str, lang: str, payload: dict) -> str:
-    raw = json.dumps({"kind": kind, "lang": lang, "model": settings.ai_model, "input": payload}, ensure_ascii=False, sort_keys=True, default=str)
+    raw = json.dumps({"kind": kind, "lang": lang, "model": llm.model_name(), "input": payload}, ensure_ascii=False, sort_keys=True, default=str)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -584,7 +583,7 @@ def get_digest(db: Session, *, user: User, kind: str, scope: str, lang: str) -> 
 
 def start_digest(db: Session, *, user: User, kind: str, scope: str, lang: str, force: bool = False) -> DigestOut:
     _check(kind, scope, lang)
-    if not claude.available():
+    if not llm.available():
         raise _bad("ai_off", status.HTTP_503_SERVICE_UNAVAILABLE)
     payload = _input(db, user, kind, scope)
     digest_hash = _hash(kind, lang, payload)
@@ -630,11 +629,11 @@ def _write(digest_id: uuid.UUID, kind: str, lang: str, payload: dict) -> None:
         )
         schema = {"period": _PERIOD_SCHEMA, "book": _BOOK_SCHEMA, "round": _ROUND_SCHEMA}[kind]
         try:
-            content = claude.ask_json(system=system, prompt=json.dumps(payload, ensure_ascii=False, default=str), schema=schema)
+            content = llm.ask_json(system=system, prompt=json.dumps(payload, ensure_ascii=False, default=str), schema=schema)
             row.content, row.status, row.error = content, "done", None
-        except claude.AiUnavailable:
+        except llm.AiUnavailable:
             row.status, row.error = "error", "ai_unavailable"
-        except claude.AiRefused:
+        except llm.AiRefused:
             row.status, row.error = "error", "ai_refused"
         except Exception as exc:
             logger.exception("digest %s failed", digest_id)

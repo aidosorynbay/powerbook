@@ -47,6 +47,17 @@ class Settings(BaseSettings):
     # catalogues (Google Books, Open Library, Wikipedia).
     book_facts_enabled: bool = True
 
+    # DeepSeek (OpenAI-compatible API) for every AI feature when its key is
+    # set: the reading letters, the round review and talking about a book.
+    # Claude stays for the web-search facts pass. deepseek-chat and
+    # deepseek-reasoner were retired on 2026-07-24; deepseek-flash is
+    # V4.1-Flash. app/services/llm.py picks the provider.
+    deepseek_api_key: str = ""
+    deepseek_model: str = "deepseek-flash"
+    deepseek_base_url: str = "https://api.deepseek.com"
+    # Messages a reader may send about books in one day.
+    ai_chat_daily_limit: int = 40
+
     # Sentry error monitoring (app/core/sentry.py). Empty DSN means off.
     # SENTRY_RELEASE is the git commit, passed in by the deploy.
     sentry_dsn: str = ""

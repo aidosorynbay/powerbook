@@ -1,4 +1,5 @@
 from app.models.ai_digest import AiDigest
+from app.models.book_chat import BookChat
 from app.models.book_cover import BookCover
 from app.models.book_fact import BookFact
 from app.models.book_link import BookLink
@@ -21,6 +22,7 @@ from app.models.user import User
 from app.models.waitlist import WaitlistEntry
 
 __all__ = [
+    "BookChat",
     "BookLink",
     "User",
     "Group",
