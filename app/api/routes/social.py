@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -20,9 +20,16 @@ def get_directory(db: Session = Depends(get_db), _user=Depends(get_current_user)
 
 @router.get("/profile/{user_id}", response_model=PublicProfileOut)
 def get_public_profile(
-    user_id: uuid.UUID, db: Session = Depends(get_db), user=Depends(get_current_user)
+    user_id: uuid.UUID, background: BackgroundTasks, db: Session = Depends(get_db), user=Depends(get_current_user)
 ) -> PublicProfileOut:
-    return SocialService(db).public_profile(target_user_id=user_id, viewer_id=user.id)
+    service = SocialService(db)
+    out = service.public_profile(target_user_id=user_id, viewer_id=user.id)
+    if service.pending_lookups:
+        # Covers for the top-3 nobody has looked up yet: there on the next visit.
+        from app.services import covers
+
+        background.add_task(covers.fill_in_background, service.pending_lookups)
+    return out
 
 
 @router.post("/buddies/{user_id}")

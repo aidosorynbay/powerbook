@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
 import { useI18n, apiGet, apiPost, apiDelete, type PublicProfile, type ShelfBook } from '@/shared/lib';
+import { apiUrl } from '@/pages/books/bookUi';
 import { Container, PageTransition, Avatar, Button, Card, BookCard, ProgressBar } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import { paletteFor, dimensionsFor } from '@/pages/library/bookcase/bookArt';
@@ -189,23 +190,14 @@ export function PublicProfilePage() {
                   </Card>
                 )}
 
+                {/* The top-3 in their real covers, found the way the 3D shelf finds them.
+                    The books themselves live on that shelf above; no second list of them here. */}
                 {profile.favorite_books.length > 0 && (
                   <div className={styles.librarySection}>
                     <div className={styles.musicKicker}>{t('profile.favoriteBooks')}</div>
                     <div className={styles.libraryGrid}>
                       {profile.favorite_books.map((title, i) => (
-                        <BookCard key={i} title={title} size="sm" />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {profile.recent_books.length > 0 && (
-                  <div className={styles.librarySection}>
-                    <div className={styles.musicKicker}>{t('profile.library')}</div>
-                    <div className={styles.libraryGrid}>
-                      {profile.recent_books.map((title, i) => (
-                        <BookCard key={i} title={title} size="sm" />
+                        <BookCard key={i} title={title} cover={apiUrl(profile.favorite_covers?.[i])} size="md" />
                       ))}
                     </div>
                   </div>

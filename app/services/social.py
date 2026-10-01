@@ -15,6 +15,8 @@ from app.services.insights import InsightsService
 class SocialService:
     def __init__(self, db: Session) -> None:
         self.db = db
+        # Cover lookups a profile wanted and the cache did not have (see favorite_covers).
+        self.pending_lookups: dict[str, tuple[str, str | None]] = {}
         self.users = UserRepository(db)
         self.buddies = BuddyRepository(db)
         self.insights = InsightsService(db)
@@ -127,6 +129,30 @@ class SocialService:
             )
         return out + self._archive_directory()
 
+    def favorite_covers(self, titles: list[str]) -> list[str | None]:
+        """A cover for each of the reader's top-3, the way the 3D shelf finds
+        them: the shared library's book first, then the cover cache. A title
+        nobody has looked up yet is asked for in the background
+        (`self.pending_lookups`), so it shows next time."""
+        from app.core.booktitles import canonical_key
+        from app.services import catalog, covers
+
+        idx = catalog.index(self.db)
+        cleaned = [covers.clean_title(t) or t for t in titles]
+        keys = [covers.cover_key(c) for c in cleaned]
+        rows = covers.cached(self.db, keys)
+        out: list[str | None] = []
+        for clean, key in zip(cleaned, keys):
+            work = idx.find(canonical_key(clean) or "")
+            if work is not None and work.image:
+                out.append(f"/library/covers/{work.image}.jpg")
+                continue
+            row = rows.get(key)
+            if covers.wants_lookup(row):
+                self.pending_lookups[key] = (clean, None)
+            out.append(f"/library/covers/{row.image}.jpg" if row is not None and row.status == "found" and row.image else None)
+        return out
+
     def public_profile(self, *, target_user_id: uuid.UUID, viewer_id: uuid.UUID) -> PublicProfileOut:
         target = self.users.get(target_user_id)
         if target is None:
@@ -159,6 +185,7 @@ class SocialService:
             badges=badges,
             recent_books=recent_books,
             favorite_books=target.favorite_books or [],
+            favorite_covers=self.favorite_covers(target.favorite_books or []),
             is_buddy=is_buddy,
             is_self=target.id == viewer_id,
             is_archive=target.is_claimable,

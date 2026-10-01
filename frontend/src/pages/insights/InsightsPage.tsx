@@ -10,7 +10,6 @@ import {
   type AllTimeProfile,
   type Archetype,
   type BookshelfEntry,
-  type PopularBook,
   type ReadingTwin,
   type CelebrityMatch,
   type BadgeData,
@@ -74,14 +73,12 @@ export function InsightsPage() {
   }, []);
   const [archetype, setArchetype] = useState<Archetype | null>(null);
   const [bookshelf, setBookshelf] = useState<BookshelfEntry[]>([]);
-  const [popular, setPopular] = useState<PopularBook[]>([]);
   const [twins, setTwins] = useState<ReadingTwin[]>([]);
   const [celebrities, setCelebrities] = useState<CelebrityMatch[]>([]);
   const [badges, setBadges] = useState<BadgeData[]>([]);
   const [league, setLeague] = useState<LeagueTier | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAllBadges, setShowAllBadges] = useState(false);
-  const [showAllBooks, setShowAllBooks] = useState(false);
   const [openBadge, setOpenBadge] = useState<BadgeData | null>(null);
   const [badgeStats, setBadgeStats] = useState<BadgeStats | null>(null);
   const [wrapped, setWrapped] = useState<Wrapped | null>(null);
@@ -209,11 +206,10 @@ export function InsightsPage() {
 
   const load = useCallback(async () => {
     setIsLoading(true);
-    const [p, a, bs, pop, tw, cel, bd, lg] = await Promise.all([
+    const [p, a, bs, tw, cel, bd, lg] = await Promise.all([
       apiGet<AllTimeProfile>('/insights/profile', { requireAuth: true }),
       apiGet<Archetype>('/insights/archetype', { requireAuth: true }),
       apiGet<BookshelfEntry[]>('/insights/bookshelf', { requireAuth: true }),
-      apiGet<PopularBook[]>('/insights/popular-books?limit=8', { requireAuth: true }),
       apiGet<ReadingTwin[]>('/insights/twins?limit=5', { requireAuth: true }),
       apiGet<CelebrityMatch[]>('/insights/celebrity-match', { requireAuth: true }),
       apiGet<BadgeData[]>('/insights/badges', { requireAuth: true }),
@@ -222,7 +218,6 @@ export function InsightsPage() {
     if (p.data) setProfile(p.data);
     if (a.data) setArchetype(a.data);
     if (bs.data) setBookshelf(bs.data.slice().reverse());
-    if (pop.data) setPopular(pop.data);
     if (tw.data) setTwins(tw.data);
     if (cel.data) setCelebrities(cel.data);
     if (bd.data) setBadges(bd.data);
@@ -236,7 +231,6 @@ export function InsightsPage() {
 
   const earnedBadges = badges.filter((b) => b.earned);
   const nextBadges = badges.filter((b) => !b.earned).slice(0, showAllBadges ? undefined : 3);
-  const visibleBooks = showAllBooks ? bookshelf : bookshelf.slice(0, 6);
 
   useEffect(() => {
     if (!openBadge) return;
@@ -443,50 +437,9 @@ export function InsightsPage() {
                     </span>
                     <span className={styles.shelfPeekArrow} aria-hidden="true">→</span>
                   </Link>
-                {bookshelf.length > 0 && (
-                    <Card variant="default" padding="md">
-                      <ul className={styles.bookList}>
-                        {visibleBooks.map((b, i) => (
-                          <li key={i} className={styles.bookRow}>
-                            <Link
-                              to={`/library?book=${encodeURIComponent(b.source === 'manual' && b.id ? `m:${b.id}` : b.title)}&open=1`}
-                              className={styles.bookTitleLink}
-                            >
-                              {b.title}
-                              {b.author && <span className={styles.bookAuthor}> — {b.author}</span>}
-                            </Link>
-                            <span className={styles.bookMeta}>
-                              {b.source === 'manual' ? t('insights.addedByHand') : b.round_label}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                      {!showAllBooks && bookshelf.length > 6 && (
-                        <button className={styles.showMoreBtn} onClick={() => setShowAllBooks(true)}>
-                          {t('insights.showMore')} ({bookshelf.length - 6})
-                        </button>
-                      )}
-                    </Card>
-                )}
                 </section>
 
                 {user && <ProfileListings userId={user.id} isSelf titleClass={styles.sectionTitle} />}
-
-                {popular.length > 0 && (
-                  <section className={styles.section}>
-                    <h2 className={styles.sectionTitle}>{t('insights.popularBooks')}</h2>
-                    <Card variant="default" padding="md">
-                      <ul className={styles.bookList}>
-                        {popular.map((b, i) => (
-                          <li key={i} className={styles.bookRow}>
-                            <span className={styles.bookTitle}>{b.title}</span>
-                            <span className={styles.bookMeta}>×{b.finish_count}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </Card>
-                  </section>
-                )}
 
                 {twins.length > 0 && (
                   <section className={styles.section}>

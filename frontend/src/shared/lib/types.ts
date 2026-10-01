@@ -406,6 +406,8 @@ export type PublicProfile = {
   badges: Badge[];
   recent_books: string[];
   favorite_books: string[];
+  /** Covers for the top-3, same order; null when none is known yet. */
+  favorite_covers?: (string | null)[];
   is_buddy: boolean;
   /** An unclaimed archive record, not a member's own profile. */
   is_archive: boolean;
