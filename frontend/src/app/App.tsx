@@ -9,6 +9,11 @@ import '@/app/styles/theme.css';
 // Lets Sentry name traces by route pattern (/readers/:userId).
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
+// Barys in every mood, for drawing him: only in the dev server, never in a build.
+const BarysGallery = import.meta.env.DEV
+  ? lazy(() => import('@/widgets/Mascot/BarysGallery').then((m) => ({ default: m.BarysGallery })))
+  : null;
+
 // Loaded only when a book is actually opened.
 const ReaderPage = lazy(() =>
   import('@/pages/library/ReaderPage').then((m) => ({ default: m.ReaderPage }))
@@ -113,6 +118,9 @@ function AppRoutes() {
             )
           }
         />
+        {BarysGallery && (
+          <Route path="/__barys" element={<Suspense fallback={null}><BarysGallery /></Suspense>} />
+        )}
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/suggestions" element={<SuggestionsPage />} />

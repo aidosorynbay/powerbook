@@ -509,3 +509,10 @@
   }
 }
 
+
+/* Барыс in the corner of the congratulations card. */
+.congratsBarys {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}

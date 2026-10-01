@@ -19,3 +19,4 @@ export { JoinPrompt, WaitlistCard } from './JoinPrompt';
 export { Explainer, MotionReel } from './Explainer';
 export { BookChat } from './BookChat';
 export { Bell } from './Notifications';
+export { Barys, BarysCard, BarysIntro } from './Mascot';

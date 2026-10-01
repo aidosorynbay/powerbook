@@ -20,6 +20,7 @@ import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard } from '@/widgets';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
+import { BarysCard } from '@/widgets/Mascot';
 import anim from '@/shared/styles/animations.module.css';
 import { quietDayIcon, quietDayQuoteKeys, finishFlagIcon } from '@/shared/lib/quietDays';
 import styles from './DashboardPage.module.css';
@@ -512,6 +513,14 @@ export function DashboardPage() {
     return streak;
   }, [calendarGrid, roundWindow]);
 
+  // Yesterday under 30 minutes (and within the round): Барыс went hungry.
+  const brokeYesterday = useMemo(() => {
+    const yesterday = new Date().getDate() - 1;
+    if (yesterday < roundWindow.start) return false;
+    const cell = calendarGrid.find((c) => c !== null && c.day === yesterday);
+    return !!cell && cell.score !== 1;
+  }, [calendarGrid, roundWindow]);
+
   const viewUserGrid = useMemo(() => {
     if (!roundStatus?.round || !viewUserCalendar) return [];
     return buildGrid(viewUserCalendar, roundStatus.round.year, roundStatus.round.month);
@@ -916,6 +925,12 @@ export function DashboardPage() {
                   <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay1}`}>
                     <div className={styles.sectionTitle}>{t('dashboard.today')}</div>
                     <div className={styles.todayPanel}>
+                      <BarysCard
+                        todayMinutes={todayData?.minutes ?? 0}
+                        streak={personalStreak}
+                        totalMinutes={allTime?.total_minutes ?? null}
+                        brokeYesterday={brokeYesterday}
+                      />
                       <div className={styles.todayDate}>{todayStr}</div>
 
                       {/* Correction countdown. Loud on purpose: this is the last

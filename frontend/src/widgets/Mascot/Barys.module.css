@@ -1,0 +1,180 @@
+/* Барыс: the motion is small and slow, the way a cub sits with a book. */
+.barys {
+  display: block;
+  overflow: visible;
+}
+
+.figure {
+  transform-box: view-box;
+  transform-origin: 100px 210px;
+  transform: scale(var(--grow, 1));
+}
+
+/* breathing: the body swells a little, the head rides on it */
+.body {
+  transform-box: view-box;
+  transform-origin: 100px 205px;
+  animation: breathe 3.4s ease-in-out infinite;
+}
+
+.head {
+  transform-box: view-box;
+  transform-origin: 100px 140px;
+  animation: bob 3.4s ease-in-out infinite;
+}
+
+.tail {
+  transform-box: view-box;
+  transform-origin: 140px 176px;
+  animation: sway 2.8s ease-in-out infinite alternate;
+}
+
+.eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: blink 5.5s infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.025); }
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(1.6px); }
+}
+
+@keyframes sway {
+  from { transform: rotate(-5deg); }
+  to { transform: rotate(6deg); }
+}
+
+@keyframes blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+
+/* asleep: slower breath, the head lower, z's drifting up */
+.sleep .body { animation-duration: 5s; }
+.sleep .head { animation: doze 5s ease-in-out infinite; }
+.sleep .tail { animation-duration: 5s; }
+
+@keyframes doze {
+  0%, 100% { transform: translateY(3px) rotate(-2deg); }
+  50% { transform: translateY(5px) rotate(-3deg); }
+}
+
+.zzz text {
+  animation: drift 3.6s ease-in infinite;
+  opacity: 0;
+}
+
+.zzz text:nth-child(2) { animation-delay: 1.2s; }
+.zzz text:nth-child(3) { animation-delay: 2.4s; }
+
+@keyframes drift {
+  0% { opacity: 0; transform: translate(-6px, 10px); }
+  30% { opacity: 0.85; }
+  100% { opacity: 0; transform: translate(6px, -12px); }
+}
+
+/* sad: head down, a tear */
+.sad .head { animation: none; transform: translateY(4px) rotate(-3deg); }
+.sad .tail { animation-duration: 6s; }
+
+.tear {
+  animation: tear 2.4s ease-in infinite;
+}
+
+@keyframes tear {
+  0% { opacity: 0; transform: translateY(0); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(10px); }
+}
+
+/* hungry: looks up hopefully, now and then */
+.hungry .head { animation: hope 4.2s ease-in-out infinite; }
+
+@keyframes hope {
+  0%, 70%, 100% { transform: translateY(0) rotate(0deg); }
+  80% { transform: translateY(-2px) rotate(3deg); }
+  90% { transform: translateY(-2px) rotate(-2deg); }
+}
+
+/* reading: a page turns now and then */
+.pageTurn {
+  transform-box: view-box;
+  transform-origin: 100px 170px;
+  animation: turn 6s ease-in-out infinite;
+}
+
+@keyframes turn {
+  0%, 85%, 100% { transform: scaleX(1); }
+  92% { transform: scaleX(0.94); }
+}
+
+/* happy: a contented sway */
+.happy .head { animation: purr 2.4s ease-in-out infinite; }
+
+@keyframes purr {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+
+/* celebrate: jumps, arms up, confetti */
+.celebrate .figure {
+  animation: jump 0.9s cubic-bezier(0.3, 0.7, 0.4, 1) infinite;
+}
+
+@keyframes jump {
+  0%, 100% { transform: scale(var(--grow, 1)) translateY(0); }
+  40% { transform: scale(var(--grow, 1)) translateY(-12px); }
+}
+
+.armsUp ellipse {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: wave 0.45s ease-in-out infinite alternate;
+}
+
+@keyframes wave {
+  from { transform: rotate(-12deg); }
+  to { transform: rotate(12deg); }
+}
+
+.confetti > * {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: confetti 1.4s ease-out infinite;
+}
+
+.confetti > *:nth-child(2n) { animation-delay: 0.3s; }
+.confetti > *:nth-child(3n) { animation-delay: 0.6s; }
+
+@keyframes confetti {
+  0% { opacity: 0; transform: translateY(8px) rotate(0deg); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-14px) rotate(160deg); }
+}
+
+/* a tap: one hop */
+.hop .figure {
+  animation: hop 0.55s cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+
+@keyframes hop {
+  0%, 100% { transform: scale(var(--grow, 1)) translateY(0); }
+  45% { transform: scale(var(--grow, 1)) translateY(-16px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .barys *,
+  .barys {
+    animation: none !important;
+  }
+
+  .zzz text {
+    opacity: 0.7;
+  }
+}

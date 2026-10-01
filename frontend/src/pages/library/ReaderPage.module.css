@@ -185,3 +185,6 @@
   font-family: inherit; cursor: pointer;
 }
 .logConfirm:hover { opacity: 0.88; }
+
+/* Барыс reads along in Lock in. */
+.focusBarys { margin: -6px 2px -6px -4px; }
