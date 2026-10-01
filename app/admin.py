@@ -390,8 +390,14 @@ class UsernameClaimAdmin(ModelView, model=UsernameClaim):
 
 
 def setup_admin(app):
+    from pathlib import Path
+
+    from app.admin_coverage import ArchiveCoverageView
+
     auth_backend = AdminAuth(secret_key="sqladmin-powerbook-secret")
-    admin = Admin(app, get_engine(), authentication_backend=auth_backend)
+    # Our own pages (the archive coverage) extend sqladmin's layout from here.
+    templates = str(Path(__file__).parent / "admin_templates")
+    admin = Admin(app, get_engine(), authentication_backend=auth_backend, templates_dir=templates)
     admin.add_view(UserAdmin)
     admin.add_view(GroupAdmin)
     admin.add_view(GroupMemberAdmin)
@@ -402,4 +408,5 @@ def setup_admin(app):
     admin.add_view(RoundResultAdmin)
     admin.add_view(BookExchangePairAdmin)
     admin.add_view(UsernameClaimAdmin)
+    admin.add_base_view(ArchiveCoverageView)
     return admin

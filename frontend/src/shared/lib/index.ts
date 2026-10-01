@@ -29,6 +29,9 @@ export {
 // Routes
 export { isReaderPath } from './routes';
 
+// Analytics (Google Analytics 4)
+export { initAnalytics, setAnalyticsUser, track } from './analytics';
+
 // Image utilities
 export { resizeImageToDataUrl } from './imageResize';
 
@@ -74,6 +77,7 @@ export type {
   Wrapped,
   ReactionSummary,
   ClaimCandidate,
+  ClaimSuggestions,
   MyClaim,
   HallOfFameEntry,
   HallOfFameCategory,

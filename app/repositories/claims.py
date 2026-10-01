@@ -64,6 +64,11 @@ class ClaimsRepository(BaseRepository[UsernameClaim]):
         )
         return [row[0] for row in self.db.execute(stmt).all()]
 
+    def approved_ghost_ids(self) -> set[uuid.UUID]:
+        """Every archive account already granted to somebody."""
+        stmt = select(UsernameClaim.ghost_user_id).where(UsernameClaim.status == ClaimStatus.approved)
+        return {row[0] for row in self.db.execute(stmt).all()}
+
     def approved_owner_by_ghost(self) -> dict[uuid.UUID, uuid.UUID]:
         """Every claimed archive account mapped to the reader who owns it.
 

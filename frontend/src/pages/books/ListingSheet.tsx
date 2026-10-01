@@ -1,6 +1,6 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiDelete, apiGet, apiPatch, apiPost, resizeImageToDataUrl, useAuth, useI18n, type Listing } from '@/shared/lib';
+import { apiDelete, apiGet, apiPatch, apiPost, resizeImageToDataUrl, useAuth, useI18n, type Listing, track } from '@/shared/lib';
 import { Avatar } from '@/shared/ui';
 import { BookFace, PbBadge, Sheet, apiUrl, formatDay, formatPrice } from './bookUi';
 import styles from './Store.module.css';
@@ -257,6 +257,7 @@ export function SellSheet({ listing, prefill, onClose, onSaved }: FormProps) {
       setError(t(known[failed ?? ''] ?? 'mkt.error'));
       return;
     }
+    track(listing ? 'listing_edit' : 'listing_create', { price: body.price ?? 0, from_shelf: !!prefill?.volumeKey });
     try {
       if (body.city) localStorage.setItem('pb.marketCity', body.city);
       if (body.contact) localStorage.setItem('pb.marketContact', body.contact);

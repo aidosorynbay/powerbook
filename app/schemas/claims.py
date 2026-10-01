@@ -24,3 +24,10 @@ class MyClaimOut(BaseModel):
     note: str | None
     created_at: str
     rounds: list[str]
+
+
+class ClaimSuggestionsOut(BaseModel):
+    # The account already carries circles from before it was opened.
+    has_archive: bool
+    # Archive nicknames that look like this reader, best first.
+    suggestions: list[ClaimCandidateOut]

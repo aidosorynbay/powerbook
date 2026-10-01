@@ -96,6 +96,81 @@
   color: var(--color-text-primary);
 }
 
+/* «Это вы?»: the archive names that look like the reader, one tap each. */
+.names {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-card);
+}
+
+.nameInfo {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nameInfo strong {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nameInfo span,
+.nameInfo small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.itsMe {
+  flex-shrink: 0;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-primary);
+  color: var(--color-on-accent, #1a1206);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.itsMe:disabled {
+  opacity: 0.6;
+}
+
+.quiet {
+  min-height: 40px;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.error {
+  margin: -6px 0 12px;
+  color: var(--color-danger, #e5484d);
+  font-size: var(--font-size-xs);
+}
+
 @keyframes fade {
   from { opacity: 0; }
 }

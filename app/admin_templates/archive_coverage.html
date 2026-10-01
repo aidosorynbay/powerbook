@@ -1,0 +1,116 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+{% set c = data.counts %}
+{# sqladmin's row-deck turns every column into a flex row; this page is one tall column. #}
+<div class="col-12 d-block">
+<div class="w-100">
+  {% if msg %}<div class="alert alert-success">{{ msg }}</div>{% endif %}
+  {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+
+  <div class="row row-cards mb-3">
+    <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body">
+      <div class="h1 mb-0">{{ c.real }}</div><div class="text-muted">читателей на сайте</div>
+    </div></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body">
+      <div class="h1 mb-0">{{ c.with_archive }}</div><div class="text-muted">история пришла с импортом сама</div>
+    </div></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body">
+      <div class="h1 mb-0">{{ c.with_approved }} <small class="text-muted">+ {{ c.with_pending }} ждут</small></div><div class="text-muted">привязали старые ники</div>
+    </div></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body">
+      <div class="h1 mb-0">{{ c.neither }}</div><div class="text-muted">без истории и без заявки ({{ c.neither_reading }} читают в кругах)</div>
+    </div></div></div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Что это значит</h3></div>
+    <div class="card-body">
+      <p>Из <b>{{ c.real }}</b> читателей сайта у <b>{{ c.with_archive }}</b> история кругов уже пришла с импортом: их узнали по Telegram, им клеймить нечего.
+         <b>{{ c.with_approved }}</b> привязали старые ники, <b>{{ c.with_pending }}</b> ждут вашего решения. Всего заявок за всё время: {{ c.claims_total }}.</p>
+      <p>У <b>{{ c.neither }}</b> нет ни истории, ни заявки; из них <b>{{ c.neither_reading }}</b> читают в кругах на сайте. Это либо новые люди (им клеймить нечего), либо те, кто не нашёл свой ник — ниже их вероятные совпадения.</p>
+      <p class="mb-0">В архиве <b>{{ c.ghosts }}</b> ников: отдано <b>{{ c.ghosts_granted }}</b>, свободно <b>{{ c.ghosts_free }}</b>. Из свободных <b>{{ c.ghosts_recent_free }}</b> читали в {{ data.recent_year }}–2026 — скорее всего это нынешние участники под другим именем.
+        <a href="{{ base }}/archive-coverage?fresh=1">Пересчитать</a></p>
+    </div>
+  </div>
+
+  {% if data.pending %}
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Заявки ждут решения ({{ data.pending|length }})</h3></div>
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead><tr><th>Читатель</th><th>Просит ник</th><th>Кругов</th><th>Когда</th><th></th></tr></thead>
+        <tbody>
+        {% for p in data.pending %}
+          <tr>
+            <td>@{{ p.claimant }} <div class="text-muted small">{{ p.claimant_name }}</div></td>
+            <td>@{{ p.ghost }} <div class="text-muted small">{{ p.ghost_name }}</div></td>
+            <td>{{ p.circles }} <span class="text-muted small">{{ p.span }}</span></td>
+            <td class="text-muted small">{{ p.at }}</td>
+            <td><form method="post" action="{{ base }}/archive-coverage/approve" class="m-0">
+              <input type="hidden" name="claim_id" value="{{ p.claim_id }}">
+              <button class="btn btn-success btn-sm" type="submit">Одобрить</button></form></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Читатели без архива — вероятные совпадения</h3></div>
+    <div class="card-body text-muted small pb-0">Сначала те, кто читает в кругах на сайте. «Привязать» сразу отдаёт ник читателю (с той же проверкой «один человек на круг»).</div>
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead><tr><th>Читатель</th><th>Совпадения в архиве</th></tr></thead>
+        <tbody>
+        {% for r in data.readers %}
+          <tr>
+            <td style="min-width:220px">@{{ r.username }}{% if r.telegram and r.telegram != r.username %} <span class="text-muted">· tg @{{ r.telegram }}</span>{% endif %}
+              <div class="text-muted small">{{ r.display_name }} · с {{ r.joined }}{% if r.reads_here %} · <b>читает в кругах</b>{% endif %}</div></td>
+            <td>
+              {% for m in r.matches %}
+                <form method="post" action="{{ base }}/archive-coverage/link" class="d-inline-flex align-items-center gap-2 me-3 mb-1">
+                  <input type="hidden" name="user_id" value="{{ r.user_id }}">
+                  <input type="hidden" name="ghost_id" value="{{ m.ghost_id }}">
+                  <span>@{{ m.username }} <span class="text-muted small">{{ m.display_name }} · {{ m.circles }} кр. {{ m.span }} · {{ m.score }}%</span></span>
+                  <button class="btn btn-outline-primary btn-sm" type="submit">Привязать</button>
+                </form>
+              {% else %}<span class="text-muted small">похожих ников нет</span>{% endfor %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Свободные ники, читавшие в {{ data.recent_year }}–2026</h3></div>
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead><tr><th>Ник в архиве</th><th>Похожие читатели сайта</th></tr></thead>
+        <tbody>
+        {% for n in data.nicknames %}
+          <tr>
+            <td style="min-width:220px">@{{ n.username }}{% if n.asked %} <span class="badge bg-yellow-lt">есть заявка</span>{% endif %}
+              <div class="text-muted small">{{ n.display_name }} · {{ n.circles }} кр. · последний {{ n.last }}</div></td>
+            <td>
+              {% for m in n.matches %}
+                <form method="post" action="{{ base }}/archive-coverage/link" class="d-inline-flex align-items-center gap-2 me-3 mb-1">
+                  <input type="hidden" name="user_id" value="{{ m.user_id }}">
+                  <input type="hidden" name="ghost_id" value="{{ n.ghost_id }}">
+                  <span>@{{ m.username }}{% if m.telegram and m.telegram != m.username %} <span class="text-muted small">tg @{{ m.telegram }}</span>{% endif %} <span class="text-muted small">{{ m.display_name }} · {{ m.score }}%</span></span>
+                  <button class="btn btn-outline-primary btn-sm" type="submit">Привязать</button>
+                </form>
+              {% else %}<span class="text-muted small">похожих читателей нет</span>{% endfor %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}

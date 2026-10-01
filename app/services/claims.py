@@ -4,12 +4,16 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.booktitles import match_key
 from app.models.enums import ClaimStatus
+from app.models.round import Round, RoundParticipant
 from app.repositories.claims import ClaimsRepository
 from app.repositories.users import UserRepository
-from app.schemas.claims import ClaimCandidateOut, MyClaimOut
+from app.schemas.claims import ClaimCandidateOut, ClaimSuggestionsOut, MyClaimOut
+from app.services import claim_match
 
 MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
@@ -24,14 +28,73 @@ class ClaimsService:
         self.repo = ClaimsRepository(db)
         self.users = UserRepository(db)
 
+    def _candidate(self, ghost_id: uuid.UUID, username: str, display_name: str) -> ClaimCandidateOut:
+        rounds = self.repo.rounds_for_ghost(ghost_user_id=ghost_id)
+        return ClaimCandidateOut(
+            user_id=str(ghost_id),
+            username=username,
+            display_name=display_name,
+            rounds=[_round_label(y, m) for _rid, y, m in rounds],
+        )
+
     def search(self, *, user_id: uuid.UUID, query: str) -> list[ClaimCandidateOut]:
+        """Archive nicknames for what the reader typed, in either script:
+        «Сайра» finds "Saira" as well as «Сайра»."""
         query = query.strip()
         if len(query) < 2:
             return []
-        candidates = self.repo.search_claimable(query=query, exclude_user_id=user_id, limit=20)
-        out = []
-        for ghost in candidates:
+        ranked: dict[uuid.UUID, tuple[int, str, str]] = {}
+        key = match_key(query.lstrip("@"))
+        if len(key) >= 2:
+            for ghost in claim_match.claimable_ghosts(self.db):
+                rank = claim_match.query_matches(key, ghost)
+                if rank and ghost.id != user_id:
+                    ranked[ghost.id] = (rank, ghost.username, ghost.display_name)
+        # The plain substring search still counts, for anything the skeleton folds away.
+        for ghost in self.repo.search_claimable(query=query, exclude_user_id=user_id, limit=20):
+            ranked.setdefault(ghost.id, (1, ghost.username, ghost.display_name))
+        best = sorted(ranked.items(), key=lambda item: (-item[1][0], item[1][1].casefold()))[:20]
+        return [self._candidate(ghost_id, username, display) for ghost_id, (_rank, username, display) in best]
+
+    def has_archive(self, *, user_id: uuid.UUID) -> bool:
+        """Whether the reader's own account already carries circles from before
+        it was opened: the import matched them, so their history is there."""
+        user = self.users.get(user_id)
+        if user is None or user.created_at is None:
+            return False
+        opened = user.created_at.year * 12 + user.created_at.month
+        months = self.db.execute(
+            select(Round.year, Round.month)
+            .join(RoundParticipant, RoundParticipant.round_id == Round.id)
+            .where(RoundParticipant.user_id == user_id)
+        ).all()
+        return any(year * 12 + month < opened for year, month in months)
+
+    def suggestions(self, *, user_id: uuid.UUID, limit: int = 5) -> list[ClaimCandidateOut]:
+        """Archive nicknames that look like this reader's names (username,
+        display name, Telegram), best first. Leaves out anything already
+        granted to someone, anything this reader has asked for, and anything
+        that shares a circle with them (they could not have read twice)."""
+        user = self.users.get(user_id)
+        if user is None:
+            return []
+        mine = claim_match.keys(user.username, user.display_name, user.telegram_id)
+        granted = self.repo.approved_ghost_ids()
+        asked = {c.ghost_user_id for c in self.repo.list_for_claimant(claimant_user_id=user_id) if c.status != ClaimStatus.revoked}
+        scored = []
+        for ghost in claim_match.claimable_ghosts(self.db):
+            if ghost.id == user_id or ghost.id in granted or ghost.id in asked:
+                continue
+            sc = claim_match.score(mine, ghost.keys)
+            if sc >= claim_match.THRESHOLD:
+                scored.append((sc, ghost))
+        scored.sort(key=lambda item: (-item[0], item[1].username.casefold()))
+        covered = self.repo.covered_round_ids(claimant_user_id=user_id)
+        out: list[ClaimCandidateOut] = []
+        for _sc, ghost in scored:
             rounds = self.repo.rounds_for_ghost(ghost_user_id=ghost.id)
+            if not rounds or ({rid for rid, _y, _m in rounds} & covered):
+                continue
             out.append(
                 ClaimCandidateOut(
                     user_id=str(ghost.id),
@@ -40,7 +103,15 @@ class ClaimsService:
                     rounds=[_round_label(y, m) for _rid, y, m in rounds],
                 )
             )
+            if len(out) >= limit:
+                break
         return out
+
+    def suggestions_for(self, *, user_id: uuid.UUID) -> ClaimSuggestionsOut:
+        return ClaimSuggestionsOut(
+            has_archive=self.has_archive(user_id=user_id),
+            suggestions=self.suggestions(user_id=user_id),
+        )
 
     def submit_claim(self, *, user_id: uuid.UUID, ghost_user_id: uuid.UUID, note: str | None) -> MyClaimOut:
         if ghost_user_id == user_id:
@@ -110,11 +181,29 @@ class ClaimsService:
         claim = self.repo.get(claim_id)
         if claim is None or claim.claimant_user_id != user_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Claim not found")
-        if claim.status == ClaimStatus.approved:
+        # Approved or still waiting, the reader can take it back. A request
+        # that was only waiting used to stay in the queue when "cancelled".
+        if claim.status in (ClaimStatus.approved, ClaimStatus.pending):
             claim.status = ClaimStatus.revoked
             claim.reviewed_by_user_id = user_id
             claim.reviewed_at = datetime.now(timezone.utc)
             self.db.commit()
+
+    def link_by_admin(self, *, user_id: uuid.UUID, ghost_user_id: uuid.UUID, admin_id: uuid.UUID | None) -> MyClaimOut:
+        """The founder recognising a reader in the archive: the same checks as
+        a reader's own request, granted at once."""
+        out = self.submit_claim(user_id=user_id, ghost_user_id=ghost_user_id, note="linked by admin")
+        now = datetime.now(timezone.utc)
+        for claim in self.repo.list_for_claimant(claimant_user_id=user_id):
+            if claim.status == ClaimStatus.pending and claim.note == "linked by admin":
+                taken = self.repo.active_claim_for_ghost(ghost_user_id=claim.ghost_user_id)
+                if taken is not None and taken.id != claim.id:
+                    continue
+                claim.status = ClaimStatus.approved
+                claim.reviewed_by_user_id = admin_id
+                claim.reviewed_at = now
+        self.db.commit()
+        return out
 
     def _to_out(self, claim) -> MyClaimOut:
         ghost = self.users.get(claim.ghost_user_id)

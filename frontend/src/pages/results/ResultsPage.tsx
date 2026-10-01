@@ -5,6 +5,7 @@ import {
   useAuth,
   apiGet,
   apiPost,
+  track,
   type LastCompletedRound,
   type RoundResultsResponse,
   type RoundResultEntry,
@@ -147,7 +148,10 @@ export function ResultsPage() {
   const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
   const [showPairs, setShowPairs] = useState(false);
   const [storyOpen, setStoryOpen] = useState(false);
-  const openStory = useCallback(() => setStoryOpen(true), []);
+  const openStory = useCallback(() => {
+    setStoryOpen(true);
+    track('story_open');
+  }, []);
   const closeStory = useCallback(() => setStoryOpen(false), []);
 
   const fetchCalendar = useCallback(async (roundId: string, userId: string) => {
@@ -205,6 +209,7 @@ export function ResultsPage() {
     const endpoint = myExchange.role === 'giver' ? 'mark_given' : 'mark_received';
     const { data } = await apiPost(`/exchange/${myExchange.pair_id}/${endpoint}`, {}, { requireAuth: true });
     if (data) {
+      track('exchange_confirm', { role: myExchange.role, with_photo: false });
       await fetchData();
     }
     setIsMarkingExchange(false);

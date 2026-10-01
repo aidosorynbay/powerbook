@@ -1,3 +1,4 @@
+import { track } from './analytics';
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { apiDelete, apiGet, apiPost } from './api';
 import { useAuth } from './auth';
@@ -94,6 +95,7 @@ export function useWaitlist() {
     if (data) {
       current = data;
       emit();
+      track('waitlist_join', { invited: !!storage(REF_KEY) });
     }
     return error;
   }, []);
@@ -110,6 +112,7 @@ export function useWaitlist() {
   const joinRound = useCallback(async () => {
     if (!current?.open_round) return 'no_round';
     const { error } = await apiPost(`/rounds/${current.open_round.id}/join`, {}, { requireAuth: true });
+    if (!error) track('round_join', { invited: !!storage(REF_KEY) });
     await load();
     return error;
   }, []);

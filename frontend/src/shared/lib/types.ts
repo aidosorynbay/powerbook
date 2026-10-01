@@ -291,6 +291,13 @@ export type ClaimCandidate = {
   rounds: string[];
 };
 
+export type ClaimSuggestions = {
+  // The account already carries circles from before it was opened.
+  has_archive: boolean;
+  // Archive nicknames that look like this reader, best first.
+  suggestions: ClaimCandidate[];
+};
+
 export type MyClaim = {
   id: string;
   ghost_user_id: string;

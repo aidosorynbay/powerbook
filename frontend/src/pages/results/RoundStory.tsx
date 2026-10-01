@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import { toCanvas } from 'html-to-image';
-import { apiGet, inviteLink, useAuth, useI18n, useWaitlist, type MyResult, type RoundLetter, type RoundReview } from '@/shared/lib';
+import { apiGet, inviteLink, track, useAuth, useI18n, useWaitlist, type MyResult, type RoundLetter, type RoundReview } from '@/shared/lib';
 import { Icon } from '@/shared/ui';
 import { dayOf } from '@/widgets/JoinPrompt/words';
 import { useDigest } from '../reading/digest';
@@ -314,6 +314,7 @@ export function RoundStory({ roundId, year, month, result, participants, open, o
     const f = file ?? (await render());
     setBusy(false);
     if (!f) return;
+    track('story_share', { method: 'download' });
     const url = URL.createObjectURL(f);
     const a = document.createElement('a');
     a.href = url;
@@ -329,6 +330,7 @@ export function RoundStory({ roundId, year, month, result, participants, open, o
     if (f && navigator.canShare?.({ files: [f] })) {
       try {
         await navigator.share({ files: [f] });
+        track('story_share', { method: 'share' });
         return;
       } catch (e) {
         if ((e as Error).name === 'AbortError') return;

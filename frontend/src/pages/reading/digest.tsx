@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiGet, apiPost, useI18n, type Digest } from '@/shared/lib';
+import { apiGet, apiPost, useI18n, type Digest, track } from '@/shared/lib';
 import store from '../books/Store.module.css';
 import styles from './Reading.module.css';
 
@@ -44,8 +44,10 @@ export function useDigest(kind: 'period' | 'book' | 'round', scope: string | nul
     setError(null);
     const { data, error: failed } = await apiPost<Digest>('/reading/digest', { kind, scope, lang: locale, force }, { requireAuth: true });
     setStarting(false);
-    if (data) setDigest(data);
-    else setError(failed);
+    if (data) {
+      setDigest(data);
+      track('ai_digest_start', { kind, force });
+    } else setError(failed);
   };
 
   return { digest, error, start, starting };

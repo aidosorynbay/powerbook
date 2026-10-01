@@ -5,6 +5,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import {
   useI18n,
+  track,
   apiGet,
   apiGetBlob,
   apiPut,
@@ -261,7 +262,10 @@ export function ReaderPage() {
           setPdfPage(startPage);
           await renderPdfPage(startPage);
         }
-        if (!cancelled) setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+          track('reader_open', { format: info.file_format });
+        }
       } catch {
         if (!cancelled) {
           setError(t('library.readError'));
@@ -320,6 +324,7 @@ export function ReaderPage() {
       return;
     }
     setLogState('done');
+    track('reader_session_logged', { minutes });
     setLogMessage(t('reader.logSaved', { total: existing + minutes }));
   };
 
@@ -389,6 +394,7 @@ export function ReaderPage() {
 
   const enterFocus = useCallback(async () => {
     setFocus(true);
+    track('reader_lock_in');
     setShowToc(false);
     holdScreen();
     const root = document.documentElement;

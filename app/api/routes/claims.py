@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
-from app.schemas.claims import ClaimCandidateOut, ClaimCreateRequest, MyClaimOut
+from app.schemas.claims import ClaimCandidateOut, ClaimCreateRequest, ClaimSuggestionsOut, MyClaimOut
 from app.services.claims import ClaimsService
 
 router = APIRouter(prefix="/claims", tags=["claims"])
@@ -20,6 +20,12 @@ def search_claimable(
     user=Depends(get_current_user),
 ) -> list[ClaimCandidateOut]:
     return ClaimsService(db).search(user_id=user.id, query=q)
+
+
+@router.get("/suggestions", response_model=ClaimSuggestionsOut)
+def claim_suggestions(db: Session = Depends(get_db), user=Depends(get_current_user)) -> ClaimSuggestionsOut:
+    """«Это вы?» — archive nicknames that look like this reader's own names."""
+    return ClaimsService(db).suggestions_for(user_id=user.id)
 
 
 @router.get("/mine", response_model=list[MyClaimOut])

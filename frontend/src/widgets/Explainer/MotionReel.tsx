@@ -1,5 +1,5 @@
 import { CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
-import { useI18n } from '@/shared/lib';
+import { track, useI18n } from '@/shared/lib';
 import { Icon } from '@/shared/ui';
 import styles from './MotionReel.module.css';
 
@@ -299,9 +299,11 @@ export function MotionReel() {
     setManual(true);
     setPlaying(true);
     go(next);
+    track('reel_nav', { scene: ((next + SCENES.length) % SCENES.length) + 1 });
   }, [go]);
 
   const resumeAuto = () => {
+    track('reel_auto');
     elapsedBefore.current = 0;
     setProgress(0);
     setManual(false);

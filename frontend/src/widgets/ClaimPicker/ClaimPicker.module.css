@@ -154,3 +154,14 @@
   border-color: var(--color-danger);
   color: var(--color-danger);
 }
+
+/* «Похоже, это вы»: the archive names that look like the reader, above the search. */
+.suggested {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.suggestedRow {
+  border-color: var(--color-border-accent);
+}

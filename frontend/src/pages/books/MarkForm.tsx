@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { apiDelete, apiPut, useI18n, type ShelfReview } from '@/shared/lib';
+import { apiDelete, apiPut, useI18n, type ShelfReview, track } from '@/shared/lib';
 import { MarkPicker } from './bookUi';
 import styles from './Store.module.css';
 
@@ -46,6 +46,7 @@ export function MarkForm({ volumeKey, rating, text, reviewId, onSaved }: Props) 
     );
     setBusy(false);
     if (failed || !data) return setError(t('work.saveError'));
+    track('book_mark', { rating: data.rating, with_text: !!data.text });
     setSaved(true);
     onSaved({ id: data.id, rating: data.rating, text: data.text });
   };

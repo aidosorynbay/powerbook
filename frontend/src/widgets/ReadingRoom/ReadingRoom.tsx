@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiGet, apiPost, colorFromSeed, useAuth, useI18n, useResolvedTheme } from '@/shared/lib';
+import { apiGet, apiPost, colorFromSeed, useAuth, useI18n, useResolvedTheme, track } from '@/shared/lib';
 import { HALLS, charFor, createRoomEngine, seatChar, type HallKey, type RoomEngine } from './engine';
 import { Ding, Snd, type SoundChannel } from './sound';
 import styles from './ReadingRoom.module.css';
@@ -497,6 +497,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     Ding.prime();
     const { data, error } = await apiPost<MySession>(`/reading-room/${hall}/sit`, { seat, book: title }, { requireAuth: true });
     setBusy(false);
+    if (data) track('room_sit', { hall });
     if (!data) {
       say(error === 'Chair is taken' ? t('room.chairTaken') : t('room.error'));
       load();

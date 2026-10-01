@@ -2,6 +2,9 @@ import './instrument';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from '@/app';
+import { initAnalytics } from '@/shared/lib';
+
+initAnalytics();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

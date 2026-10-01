@@ -14,6 +14,7 @@ import {
   type CalendarResponse,
   type RosterResponse,
   type AllTimeProfile,
+  track,
 } from '@/shared/lib';
 import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
@@ -425,6 +426,7 @@ export function DashboardPage() {
       { requireAuth: true }
     );
     if (data) {
+      track('minutes_logged', { minutes, where: 'calendar', book_finished: modalBookFinished });
       await fetchCalendar(roundStatus.round.id);
       await fetchLeaderboard(roundStatus.round.id);
       await fetchRoster(roundStatus.round.id);
@@ -663,6 +665,7 @@ export function DashboardPage() {
       { requireAuth: true }
     );
     if (data) {
+      track('minutes_logged', { minutes, where: 'today', book_finished: todayBookFinished });
       await fetchCalendar(roundStatus.round.id);
       await fetchLeaderboard(roundStatus.round.id);
       await fetchRoster(roundStatus.round.id);

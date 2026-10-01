@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useI18n, apiGet, apiPost, apiDelete, type ClaimCandidate, type MyClaim } from '@/shared/lib';
+import { useI18n, apiGet, apiPost, apiDelete, track, type ClaimCandidate, type ClaimSuggestions, type MyClaim } from '@/shared/lib';
 import { Button } from '@/shared/ui';
+import { circlesLine } from './circles';
 import styles from './ClaimPicker.module.css';
 
 /** How many round labels a collapsed list shows before the toggle. */
@@ -44,7 +45,9 @@ interface ClaimPickerProps {
 }
 
 export function ClaimPicker({ onChange }: ClaimPickerProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  // Archive names that look like the reader's own, offered before any typing.
+  const [suggested, setSuggested] = useState<ClaimCandidate[]>([]);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<ClaimCandidate[]>([]);
   const [searching, setSearching] = useState(false);
@@ -53,8 +56,12 @@ export function ClaimPicker({ onChange }: ClaimPickerProps) {
   const [error, setError] = useState<string | null>(null);
 
   const loadMyClaims = useCallback(async () => {
-    const { data } = await apiGet<MyClaim[]>('/claims/mine', { requireAuth: true });
+    const [{ data }, { data: hints }] = await Promise.all([
+      apiGet<MyClaim[]>('/claims/mine', { requireAuth: true }),
+      apiGet<ClaimSuggestions>('/claims/suggestions', { requireAuth: true }),
+    ]);
     if (data) setMyClaims(data);
+    setSuggested(hints?.suggestions ?? []);
   }, []);
 
   useEffect(() => {
@@ -79,7 +86,7 @@ export function ClaimPicker({ onChange }: ClaimPickerProps) {
     return () => clearTimeout(handle);
   }, [query]);
 
-  const claim = async (candidate: ClaimCandidate) => {
+  const claim = async (candidate: ClaimCandidate, from: 'search' | 'suggestion' = 'search') => {
     setSubmittingId(candidate.user_id);
     setError(null);
     const { error: apiError } = await apiPost('/claims', { ghost_user_id: candidate.user_id }, { requireAuth: true });
@@ -88,6 +95,7 @@ export function ClaimPicker({ onChange }: ClaimPickerProps) {
       setError(apiError);
       return;
     }
+    track('claim_submit', { from });
     setQuery('');
     setResults([]);
     await loadMyClaims();
@@ -107,6 +115,27 @@ export function ClaimPicker({ onChange }: ClaimPickerProps) {
 
   return (
     <div className={styles.wrap}>
+      {suggested.length > 0 && (
+        <div className={styles.suggested}>
+          <div className={styles.myClaimsLabel}>{t('claims.suggestedLabel')}</div>
+          <ul className={styles.results}>
+            {suggested.map((c) => (
+              <li key={c.user_id} className={`${styles.resultRow} ${styles.suggestedRow}`}>
+                <div className={styles.resultInfo}>
+                  <div className={styles.resultName}>
+                    {c.display_name} <span className={styles.resultUsername}>@{c.username}</span>
+                  </div>
+                  <span className={styles.resultRounds}>{circlesLine(c.rounds, locale, t)}</span>
+                </div>
+                <Button size="sm" variant="primary" disabled={submittingId === c.user_id} onClick={() => claim(c, 'suggestion')}>
+                  {submittingId === c.user_id ? t('claims.claiming') : t('archiveAsk.itsMe')}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <input
         className={styles.input}
         type="text"
