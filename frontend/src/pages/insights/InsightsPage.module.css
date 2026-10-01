@@ -141,6 +141,15 @@
 
 .section {
   margin-bottom: 28px;
+  scroll-margin-top: 90px;
+  border-radius: var(--radius-lg);
+  transition: box-shadow 0.6s ease, background-color 0.6s ease;
+}
+
+/* The archive section, just opened from the "участвовали раньше?" question. */
+.sectionLit {
+  background-color: color-mix(in srgb, var(--color-accent-primary) 7%, transparent);
+  box-shadow: 0 0 0 2px var(--color-accent-primary), 0 0 0 10px color-mix(in srgb, var(--color-accent-primary) 10%, transparent);
 }
 
 .sectionTitle {

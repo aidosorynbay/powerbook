@@ -6,6 +6,7 @@ export { CallToAction } from './CallToAction';
 export { Footer } from './Footer';
 export { BottomNav } from './BottomNav';
 export { ClaimPicker } from './ClaimPicker';
+export { ArchivePrompt } from './ArchivePrompt';
 export { WrappedCard } from './WrappedCard';
 export { RoundsShowcase } from './RoundsShowcase';
 export { HeroBanner } from './HeroBanner';

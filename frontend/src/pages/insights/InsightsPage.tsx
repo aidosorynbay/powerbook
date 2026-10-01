@@ -52,6 +52,26 @@ export function InsightsPage() {
   const { user } = useAuth();
 
   const [profile, setProfile] = useState<AllTimeProfile | null>(null);
+  // Arrived from «Вы раньше участвовали в кругах? — Да»: down to the archive section, lit for a moment.
+  const [claimLit, setClaimLit] = useState(false);
+  useEffect(() => {
+    if (window.location.hash !== '#claim') return;
+    let tries = 0;
+    let timer = 0;
+    const find = () => {
+      const el = document.getElementById('claim');
+      if (!el) {
+        if (tries++ < 30) timer = window.setTimeout(find, 200);
+        return;
+      }
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.querySelector('input')?.focus({ preventScroll: true });
+      setClaimLit(true);
+      timer = window.setTimeout(() => setClaimLit(false), 2600);
+    };
+    timer = window.setTimeout(find, 150);
+    return () => window.clearTimeout(timer);
+  }, []);
   const [archetype, setArchetype] = useState<Archetype | null>(null);
   const [bookshelf, setBookshelf] = useState<BookshelfEntry[]>([]);
   const [popular, setPopular] = useState<PopularBook[]>([]);
@@ -290,7 +310,7 @@ export function InsightsPage() {
                   </div>
                 )}
 
-                <section className={styles.section}>
+                <section id="claim" className={`${styles.section} ${claimLit ? styles.sectionLit : ''}`}>
                   <h2 className={styles.sectionTitle}>{t('claims.title')}</h2>
                   <p className={styles.sectionHint}>{t('claims.subtitle')}</p>
                   <ClaimPicker onChange={load} />

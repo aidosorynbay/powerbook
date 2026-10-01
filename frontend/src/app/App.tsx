@@ -3,7 +3,7 @@ import { Suspense, lazy, useEffect } from 'react';
 import * as Sentry from '@sentry/react';
 import { AuthProvider, useAuth, I18nProvider, useI18n } from '@/shared/lib';
 import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage, JoinPage } from '@/pages';
-import { BottomNav, JoinPrompt, LastCallNotice } from '@/widgets';
+import { ArchivePrompt, BottomNav, JoinPrompt, LastCallNotice } from '@/widgets';
 import '@/app/styles/theme.css';
 
 // Lets Sentry name traces by route pattern (/readers/:userId).
@@ -149,6 +149,7 @@ function AppRoutes() {
       {/* Mounted at the root, not per page: the reader should see it on the
           last day whichever page they happen to open. */}
       {isAuthenticated && <LastCallNotice />}
+      {isAuthenticated && <ArchivePrompt />}
       {/* For whoever is not reading in this month's circle: the way into the next one. */}
       <JoinPrompt />
     </>

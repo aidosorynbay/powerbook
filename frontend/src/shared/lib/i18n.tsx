@@ -841,6 +841,11 @@ const translations = {
     'league.bronze': 'Бронзовая лига',
 
     // Username claims
+    'archiveAsk.title': 'Вы раньше участвовали в кругах PowerBook?',
+    'archiveAsk.text': 'PowerBook идёт с 2021 года — ещё с Telegram. Если вы читали в кругах раньше, найдите себя в архиве: прошлые круги, минуты и серии подтянутся в ваш профиль.',
+    'archiveAsk.yes': 'Да, найти себя в архиве',
+    'archiveAsk.no': 'Нет, я здесь впервые',
+    'archiveAsk.later': 'Спросить позже',
     'claims.title': 'Узнаёте себя в архиве?',
     'claims.subtitle': 'Если раньше читал(а) в круге под другим ником — привяжи его, и история подтянется сюда. Один ник на круг.',
     'claims.searchPlaceholder': 'Введите старый ник или имя...',
@@ -2362,6 +2367,11 @@ const translations = {
     'league.bronze': 'Қола лига',
 
     // Username claims
+    'archiveAsk.title': 'Бұрын PowerBook раундтарына қатыстыңыз ба?',
+    'archiveAsk.text': 'PowerBook 2021 жылдан бері — Telegram-нан бастап өтіп келеді. Бұрын раундтарда оқыған болсаңыз, мұрағаттан өзіңізді табыңыз: өткен раундтар, минуттар мен сериялар профиліңізге қосылады.',
+    'archiveAsk.yes': 'Иә, мұрағаттан табу',
+    'archiveAsk.no': 'Жоқ, мұнда алғаш рет',
+    'archiveAsk.later': 'Кейінірек сұрау',
     'claims.title': 'Мұрағатта өзіңізді танисыз ба?',
     'claims.subtitle': 'Бұрын раундта басқа никпен оқыған болсаң — соны байлан, тарих осында қосылады. Бір раундқа — бір ник.',
     'claims.searchPlaceholder': 'Ескі никті немесе атыңды енгіз...',
@@ -3883,6 +3893,11 @@ const translations = {
     'league.bronze': 'Bronze League',
 
     // Username claims
+    'archiveAsk.title': 'Have you taken part in PowerBook circles before?',
+    'archiveAsk.text': 'PowerBook has run since 2021, back in Telegram. If you read in its circles before, find yourself in the archive: past circles, minutes and streaks move to your profile.',
+    'archiveAsk.yes': 'Yes, find me in the archive',
+    'archiveAsk.no': 'No, I am new here',
+    'archiveAsk.later': 'Ask me later',
     'claims.title': 'Recognize yourself in the archive?',
     'claims.subtitle': "If you read under a different username in an older circle, link it here and that history rolls into your profile. One username per circle.",
     'claims.searchPlaceholder': 'Enter your old username or name...',
