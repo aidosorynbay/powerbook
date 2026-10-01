@@ -21,7 +21,7 @@ import {
 } from '@/shared/lib';
 import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
-import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard } from '@/widgets';
+import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews } from '@/widgets';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { BarysCard } from '@/widgets/Mascot';
 import anim from '@/shared/styles/animations.module.css';
@@ -919,6 +919,8 @@ export function DashboardPage() {
                   ) : null}
                 </div>
               )}
+
+              {isParticipant && user && <ArchiveNews userId={user.id} />}
 
               {/* Color & symbol legend */}
               <div className={styles.legend}>
