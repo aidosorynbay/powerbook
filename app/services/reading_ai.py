@@ -572,6 +572,12 @@ def get_digest(db: Session, *, user: User, kind: str, scope: str, lang: str) -> 
     row = _current(db, user, kind, scope, lang)
     if row is None:
         return None
+    if row.status == "working" and _is_abandoned(row):
+        # The thread writing it died (a deploy restarts the server): say so,
+        # so the page offers to write it again instead of spinning forever.
+        out = _digest_out(row)
+        out.status, out.error = "error", "interrupted"
+        return out
     stale = False
     if row.status == "done":
         try:
@@ -579,6 +585,15 @@ def get_digest(db: Session, *, user: User, kind: str, scope: str, lang: str) -> 
         except HTTPException:
             stale = False
     return _digest_out(row, stale=stale)
+
+
+# Longer than any honest attempt (two DeepSeek calls of up to two minutes).
+_WORKING_FOR = timedelta(minutes=6)
+
+
+def _is_abandoned(row: AiDigest) -> bool:
+    updated = row.updated_at if row.updated_at.tzinfo else row.updated_at.replace(tzinfo=timezone.utc)
+    return updated <= datetime.now(timezone.utc) - _WORKING_FOR
 
 
 def start_digest(db: Session, *, user: User, kind: str, scope: str, lang: str, force: bool = False) -> DigestOut:
@@ -590,8 +605,7 @@ def start_digest(db: Session, *, user: User, kind: str, scope: str, lang: str, f
     row = _current(db, user, kind, scope, lang)
     now = datetime.now(timezone.utc)
     if row is not None:
-        updated = row.updated_at if row.updated_at.tzinfo else row.updated_at.replace(tzinfo=timezone.utc)
-        if row.status == "working" and updated > now - timedelta(minutes=6):
+        if row.status == "working" and not _is_abandoned(row):
             return _digest_out(row)
         if row.status == "done" and row.input_hash == digest_hash and not force:
             return _digest_out(row)
