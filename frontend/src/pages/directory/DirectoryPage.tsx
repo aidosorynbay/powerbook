@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useI18n, apiGet, type DirectoryEntry } from '@/shared/lib';
-import { Container, PageTransition, Avatar, BookCard } from '@/shared/ui';
+import { Container, PageTransition, Avatar, BookCard, Icon } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import styles from './DirectoryPage.module.css';
 
@@ -119,7 +119,7 @@ export function DirectoryPage() {
                       )}
                       {entry.badges_earned > 0 && (
                         <div className={styles.badgePill}>
-                          <span>&#127942;</span>
+                          <Icon name="trophy" size="sm" aria-hidden="true" />
                           {entry.badges_earned}
                         </div>
                       )}

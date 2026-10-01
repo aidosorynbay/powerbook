@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n, useWaitlist } from '@/shared/lib';
+import { Icon } from '@/shared/ui';
 import { ShareInvite } from './ShareInvite';
 import { dayOf, monthOf } from './words';
 import styles from './JoinPrompt.module.css';
@@ -16,7 +17,7 @@ export function WaitlistCard() {
   return (
     <section className={styles.card}>
       <div className={styles.cardHead}>
-        <span aria-hidden="true">⏳</span>
+        <Icon name="hourglass" size="em" className={styles.cardIcon} aria-hidden="true" />
         <h3>{t('wl.cardTitle', { month })}</h3>
       </div>
       <p className={styles.text}>{t('wl.cardText', { date: dayOf(state.starts_on, locale, t) })}</p>

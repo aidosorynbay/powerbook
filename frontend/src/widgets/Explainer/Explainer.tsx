@@ -1,20 +1,20 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, useI18n, useWaitlist } from '@/shared/lib';
-import { Container } from '@/shared/ui';
+import { Container, Icon } from '@/shared/ui';
 import { MotionReel } from './MotionReel';
 import styles from './Explainer.module.css';
 
 const PERKS = [
-  { key: 'calendar', icon: '🗓️', to: '/round' },
-  { key: 'leaders', icon: '🏆', to: '/round' },
-  { key: 'room', icon: '🕯️', to: '/library/hall' },
-  { key: 'shelf', icon: '📚', to: '/library' },
-  { key: 'books', icon: '⭐', to: '/books' },
-  { key: 'market', icon: '🏷️', to: '/market' },
-  { key: 'ai', icon: '✨', to: '/reading' },
-  { key: 'fame', icon: '🎖️', to: '/hall-of-fame' },
-  { key: 'people', icon: '👥', to: '/readers' },
-  { key: 'tg', icon: '💬', href: 'https://t.me/+ZSmueLtmT8Y1MDBi' },
+  { key: 'calendar', icon: 'calendar', to: '/round' },
+  { key: 'leaders', icon: 'trophy', to: '/round' },
+  { key: 'room', icon: 'candle', to: '/library/hall' },
+  { key: 'shelf', icon: 'book', to: '/library' },
+  { key: 'books', icon: 'star', to: '/books' },
+  { key: 'market', icon: 'tag', to: '/market' },
+  { key: 'ai', icon: 'sparkle', to: '/reading' },
+  { key: 'fame', icon: 'medal', to: '/hall-of-fame' },
+  { key: 'people', icon: 'users', to: '/readers' },
+  { key: 'tg', icon: 'telegram', href: 'https://t.me/+ZSmueLtmT8Y1MDBi' },
 ] as const;
 
 /**
@@ -102,7 +102,7 @@ export function Explainer() {
               {PERKS.map((p) => {
                 const inner = (
                   <>
-                    <span className={styles.perkIcon} aria-hidden="true">{p.icon}</span>
+                    <span className={styles.perkIcon} aria-hidden="true"><Icon name={p.icon} size="md" /></span>
                     <span>
                       <strong>{t(`ex.perk.${p.key}.t`)}</strong>
                       <span className={styles.perkText}>{t(`ex.perk.${p.key}.d`)}</span>

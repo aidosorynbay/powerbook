@@ -732,3 +732,8 @@
     display: none;
   }
 }
+
+.streakFlame {
+  color: var(--color-accent-primary);
+  font-size: 0.85em;
+}

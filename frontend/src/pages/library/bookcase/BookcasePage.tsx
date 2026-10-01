@@ -20,7 +20,7 @@ import {
   type Locale,
   type Work,
 } from '@/shared/lib';
-import { Avatar } from '@/shared/ui';
+import { Avatar, Icon } from '@/shared/ui';
 import { Header } from '@/widgets';
 import { extractCover } from '../extractCover';
 import { EditBookSheet } from './EditBookSheet';
@@ -988,7 +988,7 @@ export function BookcasePage({ ownerId }: Props) {
             <div className={styles.captionActions}>
               <button type="button" className={styles.inspect} disabled={inspecting} onClick={() => sceneRef.current?.focus(active)}>
                 <span>{t('shelf.inspect')}</span>
-                <span aria-hidden="true">↗</span>
+                <span aria-hidden="true">{'↗\uFE0E'}</span>
               </button>
               {isSelf && current.upload_id && (
                 <Link className={`${styles.inspect} ${styles.inspectPrimary}`} to={`/library/${current.upload_id}`}>
@@ -1189,14 +1189,14 @@ export function BookcasePage({ ownerId }: Props) {
                   {current.source_url && (
                     <a className={styles.sourceLink} href={current.source_url} target="_blank" rel="noopener noreferrer">
                       <span>{t('shelf.sourceGoogle')}</span>
-                      <span aria-hidden="true">↗</span>
+                      <span aria-hidden="true">{'↗\uFE0E'}</span>
                     </a>
                   )}
 
                   {isSelf && current.upload_id && (
                     <Link className={styles.primaryLink} to={`/library/${current.upload_id}`}>
                       <span>{t('shelf.openBook')}</span>
-                      <span aria-hidden="true">↗</span>
+                      <span aria-hidden="true">{'↗\uFE0E'}</span>
                     </Link>
                   )}
                   {isSelf && !current.has_file && (
@@ -1207,19 +1207,23 @@ export function BookcasePage({ ownerId }: Props) {
                   )}
                   {isSelf && !current.has_file && <p className={styles.primaryHint}>{t('shelf.attachHint')}</p>}
 
-                  {isSelf && current.status === 'finished' && (
-                    <Link
-                      className={styles.editLink}
-                      to={`/market?sell=${encodeURIComponent(current.key)}&title=${encodeURIComponent(current.title)}${current.author ? `&author=${encodeURIComponent(current.author)}` : ''}`}
-                    >
-                      ₸ {t('mkt.sellFromShelf')}
-                    </Link>
-                  )}
-
+                  {/* Two separate actions, each on its own: they used to run together into one line. */}
                   {isSelf && (
-                    <button type="button" className={styles.editLink} onClick={() => setEditing(current)}>
-                      {t('shelf.edit')}
-                    </button>
+                    <div className={styles.bookActions}>
+                      {current.status === 'finished' && (
+                        <Link
+                          className={styles.bookAction}
+                          to={`/market?sell=${encodeURIComponent(current.key)}&title=${encodeURIComponent(current.title)}${current.author ? `&author=${encodeURIComponent(current.author)}` : ''}`}
+                        >
+                          <Icon name="tag" size="em" aria-hidden="true" />
+                          {t('mkt.sellFromShelf')}
+                        </Link>
+                      )}
+                      <button type="button" className={styles.bookAction} onClick={() => setEditing(current)}>
+                        <Icon name="pen" size="em" aria-hidden="true" />
+                        {t('shelf.edit')}
+                      </button>
+                    </div>
                   )}
 
                   {isSelf && (current.upload_id || current.manual_id) && (

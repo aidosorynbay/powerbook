@@ -1,5 +1,6 @@
 import { CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '@/shared/lib';
+import { Icon } from '@/shared/ui';
 import styles from './MotionReel.module.css';
 
 /**
@@ -7,6 +8,8 @@ import styles from './MotionReel.module.css';
  * rather than a video file: it speaks the page's language, weighs nothing,
  * and stays sharp at any size. Nine scenes, about fifty seconds, looping
  * while it is on screen; a tap pauses it, the bars at the top jump to a scene.
+ * Once the viewer turns a scene by hand (arrows, bars, a swipe), the film
+ * stops turning on its own and waits for them; «Авто» gives the timer back.
  */
 
 type Scene = { key: string; ms: number };
@@ -30,7 +33,7 @@ function Intro() {
   return (
     <div className={styles.intro}>
       <div className={`${styles.logo} ${styles.pop}`} style={d(0.2)}>
-        <span className={styles.logoMark}>P</span>
+        <img src="/logo-icon.png" alt="" className={styles.logoImg} />
         <span>PowerBook</span>
       </div>
       <div className={styles.counters}>
@@ -172,7 +175,7 @@ function Room() {
               <i />
             </span>
             <span className={styles.seatTimer} style={{ ['--start' as string]: 12 + i * 7 }}>
-              <b>📖</b> <span className={styles.ticking} />
+              <b><Icon name="book" size="em" /></b> <span className={styles.ticking} />
             </span>
           </div>
         ))}
@@ -190,7 +193,7 @@ function Results() {
         {[0, 1, 2].map((i) => (
           <div key={i} className={`${styles.resRow} ${styles.rise}`} style={d(0.2 + i * 0.1)}>
             <i />
-            <b className={`${styles.gift} ${styles.popIn}`} style={d(2.6 + i * 0.3)}>🎁</b>
+            <b className={`${styles.gift} ${styles.popIn}`} style={d(2.6 + i * 0.3)}><Icon name="gift" size="em" /></b>
           </div>
         ))}
       </div>
@@ -200,7 +203,7 @@ function Results() {
         {[0, 1, 2].map((i) => (
           <div key={i} className={`${styles.resRow} ${styles.resLow} ${styles.rise}`} style={d(0.6 + i * 0.1)}>
             <i />
-            <b className={styles.flyBook} style={d(1.4 + i * 0.3)}>📕</b>
+            <b className={styles.flyBook} style={d(1.4 + i * 0.3)}><Icon name="book" size="em" /></b>
           </div>
         ))}
       </div>
@@ -237,7 +240,7 @@ function Outro() {
   return (
     <div className={styles.outro}>
       <div className={`${styles.logo} ${styles.pop}`} style={d(0.2)}>
-        <span className={styles.logoMark}>P</span>
+        <img src="/logo-icon.png" alt="" className={styles.logoImg} />
         <span>PowerBook</span>
       </div>
       <div className={`${styles.bigNumber} ${styles.rise}`} style={d(0.7)}>
@@ -263,11 +266,15 @@ export function MotionReel() {
   const { t } = useI18n();
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
+  // Turned by hand: the viewer sets the pace now, the timer stays out of it.
+  const [manual, setManual] = useState(false);
   const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
   const box = useRef<HTMLDivElement>(null);
   const started = useRef(0);
   const elapsedBefore = useRef(0);
+  const touch = useRef<{ x: number; y: number } | null>(null);
+  const swipedAt = useRef(0);
 
   const reduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
@@ -287,7 +294,40 @@ export function MotionReel() {
     setProgress(0);
   }, []);
 
-  const running = playing && visible && !reduced;
+  // A scene turned by hand: from here on only the viewer turns them.
+  const turn = useCallback((next: number) => {
+    setManual(true);
+    setPlaying(true);
+    go(next);
+  }, [go]);
+
+  const resumeAuto = () => {
+    elapsedBefore.current = 0;
+    setProgress(0);
+    setManual(false);
+    setPlaying(true);
+  };
+
+  // The scene's own motion plays whenever the film is on screen and not paused;
+  // only moving on to the next scene waits for the viewer once they have taken over.
+  const animating = playing && visible && !reduced;
+  const running = animating && !manual;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t0 = e.changedTouches[0];
+    touch.current = { x: t0.clientX, y: t0.clientY };
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touch.current;
+    touch.current = null;
+    if (!start) return;
+    const dx = e.changedTouches[0].clientX - start.x;
+    const dy = e.changedTouches[0].clientY - start.y;
+    // A sideways swipe turns the scene; anything mostly vertical is the page scrolling.
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+    swipedAt.current = Date.now();
+    turn(dx < 0 ? index + 1 : index - 1);
+  };
 
   useEffect(() => {
     if (!running) return;
@@ -316,10 +356,16 @@ export function MotionReel() {
   return (
     <div
       ref={box}
-      className={`${styles.reel} ${running ? '' : styles.paused}`}
+      className={`${styles.reel} ${animating ? '' : styles.paused}`}
       role="region"
       aria-roledescription="video"
       aria-label={t('reel.label')}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowRight') turn(index + 1);
+        else if (e.key === 'ArrowLeft') turn(index - 1);
+        else return;
+        e.preventDefault();
+      }}
     >
       <div className={styles.bars}>
         {SCENES.map((s, i) => (
@@ -327,21 +373,36 @@ export function MotionReel() {
             key={s.key}
             type="button"
             className={styles.bar}
-            onClick={() => go(i)}
+            onClick={() => turn(i)}
             aria-label={t('reel.scene', { n: i + 1 })}
             aria-current={i === index ? 'step' : undefined}
           >
-            <span style={{ transform: `scaleX(${i < index ? 1 : i === index ? progress : 0})` }} />
+            <span style={{ transform: `scaleX(${i < index ? 1 : i === index ? (manual ? 1 : progress) : 0})` }} />
           </button>
         ))}
       </div>
 
-      <button type="button" className={styles.stage} onClick={() => setPlaying((p) => !p)} aria-label={playing ? t('reel.pause') : t('reel.play')}>
+      <button
+        type="button"
+        className={styles.stage}
+        onClick={() => {
+          // the tap that ends a swipe is not a pause
+          if (Date.now() - swipedAt.current < 400) return;
+          setPlaying((p) => !p);
+        }}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        aria-label={playing ? t('reel.pause') : t('reel.play')}
+      >
         {/* A new key per scene restarts its animations from the top. */}
         <div key={`${scene.key}-${index}`} className={styles.visual}>
           <Visual />
         </div>
-        {!running && !reduced && visible && <span className={styles.playIcon} aria-hidden="true">▶</span>}
+        {!playing && !reduced && visible && (
+          <span className={styles.playIcon} aria-hidden="true">
+            <Icon name="play" size="em" />
+          </span>
+        )}
       </button>
 
       <div className={styles.caption} aria-live="polite">
@@ -350,11 +411,17 @@ export function MotionReel() {
       </div>
 
       <div className={styles.controls}>
-        <button type="button" onClick={() => go(index - 1)} aria-label={t('reel.prev')}>‹</button>
+        <button type="button" onClick={() => turn(index - 1)} aria-label={t('reel.prev')}>‹</button>
         <span>
           {index + 1} / {SCENES.length}
         </span>
-        <button type="button" onClick={() => go(index + 1)} aria-label={t('reel.next')}>›</button>
+        <button type="button" onClick={() => turn(index + 1)} aria-label={t('reel.next')}>›</button>
+        {manual && !reduced && (
+          <button type="button" className={styles.autoBtn} onClick={resumeAuto} title={t('reel.autoHint')}>
+            <Icon name="play" size="em" />
+            {t('reel.auto')}
+          </button>
+        )}
       </div>
     </div>
   );

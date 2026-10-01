@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { toBlob, toPng } from 'html-to-image';
@@ -17,7 +17,7 @@ import {
   type BadgeStats,
   type LeagueTier,
 } from '@/shared/lib';
-import { Card, Container, PageTransition, Badge, ProgressBar, Button, BookCard } from '@/shared/ui';
+import { Card, Container, PageTransition, Badge, ProgressBar, Button, BookCard, Icon } from '@/shared/ui';
 import { Header, Footer, ClaimPicker, WrappedCard } from '@/widgets';
 import { paletteFor, dimensionsFor } from '@/pages/library/bookcase/bookArt';
 import { bookCount } from '@/pages/library/bookcase/plural';
@@ -30,7 +30,7 @@ function StatTile({
   accent,
   to,
 }: {
-  value: string | number;
+  value: ReactNode;
   label: string;
   accent?: boolean;
   to?: string;
@@ -303,7 +303,7 @@ export function InsightsPage() {
                     <StatTile value={profile.rounds_participated} label={t('insights.circles')} to="/results" />
                     <StatTile value={profile.books_finished} label={t('insights.booksFinished')} to="/library" />
                     <StatTile
-                      value={profile.current_streak_days > 0 ? `🔥 ${profile.current_streak_days}` : '—'}
+                      value={profile.current_streak_days > 0 ? <><Icon name="flame" size="em" className={styles.streakFlame} /> {profile.current_streak_days}</> : '—'}
                       label={t('insights.currentStreak')}
                       to="/round"
                     />

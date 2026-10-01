@@ -168,6 +168,23 @@
   cursor: pointer;
 }
 
+/* Back to playing on its own, once the viewer has turned scenes by hand. */
+.controls .autoBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: auto;
+  padding: 0 11px;
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.autoBtn svg {
+  font-size: 10px;
+}
+
 /* Paused: everything holds where it is. */
 .paused .visual *,
 .paused .visual {
@@ -261,16 +278,14 @@
   letter-spacing: -0.02em;
 }
 
-.logoMark {
-  display: grid;
-  place-items: center;
-  width: 1.25em;
-  height: 1.25em;
-  border-radius: 0.32em;
-  color: #fff;
-  background: var(--accent);
-  box-shadow: 0 10px 30px -6px rgba(242, 100, 48, 0.7);
-  font-size: 0.8em;
+/* PowerBook's own mark (the same file as the site header). The PNG is wider
+   than the mark, so "cover" in a square trims only its transparent sides. */
+.logoImg {
+  display: block;
+  width: 1.4em;
+  height: 1.4em;
+  object-fit: cover;
+  filter: drop-shadow(0 10px 22px rgba(242, 100, 48, 0.55));
 }
 
 .counters {
@@ -908,11 +923,13 @@
 }
 
 .gift {
+  color: var(--amber);
   font-size: 16px;
 }
 
 .flyBook {
   position: relative;
+  color: #e5533d;
   font-size: 16px;
   opacity: 0;
   animation: fly 1.4s var(--d) cubic-bezier(0.5, 0, 0.3, 1) backwards;

@@ -14,6 +14,7 @@ import {
   type CurrentRoundStatusResponse,
   type CalendarResponse,
 } from '@/shared/lib';
+import { Icon } from '@/shared/ui';
 import styles from './ReaderPage.module.css';
 
 // pdf.js refuses to parse anything without a worker, and Vite needs the URL
@@ -23,6 +24,19 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 // Progress is saved on a trailing timer rather than on every page turn: a fast
 // reader flicking through pages would otherwise fire a request per flick.
 const SAVE_DEBOUNCE_MS = 1500;
+
+// A swipe shorter than this, or more vertical than sideways, is not a page turn.
+const SWIPE_MIN_PX = 50;
+
+/** Session time as the reader sees it ticking: 4:05, or 1:02:05 past an hour. */
+const clock = (s: number) => {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
+};
+
+type ScreenLock = { release: () => Promise<void> };
 
 export function ReaderPage() {
   const { bookId } = useParams<{ bookId: string }>();
@@ -52,6 +66,12 @@ export function ReaderPage() {
   const [logState, setLogState] = useState<'idle' | 'asking' | 'saving' | 'done' | 'error'>('idle');
   const [logMessage, setLogMessage] = useState('');
   const [toc, setToc] = useState<{ label: string; href: string }[]>([]);
+  // Lock in: only the page, the page turns and the time are left on screen.
+  const [focus, setFocus] = useState(false);
+  const wakeLock = useRef<ScreenLock | null>(null);
+  const focusFullscreen = useRef(false);
+  // The tap that ends a swipe must not turn the page a second time.
+  const swipedAt = useRef(0);
   // Font size is a reader preference, not a per-book one, so it is remembered
   // globally and applied to whatever they open next.
   const [fontPct, setFontPct] = useState(() => {
@@ -179,6 +199,31 @@ export function ReaderPage() {
           });
           renditionRef.current = rendition;
           rendition.themes.fontSize(`${fontPctRef.current}%`);
+
+          // The book is drawn inside an iframe, so a swipe on the text never
+          // reaches the stage's own touch handlers (that is why phones could
+          // not turn pages). epub.js passes the iframe's events out through
+          // the rendition instead.
+          let touchStart: { x: number; y: number } | null = null;
+          rendition.on('touchstart', (e: TouchEvent) => {
+            touchStart = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+          });
+          rendition.on('touchend', (e: TouchEvent) => {
+            const start = touchStart;
+            touchStart = null;
+            if (!start) return;
+            const dx = e.changedTouches[0].clientX - start.x;
+            const dy = e.changedTouches[0].clientY - start.y;
+            if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy)) return;
+            swipedAt.current = Date.now();
+            if (dx < 0) rendition.next();
+            else rendition.prev();
+          });
+          // Arrow keys while the focus is inside the book's frame.
+          rendition.on('keyup', (e: KeyboardEvent) => {
+            if (e.key === 'ArrowLeft') rendition.prev();
+            if (e.key === 'ArrowRight') rendition.next();
+          });
           await rendition.display(info.progress_position ?? undefined);
 
           // Chapter list for jumping around — every real reader has one.
@@ -299,7 +344,9 @@ export function ReaderPage() {
   }, [goToPdfPage, pdfPage]);
 
   // Swipe to turn pages. On a phone this is how people expect to read; the
-  // buttons stay for desktop and accessibility.
+  // buttons stay for desktop and accessibility. This catches touches on the
+  // PDF page and on the edge zones; an EPUB's own text reports through the
+  // rendition (see the loader).
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
@@ -314,7 +361,8 @@ export function ReaderPage() {
       const dy = e.changedTouches[0].clientY - startY;
       // Ignore mostly-vertical movement so scrolling a PDF page doesn't
       // accidentally flip it.
-      if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+      if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy)) return;
+      swipedAt.current = Date.now();
       if (dx < 0) goNext();
       else goPrev();
     };
@@ -326,19 +374,112 @@ export function ReaderPage() {
     };
   }, [goNext, goPrev]);
 
+  // ---- Lock in ------------------------------------------------------
+  // The screen stays awake while locked in (where the browser allows it),
+  // and the page goes full screen where there is such a thing (not on an
+  // iPhone, where the reader simply gets the bars out of the way).
+  const holdScreen = useCallback(async () => {
+    const nav = navigator as Navigator & { wakeLock?: { request: (kind: 'screen') => Promise<ScreenLock> } };
+    try {
+      wakeLock.current = (await nav.wakeLock?.request('screen')) ?? null;
+    } catch {
+      wakeLock.current = null;
+    }
+  }, []);
+
+  const enterFocus = useCallback(async () => {
+    setFocus(true);
+    setShowToc(false);
+    holdScreen();
+    const root = document.documentElement;
+    if (document.fullscreenEnabled && !document.fullscreenElement && root.requestFullscreen) {
+      try {
+        await root.requestFullscreen({ navigationUI: 'hide' });
+        focusFullscreen.current = true;
+      } catch {
+        focusFullscreen.current = false;
+      }
+    }
+  }, [holdScreen]);
+
+  const exitFocus = useCallback(() => {
+    setFocus(false);
+    wakeLock.current?.release().catch(() => {});
+    wakeLock.current = null;
+    if (focusFullscreen.current && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    focusFullscreen.current = false;
+  }, []);
+
+  useEffect(() => {
+    if (!focus) return;
+    // The browser lets go of the screen whenever the tab is hidden; take it back on return.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') holdScreen();
+    };
+    // Leaving full screen by the system's own gesture (Esc, Android back) leaves Lock in too.
+    const onFullscreen = () => {
+      if (!document.fullscreenElement && focusFullscreen.current) exitFocus();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    document.addEventListener('fullscreenchange', onFullscreen);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      document.removeEventListener('fullscreenchange', onFullscreen);
+    };
+  }, [focus, holdScreen, exitFocus]);
+
+  // The bars come and go, so the book's frame changes size: let epub.js lay the pages out again.
+  useEffect(() => {
+    const rendition = renditionRef.current;
+    if (!rendition) return;
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => {
+        try {
+          // With no size given epub.js measures its frame again; its types insist on one.
+          (rendition.resize as unknown as () => void).call(rendition);
+        } catch {
+          /* a book still opening lays itself out anyway */
+        }
+      });
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
+  }, [focus]);
+
+  // Never leave the screen held after the book is closed.
+  useEffect(() => () => {
+    wakeLock.current?.release().catch(() => {});
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') goPrev();
       if (e.key === 'ArrowRight') goNext();
-      if (e.key === 'Escape') leave();
+      if (e.key === 'Escape') {
+        if (focus) exitFocus();
+        else leave();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goPrev, goNext, minutes, logState]);
+  }, [goPrev, goNext, minutes, logState, focus, exitFocus]);
+
+  // A tap on either edge turns the page, unless it is the end of a swipe that already did.
+  const tapTurn = (dir: 'prev' | 'next') => {
+    if (Date.now() - swipedAt.current < 400) return;
+    if (dir === 'prev') goPrev();
+    else goNext();
+  };
+
+  const position =
+    meta?.file_format === 'pdf' && pdfPages > 0 ? t('library.pageOf', { page: pdfPage, total: pdfPages }) : `${percent}%`;
 
   return (
-    <div className={styles.reader}>
+    <div className={`${styles.reader} ${focus ? styles.focus : ''}`}>
       <header className={styles.bar}>
         <button className={styles.barBtn} onClick={leave}>
           ← {t('library.backToLibrary')}
@@ -429,24 +570,49 @@ export function ReaderPage() {
         </div>
       )}
 
-      <div className={styles.stage} ref={stageRef}>
-        {isLoading && <div className={styles.loading}>{t('library.opening')}</div>}
-        {error && <div className={styles.error}>{error}</div>}
-        <div ref={hostRef} className={styles.host} />
+      <div className={styles.stageWrap} ref={stageRef}>
+        <div className={styles.stage}>
+          {isLoading && <div className={styles.loading}>{t('library.opening')}</div>}
+          {error && <div className={styles.error}>{error}</div>}
+          <div ref={hostRef} className={styles.host} />
+        </div>
+        {!isLoading && !error && (
+          <>
+            <button type="button" className={`${styles.tapZone} ${styles.tapPrev}`} onClick={() => tapTurn('prev')} aria-label={t('reader.prev')}>
+              <span aria-hidden="true">‹</span>
+            </button>
+            <button type="button" className={`${styles.tapZone} ${styles.tapNext}`} onClick={() => tapTurn('next')} aria-label={t('reader.next')}>
+              <span aria-hidden="true">›</span>
+            </button>
+          </>
+        )}
       </div>
 
-      {!isLoading && !error && (
+      {!isLoading && !error && !focus && (
         <footer className={styles.controls}>
-          <button className={styles.navBtn} onClick={goPrev}>‹</button>
+          <button className={styles.navBtn} onClick={goPrev} aria-label={t('reader.prev')}>‹</button>
           <div className={styles.sessionTime} title={t('reader.sessionTitle')}>
-            ⏱ {minutes}{t('reader.minShort')}
+            <Icon name="clock" size="em" aria-hidden="true" /> {clock(seconds)}
           </div>
-          <div className={styles.position}>
-            {meta?.file_format === 'pdf' && pdfPages > 0
-              ? t('library.pageOf', { page: pdfPage, total: pdfPages })
-              : `${percent}%`}
-          </div>
-          <button className={styles.navBtn} onClick={goNext}>›</button>
+          <div className={styles.position}>{position}</div>
+          <button type="button" className={styles.lockBtn} onClick={enterFocus} title={t('reader.focusHint')}>
+            <Icon name="lock" size="em" aria-hidden="true" />
+            {t('reader.lockIn')}
+          </button>
+          <button className={styles.navBtn} onClick={goNext} aria-label={t('reader.next')}>›</button>
+        </footer>
+      )}
+
+      {!isLoading && !error && focus && (
+        <footer className={styles.focusBar}>
+          <span className={styles.focusTime} title={t('reader.sessionTitle')}>
+            <Icon name="clock" size="em" aria-hidden="true" /> {clock(seconds)}
+          </span>
+          <span className={styles.position}>{position}</span>
+          <button type="button" className={styles.unlockBtn} onClick={exitFocus}>
+            <Icon name="unlock" size="em" aria-hidden="true" />
+            {t('reader.unlock')}
+          </button>
         </footer>
       )}
     </div>

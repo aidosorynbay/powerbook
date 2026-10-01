@@ -30,7 +30,27 @@
   font-variant-numeric: tabular-nums; flex-shrink: 0;
 }
 
-.stage { flex: 1; position: relative; overflow: auto; }
+.stageWrap { flex: 1; position: relative; display: flex; min-height: 0; }
+.stage { flex: 1; position: relative; overflow: auto; min-width: 0; }
+
+/* Either edge of the page is a page turn, as in any e-reader. They sit over
+   the book (an EPUB is an iframe that swallows its own taps), stay invisible
+   until hovered, and show as faint arrows in Lock in. */
+.tapZone {
+  position: absolute; top: 0; bottom: 0; z-index: 3; width: 16%;
+  display: flex; align-items: center;
+  border: none; background: none; padding: 0 6px; cursor: pointer;
+  color: var(--color-text-muted); font-size: 34px; font-family: inherit; line-height: 1;
+  opacity: 0; transition: opacity 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.tapPrev { left: 0; justify-content: flex-start; }
+.tapNext { right: 0; justify-content: flex-end; }
+@media (hover: hover) {
+  .tapZone:hover { opacity: 0.7; }
+}
+.tapZone:focus-visible { opacity: 0.8; outline: none; }
+.focus .tapZone { opacity: 0.28; }
 .host { width: 100%; height: 100%; }
 
 .loading, .error {
@@ -42,9 +62,42 @@
 
 .controls {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  gap: 12px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--color-border-secondary); flex-shrink: 0;
 }
+@media (max-width: 420px) {
+  .controls { gap: 8px; padding-left: 10px; padding-right: 10px; }
+}
+
+/* Lock in: the bar goes, the book takes the screen, and only a quiet strip
+   with the time and the way out stays at the bottom. */
+.lockBtn {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  height: 36px; padding: 0 12px; border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-accent); background: var(--color-accent-primary-muted);
+  color: var(--color-accent-primary); font-family: inherit;
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer;
+  white-space: nowrap;
+}
+.lockBtn:hover { background: var(--color-accent-primary); color: #fff; }
+.focus .bar { display: none; }
+/* With the bar gone, the book itself must clear the notch. */
+.focus .stageWrap { padding-top: env(safe-area-inset-top, 0px); }
+.focusBar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 6px 14px calc(6px + env(safe-area-inset-bottom, 0px));
+  flex-shrink: 0; opacity: 0.75;
+  font-size: var(--font-size-xs); color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.focusTime { display: inline-flex; align-items: center; gap: 6px; color: var(--color-accent-primary); }
+.unlockBtn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 12px; border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-primary); background: none;
+  color: var(--color-text-secondary); font-family: inherit; font-size: var(--font-size-xs); cursor: pointer;
+}
+.unlockBtn:hover { color: var(--color-accent-primary); border-color: var(--color-border-accent); }
 .navBtn {
   width: 44px; height: 44px; border-radius: var(--radius-full);
   border: 1px solid var(--color-border-primary); background: var(--color-bg-card);
@@ -95,6 +148,7 @@
 
 /* ---- reading session ---- */
 .sessionTime {
+  display: inline-flex; align-items: center; gap: 5px;
   font-size: var(--font-size-xs); color: var(--color-accent-primary);
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }

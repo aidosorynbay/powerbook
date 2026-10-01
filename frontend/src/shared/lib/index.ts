@@ -26,6 +26,9 @@ export {
   apiUploadWithProgress,
 } from './api';
 
+// Routes
+export { isReaderPath } from './routes';
+
 // Image utilities
 export { resizeImageToDataUrl } from './imageResize';
 

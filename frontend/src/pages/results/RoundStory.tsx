@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import { toCanvas } from 'html-to-image';
 import { apiGet, inviteLink, useAuth, useI18n, useWaitlist, type MyResult, type RoundLetter, type RoundReview } from '@/shared/lib';
+import { Icon } from '@/shared/ui';
 import { dayOf } from '@/widgets/JoinPrompt/words';
 import { useDigest } from '../reading/digest';
 import { insightText } from './RoundReview';
@@ -438,7 +439,7 @@ export function RoundStory({ roundId, year, month, result, participants, open, o
               )}
               {tip && (
                 <article className={styles.tip}>
-                  <small>💡 {t('story.goalLabel', { month: monthWord(nextMonth) })}</small>
+                  <small><Icon name="bulb" size="em" aria-hidden="true" /> {t('story.goalLabel', { month: monthWord(nextMonth) })}</small>
                   <p>
                     <b>{goal}.</b> {t(`review.tip.${tip}.d`)}
                   </p>

@@ -16,7 +16,7 @@ import {
   type AllTimeProfile,
 } from '@/shared/lib';
 import { useScrollReveal } from '@/shared/hooks';
-import { Button, Container, Badge, PageTransition } from '@/shared/ui';
+import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard } from '@/widgets';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import anim from '@/shared/styles/animations.module.css';
@@ -924,7 +924,7 @@ export function DashboardPage() {
                           aria-live="off"
                         >
                           <div className={styles.correctionHead}>
-                            <span className={styles.correctionFlame} aria-hidden="true">🔥</span>
+                            <Icon name="flame" size="em" className={styles.correctionFlame} aria-hidden="true" />
                             <span className={styles.correctionLabel}>{t('dashboard.correctionPeriod')}</span>
                           </div>
                           <div className={styles.correctionClock}>
@@ -1116,7 +1116,7 @@ export function DashboardPage() {
                               style={{ cursor: 'default' }}
                             >
                               {cellIsLastDay ? (
-                                <span className={styles.dayFinishIcon}>&#127937;</span>
+                                <svg className={styles.dayFinishIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{finishFlagIcon()}</svg>
                               ) : (
                                 <span className={styles.dayNumber}>{cell.day}</span>
                               )}
@@ -1254,7 +1254,7 @@ export function DashboardPage() {
                             title={cellIsLastDay ? t('dashboard.lastDayCorrection') : undefined}
                           >
                             {cellIsLastDay ? (
-                              <span className={styles.dayFinishIcon}>&#127937;</span>
+                              <svg className={styles.dayFinishIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{finishFlagIcon()}</svg>
                             ) : (
                               <span className={styles.dayNumber}>{cell.day}</span>
                             )}

@@ -97,6 +97,38 @@
 .badgeIcon {
   font-size: 28px;
   line-height: 1;
+  color: var(--color-accent-primary);
+}
+
+.modalIcon {
+  color: var(--color-accent-primary);
+}
+
+/* Places 1–3: a coin in the medal's metal with the number on it. */
+.medal {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #3b2a07;
+  font-size: 12px;
+  font-weight: var(--font-weight-bold);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.medal1 {
+  background: linear-gradient(145deg, #ffe08a, #e0a91b);
+}
+
+.medal2 {
+  color: #2c3036;
+  background: linear-gradient(145deg, #f1f3f5, #aab1ba);
+}
+
+.medal3 {
+  color: #3a1d08;
+  background: linear-gradient(145deg, #f0b27a, #b8692e);
 }
 
 .badgeTitle {

@@ -86,6 +86,7 @@
 .congratsIcon {
   font-size: var(--font-size-2xl);
   margin-bottom: var(--spacing-2);
+  color: var(--color-accent-primary);
 }
 
 .congratsTitle {
@@ -404,6 +405,11 @@
 
 .pairsToggleIcon {
   font-size: var(--font-size-xl);
+  color: var(--color-accent-primary);
+}
+
+.giftMark {
+  color: var(--color-accent-primary);
 }
 
 .pairsChevron {
@@ -452,6 +458,7 @@
   flex-shrink: 0;
   margin-left: auto;
   font-size: var(--font-size-sm);
+  color: var(--color-accent-primary);
 }
 
 .pairsLegend {

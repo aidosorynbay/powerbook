@@ -152,7 +152,7 @@ export function Header() {
                     to={isAdmin ? '/suggestions/admin' : '/suggestions'}
                     className={styles.navLink}
                   >
-                    <span aria-hidden="true">💡</span>{' '}
+                    <Icon name="bulb" size="sm" />{' '}
                     {isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCtaShort')}
                   </Link>
 
@@ -220,7 +220,7 @@ export function Header() {
               className={styles.suggestionsBtn}
               aria-label={isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCta')}
             >
-              <span aria-hidden="true">💡</span>
+              <Icon name="bulb" size="sm" />
               <span className={styles.suggestionsBtnText}>
                 {isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCtaShort')}
               </span>

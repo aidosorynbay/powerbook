@@ -1303,6 +1303,40 @@
 
 /* ---------- editing a book ---------- */
 
+/* The shelf book's own actions (sell it, fix its cover and title): each its own
+   outlined chip on a wrapping row, never run together into one line. */
+.bookActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  margin-top: 18px;
+}
+
+.bookAction {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px !important;
+  border: 1px solid var(--hairline) !important;
+  border-radius: 999px;
+  color: var(--ink) !important;
+  font-size: 10px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  text-align: left;
+  text-transform: uppercase;
+  transition: border-color 0.2s ease;
+}
+
+.bookAction:hover {
+  border-color: var(--ink) !important;
+}
+
+.bookAction svg {
+  font-size: 14px;
+}
+
 .editLink {
   margin-top: 16px;
   color: var(--ink) !important;

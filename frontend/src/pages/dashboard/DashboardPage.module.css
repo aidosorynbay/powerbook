@@ -981,8 +981,8 @@
 }
 
 .dayFinishIcon {
-  font-size: 14px;
-  line-height: 1;
+  width: 15px;
+  height: 15px;
 }
 
 /* Today panel */

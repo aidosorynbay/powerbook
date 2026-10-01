@@ -25,10 +25,23 @@
   animation: modalIn 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* The site's own line icon on an accent disc, not an emoji. */
 .icon {
-  margin-bottom: 10px;
-  font-size: 38px;
+  display: inline-grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  color: var(--color-accent-primary);
+  background: var(--color-accent-primary-muted);
+  font-size: 30px;
   line-height: 1;
+}
+
+.cardIcon {
+  color: var(--color-accent-primary);
+  font-size: 22px;
 }
 
 .title {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { markJoinIntent, useAuth, useI18n, useWaitlist } from '@/shared/lib';
+import { Icon } from '@/shared/ui';
 import { ShareInvite } from './ShareInvite';
 import { dayOf, monthOf } from './words';
 import styles from './JoinPrompt.module.css';
@@ -123,7 +124,9 @@ export function JoinPrompt() {
   return createPortal(
     <div className={styles.overlay} onClick={close} role="dialog" aria-modal="true" aria-label={title}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.icon} aria-hidden="true">{done ? '🎉' : kind === 'wait' ? '⏳' : '📚'}</div>
+        <div className={styles.icon} aria-hidden="true">
+          <Icon name={done ? 'party' : kind === 'wait' ? 'hourglass' : 'book'} size="em" />
+        </div>
         <div className={styles.title}>{title}</div>
         {text && <p className={styles.text}>{text}</p>}
         {kind === 'wait' && !done && state.count > 0 && <p className={styles.count}>{t('wl.count', { n: state.count })}</p>}

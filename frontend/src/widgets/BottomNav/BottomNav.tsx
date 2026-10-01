@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useI18n } from '@/shared/lib';
+import { isReaderPath, useI18n } from '@/shared/lib';
 import { Icon } from '@/shared/ui';
 import styles from './BottomNav.module.css';
 
@@ -16,6 +16,8 @@ const tabs = [
 export function BottomNav() {
   const { t } = useI18n();
   const location = useLocation();
+  // An open book has its own bar at the bottom: page turns, the timer, Lock in.
+  if (isReaderPath(location.pathname)) return null;
   return (
     <nav className={styles.bottomNav} data-bottom-nav>
       {tabs.map(({ path, icon, label, also }) => {

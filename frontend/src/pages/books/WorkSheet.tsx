@@ -103,7 +103,7 @@ export function WorkSheet({ workKey, title, onClose, onChanged }: Props) {
                   <span className={styles.ratingSub}>
                     {work.ext_url ? (
                       <a className={styles.link} href={work.ext_url} target="_blank" rel="noopener noreferrer">
-                        {sourceName(work.ext_source)} ↗
+                        {sourceName(work.ext_source)} {'↗\uFE0E'}
                       </a>
                     ) : (
                       sourceName(work.ext_source)
@@ -143,7 +143,7 @@ export function WorkSheet({ workKey, title, onClose, onChanged }: Props) {
               <p>{work.about.text}</p>
               <span className={styles.sourceNote}>
                 {work.about.url ? (
-                  <a href={work.about.url} target="_blank" rel="noopener noreferrer">{sourceName(work.about.source)} ↗</a>
+                  <a href={work.about.url} target="_blank" rel="noopener noreferrer">{sourceName(work.about.source)} {'↗\uFE0E'}</a>
                 ) : (
                   sourceName(work.about.source)
                 )}
@@ -224,12 +224,12 @@ export function WorkSheet({ workKey, title, onClose, onChanged }: Props) {
             )}
             {work.goodreads_url && (
               <a className={styles.ghost} href={work.goodreads_url} target="_blank" rel="noopener noreferrer">
-                {t('work.goodreads')} ↗
+                {t('work.goodreads')} {'↗\uFE0E'}
               </a>
             )}
             {work.source_url && (
               <a className={styles.ghost} href={work.source_url} target="_blank" rel="noopener noreferrer">
-                {t('src.google')} ↗
+                {t('src.google')} {'↗\uFE0E'}
               </a>
             )}
           </div>

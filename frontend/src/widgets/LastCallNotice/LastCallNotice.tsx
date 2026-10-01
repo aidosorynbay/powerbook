@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useI18n, apiGet, DEFAULT_GROUP_SLUG, type CurrentRoundStatusResponse } from '@/shared/lib';
+import { Icon, type IconName } from '@/shared/ui';
 import styles from './LastCallNotice.module.css';
 
 /**
@@ -40,39 +41,39 @@ const dismissKey = (kind: NoticeKind, roundId: string) => {
   return `pb.deadline.v${DEADLINE_REVISION}.${roundId}`;
 };
 
-const NOTICES: Record<NoticeKind, { icon: string; title: string; body: string; cta: string }> = {
+const NOTICES: Record<NoticeKind, { icon: IconName; title: string; body: string; cta: string }> = {
   lastReading: {
-    icon: '📖',
+    icon: 'book',
     title: 'notice.lastReadingTitle',
     body: 'notice.lastReadingBody',
     cta: 'notice.lastReadingCta',
   },
   lastReadingOut: {
-    icon: '📖',
+    icon: 'book',
     title: 'notice.lastReadingTitle',
     body: 'notice.lastReadingOutBody',
     cta: 'notice.openRoundCta',
   },
   lastCall: {
-    icon: '⏳',
+    icon: 'hourglass',
     title: 'notice.lastCallTitle',
     body: 'notice.lastCallBody',
     cta: 'notice.lastCallCta',
   },
   lastCallOut: {
-    icon: '🏁',
+    icon: 'flag',
     title: 'notice.lastCallOutTitle',
     body: 'notice.lastCallOutBody',
     cta: 'notice.openRoundCta',
   },
   deadlineJoin: {
-    icon: '⏰',
+    icon: 'alarm',
     title: 'notice.deadlineJoinTitle',
     body: 'notice.deadlineJoinBody',
     cta: 'notice.deadlineJoinCta',
   },
   deadlineStay: {
-    icon: '⏰',
+    icon: 'alarm',
     title: 'notice.deadlineStayTitle',
     body: 'notice.deadlineStayBody',
     cta: 'notice.deadlineStayCta',
@@ -150,7 +151,7 @@ export function LastCallNotice() {
   return createPortal(
     <div className={styles.overlay} onClick={close} role="dialog" aria-modal="true">
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.icon} aria-hidden="true">{notice.icon}</div>
+        <div className={styles.icon} aria-hidden="true"><Icon name={notice.icon} size="em" /></div>
         <div className={styles.title}>{t(notice.title)}</div>
         <p className={styles.text}>{t(notice.body, { month: t(`month.${nextMonth}`) })}</p>
         <div className={styles.actions}>

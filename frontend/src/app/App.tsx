@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Suspense, lazy, useEffect } from 'react';
 import * as Sentry from '@sentry/react';
-import { AuthProvider, useAuth, I18nProvider, useI18n } from '@/shared/lib';
+import { AuthProvider, useAuth, I18nProvider, useI18n, isReaderPath } from '@/shared/lib';
 import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage, JoinPage } from '@/pages';
 import { ArchivePrompt, BottomNav, JoinPrompt, LastCallNotice } from '@/widgets';
 import '@/app/styles/theme.css';
@@ -30,6 +30,9 @@ function ToJoin() {
 function AppRoutes() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { t } = useI18n();
+  const { pathname } = useLocation();
+  // Inside an open book nothing pops up over the page.
+  const reading = isReaderPath(pathname);
 
   // Tag errors with the reader's id only (no name or email), so Sentry can
   // count how many readers an error hits.
@@ -148,10 +151,10 @@ function AppRoutes() {
       <BottomNav />
       {/* Mounted at the root, not per page: the reader should see it on the
           last day whichever page they happen to open. */}
-      {isAuthenticated && <LastCallNotice />}
-      {isAuthenticated && <ArchivePrompt />}
+      {isAuthenticated && !reading && <LastCallNotice />}
+      {isAuthenticated && !reading && <ArchivePrompt />}
       {/* For whoever is not reading in this month's circle: the way into the next one. */}
-      <JoinPrompt />
+      {!reading && <JoinPrompt />}
     </>
   );
 }

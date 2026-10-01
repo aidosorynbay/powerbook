@@ -2,21 +2,26 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { useI18n, apiGet, type HallOfFame, type HallOfFameCategory, type HallOfFameEntry } from '@/shared/lib';
-import { Container, PageTransition, Icon } from '@/shared/ui';
+import { Container, PageTransition, Icon, type IconName } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import styles from './HallOfFamePage.module.css';
 
-const MEDALS = ['🥇', '🥈', '🥉'];
-
-const CATEGORY_ICONS: Record<string, string> = {
-  hours: '⏱️',
-  streak: '🔥',
-  rounds: '🔄',
-  books: '📚',
-  best_day: '⚡',
-  best_month: '🚀',
-  perfect_circles: '💎',
+// The site's own line icons, not emoji: emoji are drawn differently on every phone.
+const CATEGORY_ICONS: Record<string, IconName> = {
+  hours: 'clock',
+  streak: 'flame',
+  rounds: 'refresh',
+  books: 'book',
+  best_day: 'bolt',
+  best_month: 'rocket',
+  perfect_circles: 'gem',
 };
+
+/** First three places as gold, silver and bronze discs; the rest as plain numbers. */
+function Rank({ place }: { place: number }) {
+  if (place > 3) return <>{place}</>;
+  return <span className={`${styles.medal} ${styles[`medal${place}`]}`}>{place}</span>;
+}
 
 export function HallOfFamePage() {
   const { t } = useI18n();
@@ -70,7 +75,7 @@ export function HallOfFamePage() {
                       onClick={() => setOpenCategory(cat)}
                       disabled={cat.entries.length === 0}
                     >
-                      <span className={styles.badgeIcon}>{CATEGORY_ICONS[cat.key] ?? '🏆'}</span>
+                      <span className={styles.badgeIcon}><Icon name={CATEGORY_ICONS[cat.key] ?? 'trophy'} size="em" /></span>
                       <span className={styles.badgeTitle}>{t(`hallOfFame.category.${cat.key}`)}</span>
                       {leader ? (
                         <span className={styles.badgeLeader}>
@@ -93,14 +98,14 @@ export function HallOfFamePage() {
         <div className={styles.modal} onClick={() => setOpenCategory(null)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalTitle}>
-              {CATEGORY_ICONS[openCategory.key] ?? '🏆'} {t(`hallOfFame.category.${openCategory.key}`)}
+              <Icon name={CATEGORY_ICONS[openCategory.key] ?? 'trophy'} size="em" className={styles.modalIcon} /> {t(`hallOfFame.category.${openCategory.key}`)}
             </div>
             <ol className={styles.entryList}>
               {openCategory.entries.map((e, i) => {
                 const badgeText = formatBadge(openCategory.key, e);
                 return (
                   <li key={e.user_id} className={styles.entryRow}>
-                    <span className={styles.entryRank}>{MEDALS[i] ?? i + 1}</span>
+                    <span className={styles.entryRank}><Rank place={i + 1} /></span>
                     <span className={styles.entryInfo}>
                       <Link to={`/readers/${e.user_id}`} className={styles.entryName}>
                         {e.display_name}

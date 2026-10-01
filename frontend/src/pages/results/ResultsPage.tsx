@@ -11,17 +11,17 @@ import {
   type CalendarResponse,
   type CalendarDay,
 } from '@/shared/lib';
-import { Container, PageTransition } from '@/shared/ui';
+import { Container, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import { RoundStory } from './RoundStory';
 import styles from './ResultsPage.module.css';
 import { RoundReview } from './RoundReview';
 
+// A line trophy in the medal's metal: an emoji would ignore the colour and look different on every phone.
 function TrophyIcon({ rank }: { rank: number }) {
-  if (rank === 1) return <span className={`${styles.trophy} ${styles.trophyGold}`}>{'\uD83C\uDFC6'}</span>;
-  if (rank === 2) return <span className={`${styles.trophy} ${styles.trophySilver}`}>{'\uD83C\uDFC6'}</span>;
-  if (rank === 3) return <span className={`${styles.trophy} ${styles.trophyBronze}`}>{'\uD83C\uDFC6'}</span>;
-  return null;
+  const metal = rank === 1 ? styles.trophyGold : rank === 2 ? styles.trophySilver : rank === 3 ? styles.trophyBronze : null;
+  if (!metal) return null;
+  return <Icon name="trophy" size="em" className={`${styles.trophy} ${metal}`} aria-hidden="true" />;
 }
 
 /* ---------- SVG Line Chart: Progress per day of month ---------- */
@@ -275,7 +275,7 @@ export function ResultsPage() {
                     {isSelf && results.my_result && (
                       <div className={styles.congratsCard}>
                         <div className={styles.congratsIcon}>
-                          {isSelectedWinner ? '\uD83C\uDFC6' : '\uD83D\uDCD6'}
+                          <Icon name={isSelectedWinner ? 'trophy' : 'book'} size="em" aria-hidden="true" />
                         </div>
                         <div className={styles.congratsTitle}>
                           {isSelectedWinner ? t('results.congratsWinner') : t('results.congratsLoser')}
@@ -363,7 +363,7 @@ export function ResultsPage() {
                   {/* Right column — Leaderboard */}
                   <div className={styles.leaderboardSection}>
                     <div className={styles.leaderboardTitle}>
-                      <span className={styles.leaderboardTitleIcon}>{'\u2B50'}</span>
+                      <Icon name="star" size="em" className={styles.leaderboardTitleIcon} aria-hidden="true" />
                       {t('results.topReaders')}
                     </div>
                     <div className={styles.leaderboardList}>
@@ -405,7 +405,7 @@ export function ResultsPage() {
                       className={styles.pairsToggle}
                       onClick={() => setShowPairs(v => !v)}
                     >
-                      <span className={styles.pairsToggleIcon}>{'\uD83D\uDCDA'}</span>
+                      <Icon name="book" size="em" className={styles.pairsToggleIcon} aria-hidden="true" />
                       <span>{t('results.bookExchange')}</span>
                       <span className={styles.pairsChevron}>{showPairs ? '\u25B2' : '\u25BC'}</span>
                       <span className={styles.pairsToggleHint}>
@@ -415,7 +415,7 @@ export function ResultsPage() {
                     {showPairs && (
                       <div className={styles.pairsList}>
                         <div className={styles.pairsLegend}>
-                          {'\uD83C\uDF81'} {t('results.giftConfirmedHint')}
+                          <Icon name="gift" size="em" className={styles.giftMark} aria-hidden="true" /> {t('results.giftConfirmedHint')}
                         </div>
                         {results.pairs.map((pair, i) => {
                           const giverDisplay = pair.giver_telegram_id
@@ -431,7 +431,7 @@ export function ResultsPage() {
                               <span className={styles.pairName}>{receiverDisplay}</span>
                               {pair.confirmed && (
                                 <span className={styles.pairGift} title={t('results.giftConfirmedHint')}>
-                                  {'\uD83C\uDF81'}
+                                  <Icon name="gift" size="em" aria-hidden="true" />
                                 </span>
                               )}
                             </div>
