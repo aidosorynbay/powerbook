@@ -1,6 +1,7 @@
 from app.models.ai_digest import AiDigest
 from app.models.book_cover import BookCover
 from app.models.book_fact import BookFact
+from app.models.book_link import BookLink
 from app.models.book_listing import BookListing
 from app.models.book_review import BookReview
 from app.models.buddy import ReadingBuddy
@@ -20,6 +21,7 @@ from app.models.user import User
 from app.models.waitlist import WaitlistEntry
 
 __all__ = [
+    "BookLink",
     "User",
     "Group",
     "GroupMember",

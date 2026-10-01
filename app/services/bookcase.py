@@ -326,6 +326,10 @@ class BookcaseService:
                     if override.source == "google" and override.source_id
                     else None
                 )
+            if override.work_key:
+                # The owner said which book this is: it counts as that book everywhere.
+                vol.match_key = override.work_key
+                vol.pinned = True
             if is_self:
                 vol.cover_mode = override.cover_mode
                 vol.edited = True

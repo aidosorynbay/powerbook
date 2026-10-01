@@ -143,6 +143,8 @@ class BookcaseBookOut(BaseModel):
     # "image"), and whether they've corrected it at all.
     cover_mode: str | None = None
     edited: bool = False
+    # «Какая это книга?»: the shared-library book the owner said this copy is.
+    pinned: bool = False
 
     # Owner only: the reader's own notes on this book, oldest first.
     notes: list[BookNoteOut] = []

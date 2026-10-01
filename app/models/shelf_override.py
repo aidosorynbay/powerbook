@@ -35,3 +35,8 @@ class ShelfOverride(TimestampMixin, Base):
     image: Mapped[str | None] = mapped_column(String(60), nullable=True, default=None)
     source: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)
     source_id: Mapped[str | None] = mapped_column(String(40), nullable=True, default=None)
+
+    # The book of the shared library the reader said this one is («Какая это
+    # книга?»): their copy counts as that book, whatever its file or edition
+    # was called. A comparison key from app.core.booktitles.
+    work_key: Mapped[str | None] = mapped_column(String(120), nullable=True, default=None)

@@ -416,6 +416,7 @@ class UsernameClaimAdmin(ModelView, model=UsernameClaim):
 def setup_admin(app):
     from pathlib import Path
 
+    from app.admin_books import BookLinkAdmin, BookMergeView
     from app.admin_coverage import ArchiveCoverageView
 
     auth_backend = AdminAuth(secret_key="sqladmin-powerbook-secret")
@@ -434,4 +435,6 @@ def setup_admin(app):
     admin.add_view(ExchangePhotoAdmin)
     admin.add_view(UsernameClaimAdmin)
     admin.add_base_view(ArchiveCoverageView)
+    admin.add_base_view(BookMergeView)
+    admin.add_view(BookLinkAdmin)
     return admin

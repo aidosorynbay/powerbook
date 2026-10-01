@@ -2924,3 +2924,89 @@
   color: var(--color-text-primary);
   background: var(--color-bg-elevated);
 }
+
+/* «Какая это книга?»: books of the shared library to say "this is mine". */
+.which {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.whichPinned {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  background: var(--paper-deep);
+  font-size: 13px;
+}
+
+.whichList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.whichList button {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--hairline) !important;
+  text-align: left;
+  transition: border-color 0.2s ease;
+}
+
+.whichList button:hover:not(:disabled) {
+  border-color: var(--ink) !important;
+}
+
+.whichList img,
+.whichNoCover {
+  display: block;
+  width: 44px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  background: var(--paper-deep);
+}
+
+.whichText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.whichText strong {
+  overflow: hidden;
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.whichText span,
+.whichText small {
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.whichPick {
+  padding: 6px 10px;
+  border: 1px solid var(--ink);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}

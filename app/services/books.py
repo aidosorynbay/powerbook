@@ -10,6 +10,8 @@ import uuid
 from collections import defaultdict
 from dataclasses import dataclass
 
+import re
+
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -377,3 +379,44 @@ def delete_review(db: Session, *, user: User, review_id: uuid.UUID) -> None:
     db.delete(review)
     db.commit()
     catalog.invalidate()
+
+
+_TOKENS = re.compile(r"[\s_\-.,:;!?()\[\]«»\"'/]+")
+
+
+def match_works(db: Session, *, viewer_id: uuid.UUID, query: str, limit: int = 8) -> list[CatalogItemOut]:
+    """Books of the shared library a file or a typed title could be.
+
+    A file name says more than a title ("Clear_James_-_Atomic_Habits"), so it
+    is taken word by word: a book matches when most of the words are in its
+    title, author or any spelling it is known by, at least one of them in
+    the title.
+    """
+    from app.core.booktitles import match_key
+
+    idx = catalog.index(db)
+    words = [k for k in (match_key(w) for w in _TOKENS.split(query)) if len(k) >= 3]
+    scored: list[tuple[float, Work]] = []
+    for work in idx.works.values():
+        if catalog.search_matches(work, query):
+            scored.append((1.0, work))
+            continue
+        if not words:
+            continue
+        titles = " ".join([match_key(work.title), *work.members])
+        haystack = f"{titles} {match_key(work.author or '')}"
+        hits = [w for w in words if w in haystack]
+        if not hits or not any(w in titles for w in hits):
+            continue
+        share = len(hits) / len(words)
+        if share >= 0.5:
+            scored.append((share, work))
+    scored.sort(key=lambda x: (-x[0], -len(x[1].readers), x[1].title.casefold()))
+    best = [w for _s, w in scored[:limit]]
+    if not best:
+        return []
+    marks = _marks(db, idx)
+    facts = facts_by_work(db, idx)
+    sale = _for_sale(db, idx)
+    mine = _mine(db, idx, viewer_id)
+    return [_item(w, marks.get(w.key), facts.get(w.key), sale.get(w.key, 0), mine.get(w.key)) for w in best]

@@ -8,6 +8,12 @@ cover lookup corrected it to, or the same catalogue edition the lookup
 matched. Those links are followed transitively, so "Теори игр" joins
 «Теория игр» through the edition both were matched to.
 
+Two more links are people's word rather than spelling: a reader who said
+which book their copy is («Какая это книга?», shelf_overrides.work_key),
+whatever its file or edition was called; and the founder's links between
+two books that are one (book_links), such as a translation and its
+original.
+
 What goes in: books finished in a round (a private comment stays out, as
 it does off every shelf but its owner's), books added by hand, and any book
 a reader has given a mark, since a mark is public by nature.
@@ -30,9 +36,11 @@ from sqlalchemy.orm import Session
 
 from app.core.booktitles import canonical_key, match_key, matching_key
 from app.models.book_cover import BookCover
+from app.models.book_link import BookLink
 from app.models.book_review import BookReview
 from app.models.manual_book import ManualBook
 from app.models.round import ReadingLog
+from app.models.shelf_override import ShelfOverride
 from app.models.user import User
 from app.repositories.claims import ClaimsRepository
 from app.repositories.insights import normalize_book_title
@@ -152,8 +160,24 @@ def _build(db: Session) -> CatalogIndex:
     entries: list[_Entry] = []
     wanted_covers: set[str] = set()
 
+    # Readers' own word on which book a copy is: (account, shelf key) -> nodes.
+    pins: dict[tuple[uuid.UUID, str], list[str]] = {}
+    for user_id, volume_key, pinned, source, source_id in db.execute(
+        select(ShelfOverride.user_id, ShelfOverride.volume_key, ShelfOverride.work_key, ShelfOverride.source, ShelfOverride.source_id)
+        .where(ShelfOverride.work_key.is_not(None))
+    ).all():
+        nodes = [pinned]
+        if source in ("google", "openlibrary") and source_id:
+            nodes.append(f"@{source}:{source_id}")
+        pins[(user_id, volume_key)] = nodes
+
     def add(raw_key: str | None, clean: str, hint: str | None, account: uuid.UUID, volume_key: str | None, at: object) -> None:
         nodes = [k for k in dict.fromkeys([raw_key, canonical_key(clean)]) if k]
+        if volume_key:
+            # A claimed archive book sits on its claimant's shelf, so their pin counts for it too.
+            pinned = pins.get((account, volume_key)) or pins.get((fold.get(account, account), volume_key))
+            if pinned:
+                nodes.extend(k for k in pinned if k not in nodes)
         if not nodes:
             return
         wanted_covers.add(covers.cover_key(clean))
@@ -215,6 +239,9 @@ def _build(db: Session) -> CatalogIndex:
         for node in e.nodes[1:]:
             union.union(e.nodes[0], node)
         union.find(e.nodes[0])
+    # The founder's links between books that are one.
+    for key_a, key_b in db.execute(select(BookLink.key_a, BookLink.key_b)).all():
+        union.union(key_a, key_b)
 
     groups: dict[str, list[_Entry]] = defaultdict(list)
     for e in entries:

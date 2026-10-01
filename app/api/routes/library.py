@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
+from app.schemas.books import PinWorkIn
 from app.schemas.library import (
     CustomShelfOut,
     PlacementIn,
@@ -219,6 +220,33 @@ def set_override_cover(
         shelf_overrides.pick(db, user.id, volume_key, payload.source or "", payload.volume_id or "")
     else:
         shelf_overrides.set_mode(db, user.id, volume_key, payload.mode)
+    return {"ok": True}
+
+
+@router.put("/overrides/{volume_key}/work")
+def pin_work(
+    volume_key: str,
+    payload: PinWorkIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict:
+    """«Какая это книга?»: count this copy as a book of the shared library
+    (or a catalogue edition), whatever its file or edition was called."""
+    key = shelf_overrides.pin_work(
+        db, user.id, volume_key,
+        work_key=payload.work_key, source=payload.source, volume_id=payload.volume_id,
+        title=payload.title, author=payload.author,
+    )
+    return {"ok": True, "work_key": key}
+
+
+@router.delete("/overrides/{volume_key}/work")
+def unpin_work(
+    volume_key: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict:
+    shelf_overrides.unpin_work(db, user.id, volume_key)
     return {"ok": True}
 
 

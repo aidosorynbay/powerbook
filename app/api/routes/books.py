@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.books import CatalogPageOut, ReviewIn, ShelfReviewOut, WorkOut
-from app.services import books
+from app.schemas.books import BookMatchOut, CatalogPageOut, ReviewIn, ShelfReviewOut, WorkOut
+from app.schemas.library import CoverOptionOut
+from app.services import books, shelf_overrides
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -28,6 +29,19 @@ def catalog_page(
     return books.catalog_page(
         db, viewer_id=user.id, q=q, filter_=filter, sort=sort, topic=topic, offset=offset, limit=limit
     )
+
+
+@router.get("/match", response_model=BookMatchOut)
+def match(
+    q: str = Query(min_length=2, max_length=200),
+    editions: bool = Query(default=True),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> BookMatchOut:
+    """«Какая это книга?»: the shared library's books first, then catalogue editions."""
+    works = books.match_works(db, viewer_id=user.id, query=q)
+    found = [CoverOptionOut(**option) for option in shelf_overrides.search_editions(q)[:10]] if editions else []
+    return BookMatchOut(works=works, editions=found)
 
 
 @router.get("/work/{key}", response_model=WorkOut)

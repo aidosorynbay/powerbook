@@ -22,8 +22,9 @@ import {
 } from '@/shared/lib';
 import { Avatar, Icon } from '@/shared/ui';
 import { Header } from '@/widgets';
-import { extractCover } from '../extractCover';
+import { bookMeta, extractCover } from '../extractCover';
 import { EditBookSheet } from './EditBookSheet';
+import { WhichBookSheet } from './WorkPicker';
 import { MarkForm } from '../../books/MarkForm';
 import { ExtBadge, PbBadge } from '../../books/bookUi';
 import { LibrarySwitch } from '../../books/LibrarySwitch';
@@ -296,6 +297,8 @@ export function BookcasePage({ ownerId }: Props) {
 
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<BookcaseBook | null>(null);
+  // «Какая это книга?» right after a file is brought in.
+  const [which, setWhich] = useState<{ key: string; query: string } | null>(null);
   const [askRights, setAskRights] = useState(false);
   const [stats, setStats] = useState<LibraryStats | null>(null);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
@@ -422,7 +425,7 @@ export function BookcasePage({ ownerId }: Props) {
 
   // ---------- data ----------
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<Bookcase | null> => {
     const { data: next } = await apiGet<Bookcase>(ownerId ? `/library/bookcase/${ownerId}` : '/library/bookcase', {
       requireAuth: true,
     });
@@ -432,6 +435,7 @@ export function BookcasePage({ ownerId }: Props) {
     } else {
       setLoadError(true);
     }
+    return next ?? null;
   }, [ownerId]);
 
   useEffect(() => {
@@ -765,8 +769,15 @@ export function BookcasePage({ ownerId }: Props) {
       const cover = await extractCover(file);
       if (cover) await apiPatch(`/library/books/${created.id}`, { cover_data: cover }, { requireAuth: true });
       pendingKey.current = uploadTitle.current ?? created.title;
-      await load();
+      const shelf = await load();
       flash(t('shelf.uploaded'));
+      // A new book from a file, not the text of one already on the shelf: say which book it is,
+      // so its marks join everyone's for that book whatever the file or the edition is called.
+      const key = `u:${created.id}`;
+      if (!uploadTitle.current && shelf?.books.some((b) => b.key === key)) {
+        const meta = await bookMeta(file);
+        setWhich({ key, query: meta ? [meta.title, meta.author].filter(Boolean).join(' ') : created.title });
+      }
     }
     uploadTitle.current = null;
     setUploadPct(null);
@@ -1427,6 +1438,19 @@ export function BookcasePage({ ownerId }: Props) {
             )}
           </div>
         </div>
+      )}
+
+      {which && (
+        <WhichBookSheet
+          volumeKey={which.key}
+          initialQuery={which.query}
+          onClose={() => setWhich(null)}
+          onDone={async (message) => {
+            setWhich(null);
+            await load();
+            flash(message);
+          }}
+        />
       )}
 
       {editing && (

@@ -10,6 +10,7 @@ import {
   type CoverOption,
 } from '@/shared/lib';
 import { loadImage, paletteFor } from './bookArt';
+import { WorkPicker } from './WorkPicker';
 import styles from './Bookcase.module.css';
 
 type Props = {
@@ -132,6 +133,22 @@ export function EditBookSheet({ book, seed, onClose, onChanged }: Props) {
           <button type="button" className={styles.sheetClose} onClick={onClose}>
             {t('shelf.close')}
           </button>
+        </div>
+
+        {/* «Какая это книга»: one card for every edition and every file of a book. */}
+        <div className={styles.sheetSection}>
+          <h3>{t('which.head')}</h3>
+          <p>{t('which.hintShort')}</p>
+          <WorkPicker
+            volumeKey={book.key}
+            initialQuery={[book.title, book.author].filter(Boolean).join(' ')}
+            pinned={!!book.pinned}
+            autoSearch={false}
+            onDone={async (message) => {
+              await onChanged(message);
+              onClose();
+            }}
+          />
         </div>
 
         <div className={styles.sheetSection}>

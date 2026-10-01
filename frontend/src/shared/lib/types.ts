@@ -538,6 +538,8 @@ export type BookcaseBook = {
   /** Owner only: how they've set the cover, and whether they corrected anything. */
   cover_mode: 'auto' | 'none' | 'image' | null;
   edited: boolean;
+  /** «Какая это книга?»: the owner said which shared-library book this copy is. */
+  pinned?: boolean;
   /** Owner only. */
   upload_id: string | null;
   manual_id: string | null;

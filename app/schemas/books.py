@@ -168,3 +168,25 @@ class MarketPageOut(BaseModel):
     total: int
     offset: int
     cities: list[str]
+
+
+class BookMatchOut(BaseModel):
+    """«Какая это книга?»: books of the shared library first, then catalogue editions."""
+
+    works: list[CatalogItemOut]
+    editions: list["CoverOptionOut"]
+
+
+class PinWorkIn(BaseModel):
+    # A book of the shared library…
+    work_key: str | None = Field(default=None, max_length=120)
+    # …or a catalogue edition, with what the search showed of it.
+    source: str | None = Field(default=None, max_length=20)
+    volume_id: str | None = Field(default=None, max_length=40)
+    title: str | None = Field(default=None, max_length=300)
+    author: str | None = Field(default=None, max_length=200)
+
+
+from app.schemas.library import CoverOptionOut  # noqa: E402
+
+BookMatchOut.model_rebuild()

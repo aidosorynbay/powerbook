@@ -56,7 +56,7 @@ def _drop_image(row: ShelfOverride) -> None:
 
 def _tidy(db: Session, row: ShelfOverride) -> None:
     """An override that overrides nothing is just a row; don't keep it."""
-    if row.cover_mode == "auto" and not row.title and not row.author:
+    if row.cover_mode == "auto" and not row.title and not row.author and not row.work_key:
         _drop_image(row)
         db.delete(row)
 
@@ -156,3 +156,67 @@ def search_editions(query: str) -> list[dict]:
         if len(results) >= 18:
             break
     return results
+
+
+def pin_work(
+    db: Session,
+    user_id: uuid.UUID,
+    volume_key: str,
+    *,
+    work_key: str | None = None,
+    source: str | None = None,
+    volume_id: str | None = None,
+    title: str | None = None,
+    author: str | None = None,
+) -> str:
+    """«Какая это книга?»: the reader says which book their copy is.
+
+    Either a book of the shared library (work_key), whose title and author
+    the copy takes, or a catalogue edition (source + volume_id), whose
+    title, author and cover it takes. From then on the copy and its mark
+    count for that book, whatever the file or the edition was called.
+    Returns the key the copy is pinned to.
+    """
+    from app.core.booktitles import canonical_key
+    from app.services import catalog
+
+    if work_key:
+        work = catalog.index(db).find(work_key)
+        if work is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="book_not_found")
+        row = _row(db, user_id, volume_key)
+        row.work_key = work.key
+        row.title = work.title[:300]
+        row.author = (work.author or "")[:200] or None
+    elif source and volume_id and title:
+        try:
+            pick(db, user_id, volume_key, source, volume_id)
+        except HTTPException as exc:
+            # An edition without a cover is still the right book.
+            if exc.detail != "no_cover":
+                raise
+        row = _row(db, user_id, volume_key)
+        key = canonical_key(covers.clean_title(title) or title)
+        if not key:
+            raise _bad("no_title")
+        row.work_key = key
+        row.title = title.strip()[:300]
+        row.author = (author or "").strip()[:200] or None
+        row.source, row.source_id = source, volume_id
+    else:
+        raise _bad("bad_pick")
+    db.commit()
+    catalog.invalidate()
+    return row.work_key
+
+
+def unpin_work(db: Session, user_id: uuid.UUID, volume_key: str) -> None:
+    from app.services import catalog
+
+    row = db.get(ShelfOverride, (user_id, _check_key(volume_key)))
+    if row is None or not row.work_key:
+        return
+    row.work_key = None
+    _tidy(db, row)
+    db.commit()
+    catalog.invalidate()

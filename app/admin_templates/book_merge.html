@@ -1,0 +1,111 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+<div class="col-12 d-block">
+<div class="w-100">
+  {% if msg %}<div class="alert alert-info">{{ msg }}</div>{% endif %}
+
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Найти книги и склеить</h3></div>
+    <div class="card-body">
+      <p class="text-muted">Например, перевод и оригинал: найдите «атомные», отметьте, затем найдите «atomic», отметьте и склейте. Отмеченные копятся, пока вы ищете на этой странице.</p>
+      <form method="get" action="{{ base }}/book-merge" class="d-flex gap-2 mb-3">
+        <input class="form-control" name="q" value="{{ q }}" placeholder="Название или автор" autofocus>
+        <button class="btn btn-primary" type="submit">Искать</button>
+      </form>
+      {% if q %}
+      <form method="post" action="{{ base }}/book-merge/link" id="merge-form">
+        <input type="hidden" name="back" value="{{ q }}">
+        <div class="table-responsive">
+          <table class="table table-vcenter">
+            <thead><tr><th></th><th>Книга</th><th>Читателей</th><th>Оценок</th><th class="text-muted">Ключ</th></tr></thead>
+            <tbody>
+            {% for w in found %}
+              <tr>
+                <td><input class="form-check-input pick" type="checkbox" name="key" value="{{ w.key }}"></td>
+                <td><b>{{ w.title }}</b> <div class="text-muted small">{{ w.author }}</div></td>
+                <td>{{ w.readers }}</td><td>{{ w.votes }}</td>
+                <td class="text-muted small">{{ w.key }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="5" class="text-muted">Ничего не нашлось.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div id="kept" class="text-muted small mb-2"></div>
+        <button class="btn btn-success" type="submit">Это одна книга — склеить отмеченные</button>
+      </form>
+      <script>
+        // Picks survive a new search on this page, so a translation and its original can be found in turn.
+        (function () {
+          var KEY = 'pb.admin.merge';
+          var kept = JSON.parse(sessionStorage.getItem(KEY) || '{}');
+          var form = document.getElementById('merge-form');
+          function show() {
+            var names = Object.values(kept);
+            document.getElementById('kept').textContent = names.length ? 'Отмечено: ' + names.join(' · ') : '';
+            form.querySelectorAll('input.extra').forEach(function (e) { e.remove(); });
+            Object.keys(kept).forEach(function (k) {
+              if (form.querySelector('input.pick[value="' + CSS.escape(k) + '"]')) return;
+              var i = document.createElement('input'); i.type = 'hidden'; i.name = 'key'; i.value = k; i.className = 'extra'; form.appendChild(i);
+            });
+          }
+          form.querySelectorAll('input.pick').forEach(function (box) {
+            box.checked = !!kept[box.value];
+            box.addEventListener('change', function () {
+              var title = box.closest('tr').querySelector('b').textContent;
+              if (box.checked) kept[box.value] = title; else delete kept[box.value];
+              sessionStorage.setItem(KEY, JSON.stringify(kept)); show();
+            });
+          });
+          form.addEventListener('submit', function () { sessionStorage.removeItem(KEY); });
+          show();
+        })();
+      </script>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if doubles %}
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Возможные дубли ({{ doubles|length }})</h3></div>
+    <div class="card-body text-muted small pb-0">Тот же автор и похожее название, или почти одинаковое название. Склеивайте только если это правда одна книга.</div>
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead><tr><th>Книга</th><th>Похожая</th><th></th></tr></thead>
+        <tbody>
+        {% for a, b in doubles %}
+          <tr>
+            <td><b>{{ a.title }}</b><div class="text-muted small">{{ a.author }} · {{ a.readers }} чит. · {{ a.votes }} оц.</div></td>
+            <td><b>{{ b.title }}</b><div class="text-muted small">{{ b.author }} · {{ b.readers }} чит. · {{ b.votes }} оц.</div></td>
+            <td><form method="post" action="{{ base }}/book-merge/link" class="m-0">
+              <input type="hidden" name="key" value="{{ a.key }}"><input type="hidden" name="key" value="{{ b.key }}">
+              <button class="btn btn-outline-success btn-sm" type="submit">Это одна книга</button></form></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if links %}
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Уже склеено</h3></div>
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <tbody>
+        {% for l in links %}
+          <tr><td>{{ l.a }}</td><td>=</td><td>{{ l.b }}</td>
+            <td><form method="post" action="{{ base }}/book-merge/unlink" class="m-0">
+              <input type="hidden" name="id" value="{{ l.id }}">
+              <button class="btn btn-outline-danger btn-sm" type="submit">Разъединить</button></form></td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+</div>
+{% endblock %}

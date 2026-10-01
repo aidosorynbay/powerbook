@@ -26,6 +26,18 @@ function scaleCanvas(source: HTMLCanvasElement | HTMLImageElement, w: number, h:
   return canvasToDataUrl(canvas);
 }
 
+/** epub.js keeps reading the book (navigation, page list) after the part we
+ * asked for; destroying it midway throws inside epub.js. Let it finish first,
+ * but never wait on a book whose navigation never comes: after a few seconds
+ * it is left to the garbage collector instead. */
+async function closeEpub(book: { ready: Promise<unknown>; destroy: () => void }): Promise<void> {
+  const settled = await Promise.race([
+    book.ready.then(() => true, () => true),
+    new Promise<boolean>((resolve) => window.setTimeout(() => resolve(false), 4000)),
+  ]);
+  if (settled) book.destroy();
+}
+
 async function epubCover(file: File): Promise<string | null> {
   const { default: ePub } = await import('epubjs');
   const book = ePub(await file.arrayBuffer());
@@ -41,7 +53,7 @@ async function epubCover(file: File): Promise<string | null> {
     if (!img) return null;
     return scaleCanvas(img, img.naturalWidth, img.naturalHeight);
   } finally {
-    book.destroy();
+    await closeEpub(book);
   }
 }
 
@@ -74,6 +86,46 @@ export async function extractCover(file: File): Promise<string | null> {
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (ext === 'epub') return await epubCover(file);
     if (ext === 'pdf') return await pdfCover(file);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The title and author the file itself carries (EPUB metadata, PDF document
+ * info), to look the book up by instead of the file name. Never throws.
+ */
+export async function bookMeta(file: File): Promise<{ title: string; author: string } | null> {
+  try {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext === 'epub') {
+      const { default: ePub } = await import('epubjs');
+      const book = ePub(await file.arrayBuffer());
+      try {
+        const meta = await book.loaded.metadata;
+        const title = (meta?.title ?? '').trim();
+        return title ? { title, author: (meta?.creator ?? '').trim() } : null;
+      } finally {
+        await closeEpub(book);
+      }
+    }
+    if (ext === 'pdf') {
+      const pdfjsLib = await import('pdfjs-dist');
+      const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+      const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+      try {
+        const { info } = await pdf.getMetadata();
+        const fields = info as { Title?: string; Author?: string };
+        const title = (fields.Title ?? '').trim();
+        // Office exports put the file name or "Microsoft Word - …" here; that says nothing.
+        if (!title || /^microsoft|\.(docx?|pdf)$/i.test(title)) return null;
+        return { title, author: (fields.Author ?? '').trim() };
+      } finally {
+        pdf.destroy();
+      }
+    }
     return null;
   } catch {
     return null;
