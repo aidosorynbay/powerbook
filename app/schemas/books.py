@@ -117,6 +117,9 @@ class WorkOut(CatalogItemOut):
     # The book on the viewer's own shelf, when it is there: marks are given from the shelf.
     my_volume_key: str | None
     listings: list[ListingOut]
+    # «Следить за книгой»: whether the viewer watches it, and how many readers do.
+    watching: bool = False
+    watchers: int = 0
 
 
 class ReviewIn(BaseModel):
@@ -219,3 +222,28 @@ class BookChatReplyOut(BaseModel):
 from app.schemas.library import CoverOptionOut  # noqa: E402
 
 BookMatchOut.model_rebuild()
+
+
+
+class WatchOut(BaseModel):
+    work_key: str
+    title: str
+    author: str | None = None
+    for_sale: int = 0
+
+
+class WatchStateOut(BaseModel):
+    watching: bool
+    watchers: int
+
+
+class NotificationOut(BaseModel):
+    id: str
+    kind: str
+    data: dict
+    created_at: str | None
+    read: bool
+
+
+class NotificationsReadIn(BaseModel):
+    ids: list[uuid.UUID] | None = None

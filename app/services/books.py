@@ -235,7 +235,7 @@ def _localized(value: dict | None, locale: str) -> tuple[str, dict] | None:
 
 
 def work_page(db: Session, *, key: str, viewer_id: uuid.UUID, locale: str = "ru") -> WorkOut:
-    from app.services import market
+    from app.services import market, notify
 
     idx = catalog.index(db)
     work = idx.find(key)
@@ -318,6 +318,8 @@ def work_page(db: Session, *, key: str, viewer_id: uuid.UUID, locale: str = "ru"
         my_review=my_review,
         my_volume_key=my_volume,
         listings=listings,
+        watching=notify.is_watching(db, viewer_id, work),
+        watchers=notify.watchers_count(db, work),
     )
 
 

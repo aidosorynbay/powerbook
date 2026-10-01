@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { apiDelete, apiGet, apiPost, track, useI18n, type BookChatMessage, type BookChatState } from '@/shared/lib';
 import { Icon } from '@/shared/ui';
 import { Sheet } from '@/pages/books/bookUi';
@@ -88,7 +89,8 @@ export function BookChat({ volumeKey, workKey, title, from, onClose }: Props) {
 
   const name = chat?.title ?? title ?? '';
 
-  return (
+  // Over everything, wherever it is opened from (another sheet, the reader).
+  return createPortal(
     <Sheet label={t('chat.title', { title: name })} onClose={onClose}>
       <div className={styles.chat}>
         {failed && <p className={styles.note}>{t('chat.loadError')}</p>}
@@ -170,6 +172,7 @@ export function BookChat({ volumeKey, workKey, title, from, onClose }: Props) {
           </>
         )}
       </div>
-    </Sheet>
+    </Sheet>,
+    document.body
   );
 }

@@ -10,6 +10,7 @@ from app.models.claim import UsernameClaim
 from app.models.group import Group, GroupMember
 from app.models.library import LibraryBook
 from app.models.manual_book import ManualBook
+from app.models.notification import BookWatch, Notification
 from app.models.reaction import ReadingLogReaction
 from app.models.round import BookExchangePair, ReadingLog, Round, RoundParticipant, RoundResult
 from app.models.shelf_override import ShelfOverride
@@ -22,6 +23,8 @@ from app.models.user import User
 from app.models.waitlist import WaitlistEntry
 
 __all__ = [
+    "BookWatch",
+    "Notification",
     "BookChat",
     "BookLink",
     "User",

@@ -145,6 +145,8 @@ class BookcaseBookOut(BaseModel):
     edited: bool = False
     # «Какая это книга?»: the shared-library book the owner said this copy is.
     pinned: bool = False
+    # Readers watching this book («Следить»), shown to its owner beside «Продать».
+    wanted_by: int = 0
 
     # Owner only: the reader's own notes on this book, oldest first.
     notes: list[BookNoteOut] = []

@@ -77,11 +77,21 @@ class ReadingService:
 
         # Last day date itself: allow logging but score=0
         force_score = 0 if day == last_day_date else None
-        return self.logs.upsert_minutes(
+        before = self.logs.get_for_user_date(round_id=round_id, user_id=user_id, day=day)
+        was_public_finish = bool(
+            before and before.book_finished and not before.is_comment_private and before.comment == comment
+        )
+        row = self.logs.upsert_minutes(
             round_id=round_id, user_id=user_id, day=day, minutes=minutes,
             force_score=force_score, book_finished=book_finished, comment=comment,
             comment_private=comment_private,
         )
+        # A book finished in the open: whoever watches it hears (app/services/notify.py).
+        if book_finished and comment and not comment_private and not was_public_finish:
+            from app.services import notify
+
+            notify.on_finished(self.db, reader_id=user_id, comment=comment, day=day)
+        return row
 
     def calendar_for_user(self, *, round_id: uuid.UUID, user_id: uuid.UUID, viewer_id: uuid.UUID | None = None) -> dict:
         rnd = self.rounds.get_round(round_id)

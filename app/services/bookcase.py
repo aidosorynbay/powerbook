@@ -365,6 +365,27 @@ class BookcaseService:
                 if is_self:
                     vol.review_id = review.id
 
+        # Readers waiting for books the owner has finished: «N читателей ищут эту книгу».
+        if is_self and not owner.is_claimable:
+            from sqlalchemy import select as _select
+
+            from app.models.notification import BookWatch
+            from app.services import catalog as _catalog
+
+            idx = _catalog.index(self.db)
+            wanted: dict[str, set] = {}
+            for key, user_id in self.db.execute(_select(BookWatch.work_key, BookWatch.user_id)).all():
+                work = idx.find(key)
+                if work is not None and idx.person_of(user_id) != idx.person_of(owner.id):
+                    wanted.setdefault(work.key, set()).add(user_id)
+            if wanted:
+                for vol in volumes:
+                    if vol.status != "finished":
+                        continue
+                    work = idx.find(vol.match_key) or idx.find(_catalog.work_key(vol.title) or "")
+                    if work is not None:
+                        vol.wanted_by = len(wanted.get(work.key, ()))
+
         for vol in volumes:
             vol.fellow_readers = fellow_count(vol.match_key)
             if vol.status == "finished" and vol.finished_on:

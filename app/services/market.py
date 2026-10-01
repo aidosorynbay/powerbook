@@ -228,6 +228,10 @@ def create(db: Session, *, seller: User, payload: ListingIn) -> ListingOut:
     db.add(row)
     db.commit()
     db.refresh(row)
+    # Whoever watches this book hears it is on the bazaar.
+    from app.services import notify
+
+    notify.on_listing(db, row)
     return listing(db, listing_id=row.id, viewer_id=seller.id)
 
 
@@ -240,6 +244,7 @@ def _own(db: Session, seller_id: uuid.UUID, listing_id: uuid.UUID) -> BookListin
 
 def update(db: Session, *, seller: User, listing_id: uuid.UUID, payload: ListingPatch) -> ListingOut:
     row = _own(db, seller.id, listing_id)
+    was = (row.status, row.work_key)
     fields = payload.model_fields_set
     if "title" in fields and payload.title is not None:
         title = _clean(payload.title, 300)
@@ -273,6 +278,11 @@ def update(db: Session, *, seller: User, listing_id: uuid.UUID, payload: Listing
         row.status = payload.status
         row.sold_at = datetime.now(timezone.utc) if payload.status == "sold" else None
     db.commit()
+    # Back on the bazaar, or now known as another book: its watchers hear.
+    if row.status == "active" and (was[0] != "active" or was[1] != row.work_key):
+        from app.services import notify
+
+        notify.on_listing(db, row)
     return listing(db, listing_id=row.id, viewer_id=seller.id)
 
 

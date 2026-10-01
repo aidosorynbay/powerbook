@@ -35,7 +35,8 @@ export type IconName =
   | 'lock'
   | 'unlock'
   | 'play'
-  | 'party';
+  | 'party'
+  | 'gear';
 
 interface IconProps extends SVGAttributes<SVGElement> {
   name: IconName;
@@ -248,6 +249,12 @@ const icons: Record<IconName, JSX.Element> = {
     <>
       <path d="M4 20.5l4.8-12.2 7.4 7.4L4 20.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
       <path d="M13.5 3.5l.4 2.2M20.5 10.5l-2.2-.4M16.8 7.2l2.4-2.4M11 9.5c1.6-1.8 1.2-3.6.2-4.6M14.5 13c1.8-1.6 3.6-1.2 4.6-.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </>
+  ),
+  'gear': (
+    <>
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </>
   ),
   'trophy': (

@@ -540,6 +540,8 @@ export type BookcaseBook = {
   edited: boolean;
   /** «Какая это книга?»: the owner said which shared-library book this copy is. */
   pinned?: boolean;
+  /** Readers watching this (finished) book, shown to its owner beside «Продать». */
+  wanted_by?: number;
   /** Owner only. */
   upload_id: string | null;
   manual_id: string | null;
@@ -668,6 +670,9 @@ export type Work = CatalogItem & {
   my_review: BookReview | null;
   my_volume_key: string | null;
   listings: Listing[];
+  /** «Следить за книгой»: whether the viewer watches it, and how many readers do. */
+  watching?: boolean;
+  watchers?: number;
 };
 
 export type MarketPage = { items: Listing[]; total: number; offset: number; cities: string[] };
@@ -828,4 +833,21 @@ export type BookChatState = {
   author: string | null;
   messages: BookChatMessage[];
   left_today: number;
+};
+
+// The header bell.
+export type SiteNotification = {
+  id: string;
+  kind: 'watch_listing' | 'watch_finished' | 'wanted_by' | string;
+  data: Record<string, unknown>;
+  created_at: string | null;
+  read: boolean;
+};
+
+// «Мои подписки»: books a reader is waiting for.
+export type BookWatch = {
+  work_key: string;
+  title: string;
+  author: string | null;
+  for_sale: number;
 };

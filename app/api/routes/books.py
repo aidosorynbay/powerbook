@@ -16,10 +16,12 @@ from app.schemas.books import (
     CatalogPageOut,
     ReviewIn,
     ShelfReviewOut,
+    WatchOut,
+    WatchStateOut,
     WorkOut,
 )
 from app.schemas.library import CoverOptionOut
-from app.services import book_chat, books, shelf_overrides
+from app.services import book_chat, books, notify, shelf_overrides
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -114,3 +116,21 @@ def delete_review(
     user: User = Depends(get_current_user),
 ) -> None:
     books.delete_review(db, user=user, review_id=review_id)
+
+
+
+@router.get("/watches", response_model=list[WatchOut])
+def my_watches(db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> list[WatchOut]:
+    """«Мои подписки»: the books this reader is waiting for."""
+    return [WatchOut(**w) for w in notify.watches_for(db, user.id)]
+
+
+@router.put("/watch/{key}", response_model=WatchStateOut)
+def watch_book(key: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> WatchStateOut:
+    """«Следить за книгой»: hear when it is on the bazaar or someone in the circle finishes it."""
+    return WatchStateOut(**notify.watch(db, user=user, key=key))
+
+
+@router.delete("/watch/{key}", response_model=WatchStateOut)
+def unwatch_book(key: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> WatchStateOut:
+    return WatchStateOut(**notify.unwatch(db, user=user, key=key))

@@ -470,11 +470,16 @@
 
 /* A narrow phone with a long label («Параметрлер»): the chips tighten, then the label gives way, so the bar never
    grows wider than the screen (a few px too wide and iOS lets the whole page slide sideways) */
+.mobileAccountIcon { display: none; }
+
 @media (max-width: 420px) {
   .header > * { padding-left: 12px; padding-right: 12px; }
   .mobileActions { gap: 4px; flex: 0 1 auto; min-width: 0; }
   .mobileLang { padding: 5px 5px; }
   .mobileAccount { padding: 6px 7px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .mobileAccount:has(.mobileAccountIcon) { display: inline-grid; place-items: center; width: 34px; height: 32px; padding: 0; }
+  .mobileAccountIcon { display: block; }
+  .mobileAccountText { display: none; }
 }
 @media (max-width: 380px) {
   .mobileAccount { font-size: 11px; letter-spacing: -0.01em; }

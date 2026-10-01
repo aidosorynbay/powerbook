@@ -124,6 +124,8 @@ export type {
   RoundLetter,
   BookChatMessage,
   BookChatState,
+  SiteNotification,
+  BookWatch,
 } from './types';
 export { useTheme, useResolvedTheme, readThemeChoice, resolveTheme, applyTheme, THEME_KEY, type ThemeChoice } from './theme';
 export { useWaitlist, inviteLink, rememberInvite, markJoinIntent, type WaitlistState } from './waitlist';

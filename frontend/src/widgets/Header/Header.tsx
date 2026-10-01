@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, useI18n, useTheme, LOCALES, type ThemeChoice } from '@/shared/lib';
 import { Logo, Button, Icon, Container } from '@/shared/ui';
+import { Bell } from '@/widgets/Notifications';
 import styles from './Header.module.css';
 
 // One button, three states: tap to go dark → light → as the system says.
@@ -191,6 +192,7 @@ export function Header() {
           {/* Phones: the row holds only the logo, so language and account fit
               here as compact chips instead of hiding inside the menu. */}
           <div className={styles.mobileActions}>
+            <Bell />
             <ThemeButton className={styles.themeBtn} />
             <select
               className={styles.mobileLang}
@@ -204,8 +206,10 @@ export function Header() {
             </select>
 
             {isAuthenticated ? (
-              <Link to="/profile" className={styles.mobileAccount}>
-                {t('nav.settings')}
+              <Link to="/profile" className={styles.mobileAccount} aria-label={t('nav.settings')}>
+                {/* A gear on the narrowest phones: the bell needs the room, and «Настр...» says nothing. */}
+                <Icon name="gear" size="sm" className={styles.mobileAccountIcon} aria-hidden="true" />
+                <span className={styles.mobileAccountText}>{t('nav.settings')}</span>
               </Link>
             ) : (
               <Link to="/login" className={styles.mobileAccount}>
@@ -225,6 +229,8 @@ export function Header() {
                 {isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCtaShort')}
               </span>
             </Link>
+
+            <Bell />
 
             <ThemeButton className={styles.themeBtn} />
 

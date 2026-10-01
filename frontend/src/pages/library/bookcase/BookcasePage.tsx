@@ -19,6 +19,7 @@ import {
   type LibraryStats,
   type Locale,
   type Work,
+  track,
 } from '@/shared/lib';
 import { Avatar, Icon } from '@/shared/ui';
 import { Header } from '@/widgets';
@@ -1162,6 +1163,26 @@ export function BookcasePage({ ownerId }: Props) {
                       onSaved={(review) => setMark(current.key, review)}
                     />
                   )}
+                  {!isSelf && current.match_key && (
+                    <div className={styles.bookActions}>
+                      <button
+                        type="button"
+                        className={styles.bookAction}
+                        onClick={async () => {
+                          const { data: state } = await apiPut<{ watching: boolean }>(
+                            `/books/watch/${encodeURIComponent(current.match_key ?? '')}`,
+                            {},
+                            { requireAuth: true }
+                          );
+                          flash(state ? t('watch.flash') : t('which.error'));
+                          if (state) track('book_watch', { on: true, from: 'shelf' });
+                        }}
+                      >
+                        <Icon name="bell" size="em" aria-hidden="true" />
+                        {t('watch.want')}
+                      </button>
+                    </div>
+                  )}
                   {!isSelf && current.rating != null && (
                     <blockquote>
                       <p>
@@ -1220,6 +1241,12 @@ export function BookcasePage({ ownerId }: Props) {
                     </button>
                   )}
                   {isSelf && !current.has_file && <p className={styles.primaryHint}>{t('shelf.attachHint')}</p>}
+
+                  {isSelf && current.status === 'finished' && (current.wanted_by ?? 0) > 0 && (
+                    <p className={styles.wanted}>
+                      <Icon name="users" size="em" aria-hidden="true" /> {t('watch.wantedBy', { n: current.wanted_by ?? 0 })}
+                    </p>
+                  )}
 
                   {/* Two separate actions, each on its own: they used to run together into one line. */}
                   {isSelf && (

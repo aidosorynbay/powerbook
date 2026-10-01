@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { apiGet, useAuth, useI18n, type Listing, type MarketPage as Page } from '@/shared/lib';
+import { apiDelete, apiGet, apiPut, track, useAuth, useI18n, type BookWatch, type CatalogItem, type Listing, type MarketPage as Page } from '@/shared/lib';
 import { Container } from '@/shared/ui';
 import { Header } from '@/widgets';
 import { BookFace, PbBadge, Shelves, formatPrice, useToast } from './bookUi';
@@ -26,6 +26,33 @@ export function MarketPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Listing | null>(null);
   const [toast, showToast] = useToast();
+  // «Мои подписки»: books the reader is waiting for on the bazaar.
+  const [watches, setWatches] = useState<BookWatch[]>([]);
+
+  useEffect(() => {
+    apiGet<BookWatch[]>('/books/watches', { requireAuth: true }).then(({ data }) => setWatches(data ?? []));
+  }, []);
+
+  const unwatch = async (w: BookWatch) => {
+    await apiDelete(`/books/watch/${encodeURIComponent(w.work_key)}`, { requireAuth: true });
+    setWatches((all) => all.filter((x) => x.work_key !== w.work_key));
+  };
+
+  // Nothing found: watch the book the search names, to hear when it turns up.
+  const watchSearch = async () => {
+    const { data } = await apiGet<{ works: CatalogItem[] }>(`/books/match?q=${encodeURIComponent(debounced)}&editions=false`, { requireAuth: true });
+    const work = data?.works[0];
+    if (!work) {
+      showToast(t('watch.notInLibrary'));
+      return;
+    }
+    const { data: state } = await apiPut<{ watching: boolean }>(`/books/watch/${encodeURIComponent(work.key)}`, {}, { requireAuth: true });
+    if (state) {
+      track('book_watch', { on: true, from: 'market' });
+      showToast(t('watch.flashTitle', { title: work.title }));
+      setWatches((all) => (all.some((x) => x.work_key === work.key) ? all : [{ work_key: work.key, title: work.title, author: work.author, for_sale: 0 }, ...all]));
+    }
+  };
   const request = useRef(0);
 
   const openId = params.get('listing');
@@ -122,11 +149,31 @@ export function MarketPage() {
             )}
           </div>
 
+          {!mine && watches.length > 0 && (
+            <div className={styles.watches}>
+              <span>{t('watch.mine')}</span>
+              {watches.map((w) => (
+                <span key={w.work_key} className={styles.watchChip}>
+                  <button type="button" style={{ width: 'auto', background: 'none', color: 'inherit' }} onClick={() => setQuery(w.title)}>
+                    {w.title}
+                  </button>
+                  {w.for_sale > 0 && <b>{w.for_sale}</b>}
+                  <button type="button" onClick={() => unwatch(w)} aria-label={t('watch.off')}>×</button>
+                </span>
+              ))}
+            </div>
+          )}
+
           {loading && items.length === 0 ? (
             <p className={styles.state}>{t('cat.loading')}</p>
           ) : items.length === 0 ? (
             <div className={styles.state}>
               <p>{mine ? t('mkt.emptyMine') : t('mkt.empty')}</p>
+              {!mine && debounced.trim().length >= 2 && (
+                <button type="button" className={styles.ghost} onClick={watchSearch}>
+                  {t('watch.tellMe')}
+                </button>
+              )}
               <button type="button" className={styles.primary} onClick={() => setParam({ new: '1' })}>+ {t('mkt.sell')}</button>
             </div>
           ) : (

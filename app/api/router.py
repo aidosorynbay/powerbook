@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import auth, books, claims, exchange, groups, insights, items, library, market, reading_ai, reading_room, rounds, social, stats, suggestions, waitlist
+from app.api.routes import auth, books, claims, exchange, groups, insights, items, library, market, notifications, reading_ai, reading_room, rounds, social, stats, suggestions, waitlist
 api_router = APIRouter()
 api_router.include_router(items.router, tags=["items"])
 api_router.include_router(auth.router)
@@ -18,3 +18,4 @@ api_router.include_router(books.router)
 api_router.include_router(market.router)
 api_router.include_router(reading_ai.router)
 api_router.include_router(waitlist.router)
+api_router.include_router(notifications.router)

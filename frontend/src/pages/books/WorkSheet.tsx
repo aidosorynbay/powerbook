@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiGet, apiPost, useI18n, type Work } from '@/shared/lib';
+import { apiDelete, apiGet, apiPost, apiPut, track, useI18n, type Work } from '@/shared/lib';
 import { Avatar, Icon } from '@/shared/ui';
 import { BookChat } from '@/widgets/BookChat';
 import { BookFace, PbBadge, Sheet, formatDay, formatPrice, useCount } from './bookUi';
@@ -54,6 +54,19 @@ export function WorkSheet({ workKey, title, onClose, onChanged }: Props) {
   };
 
   const sourceName = (source: string | null) => (source ? t(`src.${source}`) : '');
+
+  // «Следить за книгой»: hear when it is on the bazaar or someone in the circle finishes it.
+  const toggleWatch = async () => {
+    if (!work) return;
+    const path = `/books/watch/${encodeURIComponent(work.key)}`;
+    const { data } = work.watching
+      ? await apiDelete<{ watching: boolean; watchers: number }>(path, { requireAuth: true })
+      : await apiPut<{ watching: boolean; watchers: number }>(path, {}, { requireAuth: true });
+    if (data) {
+      setWork({ ...work, watching: data.watching, watchers: data.watchers });
+      track('book_watch', { on: data.watching });
+    }
+  };
 
   return (
     <Sheet label={work?.title ?? title ?? ''} onClose={onClose}>
@@ -218,6 +231,16 @@ export function WorkSheet({ workKey, title, onClose, onChanged }: Props) {
               </ul>
             </section>
           )}
+
+          <div className={styles.watch}>
+            <button type="button" className={work.watching ? styles.primary : styles.ghost} onClick={toggleWatch} aria-pressed={!!work.watching}>
+              <Icon name="bell" size="em" aria-hidden="true" /> {work.watching ? t('watch.on') : t('watch.off')}
+            </button>
+            <span className={styles.formNote}>
+              {work.watching ? t('watch.hintOn') : t('watch.hint')}
+              {(work.watchers ?? 0) > (work.watching ? 1 : 0) && <> · {t('watch.others', { n: (work.watchers ?? 0) - (work.watching ? 1 : 0) })}</>}
+            </span>
+          </div>
 
           <div className={styles.links}>
             <button type="button" className={styles.ghost} onClick={() => setTalk(true)}>
