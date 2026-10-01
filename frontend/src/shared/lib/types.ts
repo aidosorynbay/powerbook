@@ -102,6 +102,21 @@ export type ExchangePair = {
   receiver_name: string;
   receiver_telegram_id: string | null;
   confirmed: boolean;
+  has_photo?: boolean;
+};
+
+// A reader's photo of the book exchange, shown on the results page.
+export type ExchangePhoto = {
+  id: string;
+  pair_id: string;
+  user_id: string;
+  role: 'giver' | 'receiver';
+  caption: string | null;
+  url: string;
+  giver_name: string;
+  giver_telegram_id: string | null;
+  receiver_name: string;
+  receiver_telegram_id: string | null;
 };
 
 export type MyResult = {
@@ -118,6 +133,7 @@ export type MyExchange = {
   role: 'giver' | 'receiver';
   given_confirmed: boolean;
   received_confirmed: boolean;
+  photo_url?: string | null;
 };
 
 export type RoundResultsResponse = {
@@ -128,6 +144,7 @@ export type RoundResultsResponse = {
   pairs: ExchangePair[];
   my_result: MyResult | null;
   my_exchange: MyExchange | null;
+  photos?: ExchangePhoto[];
 };
 
 export type LastCompletedRound = {

@@ -461,6 +461,11 @@
   color: var(--color-accent-primary);
 }
 
+/* Camera and gift side by side: only the first one pushes to the right edge. */
+.pairGift + .pairGiftNext {
+  margin-left: 6px;
+}
+
 .pairsLegend {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);

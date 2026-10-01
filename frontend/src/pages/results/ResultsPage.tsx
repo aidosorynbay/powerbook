@@ -15,6 +15,7 @@ import {
 import { Container, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import { RoundStory } from './RoundStory';
+import { ExchangeGallery, PhotoConfirm } from './ExchangePhotos';
 import styles from './ResultsPage.module.css';
 import { RoundReview } from './RoundReview';
 
@@ -313,6 +314,9 @@ export function ResultsPage() {
                             {myExchange.role === 'giver' ? t('results.markGiven') : t('results.markReceived')}
                           </label>
                         )}
+                        {myExchange && (
+                          <PhotoConfirm pairId={myExchange.pair_id} photoUrl={myExchange.photo_url ?? null} onChanged={fetchData} />
+                        )}
                       </div>
                     )}
 
@@ -434,8 +438,13 @@ export function ResultsPage() {
                               <span className={styles.pairName}>{giverDisplay}</span>
                               <span className={styles.pairArrow}>{'\u2192'} {t('results.givesTo')}</span>
                               <span className={styles.pairName}>{receiverDisplay}</span>
+                              {pair.has_photo && (
+                                <span className={styles.pairGift} title={t('results.photoSent')}>
+                                  <Icon name="camera" size="em" aria-hidden="true" />
+                                </span>
+                              )}
                               {pair.confirmed && (
-                                <span className={styles.pairGift} title={t('results.giftConfirmedHint')}>
+                                <span className={`${styles.pairGift} ${pair.has_photo ? styles.pairGiftNext : ''}`} title={t('results.giftConfirmedHint')}>
                                   <Icon name="gift" size="em" aria-hidden="true" />
                                 </span>
                               )}
@@ -446,6 +455,9 @@ export function ResultsPage() {
                     )}
                   </div>
                 )}
+
+                {/* The exchange in pictures: what readers sent with «Подтвердить с фото». */}
+                <ExchangeGallery photos={results.photos ?? []} />
 
                 {/* The reader's own round, looked back on: beside their earlier rounds, with what to do better.
                     Not in this one: their latest round instead. */}

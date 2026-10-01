@@ -15,6 +15,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.photos import DATA_URL as _DATA_URL
+from app.core.photos import check_photo as _check_photo
 from app.models.book_listing import BookListing
 from app.models.user import User
 from app.schemas.books import ListingIn, ListingOut, ListingPatch, MarketPageOut, SellerOut
@@ -23,27 +25,10 @@ from app.services.catalog import CatalogIndex, Work
 
 # Enough for a reader clearing a whole bookcase; a runaway client cannot flood the market.
 MAX_ACTIVE = 60
-_DATA_URL = re.compile(r"^data:image/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$")
-_MAX_PHOTO_BYTES = 600_000
 
 
 def _bad(detail: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
-
-
-def _check_photo(photo: str | None) -> str | None:
-    if not photo:
-        return None
-    m = _DATA_URL.match(photo)
-    if not m:
-        raise _bad("bad_photo") from None
-    try:
-        raw = base64.b64decode(m.group(2), validate=True)
-    except ValueError:
-        raise _bad("bad_photo") from None
-    if len(raw) > _MAX_PHOTO_BYTES:
-        raise _bad("photo_too_large")
-    return photo
 
 
 def _phone(contact: str | None) -> str:

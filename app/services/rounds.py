@@ -58,6 +58,12 @@ class RoundService:
             for result, display_name, telegram_id in rows
         ]
 
+        from app.services.exchange import ExchangeService
+
+        # The exchange in pictures: readers' photos of the book in hand.
+        photos = ExchangeService(self.db).photos_for_round(round_id=round_id)
+        pairs_with_photo = {p["pair_id"] for p in photos}
+
         pair_rows = self.pairs.list_for_round_with_user_names(round_id=round_id)
         pairs = [
             {
@@ -66,6 +72,7 @@ class RoundService:
                 "receiver_name": receiver_name,
                 "receiver_telegram_id": receiver_tid,
                 "confirmed": bool(pair.giver_marked_given_at or pair.receiver_marked_received_at),
+                "has_photo": str(pair.id) in pairs_with_photo,
             }
             for pair, giver_name, giver_tid, receiver_name, receiver_tid in pair_rows
         ]
@@ -98,6 +105,10 @@ class RoundService:
                     "role": role,
                     "given_confirmed": bool(pair_obj.giver_marked_given_at),
                     "received_confirmed": bool(pair_obj.receiver_marked_received_at),
+                    "photo_url": next(
+                        (p["url"] for p in photos if p["pair_id"] == str(pair_obj.id) and p["user_id"] == str(user_id)),
+                        None,
+                    ),
                 }
 
         return {
@@ -108,6 +119,7 @@ class RoundService:
             "pairs": pairs,
             "my_result": my_result,
             "my_exchange": my_exchange,
+            "photos": photos,
         }
 
     def create_round(

@@ -61,6 +61,7 @@ export type {
   YearlyArchiveResponse,
   RoundResultEntry,
   ExchangePair,
+  ExchangePhoto,
   RoundResultsResponse,
   LastCompletedRound,
   AllTimeProfile,

@@ -5,6 +5,7 @@ from datetime import timezone
 from sqladmin import Admin, ModelView, action
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
+from markupsafe import Markup
 from starlette.responses import HTMLResponse, RedirectResponse
 
 from app.core.constants import ROUND_TZ
@@ -12,6 +13,7 @@ from app.core.security import hash_password, verify_password
 from app.db.session import get_engine, get_session_factory
 from app.models.claim import UsernameClaim
 from app.models.enums import ClaimStatus, RoundStatus, SystemRole
+from app.models.exchange_photo import ExchangePhoto
 from app.models.group import Group, GroupMember
 from app.models.round import BookExchangePair, ReadingLog, Round, RoundParticipant, RoundResult
 from app.models.user import User
@@ -285,6 +287,28 @@ class BookExchangePairAdmin(ModelView, model=BookExchangePair):
     icon = "fa-solid fa-book-open"
 
 
+class ExchangePhotoAdmin(ModelView, model=ExchangePhoto):
+    """Photos of the book exchange that readers sent with «Подтвердить с фото».
+    They all show on the round's results page; tick «hidden» to take one off."""
+
+    column_list = [
+        ExchangePhoto.photo, ExchangePhoto.role, ExchangePhoto.caption, ExchangePhoto.hidden,
+        ExchangePhoto.user_id, ExchangePhoto.created_at,
+    ]
+    column_formatters = {
+        ExchangePhoto.photo: lambda m, a: Markup(
+            f"<img src='/api/exchange/photos/{m.id}' style='height:72px;border-radius:6px' loading='lazy'>"
+        ),
+        ExchangePhoto.created_at: _astana,
+    }
+    column_default_sort = [(ExchangePhoto.created_at, True)]
+    form_columns = [ExchangePhoto.caption, ExchangePhoto.hidden]
+    can_create = False
+    name = "Exchange Photo"
+    name_plural = "Exchange Photos"
+    icon = "fa-solid fa-camera"
+
+
 class UsernameClaimAdmin(ModelView, model=UsernameClaim):
     """
     Every self-serve 'this old username is me' claim lands here, newest
@@ -407,6 +431,7 @@ def setup_admin(app):
     admin.add_view(ReadingLogAdmin)
     admin.add_view(RoundResultAdmin)
     admin.add_view(BookExchangePairAdmin)
+    admin.add_view(ExchangePhotoAdmin)
     admin.add_view(UsernameClaimAdmin)
     admin.add_base_view(ArchiveCoverageView)
     return admin

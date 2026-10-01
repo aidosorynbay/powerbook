@@ -18,3 +18,16 @@ class ExchangePairOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
+
+class ExchangePhotoIn(BaseModel):
+    # A JPEG data URL the page has already shrunk (app/core/photos.py checks it).
+    photo: str
+    caption: str | None = None
+
+
+class ExchangePhotoOut(BaseModel):
+    id: str
+    url: str
+    role: str
+    caption: str | None

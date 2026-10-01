@@ -13,6 +13,7 @@ from app.models.round import BookExchangePair, ReadingLog, Round, RoundParticipa
 from app.models.shelf_override import ShelfOverride
 from app.models.book_note import BookNote
 from app.models.custom_shelf import CustomShelf, ShelfPlacement
+from app.models.exchange_photo import ExchangePhoto
 from app.models.reading_room import ReadingRoomMessage, ReadingRoomSession
 from app.models.suggestion import Suggestion
 from app.models.user import User
@@ -27,6 +28,7 @@ __all__ = [
     "ReadingLog",
     "RoundResult",
     "BookExchangePair",
+    "ExchangePhoto",
     "ReadingLogReaction",
     "UsernameClaim",
     "ReadingBuddy",
