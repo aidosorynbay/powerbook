@@ -10,7 +10,7 @@
  */
 
 // The measurement id is public by nature (it sits in every page's HTML).
-const GA_ID = import.meta.env.VITE_GA_ID || '';
+const GA_ID = import.meta.env.VITE_GA_ID || 'G-RRHCW0VR2X';
 
 type Params = Record<string, string | number | boolean | null | undefined>;
 
