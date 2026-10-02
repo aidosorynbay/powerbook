@@ -32,7 +32,9 @@ export function useDigest(kind: 'period' | 'book' | 'round', scope: string | nul
     const tick = async () => {
       tries += 1;
       const next = await fetchIt();
-      if (next?.status === 'working' && tries < 80) poll.current = window.setTimeout(tick, 3000);
+      // As long as the server may still be writing (reading_ai._WORKING_FOR, six
+      // minutes), so the page always sees the letter or the error.
+      if (next?.status === 'working' && tries < 130) poll.current = window.setTimeout(tick, 3000);
     };
     poll.current = window.setTimeout(tick, 3000);
     return () => window.clearTimeout(poll.current);

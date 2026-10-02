@@ -587,8 +587,9 @@ def get_digest(db: Session, *, user: User, kind: str, scope: str, lang: str) -> 
     return _digest_out(row, stale=stale)
 
 
-# Longer than any honest attempt (two DeepSeek calls of up to two minutes).
-_WORKING_FOR = timedelta(minutes=6)
+# Longer than any honest attempt: llm gives a letter up after LETTER_WITHIN
+# seconds, and the last piece of an answer may take one socket wait more.
+_WORKING_FOR = timedelta(seconds=llm.LETTER_WITHIN + 150)
 
 
 def _is_abandoned(row: AiDigest) -> bool:

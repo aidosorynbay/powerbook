@@ -22,18 +22,29 @@ from app.models.user import User
 from app.services import catalog, llm
 
 
-class FakeDeepSeek:
-    """Answers queued replies and remembers what was asked."""
+# A reply that never comes: blank lines for as long as the client reads, the
+# way DeepSeek keeps a waiting request open.
+BUSY = object()
 
-    def __init__(self, replies: list[str]):
+
+class FakeDeepSeek:
+    """Answers queued replies and remembers what was asked. A reply is the
+    answer's text, a whole response body (a dict), or BUSY."""
+
+    def __init__(self, replies: list):
         self.replies = list(replies)
         self.requests: list[dict] = []
 
     def __call__(self, request, timeout=None):
-        self.requests.append({"url": request.full_url, "headers": dict(request.header_items()), "body": json.loads(request.data)})
-        content = self.replies.pop(0) if self.replies else "ok"
-        payload = {"choices": [{"message": {"role": "assistant", "content": content}, "finish_reason": "stop"}]}
-        fake = self
+        self.requests.append(
+            {"url": request.full_url, "headers": dict(request.header_items()), "body": json.loads(request.data), "timeout": timeout}
+        )
+        reply = self.replies.pop(0) if self.replies else "ok"
+        if reply is BUSY:
+            pieces = iter(lambda: b"\n", None)
+        else:
+            payload = reply if isinstance(reply, dict) else {"choices": [{"message": {"role": "assistant", "content": reply}, "finish_reason": "stop"}]}
+            pieces = iter([json.dumps(payload).encode()])
 
         class Response:
             def __enter__(self):
@@ -42,10 +53,9 @@ class FakeDeepSeek:
             def __exit__(self, *exc):
                 return False
 
-            def read(self):
-                return json.dumps(payload).encode()
+            def read1(self, n=-1):
+                return next(pieces, b"")
 
-        fake.last = Response
         return Response()
 
 
@@ -93,6 +103,34 @@ def test_json_answers_are_asked_in_json_mode_and_retried_when_the_shape_is_wrong
     assert body["thinking"] == {"type": "disabled"}
     assert "json" in body["messages"][0]["content"].lower() and '"headline"' in body["messages"][0]["content"]
     assert llm.model_name() == "deepseek-flash"
+
+
+def test_a_busy_deepseek_is_given_up_not_waited_for(deepseek, monkeypatch):
+    """Sentry POWERBOOK-BACKEND-3: blank lines kept one letter waiting
+    15 minutes a try, past the socket timeout."""
+    seconds = iter(range(0, 100_000, 5))  # every look at the clock, five seconds on
+    monkeypatch.setattr(llm, "time", type("Clock", (), {"monotonic": staticmethod(lambda: next(seconds))}))
+
+    fake = deepseek([BUSY])
+    with pytest.raises(llm.AiUnavailable):
+        llm.ask_json(system="Write a letter.", prompt="{}", schema=SCHEMA)
+    assert len(fake.requests) == 1 and fake.requests[0]["timeout"] <= 120
+    assert next(seconds) <= llm.LETTER_WITHIN + 20
+
+    deepseek([BUSY])
+    start = next(seconds)
+    with pytest.raises(llm.AiUnavailable):
+        llm.chat(system="s", messages=[{"role": "user", "content": "hi"}])
+    assert next(seconds) - start <= llm.REPLY_WITHIN + 20
+
+
+def test_empty_answers_and_errors_under_a_200_are_not_letters(deepseek):
+    deepseek(["", ""])
+    with pytest.raises(ValueError):
+        llm.ask_json(system="Write a letter.", prompt="{}", schema=SCHEMA)
+    deepseek([{"error": {"message": "Request timed out", "type": "timeout"}}])
+    with pytest.raises(llm.AiUnavailable):
+        llm.ask_json(system="Write a letter.", prompt="{}", schema=SCHEMA)
 
 
 @pytest.fixture()

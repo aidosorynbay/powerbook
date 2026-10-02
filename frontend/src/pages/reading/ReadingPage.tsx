@@ -50,7 +50,8 @@ function PeriodLetterCard({ scope, aiAvailable }: { scope: string; aiAvailable: 
         </>
       )}
       {digest?.status === 'working' && <Working />}
-      {digest?.status === 'error' && <LetterError code={digest.error === 'ai_unavailable' ? 'ai_off' : 'failed'} />}
+      {/* AI that is switched on but busy or out of reach: try later, not "coming soon". */}
+      {digest?.status === 'error' && <LetterError code="failed" />}
       <LetterError code={error} />
       {letter && (
         <div className={styles.letterBody}>

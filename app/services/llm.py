@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import urllib.error
 import urllib.request
 
@@ -24,7 +25,18 @@ from app.services.claude import AiRefused, AiUnavailable
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["AiRefused", "AiUnavailable", "available", "ask_json", "chat", "model_name", "provider"]
+__all__ = ["AiRefused", "AiUnavailable", "LETTER_WITHIN", "available", "ask_json", "chat", "model_name", "provider"]
+
+# DeepSeek holds a waiting request open by sending blank lines, for up to half
+# an hour when it is busy (api-docs.deepseek.com/quick_start/rate_limit), so the
+# socket timeout never fires: one reading letter waited 15 minutes for each of
+# its two tries, and both came back empty (Sentry POWERBOOK-BACKEND-3). Past
+# these many seconds the answer is given up: a letter's tries together, and
+# one reply in a conversation, which the reader waits for on the page.
+LETTER_WITHIN = 210
+REPLY_WITHIN = 90
+# The longest wait for a single piece of the answer.
+_SOCKET_TIMEOUT = 120
 
 
 def provider() -> str | None:
@@ -47,7 +59,23 @@ def model_name() -> str:
 # ---------- DeepSeek ----------
 
 
-def _deepseek(messages: list[dict], *, json_mode: bool, max_tokens: int, temperature: float | None = None) -> str:
+def _read_by(response, deadline: float) -> bytes:
+    """The body, a piece at a time, so the blank lines of a waiting request
+    cannot hold it past the deadline."""
+    body = bytearray()
+    while chunk := response.read1(65536):
+        body += chunk
+        if time.monotonic() > deadline:
+            raise AiUnavailable("slow")
+    return bytes(body)
+
+
+def _deepseek(
+    messages: list[dict], *, json_mode: bool, max_tokens: int, deadline: float, temperature: float | None = None
+) -> str:
+    left = deadline - time.monotonic()
+    if left <= 0:
+        raise AiUnavailable("slow")
     body: dict = {
         "model": settings.deepseek_model,
         "messages": messages,
@@ -67,8 +95,8 @@ def _deepseek(messages: list[dict], *, json_mode: bool, max_tokens: int, tempera
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=120) as response:
-            data = json.loads(response.read())
+        with urllib.request.urlopen(request, timeout=min(_SOCKET_TIMEOUT, left)) as response:
+            data = json.loads(_read_by(response, deadline))
     except urllib.error.HTTPError as exc:
         detail = exc.read()[:300].decode("utf-8", "replace")
         if exc.code in (401, 402, 403):
@@ -84,12 +112,21 @@ def _deepseek(messages: list[dict], *, json_mode: bool, max_tokens: int, tempera
     except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
         raise AiUnavailable("unreachable") from exc
 
+    if data.get("error"):
+        # A request that waited too long can end in an error under a 200.
+        logger.error("DeepSeek answered with an error: %s", str(data["error"])[:300])
+        raise AiUnavailable("deepseek error")
     choice = (data.get("choices") or [{}])[0]
     if choice.get("finish_reason") == "content_filter":
         raise AiRefused("content_filter")
     if json_mode and choice.get("finish_reason") == "length":
         raise ValueError("answer cut short")
-    return ((choice.get("message") or {}).get("content") or "").strip()
+    content = ((choice.get("message") or {}).get("content") or "").strip()
+    if not content:
+        # JSON mode "may occasionally return empty content" (DeepSeek's docs);
+        # how it ended says which kind, if it fails again.
+        logger.warning("DeepSeek gave an empty answer: finish=%s usage=%s", choice.get("finish_reason"), data.get("usage"))
+    return content
 
 
 def _example(schema: dict):
@@ -153,9 +190,10 @@ def ask_json(*, system: str, prompt: str, schema: dict, effort: str = "medium", 
             f"The JSON Schema it must follow: {json.dumps(schema, ensure_ascii=False)}"
         )
         messages = [{"role": "system", "content": shaped}, {"role": "user", "content": prompt}]
+        deadline = time.monotonic() + LETTER_WITHIN
         last_error: Exception | None = None
         for _ in range(2):
-            text = _deepseek(messages, json_mode=True, max_tokens=max_tokens)
+            text = _deepseek(messages, json_mode=True, max_tokens=max_tokens, deadline=deadline)
             try:
                 return _conform(json.loads(text), schema, top=True)
             except (json.JSONDecodeError, ValueError) as exc:
@@ -169,7 +207,13 @@ def ask_json(*, system: str, prompt: str, schema: dict, effort: str = "medium", 
 def chat(*, system: str, messages: list[dict], max_tokens: int = 900) -> str:
     """One reply in a conversation; `messages` alternate user and assistant."""
     if provider() == "deepseek":
-        return _deepseek([{"role": "system", "content": system}, *messages], json_mode=False, max_tokens=max_tokens, temperature=0.7)
+        return _deepseek(
+            [{"role": "system", "content": system}, *messages],
+            json_mode=False,
+            max_tokens=max_tokens,
+            deadline=time.monotonic() + REPLY_WITHIN,
+            temperature=0.7,
+        )
     if provider() == "claude":
         return claude.chat(system=system, messages=messages, max_tokens=max_tokens)
     raise AiUnavailable("no key")
