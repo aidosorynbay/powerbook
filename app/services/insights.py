@@ -227,11 +227,7 @@ class InsightsService:
         first_round = self.repo.first_round_for_user(user_ids=ids)
         books = self.repo.finished_book_titles_for_user(user_ids=ids)
 
-        possible_days = 0
-        for rnd_id in self._participated_round_ids(ids):
-            rnd = self.repo.round_by_id(round_id=rnd_id)
-            if rnd:
-                possible_days += calendar.monthrange(rnd.year, rnd.month)[1]
+        possible_days = sum(calendar.monthrange(rnd.year, rnd.month)[1] for rnd in self._participated_rounds(ids))
         consistency = int(round((total_days_logged / possible_days) * 100)) if possible_days else 0
 
         return AllTimeProfileOut(
@@ -246,13 +242,15 @@ class InsightsService:
             books_finished=len(books),
         )
 
-    def _participated_round_ids(self, user_ids: list[uuid.UUID]) -> list[uuid.UUID]:
+    def _participated_rounds(self, user_ids: list[uuid.UUID]) -> list:
+        """The circles these accounts were in, in one query: one per circle
+        was an N+1 on /api/insights/badges (Sentry POWERBOOK-BACKEND-2)."""
         from sqlalchemy import select
 
-        from app.models.round import RoundParticipant
+        from app.models.round import Round, RoundParticipant
 
-        stmt = select(RoundParticipant.round_id).where(RoundParticipant.user_id.in_(user_ids)).distinct()
-        return [row[0] for row in self.db.execute(stmt).all()]
+        joined = select(RoundParticipant.round_id).where(RoundParticipant.user_id.in_(user_ids))
+        return list(self.db.execute(select(Round).where(Round.id.in_(joined))).scalars())
 
     # ---------- percentile ----------
 
@@ -771,13 +769,11 @@ class InsightsService:
         profile = self.all_time_profile(user_id=user_id)
         arch = self.archetype(user_id=user_id)
 
+        rounds_in_year = [rnd for rnd in self._participated_rounds(ids) if rnd.year == year]
         best_pct = None
-        for rnd_id in self._participated_round_ids(ids):
-            rnd = self.repo.round_by_id(round_id=rnd_id)
-            if rnd is None or rnd.year != year:
-                continue
+        for rnd in rounds_in_year:
             try:
-                p = self.percentile(user_id=user_id, round_id=rnd_id)
+                p = self.percentile(user_id=user_id, round_id=rnd.id)
                 best_pct = p.percentile if best_pct is None else max(best_pct, p.percentile)
             except HTTPException:
                 continue
@@ -786,11 +782,7 @@ class InsightsService:
             1 for _, d, rnd in self.repo.finished_books_for_user(user_ids=ids) if rnd.year == year
         )
 
-        rounds_this_year = 0
-        for rnd_id in self._participated_round_ids(ids):
-            rnd = self.repo.round_by_id(round_id=rnd_id)
-            if rnd is not None and rnd.year == year:
-                rounds_this_year += 1
+        rounds_this_year = len(rounds_in_year)
 
         minutes_by_month = [by_month.get(m, 0) for m in range(1, 13)]
 
