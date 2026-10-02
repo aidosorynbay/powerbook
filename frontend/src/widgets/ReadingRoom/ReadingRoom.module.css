@@ -332,6 +332,15 @@
   background: rgba(242, 100, 48, 0.5);
   border-color: #fff;
 }
+/* a finger is wider than the ring: a tap anywhere about the chair takes it */
+@media (pointer: coarse) {
+  .free::after {
+    content: '';
+    position: absolute;
+    inset: -14px;
+    border-radius: 50%;
+  }
+}
 @keyframes ring {
   0% { box-shadow: 0 0 0 0 rgba(255, 241, 222, 0.6); }
   80% { box-shadow: 0 0 0 12px rgba(255, 241, 222, 0); }
@@ -453,12 +462,19 @@
   background: rgba(20, 9, 3, 0.8);
 }
 @media (max-width: 759px) {
-  /* on phones the bar rests in the dock or just above it, at the right (its top is set from the dock) */
+  /* on phones the bar rests just above the dock, at the right (its top is set from the dock) ... */
   .coachBar {
     left: auto;
     right: 24px;
     bottom: auto;
     transform: none;
+  }
+  /* ... or, with no dock, at the foot between the front chairs */
+  .coachBar[data-free='1'] {
+    left: 50%;
+    right: auto;
+    bottom: calc(12px + var(--nav));
+    transform: translateX(-50%);
   }
 }
 
@@ -492,6 +508,16 @@
   gap: 6px 12px;
   font-size: 13.5px;
   color: var(--hud2);
+}
+/* phones: «Занять место» at the right of the line that says who is reading, over the window, where there are no chairs */
+.takeSeat {
+  margin-left: auto;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  white-space: nowrap;
+  text-shadow: none;
+  box-shadow: 0 6px 18px rgba(20, 8, 2, 0.4);
 }
 .live {
   display: inline-flex;
@@ -1168,6 +1194,32 @@
   }
   .clock {
     font-size: 24px;
+  }
+  /* the clock running: one slim row, the clock with the day's sum under it, then Пауза and Закончить;
+     the book is on the reader's own tag in the photo */
+  .dockSeated {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas: 'clock pause finish' 'book pause finish';
+    gap: 2px 8px;
+    align-items: center;
+    padding: 8px 10px 8px 14px;
+  }
+  .dockSeated .clock {
+    grid-area: clock;
+  }
+  .dockSeated .dockBook {
+    grid-area: book;
+    max-width: none;
+  }
+  .dockSeated .dockBook i {
+    display: none;
+  }
+  .dockSeated > button:first-of-type {
+    grid-area: pause;
+  }
+  .dockSeated > button:last-of-type {
+    grid-area: finish;
   }
   /* readers and chat: a sheet from below, over the dock */
   .drawer {

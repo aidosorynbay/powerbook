@@ -32,7 +32,8 @@ type Message = { id: string; user_id: string; display_name: string; text: string
 /* the hall's day, for the chat: each reader sitting down with a book and getting up with their minutes */
 type RoomEvent = { kind: 'sit' | 'finish'; at: string; user_id: string; display_name: string; gender: string; book: string; minutes?: number };
 type HallDay = { date: string; readers: number; names: string[]; minutes: number; events: RoomEvent[] };
-type MySession = { id: string; hall: HallName; seat: number; book: string; status: 'reading' | 'paused'; elapsed_seconds: number };
+/* away_seconds: a stretch the page was silent (a locked screen, another app), waiting for the reader to say whether they read */
+type MySession = { id: string; hall: HallName; seat: number; book: string; status: 'reading' | 'paused'; elapsed_seconds: number; away_seconds: number };
 type RoomState = {
   hall: HallName;
   seats: number;
@@ -48,6 +49,7 @@ type RoomState = {
   day: HallDay | null;
 };
 type Finished = { sessionId: string; minutes: number; credited: boolean; reason: string | null; date: string | null };
+type FinishOut = { minutes: number; credited: boolean; reason: string | null; date: string | null; today_minutes: number };
 
 const HALL_KEY: Record<HallName, HallKey> = { round: 'a', library: 'b' };
 const PHONE_HALL: Record<HallName, HallKey> = { round: 'mr', library: 'ml' };
@@ -184,6 +186,19 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   }, [toast]);
 
   /* ---------- the room from the server ---------- */
+  // My sitting gone without «Закончить» from this page (finished on another device, or the room stood me up after hours
+  // without a word from me) is shown here as finished, with what it saved.
+  const held = useRef<string | null>(null);
+  const onTodayRef = useRef(onToday);
+  onTodayRef.current = onToday;
+  const settle = useCallback(async (sessionId: string) => {
+    const { data } = await apiPost<FinishOut>(`/reading-room/sessions/${sessionId}/finish`, {}, { requireAuth: true });
+    if (!data) return;
+    // (an ended sitting is told as "already_ended"; under a minute it is the same «too short» as a finish here)
+    setFinished({ sessionId, minutes: data.minutes, credited: data.credited, reason: data.minutes < 1 ? 'short' : data.reason, date: data.date });
+    if (data.credited) onTodayRef.current?.();
+  }, []);
+
   const load = useCallback(async () => {
     const q = since.current ? `?since=${encodeURIComponent(since.current)}` : '';
     const { data } = await apiGet<RoomState>(`/reading-room/${hall}/state${q}`, { requireAuth: true });
@@ -191,6 +206,9 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     stamp.current = performance.now();
     setState(data);
     setLoaded(true);
+    const gone = held.current;
+    held.current = data.my_session?.id ?? null;
+    if (gone && gone !== held.current) settle(gone);
     if (data.messages.length) {
       since.current = data.messages[data.messages.length - 1].created_at;
       setMessages((old) => {
@@ -199,7 +217,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
         return fresh.length ? [...old, ...fresh].slice(-120) : old;
       });
     }
-  }, [hall]);
+  }, [hall, settle]);
 
   useEffect(() => {
     since.current = null;
@@ -230,14 +248,60 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
 
   const mine = state?.my_session ?? null;
   const mineHere = mine && mine.hall === hall ? mine : null;
-  // Tell the server we are still here while seated, even with the room scrolled away.
+  // Tell the server we are still here while seated, even with the room scrolled away. A phone or iPad stops the page
+  // while its screen is locked or another app is in front: back from that, check in at once and catch up with the room.
   useEffect(() => {
     if (!mine) return;
-    const id = setInterval(() => {
-      apiPost(`/reading-room/sessions/${mine.id}/heartbeat`, {}, { requireAuth: true });
-    }, 25000);
-    return () => clearInterval(id);
+    const beat = () => apiPost(`/reading-room/sessions/${mine.id}/heartbeat`, {}, { requireAuth: true });
+    const id = setInterval(beat, 25000);
+    const back = () => {
+      if (document.visibilityState === 'visible') beat().then(() => load());
+    };
+    document.addEventListener('visibilitychange', back);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', back);
+    };
   }, [mine?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // While the clock runs here the screen stays on: an iPad left on the table beside a paper book would otherwise lock
+  // after a few minutes and stop the page. The browser lets go of the lock whenever the page is hidden; it is taken
+  // again on return, or on the next tap where Safari wants one first.
+  useEffect(() => {
+    if (mineHere?.status !== 'reading' || !('wakeLock' in navigator)) return;
+    let lock: WakeLockSentinel | null = null;
+    let asking = false;
+    let done = false;
+    const hold = () => {
+      if (done || lock || asking || document.visibilityState !== 'visible') return;
+      asking = true;
+      navigator.wakeLock.request('screen').then(
+        (l) => {
+          asking = false;
+          if (done) {
+            l.release();
+            return;
+          }
+          lock = l;
+          l.addEventListener('release', () => {
+            lock = null;
+          });
+        },
+        () => {
+          asking = false;
+        },
+      );
+    };
+    hold();
+    document.addEventListener('visibilitychange', hold);
+    document.addEventListener('pointerdown', hold);
+    return () => {
+      done = true;
+      document.removeEventListener('visibilitychange', hold);
+      document.removeEventListener('pointerdown', hold);
+      lock?.release();
+    };
+  }, [mineHere?.id, mineHere?.status]);
 
   const since0 = (performance.now() - stamp.current) / 1000;
   const elapsed = (s: { status: string; elapsed_seconds: number }) => s.elapsed_seconds + (s.status === 'reading' ? since0 : 0);
@@ -416,13 +480,12 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
         el.style.setProperty('--lx', `${lx.toFixed(1)}px`);
         el.style.visibility = 'visible';
       }
-      // on a phone the bar sits inside the dock beside «Сесть и читать», or just above the dock when that is busier
+      // on a phone the bar rests just above the dock, or at the foot between the front chairs while there is none
       const bar = box.querySelector<HTMLElement>('[data-bar]');
-      const dock = stage.querySelector<HTMLElement>(`.${styles.dock}`);
-      if (bar && dock && phone) {
-        const dr = dock.getBoundingClientRect();
-        const inside = !!dock.querySelector('[data-coach="sit"]');
-        bar.style.top = `${(inside ? dr.top + (dr.height - bar.offsetHeight) / 2 : dr.top - bar.offsetHeight - 10) - fr.top}px`;
+      if (bar && phone) {
+        const dock = stage.querySelector<HTMLElement>(`.${styles.dock}`);
+        bar.dataset.free = dock ? '' : '1';
+        bar.style.top = dock ? `${dock.getBoundingClientRect().top - bar.offsetHeight - 10 - fr.top}px` : '';
       }
     };
     raf = requestAnimationFrame(place);
@@ -476,7 +539,10 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     if (!book && suggest[0]) setBook(suggest[0]);
     apiGet<{ books: { title: string; status: string }[] }>('/library/bookcase', { requireAuth: true }).then(({ data }) => {
       const reading = (data?.books ?? []).filter((b) => b.status === 'reading').map((b) => b.title);
-      if (reading.length) setSuggest((old) => [...new Set([...old, ...reading])].slice(0, 5));
+      if (!reading.length) return;
+      setSuggest((old) => [...new Set([...old, ...reading])].slice(0, 5));
+      // the title is typed only the first time: a book on the shelf as «читаю» is already the answer
+      setBook((b) => b || reading[0]);
     });
   };
 
@@ -495,6 +561,8 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     }
     setBusy(true);
     Ding.prime();
+    // a sitting in the other hall ends as I sit down here: nothing to tell about it
+    held.current = null;
     const { data, error } = await apiPost<MySession>(`/reading-room/${hall}/sit`, { seat, book: title }, { requireAuth: true });
     setBusy(false);
     if (data) track('room_sit', { hall });
@@ -516,11 +584,19 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     load();
   };
 
+  const answerAway = async (count: boolean) => {
+    if (!mine || busy) return;
+    setBusy(true);
+    await apiPost(`/reading-room/sessions/${mine.id}/away`, { count }, { requireAuth: true });
+    setBusy(false);
+    load();
+  };
+
   const finish = async () => {
     if (!mine || busy) return;
     setBusy(true);
-    const { data } = await apiPost<{ minutes: number; credited: boolean; reason: string | null; date: string | null; today_minutes: number }>(
-      `/reading-room/sessions/${mine.id}/finish`, {}, { requireAuth: true });
+    held.current = null;
+    const { data } = await apiPost<FinishOut>(`/reading-room/sessions/${mine.id}/finish`, {}, { requireAuth: true });
     setBusy(false);
     if (data) {
       const f = { sessionId: mine.id, minutes: data.minutes, credited: data.credited, reason: data.reason, date: data.date };
@@ -732,6 +808,14 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     </>
   );
 
+  const lamp = (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" /></svg>
+  );
+  // On a phone the foot of the photo is the front row of chairs, so nothing waits there while nobody is seated:
+  // «Занять место» rides in the heading (it, or a tap on a chair's ring, brings the book and the timer up from below),
+  // and the clock, once running, is one slim row.
+  let takeSeat = false;
+  let dockLook = '';
   let dock;
   if (noRound) {
     dock = <span className={styles.dockNote}>{t('room.noRound')}</span>;
@@ -754,7 +838,17 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
         <button className={`${styles.btn} ${styles.primary}`} type="button" onClick={finish} disabled={busy}>{t('room.finish')}</button>
       </>
     );
+  } else if (mineHere && mineHere.away_seconds > 0) {
+    // back from a dark screen or another app: only the reader knows whether they read through it
+    dock = (
+      <>
+        <span className={styles.dockNote}>{t('room.awayAsk', { min: Math.max(1, Math.round(mineHere.away_seconds / 60)) })}</span>
+        <button className={`${styles.btn} ${styles.primary}`} type="button" onClick={() => answerAway(true)} disabled={busy}>{t('room.awayYes')}</button>
+        <button className={styles.btn} type="button" onClick={() => answerAway(false)} disabled={busy}>{t('room.awayNo')}</button>
+      </>
+    );
   } else if (mineHere) {
+    dockLook = styles.dockSeated;
     dock = (
       <>
         <span className={styles.clock} aria-label={t('room.timer')}>{clock(elapsed(mineHere))}</span>
@@ -799,10 +893,11 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
       </>
     );
   } else {
-    dock = (
+    takeSeat = true;
+    dock = phone ? null : (
       <>
         <button className={`${styles.btn} ${styles.primary}`} type="button" data-coach="sit" onClick={() => openPick(null)}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" /></svg>
+          {lamp}
           {t('room.sitDown')}
         </button>
         <span className={`${styles.dockNote} ${styles.dockHint}`}>{state?.in_round ? t('room.dockNote', { date: readingDay }) : t('room.dockNoteGuest')}</span>
@@ -839,6 +934,12 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
             <div className={styles.meta}>
               <span className={styles.live}><i className={styles.liveDot} />{mineHere ? (readers.length > 1 ? t('room.youPlus', { n: readers.length - 1 }) : t('room.youAlone')) : t('room.readingCount', { n: reading })}</span>
               {totalMinutes > 0 && <span>{t('room.together', { min: totalMinutes })}</span>}
+              {phone && takeSeat && (
+                <button className={`${styles.btn} ${styles.primary} ${styles.takeSeat}`} type="button" data-coach="sit" onClick={() => openPick(null)}>
+                  {lamp}
+                  {t('room.takeSeat')}
+                </button>
+              )}
             </div>
             <div className={styles.ctrl}>
               {layout === 'scroll' && (
@@ -887,11 +988,11 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
               ) : chat}
             </div>
           </aside>
-          <div className={`${styles.dock} ${mineHere?.status === 'paused' ? styles.dockPaused : ''}`}>{dock}</div>
+          {dock && <div className={`${styles.dock} ${dockLook} ${mineHere?.status === 'paused' ? styles.dockPaused : ''}`}>{dock}</div>}
           {coach && (
             <div className={styles.coach} ref={coachRef}>
               {COACH.filter((c) => coach.includes(c.id)).map((c, i) => (
-                <div key={c.id} className={styles.hint} data-hint={c.id} data-dir={c.dir} style={{ animationDelay: `${i * 0.22}s`, visibility: 'hidden' }} aria-hidden="true">
+                <div key={c.id} className={styles.hint} data-hint={c.id} data-dir={c.id === 'sit' && phone ? 'below' : c.dir} style={{ animationDelay: `${i * 0.22}s`, visibility: 'hidden' }} aria-hidden="true">
                   <span className={styles.hintL}>{t(`room.coach.${c.id}`)}</span>
                   <svg className={styles.hintAr} viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v15M6 13l6 6 6-6" /></svg>
                 </div>
