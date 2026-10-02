@@ -417,7 +417,7 @@ const translations = {
 
     // Hero
     'hero.titleLine1': 'Понемногу, но постоянно.',
-    'hero.titleLine2': 'Делаем учение брендом.',
+    'hero.titleLine2': 'Сделаем чтение брендом.',
     'hero.subtitle1': 'Ежемесячный челлендж по чтению с реальными результатами.',
     'hero.subtitle2': 'Формируйте привычку, соревнуйтесь с другими читателями.',
     'hero.joinBtn': 'Присоединиться',
@@ -3715,7 +3715,7 @@ const translations = {
 
     // Hero
     'hero.titleLine1': 'Small but consistent.',
-    'hero.titleLine2': 'Let’s make learning a brand.',
+    'hero.titleLine2': 'Let’s make reading a brand.',
     'hero.subtitle1': 'Monthly reading challenge with real results.',
     'hero.subtitle2': 'Build a habit, compete with other readers.',
     'hero.joinBtn': 'Join Now',
