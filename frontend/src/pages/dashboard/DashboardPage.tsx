@@ -227,6 +227,24 @@ export function DashboardPage() {
     loadData();
   }, [loadData]);
 
+  // A phone keeps this page open for hours and brings it back as it was. Back after a while, the page asks for its
+  // numbers again (minutes written meanwhile in the reading room or on another device), and «Сегодня» moves on to a
+  // new day.
+  const [dayNow, setDayNow] = useState(() => new Date());
+  useEffect(() => {
+    let hiddenAt = 0;
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now();
+      } else if (hiddenAt && Date.now() - hiddenAt > 60_000) {
+        setDayNow(new Date());
+        fetchRoundStatus();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [fetchRoundStatus]);
+
   useEffect(() => {
     if (roundStatus?.round) {
       fetchLeaderboard(roundStatus.round.id);
@@ -603,11 +621,11 @@ export function DashboardPage() {
     };
   }, [statusMenuOpen]);
 
-  // Today's date string
+  // Today's date string (it moves on when the page comes back on a new day, see dayNow)
   const todayStr = useMemo(() => {
-    const now = new Date();
+    const now = dayNow;
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  }, []);
+  }, [dayNow]);
 
   // Sync Today panel from calendar data when calendar loads/changes
   const todayData = useMemo(() => {
@@ -681,16 +699,25 @@ export function DashboardPage() {
     return totals;
   }, [t, formatDuration, calendar, allTime]);
 
+  // The «Сегодня» form takes the server's day when what the server has changes, not on every fetch: the page fetches
+  // again when a phone brings it back, and that must not throw away what the reader was typing.
+  const todayFilled = useRef('');
   useEffect(() => {
-    if (todayData) {
-      setTodayMinutes(todayData.minutes > 0 ? String(todayData.minutes) : '');
-      setTodayBookFinished(todayData.book_finished);
-      setTodayComment(todayData.comment ?? '');
-      setTodayCommentPrivate(todayData.comment_private ?? false);
-    }
+    if (!todayData) return;
+    const day = JSON.stringify([todayData.date, todayData.minutes, todayData.book_finished, todayData.comment, todayData.comment_private]);
+    if (day === todayFilled.current) return;
+    todayFilled.current = day;
+    setTodayMinutes(todayData.minutes > 0 ? String(todayData.minutes) : '');
+    setTodayBookFinished(todayData.book_finished);
+    setTodayComment(todayData.comment ?? '');
+    setTodayCommentPrivate(todayData.comment_private ?? false);
   }, [todayData]);
 
+  const booksFilled = useRef('');
   useEffect(() => {
+    const books = JSON.stringify([todayData?.date, todayData?.minutes, todayData?.books, readingBooks?.current]);
+    if (books === booksFilled.current) return;
+    booksFilled.current = books;
     setTodayBooks(startBooks(todayData));
     // startBooks reads only todayData and readingBooks.
   }, [todayData, readingBooks]);
