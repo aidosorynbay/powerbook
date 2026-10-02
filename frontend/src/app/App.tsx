@@ -14,9 +14,11 @@ const BarysGallery = import.meta.env.DEV
   ? lazy(() => import('@/widgets/Mascot/BarysGallery').then((m) => ({ default: m.BarysGallery })))
   : null;
 
-// Loaded only when a book is actually opened.
+// Loaded only when a book is actually opened. Right after a deploy the import
+// comes back empty while main.tsx reloads the page into the new build; the
+// loader stays up until then, not an error (Sentry POWERBOOK-FRONTEND-6).
 const ReaderPage = lazy(() =>
-  import('@/pages/library/ReaderPage').then((m) => ({ default: m.ReaderPage }))
+  import('@/pages/library/ReaderPage').then((m) => (m ? { default: m.ReaderPage } : new Promise<never>(() => {})))
 );
 
 /** A page that needs an account: sign in, then come back to it. */

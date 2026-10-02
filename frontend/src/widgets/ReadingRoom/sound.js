@@ -1,7 +1,11 @@
 /* The room's sound, made in the browser: soft chords and plucks, the fire, rain on the window, a page rustling when someone
    turns one. And the small bell at the day's thirty minutes. Nothing plays until the reader asks for it. */
+/* resume() and suspend() answer with a promise that iOS rejects when it cannot start the audio device (a call, another
+   app holding the sound): the room then stays quiet instead of failing (Sentry POWERBOOK-FRONTEND-3). */
+const quiet=p=>{if(p&&p.catch)p.catch(()=>{})};
+
 export const Ding=(()=>{let ctx=null;
-  const prime=()=>{try{if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();if(ctx.state!=='running')ctx.resume()}catch(e){}};
+  const prime=()=>{try{if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();if(ctx.state!=='running')quiet(ctx.resume())}catch(e){}};
   /* a bell: a few inharmonic partials ringing out, then a second, higher strike */
   const strike=(t,f,g)=>{for(const [m,a,d] of[[1,1,1.9],[2.76,.42,1.1],[5.4,.2,.6],[8.93,.08,.35]]){const o=ctx.createOscillator(),v=ctx.createGain();o.type='sine';o.frequency.value=f*m;v.gain.setValueAtTime(.0001,t);v.gain.exponentialRampToValueAtTime(g*a,t+.006);v.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(v);v.connect(ctx.destination);o.start(t);o.stop(t+d+.05)}};
   const play=()=>{prime();if(!ctx||ctx.state!=='running')return;const t=ctx.currentTime+.03;strike(t,1318.5,.16);strike(t+.13,1975.5,.12)};
@@ -39,11 +43,11 @@ export const Snd=(()=>{
     let next=ctx.currentTime+.1,nextPl=ctx.currentTime+2.5;
     setInterval(()=>{if(ctx.state!=='running')return;const now=ctx.currentTime;if(!on.music){next=Math.max(next,now);nextPl=Math.max(nextPl,now);return}while(next<now+1){chord(next);next+=10}while(nextPl<now+1){pluck(nextPl);nextPl+=2.5+Math.random()*4.5}},300);
   }
-  api.enable=()=>{if(!ctx)init();ctx.resume();master.gain.setTargetAtTime(.85,ctx.currentTime,.4);api.enabled=true};
-  api.disable=()=>{if(!ctx)return;master.gain.setTargetAtTime(0,ctx.currentTime,.25);api.enabled=false;setTimeout(()=>{if(!api.enabled)ctx.suspend()},900)};
+  api.enable=()=>{if(!ctx)init();quiet(ctx.resume());master.gain.setTargetAtTime(.85,ctx.currentTime,.4);api.enabled=true};
+  api.disable=()=>{if(!ctx)return;master.gain.setTargetAtTime(0,ctx.currentTime,.25);api.enabled=false;setTimeout(()=>{if(!api.enabled)quiet(ctx.suspend())},900)};
   api.set=(k,b)=>{on[k]=b;if(ctx)bus[k].gain.setTargetAtTime(b?vol[k]:0,ctx.currentTime,.3)};
   api.vol=(k,v)=>{vol[k]=v;if(ctx&&on[k])bus[k].gain.setTargetAtTime(v,ctx.currentTime,.15)};
   api.page=(v=1)=>{if(!ctx||!api.enabled||!on.pages||ctx.state!=='running')return;const t=ctx.currentTime+.02,s=ctx.createBufferSource();s.buffer=noise;const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.Q.value=.8;bp.frequency.setValueAtTime(1300,t);bp.frequency.exponentialRampToValueAtTime(4200,t+.16);bp.frequency.exponentialRampToValueAtTime(1800,t+.45);const g=ctx.createGain();g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.3*v,t+.07);g.gain.exponentialRampToValueAtTime(.08*v,t+.22);g.gain.exponentialRampToValueAtTime(.0001,t+.5);s.connect(bp);bp.connect(g);g.connect(bus.pages);s.start(t,Math.random()*3,.6);burst(t+.4,'bandpass',420,1.2,.07,.12*v,bus.pages)};
-  document.addEventListener('visibilitychange',()=>{if(!ctx)return;if(document.hidden)ctx.suspend();else if(api.enabled)ctx.resume()});
+  document.addEventListener('visibilitychange',()=>{if(!ctx)return;if(document.hidden)quiet(ctx.suspend());else if(api.enabled)quiet(ctx.resume())});
   return api;
 })();

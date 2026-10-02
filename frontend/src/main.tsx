@@ -9,7 +9,8 @@ initAnalytics();
 // After a deploy, a page opened before it asks for code files the new build
 // has replaced (Sentry: "Failed to fetch dynamically imported module"). Load
 // the new build once instead of showing an error; a second failure within a
-// minute is a real one and is left to show.
+// minute is a real one and is left to show. Once this prevents the error, the
+// failed import resolves to nothing, which the lazy pages wait out.
 window.addEventListener('vite:preloadError', (event) => {
   const key = 'pb.reloadedForBuild';
   try {

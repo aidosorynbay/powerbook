@@ -593,8 +593,10 @@ export function BookcasePage({ ownerId }: Props) {
 
     let cancelled = false;
     import('./BookcaseScene')
-      .then(({ BookcaseScene: Scene }) => {
-        if (cancelled) return;
+      .then((m) => {
+        // Empty while the page reloads into a new build (main.tsx): keep the loader.
+        if (cancelled || !m) return;
+        const Scene = m.BookcaseScene;
         try {
           sceneRef.current = new Scene(
             canvas,

@@ -665,11 +665,17 @@ export function loadImage(src: string): Promise<HTMLImageElement | null> {
   });
 }
 
-/** Wait for the shelf's typefaces, including the Cyrillic and Kazakh subsets. */
+/** Wait for the shelf's typefaces, including the Cyrillic and Kazakh subsets.
+ * Never fails: a font that cannot download (Safari rejects with NetworkError,
+ * Sentry POWERBOOK-FRONTEND-4) leaves the fallback faces to draw with. */
 export async function loadShelfFonts(): Promise<void> {
   if (!('fonts' in document)) return;
   const sample = 'Aa Яя Әә Ғғ Ққ Ңң Өө Ұұ Үү Һһ Іі 0123';
   const specs = [`560 40px ${SERIF}`, `italic 440 40px ${SERIF}`, `500 20px ${SANS}`, `600 20px ${SANS}`, `700 20px ${SANS}`];
   const timeout = new Promise<void>((resolve) => window.setTimeout(resolve, 2500));
-  await Promise.race([Promise.all(specs.map((s) => document.fonts.load(s, sample))).then(() => undefined), timeout]);
+  const loaded = Promise.all(specs.map((s) => document.fonts.load(s, sample))).then(
+    () => undefined,
+    () => undefined
+  );
+  await Promise.race([loaded, timeout]);
 }
