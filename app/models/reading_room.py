@@ -50,6 +50,9 @@ class ReadingRoomSession(TimestampMixin, Base):
     run_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # How long the page was silent while the clock ran (a locked screen, another app), set aside until the reader says
+    # whether they read through it; it is not in accumulated_seconds until they do.
+    away_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
     credited_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     credited_round_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)

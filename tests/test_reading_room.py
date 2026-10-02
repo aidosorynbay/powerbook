@@ -162,19 +162,81 @@ def test_one_sitting_at_a_time_and_bad_chairs(env):
     assert c.post(f"/api/reading-room/sessions/{a}/finish", headers=env.h(env.other)).status_code == 404
 
 
-def test_quiet_readers_are_stood_up_and_counted(env):
+def test_a_screen_gone_dark_keeps_the_chair_and_asks_about_the_time(env):
+    """An iPad on the table locks its screen and Safari stops the page: only the reader knows they kept reading."""
+    if _last_day_of_round(env):
+        pytest.skip("the round's last day only takes corrections")
+    c, h = env.client, env.h(env.other)
+    sid = c.post("/api/reading-room/round/sit", json={"seat": 1, "book": "Сто лет"}, headers=h).json()["id"]
+    now = datetime.now(timezone.utc)
+    # sat down 11 minutes ago; the page last checked in 4½ minutes ago, before the screen went dark
+    _age(env, sid, 11 * 60, seen=now - timedelta(seconds=270))
+
+    # someone else in the room: the chair is still taken, its clock stopped where the room last heard from it
+    st = c.get("/api/reading-room/round/state", headers=env.h(env.reader)).json()
+    [r] = st["readers"]
+    assert r["seat"] == 1 and r["status"] == "paused" and 389 <= r["elapsed_seconds"] <= 391
+    assert st["day"]["minutes"] == 6
+    env.db.expire_all()
+    assert env.db.get(ReadingRoomSession, uuid.UUID(sid)).ended_at is None
+    assert env.db.query(ReadingLog).filter_by(user_id=env.other.id).count() == 0
+
+    # the reader is back: the dark stretch waits for their word, the clock goes on from now
+    s = c.post(f"/api/reading-room/sessions/{sid}/heartbeat", headers=h).json()
+    assert s["status"] == "reading" and 389 <= s["elapsed_seconds"] <= 391 and 269 <= s["away_seconds"] <= 271
+    st = c.get("/api/reading-room/round/state", headers=env.h(env.reader)).json()
+    assert st["readers"][0]["status"] == "reading"
+    # «yes, I was reading»: the time counts
+    s = c.post(f"/api/reading-room/sessions/{sid}/away", json={"count": True}, headers=h).json()
+    assert s["away_seconds"] == 0 and 659 <= s["elapsed_seconds"] <= 661
+    r = c.post(f"/api/reading-room/sessions/{sid}/finish", headers=h).json()
+    assert r["minutes"] == 11 and r["credited"]
+
+
+def test_a_silence_not_read_through_is_left_out(env):
+    c, h = env.client, env.h(env.reader)
+    sid = c.post("/api/reading-room/library/sit", json={"seat": 0, "book": "Дюна"}, headers=h).json()["id"]
+    now = datetime.now(timezone.utc)
+    _age(env, sid, 11 * 60, seen=now - timedelta(seconds=270))
+    # the reader's own page asking for the room is word from them: the question is there on any device
+    st = c.get("/api/reading-room/library/state", headers=h).json()
+    assert 269 <= st["my_session"]["away_seconds"] <= 271 and 389 <= st["my_session"]["elapsed_seconds"] <= 391
+    s = c.post(f"/api/reading-room/sessions/{sid}/away", json={"count": False}, headers=h).json()
+    assert s["away_seconds"] == 0 and 389 <= s["elapsed_seconds"] <= 391
+
+
+def test_a_page_back_after_hours_does_not_bring_the_sitting_back(env):
+    c, h = env.client, env.h(env.reader)
+    sid = c.post("/api/reading-room/library/sit", json={"seat": 0, "book": "Дюна"}, headers=h).json()["id"]
+    now = datetime.now(timezone.utc)
+    # read 20½ minutes, then nothing for three hours: the tab was left, and now it wakes up
+    seen = now - timedelta(hours=3)
+    _age(env, sid, int((now - seen).total_seconds()) + 20 * 60 + 30, seen=seen)
+    s = c.post(f"/api/reading-room/sessions/{sid}/heartbeat", headers=h).json()
+    assert s["status"] == "ended" and s["away_seconds"] == 0
+    env.db.expire_all()
+    assert env.db.get(ReadingRoomSession, uuid.UUID(sid)).accumulated_seconds // 60 == 20
+    assert c.get("/api/reading-room/library/state", headers=h).json()["my_session"] is None
+
+
+def test_gone_readers_are_stood_up_and_counted(env):
     if _last_day_of_round(env):
         pytest.skip("the round's last day only takes corrections")
     c = env.client
     sid = c.post("/api/reading-room/round/sit", json={"seat": 1, "book": "Сто лет"}, headers=env.h(env.other)).json()["id"]
     now = datetime.now(timezone.utc)
-    # read 40 minutes, then the tab was closed 5 minutes ago
-    _age(env, sid, 45 * 60, seen=now - timedelta(minutes=5) + timedelta(seconds=2))
+    # read 40½ minutes, then the tab was closed and nothing was heard from it for over two hours
+    seen = now - timedelta(hours=2, minutes=5)
+    _age(env, sid, int((now - seen).total_seconds()) + 40 * 60 + 30, seen=seen)
+    day = reading_day(seen)
+    if not env.rnd.covers(day) or day == env.rnd.last_day_date:
+        pytest.skip("the day they left is not one this round takes minutes for")
     st = c.get("/api/reading-room/round/state", headers=env.h(env.reader)).json()
     assert st["readers"] == []
     env.db.expire_all()
-    log = env.db.query(ReadingLog).filter_by(user_id=env.other.id, date=env.today).one()
-    assert log.minutes == 40
+    # their minutes go to the reading day they left on
+    log = env.db.query(ReadingLog).filter_by(user_id=env.other.id).one()
+    assert log.minutes == 40 and log.date == day
 
 
 def test_chat(env):

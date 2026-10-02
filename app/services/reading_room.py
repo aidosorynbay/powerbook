@@ -19,9 +19,14 @@ from app.services.reading import ReadingService
 # Chairs in each hall's photo, in the order the client maps them (frontend/src/widgets/ReadingRoom/engine.js, HALLS).
 # The library has eleven: six in the wide photo and all eleven in the phones' portrait one.
 SEATS = {"round": 12, "library": 11}
-# A reader whose page has not checked in for this long has left the room; their sitting is closed and
-# the reading up to their last check-in is counted, as if they had pressed «Закончить».
-STALE_AFTER = timedelta(seconds=180)
+# Phones and iPads stop a page the moment the screen locks or another app comes to the front, so a reader with a paper
+# book (or a book in another app) goes quiet while still reading. A sitting not heard from for this long is shown to the
+# others as stopped where the room last heard from it ...
+AWAY_AFTER = timedelta(seconds=180)
+# ... but it keeps its chair. When the reader's page is back, the silent stretch is set aside and the reader is asked
+# whether they read through it (only they know). Not heard from for this long, the page was closed or forgotten: the
+# sitting is closed and the reading up to its last check-in is counted, as if they had pressed «Закончить».
+GONE_AFTER = timedelta(hours=2)
 # Nobody reads for twelve hours at a stretch: a sitting this long was left open by mistake.
 MAX_SITTING = timedelta(hours=12)
 CHAT_WINDOW = timedelta(hours=12)
@@ -95,6 +100,29 @@ class ReadingRoomService:
         extra = max(0, int((at - run).total_seconds())) if s.status == "reading" and run is not None else 0
         return int(s.accumulated_seconds) + extra
 
+    @staticmethod
+    def _away(s: ReadingRoomSession, now: datetime) -> bool:
+        return now - _aware(s.last_seen_at) > AWAY_AFTER
+
+    def _gone(self, s: ReadingRoomSession, now: datetime) -> bool:
+        return now - _aware(s.last_seen_at) > GONE_AFTER or now - _aware(s.created_at or now) > MAX_SITTING
+
+    def _back(self, s: ReadingRoomSession, now: datetime) -> None:
+        """The reader's page is heard from again. Gone too long, the sitting is closed as the sweep would close it.
+        Otherwise a silence of AWAY_AFTER or more while the clock ran is set aside for the reader to answer for
+        (answer_away), and the clock goes on from now."""
+        if s.ended_at is not None:
+            return
+        seen = _aware(s.last_seen_at)
+        if self._gone(s, now):
+            self._close(s, at=min(seen, now))
+            return
+        if self._away(s, now) and s.status == "reading" and s.run_started_at is not None:
+            counted = self.elapsed_seconds(s, seen)
+            s.away_seconds = int(s.away_seconds or 0) + self.elapsed_seconds(s, now) - counted
+            s.accumulated_seconds, s.run_started_at = counted, now
+        s.last_seen_at = now
+
     def _open_sessions(self, hall: str, scope: uuid.UUID | None) -> list[ReadingRoomSession]:
         stmt = select(ReadingRoomSession).where(
             ReadingRoomSession.hall == hall,
@@ -110,12 +138,11 @@ class ReadingRoomService:
         return self.db.execute(stmt).scalars().first()
 
     def _sweep(self, sessions: list[ReadingRoomSession]) -> list[ReadingRoomSession]:
-        """Close sittings whose readers have gone quiet, counting their reading up to the last check-in."""
+        """Close sittings whose readers are gone, counting their reading up to the last check-in."""
         now, alive = _now(), []
         for s in sessions:
-            seen = _aware(s.last_seen_at)
-            if now - seen > STALE_AFTER or now - _aware(s.created_at or now) > MAX_SITTING:
-                self._close(s, at=min(seen, now))
+            if self._gone(s, now):
+                self._close(s, at=min(_aware(s.last_seen_at), now))
             else:
                 alive.append(s)
         return alive
@@ -131,8 +158,8 @@ class ReadingRoomService:
         row = ReadingService(self.db).logs.get_for_user_date(round_id=rnd.id, user_id=user_id, day=self._today())
         return int(row.minutes) if row else 0
 
-    def _credit(self, s: ReadingRoomSession, minutes: int) -> str | None:
-        """Adds the sitting's minutes to the reader's «Сегодня» in their current circle.
+    def _credit(self, s: ReadingRoomSession, minutes: int, day: date) -> str | None:
+        """Adds the sitting's minutes to the reader's day in their current circle.
         Returns why nothing was written, or None when it was."""
         if minutes < 1:
             return "short"
@@ -140,7 +167,6 @@ class ReadingRoomService:
         if not self.in_circle(rnd, s.user_id):
             return "not_in_round"
         reading = ReadingService(self.db)
-        day = self._today()
         row = reading.logs.get_for_user_date(round_id=rnd.id, user_id=s.user_id, day=day)
         try:
             reading.log_minutes(
@@ -160,7 +186,8 @@ class ReadingRoomService:
         at = at or _now()
         seconds = self.elapsed_seconds(s, at)
         s.accumulated_seconds, s.run_started_at, s.status, s.ended_at = seconds, None, "ended", at
-        why = self._credit(s, seconds // 60)
+        # a sitting closed long after its reader left goes to the day they left on, not the day it was noticed
+        why = self._credit(s, seconds // 60, reading_day(at))
         self.db.commit()
         return seconds // 60, why
 
@@ -172,6 +199,15 @@ class ReadingRoomService:
         scope = self._scope(hall, rnd)
         can_sit = hall == "library" or rnd is not None
         sessions = self._sweep(self._open_sessions(hall, scope)) if hall == "library" or rnd is not None else []
+        now = _now()
+        # my own page asking is word from me: a silence before it is set aside for me to answer for (the heartbeat
+        # keeps last_seen_at fresh otherwise, so nothing is written on an ordinary poll)
+        mine = self._open_for_user(user.id)
+        if mine is not None and self._away(mine, now):
+            self._back(mine, now)
+            self.db.commit()
+            if mine.ended_at is not None:
+                mine = None
         users = {u.id: u for u in self.db.execute(select(User).where(User.id.in_([s.user_id for s in sessions]))).scalars()} if sessions else {}
         today = self._today()
         logs = {}
@@ -181,20 +217,22 @@ class ReadingRoomService:
                 ReadingLog.user_id.in_([s.user_id for s in sessions]),
             )).scalars()
             logs = {r.user_id: int(r.minutes) for r in rows}
-        now = _now()
         readers = []
         for s in sorted(sessions, key=lambda x: x.created_at or now):
             u = users.get(s.user_id)
             if u is None:
                 continue
+            me = u.id == user.id
+            # someone else's page gone quiet: what the room knows is their reading up to the last word from it
+            away = not me and self._away(s, now)
             readers.append({
                 "session_id": str(s.id), "user_id": str(u.id), "display_name": u.display_name, "username": u.username,
                 "gender": u.gender.value if u.gender else "unknown", "seat": s.seat, "book": s.book_title,
-                "status": s.status, "elapsed_seconds": self.elapsed_seconds(s, now),
+                "status": "paused" if away else s.status,
+                "elapsed_seconds": self.elapsed_seconds(s, _aware(s.last_seen_at) if away else now),
                 "today_minutes": logs.get(s.user_id, 0), "in_round": self.in_circle(rnd, u.id),
-                "me": u.id == user.id,
+                "me": me,
             })
-        mine = self._open_for_user(user.id)
         return {
             "hall": hall,
             "seats": SEATS[hall],
@@ -215,6 +253,8 @@ class ReadingRoomService:
         return {
             "id": str(s.id), "hall": s.hall, "seat": s.seat, "book": s.book_title, "status": s.status,
             "elapsed_seconds": self.elapsed_seconds(s, now), "credited_minutes": int(s.credited_minutes),
+            # a silence the reader has not answered for yet (see answer_away)
+            "away_seconds": int(s.away_seconds or 0) if s.ended_at is None else 0,
         }
 
     def sit(self, *, hall: str, user: User, seat: int, book: str) -> dict:
@@ -226,10 +266,13 @@ class ReadingRoomService:
             raise HTTPException(status_code=422, detail="No such chair")
         rnd = self.current_round()
         self._require_seatable(hall, rnd, user)
-        # One sitting at a time: taking a chair gets you up from the one you were in.
+        # One sitting at a time: taking a chair gets you up from the one you were in (a silence in it unanswered for
+        # is left out).
         old = self._open_for_user(user.id)
         if old is not None:
-            self._close(old)
+            self._back(old, _now())
+            if old.ended_at is None:
+                self._close(old)
         scope = self._scope(hall, rnd)
         if any(s.seat == seat for s in self._sweep(self._open_sessions(hall, scope))):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Chair is taken")
@@ -251,14 +294,26 @@ class ReadingRoomService:
 
     def heartbeat(self, *, session_id: uuid.UUID, user: User) -> dict:
         s = self._mine(session_id, user)
-        if s.ended_at is None:
-            s.last_seen_at = _now()
-            self.db.commit()
+        self._back(s, _now())
+        self.db.commit()
         return self._session_out(s)
+
+    def answer_away(self, *, session_id: uuid.UUID, user: User, count: bool) -> dict:
+        """The reader says whether they read while their page was silent: if they did, that time joins the sitting."""
+        s = self._mine(session_id, user)
+        now = _now()
+        self._back(s, now)
+        if s.ended_at is None:
+            if count:
+                s.accumulated_seconds = int(s.accumulated_seconds) + int(s.away_seconds or 0)
+            s.away_seconds = 0
+        self.db.commit()
+        return self._session_out(s, now)
 
     def pause(self, *, session_id: uuid.UUID, user: User) -> dict:
         s = self._mine(session_id, user)
         now = _now()
+        self._back(s, now)
         if s.ended_at is None and s.status == "reading":
             s.accumulated_seconds, s.run_started_at, s.status = self.elapsed_seconds(s, now), None, "paused"
         s.last_seen_at = now
@@ -268,6 +323,7 @@ class ReadingRoomService:
     def resume(self, *, session_id: uuid.UUID, user: User) -> dict:
         s = self._mine(session_id, user)
         now = _now()
+        self._back(s, now)
         if s.ended_at is None and s.status == "paused":
             s.run_started_at, s.status = now, "reading"
         s.last_seen_at = now
@@ -276,6 +332,8 @@ class ReadingRoomService:
 
     def finish(self, *, session_id: uuid.UUID, user: User) -> dict:
         s = self._mine(session_id, user)
+        # (a silence not answered for stays out: the page asks about it before «Закончить» is offered)
+        self._back(s, _now())
         if s.ended_at is not None:
             minutes, why = int(s.accumulated_seconds) // 60, None if s.credited_minutes else "already_ended"
         else:
@@ -328,7 +386,10 @@ class ReadingRoomService:
         events, people, minutes = [], {}, 0
         for s, u in self.db.execute(stmt).all():
             ended = _aware(s.ended_at)
-            seconds = self.elapsed_seconds(s, now) if ended is None else int(s.accumulated_seconds)
+            if ended is None:
+                seconds = self.elapsed_seconds(s, _aware(s.last_seen_at) if self._away(s, now) else now)
+            else:
+                seconds = int(s.accumulated_seconds)
             if ended is not None and seconds < 60:
                 continue
             people.setdefault(u.id, u.display_name)

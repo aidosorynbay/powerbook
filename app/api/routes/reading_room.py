@@ -23,6 +23,10 @@ class MessageRequest(BaseModel):
     text: str = Field(min_length=1, max_length=300)
 
 
+class AwayAnswer(BaseModel):
+    count: bool
+
+
 @router.get("/{hall}/state")
 def room_state(
     hall: str, since: datetime | None = None, db: Session = Depends(get_db), user=Depends(get_current_user)
@@ -45,6 +49,14 @@ def post_message(hall: str, payload: MessageRequest, db: Session = Depends(get_d
 @router.post("/sessions/{session_id}/heartbeat")
 def heartbeat(session_id: uuid.UUID, db: Session = Depends(get_db), user=Depends(get_current_user)) -> dict:
     return ReadingRoomService(db).heartbeat(session_id=session_id, user=user)
+
+
+@router.post("/sessions/{session_id}/away")
+def answer_away(
+    session_id: uuid.UUID, payload: AwayAnswer, db: Session = Depends(get_db), user=Depends(get_current_user)
+) -> dict:
+    """Whether the reader read while their page was silent (a locked screen, another app): if so, the time counts."""
+    return ReadingRoomService(db).answer_away(session_id=session_id, user=user, count=payload.count)
 
 
 @router.post("/sessions/{session_id}/pause")
