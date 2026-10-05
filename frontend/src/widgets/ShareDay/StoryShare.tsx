@@ -71,7 +71,11 @@ function download(file: File) {
  */
 export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: string; onSent: (channel: ShareChannel, detail: Detail) => void }) {
   const { t, locale } = useI18n();
-  const [kind, setKind] = useState<StickerKind>(() => remembered('pb.sticker.kind', STICKERS, 'page'));
+  // A reader's first sticker is picked at random, then kept: whichever one the
+  // sheet opened on would otherwise win the month's count in Analytics.
+  const [kind, setKind] = useState<StickerKind>(() =>
+    remembered('pb.sticker.kind', STICKERS, STICKERS[Math.floor(Math.random() * STICKERS.length)])
+  );
   const [ink, setInk] = useState<Ink>(() => remembered('pb.sticker.ink', INKS, 'light'));
   const [drawn, setDrawn] = useState<Partial<Record<StickerKind, Drawn>>>({});
   const [fontsTick, setFontsTick] = useState(0);
@@ -188,7 +192,8 @@ export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: stri
     track.current?.scrollTo({ left: STICKERS.indexOf(k) * step(), behavior: still ? 'auto' : 'smooth' });
   };
 
-  const detail = (method: string): Detail => ({ method, template: kind, ink });
+  /** For Analytics: what was done with the sticker, which one, in which ink. `method` stays the channel. */
+  const detail = (action: string): Detail => ({ action, template: kind, ink });
   const copiedKey = `${kind}:${ink}`;
 
   // What to do next, in view as soon as the sticker is on the clipboard.
