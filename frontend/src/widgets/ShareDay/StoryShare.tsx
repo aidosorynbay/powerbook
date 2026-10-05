@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useI18n, type MyDayCard, type ShareChannel } from '@/shared/lib';
+import { track, useI18n, type MyDayCard, type ShareChannel } from '@/shared/lib';
 import {
   STICKERS,
   STORY_WIDTH,
@@ -22,6 +22,14 @@ type Drawn = { blob: Blob; url: string };
 type Detail = Record<string, string>;
 
 const INKS: readonly Ink[] = ['light', 'dark'];
+
+/** One Analytics event per sticker, so GA4's own Events report compares them with no custom dimensions set up. */
+const EVENT: Record<StickerKind, string> = {
+  page: 'sticker_page',
+  shelf: 'sticker_shelf',
+  calendar: 'sticker_calendar',
+  shelfCalendar: 'sticker_shelf_calendar',
+};
 
 function remembered<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -85,7 +93,7 @@ export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: stri
   const assets = useRef<StickerAssets | null>(null);
   const urls = useRef<string[]>([]);
   const story = useRef<{ key: string; file: File } | null>(null);
-  const track = useRef<HTMLDivElement>(null);
+  const rail = useRef<HTMLDivElement>(null);
   const howto = useRef<HTMLDivElement>(null);
   const frame = useRef(0);
   const copyable = useMemo(canCopyImage, []);
@@ -164,13 +172,13 @@ export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: stri
   }, [storyKey]);
 
   const step = () => {
-    const slide = track.current?.querySelector<HTMLElement>('[data-slide]');
+    const slide = rail.current?.querySelector<HTMLElement>('[data-slide]');
     return slide ? slide.offsetWidth + 12 : 1;
   };
 
   // Open on the sticker chosen last time.
   useLayoutEffect(() => {
-    if (track.current) track.current.scrollLeft = STICKERS.indexOf(kind) * step();
+    if (rail.current) rail.current.scrollLeft = STICKERS.indexOf(kind) * step();
     // Only on opening.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -179,7 +187,7 @@ export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: stri
     if (frame.current) return;
     frame.current = requestAnimationFrame(() => {
       frame.current = 0;
-      const el = track.current;
+      const el = rail.current;
       if (!el) return;
       const i = Math.max(0, Math.min(STICKERS.length - 1, Math.round(el.scrollLeft / step())));
       setKind(STICKERS[i]);
@@ -189,11 +197,14 @@ export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: stri
   const pick = (k: StickerKind) => {
     setKind(k);
     const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    track.current?.scrollTo({ left: STICKERS.indexOf(k) * step(), behavior: still ? 'auto' : 'smooth' });
+    rail.current?.scrollTo({ left: STICKERS.indexOf(k) * step(), behavior: still ? 'auto' : 'smooth' });
   };
 
-  /** For Analytics: what was done with the sticker, which one, in which ink. `method` stays the channel. */
-  const detail = (action: string): Detail => ({ action, template: kind, ink });
+  /** Counted twice in Analytics: in `day_share` with the rest of the day's shares, and as the sticker's own event. */
+  const done = (channel: ShareChannel, action: string) => {
+    onSent(channel, { action, template: kind, ink });
+    track(EVENT[kind], { method: channel, action, ink });
+  };
   const copiedKey = `${kind}:${ink}`;
 
   // What to do next, in view as soon as the sticker is on the clipboard.
@@ -208,7 +219,7 @@ export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: stri
       () => {
         setCopied(copiedKey);
         setFailed(false);
-        onSent('sticker', detail('copy'));
+        done('sticker', 'copy');
       },
       () => setFailed(true)
     );
@@ -221,14 +232,14 @@ export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: stri
     if (touch && navigator.canShare?.({ files: [file] })) {
       try {
         await navigator.share({ files: [file] });
-        onSent('sticker', detail('save'));
+        done('sticker', 'save');
         return;
       } catch (e) {
         if ((e as Error).name === 'AbortError') return;
       }
     }
     download(file);
-    onSent('sticker', detail('download'));
+    done('sticker', 'download');
   };
 
   /** The picture alone, no text: with text beside it, Instagram on iPhone keeps the text and drops the picture. */
@@ -243,20 +254,20 @@ export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: stri
     if (navigator.canShare?.({ files: [file] })) {
       try {
         await navigator.share({ files: [file] });
-        onSent('story', detail('share'));
+        done('story', 'share');
         return;
       } catch (e) {
         if ((e as Error).name === 'AbortError') return;
       }
     }
     download(file);
-    onSent('story', detail('download'));
+    done('story', 'download');
   };
 
   return (
     <div className={styles.wrap}>
       <div className={styles.stage}>
-        <div className={styles.track} ref={track} onScroll={onScroll}>
+        <div className={styles.track} ref={rail} onScroll={onScroll}>
           {STICKERS.map((k) => {
             const d = drawn[k];
             const on = k === kind;
