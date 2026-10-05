@@ -12,6 +12,9 @@ class RegisterRequest(BaseModel):
     display_name: str = Field(min_length=1, max_length=120)
     gender: Gender
     telegram_id: str = Field(min_length=1, max_length=120)
+    # The username whose shared link brought them here, if any. No limits on
+    # it: whatever the browser kept, it must never stand in the way of signing up.
+    ref: str | None = None
 
     @field_validator("username")
     @classmethod

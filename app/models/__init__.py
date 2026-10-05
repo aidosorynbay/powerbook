@@ -16,6 +16,7 @@ from app.models.round import BookExchangePair, ReadingLog, ReadingLogBook, Round
 from app.models.shelf_override import ShelfOverride
 from app.models.book_note import BookNote
 from app.models.custom_shelf import CustomShelf, ShelfPlacement
+from app.models.day_share import DayShare
 from app.models.exchange_photo import ExchangePhoto
 from app.models.reading_room import ReadingRoomMessage, ReadingRoomSession
 from app.models.suggestion import Suggestion
@@ -55,5 +56,6 @@ __all__ = [
     "BookListing",
     "AiDigest",
     "WaitlistEntry",
+    "DayShare",
 ]
 

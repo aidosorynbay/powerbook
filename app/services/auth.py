@@ -14,7 +14,9 @@ class AuthService:
         self.db = db
         self.users = UserRepository(db)
 
-    def register(self, *, username: str, password: str, display_name: str, gender: Gender, telegram_id: str) -> tuple[User, str]:
+    def register(
+        self, *, username: str, password: str, display_name: str, gender: Gender, telegram_id: str, ref: str | None = None
+    ) -> tuple[User, str]:
         existing = self.users.get_by_username(username)
         if existing is not None:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
@@ -34,9 +36,18 @@ class AuthService:
             display_name=display_name,
             gender=gender,
             telegram_id=telegram_id,
+            invited_by=self._inviter(ref),
         )
         token = create_access_token(subject=str(user.id))
         return user, token
+
+    def _inviter(self, ref: str | None):
+        """The member whose shared link a new reader came by (a day they
+        shared, or an invitation), so we can see who brings people in."""
+        if not ref:
+            return None
+        found = self.users.get_by_username(ref.strip().lstrip("@").lower()[:60])
+        return found.id if found is not None and found.is_active and not found.is_claimable else None
 
     def login(self, *, login: str, password: str) -> str:
         user = self.users.get_by_login(login)

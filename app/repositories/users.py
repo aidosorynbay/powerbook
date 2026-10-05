@@ -77,6 +77,7 @@ class UserRepository(BaseRepository[User]):
         display_name: str,
         gender: Gender,
         telegram_id: str | None = None,
+        invited_by: uuid.UUID | None = None,
     ) -> User:
         user = User(
             username=username,
@@ -84,6 +85,7 @@ class UserRepository(BaseRepository[User]):
             display_name=display_name,
             gender=gender,
             telegram_id=telegram_id,
+            invited_by=invited_by,
         )
         self.db.add(user)
         self.db.commit()

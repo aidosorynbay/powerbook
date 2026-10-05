@@ -41,6 +41,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> TokenRe
         display_name=payload.display_name,
         gender=payload.gender,
         telegram_id=payload.telegram_id,
+        ref=payload.ref,
     )
     return TokenResponse(access_token=token)
 

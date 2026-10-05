@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Boolean, Enum, String, Text, Uuid
+from sqlalchemy import JSON, Boolean, Enum, ForeignKey, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -63,6 +63,12 @@ class User(TimestampMixin, Base):
     # Up to 3 titles the user picks themselves — may include books read outside
     # PowerBook circles, unlike the auto-derived bookshelf from reading_logs.
     favorite_books: Mapped[list[str] | None] = mapped_column(JSON, nullable=True, default=None)
+
+    # Who brought this reader to PowerBook: the member whose shared link they
+    # signed up from (a day they shared, or an invitation). NULL when nobody did.
+    invited_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, default=None
+    )
 
     group_memberships: Mapped[list["GroupMember"]] = relationship(
         back_populates="user",
