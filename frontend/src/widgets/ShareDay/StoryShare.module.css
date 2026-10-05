@@ -1,0 +1,238 @@
+/* «Сторис»: the stickers side by side as story screens, swiped like Strava's,
+   and the ways to take one out. */
+
+.wrap {
+  display: grid;
+  /* The carousel is wider than the sheet inside: without this the column grows to fit it. */
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.stage {
+  --frame-h: clamp(260px, 46vh, 410px);
+  --frame-w: calc(var(--frame-h) * 9 / 16);
+  position: relative;
+  min-width: 0;
+  /* The carousel runs to the sheet's edges, so the next sticker peeks in. */
+  margin: 14px -16px 0;
+}
+
+.track {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding: 4px calc(50% - var(--frame-w) / 2) 6px;
+}
+
+.track::-webkit-scrollbar {
+  display: none;
+}
+
+.slide {
+  display: grid;
+  flex: 0 0 var(--frame-w);
+  gap: 8px;
+  justify-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  scroll-snap-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* A story screen: the reading room standing in for the reader's photo. */
+.frame {
+  position: relative;
+  display: block;
+  width: var(--frame-w);
+  height: var(--frame-h);
+  overflow: hidden;
+  border-radius: 16px;
+  background: #120c07 center / cover no-repeat;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32);
+  opacity: 0.45;
+  transform: scale(0.9);
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease;
+}
+
+/* The same veil the whole picture gets, so the preview is what goes out. */
+.frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(12, 8, 4, 0.18), rgba(12, 8, 4, 0.42) 50%, rgba(12, 8, 4, 0.62));
+}
+
+.frame[data-ink='dark']::before {
+  background: linear-gradient(rgba(252, 247, 238, 0.1), rgba(252, 247, 238, 0.3) 50%, rgba(252, 247, 238, 0.45));
+}
+
+.frame img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: auto;
+  transform: translate(-50%, -52%);
+  user-select: none;
+  pointer-events: none;
+}
+
+.on .frame {
+  opacity: 1;
+  transform: none;
+}
+
+.slide:focus-visible .frame {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 3px;
+}
+
+.drawing {
+  position: absolute;
+  inset: 46% 0 auto;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: var(--font-size-xs);
+  text-align: center;
+}
+
+.name {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.on .name {
+  color: var(--color-text-primary);
+}
+
+/* White or black, for a dark photo or a bright one: in the corner of the story on show. */
+.inks {
+  position: absolute;
+  top: calc(4px + var(--frame-h) - 46px);
+  left: calc(50% + var(--frame-w) / 2 - 80px);
+  display: flex;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 999px;
+  background: rgba(10, 8, 6, 0.55);
+  backdrop-filter: blur(6px);
+}
+
+.inks[hidden] {
+  display: none;
+}
+
+.ink {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.inkLight {
+  background: #fff;
+}
+
+.inkDark {
+  background: #1b1612;
+}
+
+.ink[aria-pressed='true'] {
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 2px var(--color-accent-primary);
+}
+
+.actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.primary,
+.secondary {
+  min-height: 46px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.primary {
+  border: 0;
+  background: var(--color-accent-primary);
+  color: var(--color-on-accent);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--color-accent-primary-hover);
+}
+
+.secondary {
+  border: 1px solid var(--color-border-primary);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.primary:disabled,
+.secondary:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.hint {
+  margin: 12px 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.howto {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--color-accent-primary-muted);
+  text-align: left;
+}
+
+.howto p {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.insta {
+  color: var(--color-text-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame {
+    transition: none;
+  }
+}

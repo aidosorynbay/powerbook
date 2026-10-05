@@ -1,20 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiGet, apiPost, track, useI18n, type MyDayCard, type ShareChannel } from '@/shared/lib';
+import type { BarysStage } from '@/widgets/Mascot';
 import { dayLink, dayShareText } from './shareText';
+import { StoryShare } from './StoryShare';
 import styles from './ShareDay.module.css';
 
+type Tab = 'story' | 'text';
+
+function lastTab(): Tab {
+  try {
+    return localStorage.getItem('pb.share.tab') === 'text' ? 'text' : 'story';
+  } catch {
+    return 'story';
+  }
+}
+
 /**
- * «Поделиться днём»: the day's minutes, the run of days and the round in
- * squares, as one message for any chat. Runners post every run from Strava;
- * this is the same daily reason to post, for reading.
+ * «Поделиться днём»: runners post every run from Strava; this is the same
+ * daily reason to post, for reading. Two ways out: a story sticker to lay over
+ * one's own photo (StoryShare), or one message for any chat with the day's
+ * minutes, the run of days and the round in squares.
  *
  * The link leads to the reader's day page, and sending the day is what opens
  * that page to people without an account. Whoever signs up from it is counted
  * as the reader's guest.
  */
-export function ShareDay({ day, roundId, onClose }: { day: string; roundId?: string; onClose: () => void }) {
+export function ShareDay({ day, roundId, barysStage = 1, onClose }: { day: string; roundId?: string; barysStage?: BarysStage; onClose: () => void }) {
   const { t, locale } = useI18n();
+  const [tab, setTab] = useState<Tab>(lastTab);
   const [card, setCard] = useState<MyDayCard | null>(null);
   const [failed, setFailed] = useState(false);
   const [text, setText] = useState('');
@@ -58,10 +72,19 @@ export function ShareDay({ day, roundId, onClose }: { day: string; roundId?: str
   const native = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
   /** Counted, and the day page opened, once the day has gone out. Nothing waits on it. */
-  const sent = (channel: ShareChannel) => {
+  const sent = (channel: ShareChannel, detail: Record<string, string> = {}) => {
     if (!card) return;
-    track('day_share', { method: channel, minutes: card.minutes, streak: card.streak });
+    track('day_share', { method: channel, minutes: card.minutes, streak: card.streak, ...detail });
     apiPost('/share/day', { round_id: card.round_id, day: card.day, channel }, { requireAuth: true });
+  };
+
+  const choose = (next: Tab) => {
+    setTab(next);
+    try {
+      localStorage.setItem('pb.share.tab', next);
+    } catch {
+      /* private mode */
+    }
   };
 
   const copy = async () => {
@@ -98,10 +121,26 @@ export function ShareDay({ day, roundId, onClose }: { day: string; roundId?: str
           ×
         </button>
         <div className={styles.title}>{t('shareDay.title')}</div>
-        <p className={styles.lead}>{t('shareDay.lead')}</p>
+        <div className={styles.tabs} role="tablist" aria-label={t('shareDay.title')}>
+          {(['story', 'text'] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={tab === k}
+              className={styles.tab}
+              onClick={() => choose(k)}
+            >
+              {t(k === 'story' ? 'shareDay.tabStory' : 'shareDay.tabText')}
+            </button>
+          ))}
+        </div>
+        {tab === 'text' && <p className={styles.lead}>{t('shareDay.lead')}</p>}
 
         {!card ? (
           <p className={styles.wait}>{failed ? t('shareDay.failed') : t('shareDay.loading')}</p>
+        ) : tab === 'story' ? (
+          <StoryShare card={card} barysStage={barysStage} link={link} onSent={sent} />
         ) : (
           <>
             <textarea
@@ -150,9 +189,9 @@ export function ShareDay({ day, roundId, onClose }: { day: string; roundId?: str
               )}
             </div>
             <p className={styles.hint}>{t('shareDay.privacy')}</p>
-            {card.invited > 0 && <p className={styles.invited}>{t('shareDay.invited', { n: card.invited })}</p>}
           </>
         )}
+        {card && card.invited > 0 && <p className={styles.invited}>{t('shareDay.invited', { n: card.invited })}</p>}
       </div>
     </div>
   );

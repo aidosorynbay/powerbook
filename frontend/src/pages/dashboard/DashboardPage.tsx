@@ -23,7 +23,7 @@ import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews } from '@/widgets';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
-import { BarysCard } from '@/widgets/Mascot';
+import { BarysCard, barysStage } from '@/widgets/Mascot';
 import { ShareDay } from '@/widgets/ShareDay';
 import anim from '@/shared/styles/animations.module.css';
 import { quietDayIcon, quietDayQuoteKeys, finishFlagIcon } from '@/shared/lib/quietDays';
@@ -1105,7 +1105,12 @@ export function DashboardPage() {
                         </div>
                       )}
                       {shareOpen && (
-                        <ShareDay day={todayStr} roundId={roundStatus?.round?.id} onClose={() => setShareOpen(false)} />
+                        <ShareDay
+                          day={todayStr}
+                          roundId={roundStatus?.round?.id}
+                          barysStage={barysStage(allTime?.total_minutes)}
+                          onClose={() => setShareOpen(false)}
+                        />
                       )}
                     </div>
                   </div>

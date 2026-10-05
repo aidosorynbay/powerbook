@@ -46,8 +46,42 @@
   font-weight: var(--font-weight-bold);
 }
 
+/* «Сторис» or «Сообщение». */
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 12px 0 0;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--color-bg-primary);
+}
+
+.tab {
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.tab[aria-selected='true'] {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 1px;
+}
+
 .lead {
-  margin: 6px 0 12px;
+  margin: 10px 0 12px;
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   line-height: 1.45;
