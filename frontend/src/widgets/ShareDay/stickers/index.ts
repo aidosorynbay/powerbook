@@ -1,9 +1,6 @@
-import type { BarysMood, BarysStage } from '@/widgets/Mascot';
 import { INKS, SANS, font, loadImage, release, surface, trimmed, type Ink } from './canvas';
-import { barysPicture, drawBarys, stickerMood } from './barys';
-import { drawPage } from './page';
-import { drawShelf } from './shelf';
-import { drawSlip } from './slip';
+import { drawCalendarPage, drawPage } from './page';
+import { drawShelf, drawShelfCalendar } from './shelf';
 import type { StickerData, StickerKind } from './types';
 
 export { STICKERS, type StickerData, type StickerKind, type StickerWords } from './types';
@@ -12,20 +9,16 @@ export { loadImage } from './canvas';
 export { stickerData } from './words';
 export type { Ink } from './canvas';
 
-/** What the drawings need from the network: the mark, Барыс, the room behind the story. */
-export type StickerAssets = {
-  mark: HTMLCanvasElement | null;
-  barys: Partial<Record<BarysMood, HTMLImageElement | null>>;
-};
+/** What the drawings need from the network: the PowerBook mark. */
+export type StickerAssets = { mark: HTMLCanvasElement | null };
 
 const LOGO = '/logo-icon.png';
 /** The reading room at night behind white stickers, by day behind black ones. */
 const ROOM: Record<Ink, string> = { light: '/reading-room/m-night-m.jpg', dark: '/reading-room/m-day-m.jpg' };
 
-export async function loadStickerAssets(minutes: number, stage: BarysStage): Promise<StickerAssets> {
-  const mood = stickerMood(minutes);
-  const [logo, picture] = await Promise.all([loadImage(LOGO), barysPicture(mood, stage).catch(() => null)]);
-  return { mark: logo ? trimmed(logo) : null, barys: { [mood]: picture } };
+export async function loadStickerAssets(): Promise<StickerAssets> {
+  const logo = await loadImage(LOGO);
+  return { mark: logo ? trimmed(logo) : null };
 }
 
 /** The sticker alone, on nothing: Instagram lays it over the reader's own photo. */
@@ -35,20 +28,15 @@ export function drawSticker(kind: StickerKind, data: StickerData, ink: Ink, asse
       return drawPage(data, ink, assets.mark);
     case 'shelf':
       return drawShelf(data, ink, assets.mark);
-    case 'slip':
-      return drawSlip(data, assets.mark);
-    case 'barys':
-      return drawBarys(data, ink, assets.mark, assets.barys[stickerMood(data.minutes)] ?? null);
+    case 'calendar':
+      return drawCalendarPage(data, ink, assets.mark);
+    case 'shelfCalendar':
+      return drawShelfCalendar(data, ink, assets.mark);
   }
 }
 
-/** The ink a sticker is really drawn in: the library slip is paper, the same whatever is chosen. */
-export function inkOf(kind: StickerKind, ink: Ink): Ink {
-  return kind === 'slip' ? 'light' : ink;
-}
-
 /** How wide a sticker sits on a story, as a share of the screen, so all four look the same size. */
-export const STORY_WIDTH: Record<StickerKind, number> = { page: 0.74, shelf: 0.9, slip: 0.78, barys: 0.7 };
+export const STORY_WIDTH: Record<StickerKind, number> = { page: 0.74, shelf: 0.9, calendar: 0.72, shelfCalendar: 0.9 };
 
 export function roomFor(ink: Ink): string {
   return ROOM[ink];

@@ -1,12 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useI18n, type MyDayCard, type ShareChannel } from '@/shared/lib';
-import type { BarysStage } from '@/widgets/Mascot';
 import {
   STICKERS,
   STORY_WIDTH,
   drawSticker,
   drawStory,
-  inkOf,
   loadImage,
   loadStickerAssets,
   loadStickerFonts,
@@ -71,7 +69,7 @@ function download(file: File) {
  * For someone without a photo there is the whole picture, the sticker over
  * the reading room.
  */
-export function StoryShare({ card, barysStage, link, onSent }: { card: MyDayCard; barysStage: BarysStage; link: string; onSent: (channel: ShareChannel, detail: Detail) => void }) {
+export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: string; onSent: (channel: ShareChannel, detail: Detail) => void }) {
   const { t, locale } = useI18n();
   const [kind, setKind] = useState<StickerKind>(() => remembered('pb.sticker.kind', STICKERS, 'page'));
   const [ink, setInk] = useState<Ink>(() => remembered('pb.sticker.ink', INKS, 'light'));
@@ -89,7 +87,7 @@ export function StoryShare({ card, barysStage, link, onSent }: { card: MyDayCard
   const copyable = useMemo(canCopyImage, []);
   const touch = useMemo(() => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches, []);
   const phone = useMemo(() => typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent), []);
-  const data = useMemo(() => stickerData(card, t, locale, barysStage, localToday()), [card, t, locale, barysStage]);
+  const data = useMemo(() => stickerData(card, t, locale, localToday()), [card, t, locale]);
 
   // Fonts that arrive after the first drawing: draw again with them.
   useEffect(() => {
@@ -103,12 +101,12 @@ export function StoryShare({ card, barysStage, link, onSent }: { card: MyDayCard
     let live = true;
     (async () => {
       await loadStickerFonts();
-      assets.current ??= await loadStickerAssets(card.minutes, barysStage);
+      assets.current ??= await loadStickerAssets();
       const next: Partial<Record<StickerKind, Drawn>> = {};
       const made: string[] = [];
       for (const k of STICKERS) {
         if (!live) break;
-        const canvas = drawSticker(k, data, inkOf(k, ink), assets.current);
+        const canvas = drawSticker(k, data, ink, assets.current);
         const blob = await toBlob(canvas, 'image/png');
         if (!blob) continue;
         const url = URL.createObjectURL(blob);
@@ -126,7 +124,7 @@ export function StoryShare({ card, barysStage, link, onSent }: { card: MyDayCard
     return () => {
       live = false;
     };
-  }, [data, ink, fontsTick, card.minutes, barysStage]);
+  }, [data, ink, fontsTick]);
 
   useEffect(() => () => urls.current.forEach((u) => URL.revokeObjectURL(u)), []);
 
@@ -134,15 +132,14 @@ export function StoryShare({ card, barysStage, link, onSent }: { card: MyDayCard
   useEffect(() => remember('pb.sticker.ink', ink), [ink]);
 
   const current = drawn[kind];
-  const storyInk = inkOf(kind, ink);
-  const storyKey = current ? `${kind}:${storyInk}:${current.url}` : '';
+  const storyKey = current ? `${kind}:${ink}:${current.url}` : '';
   const fileName = (what: string, ext: string) => `powerbook-${card.day}-${what}.${ext}`;
 
   const drawWhole = async (): Promise<File | null> => {
     if (!current) return null;
     const sticker = await loadImage(current.url);
     if (!sticker) return null;
-    const blob = await toBlob(await drawStory(kind, sticker, storyInk, link), 'image/jpeg');
+    const blob = await toBlob(await drawStory(kind, sticker, ink, link), 'image/jpeg');
     return blob ? new File([blob], fileName(kind, 'jpg'), { type: 'image/jpeg' }) : null;
   };
 
@@ -191,8 +188,8 @@ export function StoryShare({ card, barysStage, link, onSent }: { card: MyDayCard
     track.current?.scrollTo({ left: STICKERS.indexOf(k) * step(), behavior: still ? 'auto' : 'smooth' });
   };
 
-  const detail = (method: string): Detail => ({ method, template: kind, ink: storyInk });
-  const copiedKey = `${kind}:${storyInk}`;
+  const detail = (method: string): Detail => ({ method, template: kind, ink });
+  const copiedKey = `${kind}:${ink}`;
 
   // What to do next, in view as soon as the sticker is on the clipboard.
   useEffect(() => {
@@ -258,7 +255,6 @@ export function StoryShare({ card, barysStage, link, onSent }: { card: MyDayCard
           {STICKERS.map((k) => {
             const d = drawn[k];
             const on = k === kind;
-            const kInk = inkOf(k, ink);
             return (
               <button
                 key={k}
@@ -269,7 +265,7 @@ export function StoryShare({ card, barysStage, link, onSent }: { card: MyDayCard
                 aria-pressed={on}
                 aria-label={t(`sticker.${k}`)}
               >
-                <span className={styles.frame} data-ink={kInk} style={{ backgroundImage: `url(${roomFor(kInk)})` }}>
+                <span className={styles.frame} data-ink={ink} style={{ backgroundImage: `url(${roomFor(ink)})` }}>
                   {d ? (
                     <img src={d.url} alt="" draggable={false} style={{ width: `${STORY_WIDTH[k] * 100}%` }} />
                   ) : (
@@ -281,7 +277,7 @@ export function StoryShare({ card, barysStage, link, onSent }: { card: MyDayCard
             );
           })}
         </div>
-        <div className={styles.inks} hidden={kind === 'slip'}>
+        <div className={styles.inks}>
           {INKS.map((i) => (
             <button
               key={i}

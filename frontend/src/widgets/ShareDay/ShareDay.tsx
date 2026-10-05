@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiGet, apiPost, track, useI18n, type MyDayCard, type ShareChannel } from '@/shared/lib';
-import type { BarysStage } from '@/widgets/Mascot';
 import { dayLink, dayShareText } from './shareText';
 import { StoryShare } from './StoryShare';
 import styles from './ShareDay.module.css';
@@ -26,7 +25,7 @@ function lastTab(): Tab {
  * that page to people without an account. Whoever signs up from it is counted
  * as the reader's guest.
  */
-export function ShareDay({ day, roundId, barysStage = 1, onClose }: { day: string; roundId?: string; barysStage?: BarysStage; onClose: () => void }) {
+export function ShareDay({ day, roundId, onClose }: { day: string; roundId?: string; onClose: () => void }) {
   const { t, locale } = useI18n();
   const [tab, setTab] = useState<Tab>(lastTab);
   const [card, setCard] = useState<MyDayCard | null>(null);
@@ -140,7 +139,7 @@ export function ShareDay({ day, roundId, barysStage = 1, onClose }: { day: strin
         {!card ? (
           <p className={styles.wait}>{failed ? t('shareDay.failed') : t('shareDay.loading')}</p>
         ) : tab === 'story' ? (
-          <StoryShare card={card} barysStage={barysStage} link={link} onSent={sent} />
+          <StoryShare card={card} link={link} onSent={sent} />
         ) : (
           <>
             <textarea

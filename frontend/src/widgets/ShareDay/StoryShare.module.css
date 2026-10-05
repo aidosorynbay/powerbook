@@ -125,10 +125,6 @@
   backdrop-filter: blur(6px);
 }
 
-.inks[hidden] {
-  display: none;
-}
-
 .ink {
   width: 26px;
   height: 26px;
