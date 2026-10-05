@@ -20,7 +20,8 @@ from app.main import create_app
 from app.models.day_share import DayShare
 from app.models.enums import Gender, RoundParticipantStatus, RoundStatus
 from app.models.group import Group
-from app.models.round import ReadingLog, Round, RoundParticipant
+from app.models.reading_room import ReadingRoomSession
+from app.models.round import ReadingLog, ReadingLogBook, Round, RoundParticipant
 from app.models.user import User
 from app.services import day_share
 
@@ -125,6 +126,36 @@ def test_the_run_of_days_waits_for_a_today_still_short_of_30(env):
     env.read(env.aigerim, date(2026, 10, 6), 0)
     later = env.client.get("/api/share/day", params={"day": "2026-10-07"}, headers=env.h(env.aigerim)).json()
     assert later["streak"] == 0
+
+
+def test_the_readers_own_card_names_their_book_for_the_sticker(env):
+    def mine():
+        return env.client.get("/api/share/day", params={"day": "2026-10-05"}, headers=env.h(env.aigerim)).json()
+
+    assert mine()["book"] is None
+    env.read(env.aigerim, date(2026, 10, 4), 40)
+    log = env.db.execute(select(ReadingLog).where(ReadingLog.date == date(2026, 10, 4))).scalar_one()
+    for i, (title, minutes) in enumerate([("Абай жолы", 10), ("Шантарам", 30)]):
+        env.db.add(ReadingLogBook(
+            reading_log_id=log.id, user_id=env.aigerim.id, title=title, title_norm=title.lower(), minutes=minutes, position=i,
+        ))
+    env.db.commit()
+    # Today logged without a book: still the one with the most minutes yesterday.
+    env.read(env.aigerim, OCT5, 20)
+    assert mine()["book"] == "Шантарам"
+
+    # A sitting in the reading room today names today's book.
+    env.db.add(ReadingRoomSession(
+        user_id=env.aigerim.id, hall="round", round_id=env.round.id, seat=1, book_title="Сто лет одиночества",
+        status="ended", credited_minutes=20, credited_round_id=env.round.id, credited_date=OCT5,
+    ))
+    env.db.commit()
+    assert mine()["book"] == "Сто лет одиночества"
+
+    # Copying the sticker counts as sharing the day; the public card still has no book.
+    assert _share(env, env.aigerim, channel="sticker").status_code == 200
+    public = env.client.get("/api/share/r/aigerim").json()
+    assert "book" not in public and "Сто лет" not in str(public)
 
 
 def test_sharing_is_for_the_circle_and_its_own_days(env):

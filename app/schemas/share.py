@@ -5,7 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-Channel = Literal["whatsapp", "telegram", "x", "copy", "native"]
+# "sticker": the story sticker, copied or saved; "story": the whole story picture.
+Channel = Literal["whatsapp", "telegram", "x", "copy", "native", "sticker", "story"]
 
 
 class ShareDayIn(BaseModel):
@@ -47,3 +48,6 @@ class MyDayCardOut(DayCardOut):
     round_id: str
     # Readers who signed up from this reader's links.
     invited: int
+    # The book the reader is on, for their own story sticker. The public card
+    # never has it.
+    book: str | None = None

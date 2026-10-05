@@ -23,7 +23,8 @@ from app.core.constants import DEFAULT_GROUP_SLUG, ROUND_TZ
 from app.models.day_share import DayShare
 from app.models.enums import RoundParticipantStatus
 from app.models.group import Group
-from app.models.round import ReadingLog, Round, RoundParticipant
+from app.models.reading_room import ReadingRoomSession
+from app.models.round import ReadingLog, ReadingLogBook, Round, RoundParticipant
 from app.models.user import User
 from app.schemas.share import CardDayOut, DayCardOut, MyDayCardOut
 
@@ -107,6 +108,34 @@ def _round_for(db: Session, day: date) -> Round | None:
     ).scalar_one_or_none()
 
 
+def _book(db: Session, *, user: User, rnd: Round, day: date) -> str | None:
+    """The book the reader is on by `day`, for the title on their sticker: the
+    latest day's book with the most minutes, from «Что читаю» or from a sitting
+    in the reading room. A day logged without a book keeps the one before it."""
+    logged = db.execute(
+        select(ReadingLog.date, ReadingLogBook.minutes, ReadingLogBook.title)
+        .join(ReadingLogBook, ReadingLogBook.reading_log_id == ReadingLog.id)
+        .where(ReadingLog.round_id == rnd.id, ReadingLog.user_id == user.id, ReadingLog.date <= day)
+        .order_by(ReadingLog.date.desc(), ReadingLogBook.minutes.desc(), ReadingLogBook.position)
+        .limit(1)
+    ).first()
+    sat = db.execute(
+        select(ReadingRoomSession.credited_date, ReadingRoomSession.credited_minutes, ReadingRoomSession.book_title)
+        .where(
+            ReadingRoomSession.user_id == user.id,
+            ReadingRoomSession.credited_round_id == rnd.id,
+            ReadingRoomSession.credited_date <= day,
+            ReadingRoomSession.credited_minutes > 0,
+        )
+        .order_by(ReadingRoomSession.credited_date.desc(), ReadingRoomSession.credited_minutes.desc())
+        .limit(1)
+    ).first()
+    found = [row for row in (logged, sat) if row is not None and row[2].strip()]
+    if not found:
+        return None
+    return max(found, key=lambda row: (row[0], row[1]))[2].strip()
+
+
 def my_card(db: Session, *, user: User, day: date, round_id: str | None = None) -> MyDayCardOut:
     """The reader's own day, for the text they are about to send. `day` is
     the reader's own date: the page knows it better than the server does."""
@@ -114,7 +143,10 @@ def my_card(db: Session, *, user: User, day: date, round_id: str | None = None) 
     if rnd is None:
         raise _not_found("Round not found")
     invited = db.execute(select(func.count()).select_from(User).where(User.invited_by == user.id)).scalar_one()
-    return MyDayCardOut(**_card(db, user=user, rnd=rnd, day=day), round_id=str(rnd.id), invited=int(invited))
+    card = _card(db, user=user, rnd=rnd, day=day)
+    return MyDayCardOut(
+        **card, round_id=str(rnd.id), invited=int(invited), book=_book(db, user=user, rnd=rnd, day=card["day"])
+    )
 
 
 def share(db: Session, *, user: User, round_id: str, day: date, channel: str) -> None:
