@@ -54,6 +54,11 @@ export function rememberInvite(ref: string | null) {
   if (ref) storage(REF_KEY, ref.replace(/^@/, '').slice(0, 60));
 }
 
+/** The username whose shared link brought this visitor: sent with their sign-up. */
+export function invitedRef(): string | null {
+  return storage(REF_KEY);
+}
+
 export function markJoinIntent() {
   storage(INTENT_KEY, '1');
 }

@@ -128,6 +128,10 @@ export type {
   BookChatState,
   SiteNotification,
   BookWatch,
+  CardDay,
+  DayCard,
+  MyDayCard,
+  ShareChannel,
 } from './types';
 export { useTheme, useResolvedTheme, readThemeChoice, resolveTheme, applyTheme, THEME_KEY, type ThemeChoice } from './theme';
-export { useWaitlist, inviteLink, rememberInvite, markJoinIntent, type WaitlistState } from './waitlist';
+export { useWaitlist, inviteLink, rememberInvite, invitedRef, markJoinIntent, type WaitlistState } from './waitlist';

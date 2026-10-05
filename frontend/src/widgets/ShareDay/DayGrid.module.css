@@ -1,0 +1,70 @@
+/* The round in squares. Orange is the shared text's 🟧: a day of 30+ minutes. */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+}
+
+.cell {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 7px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.goal {
+  background: var(--color-accent-primary);
+  color: var(--color-on-accent);
+}
+
+/* 🟨: some reading, under 30. Dark figures, since the yellow is light in both themes. */
+.some {
+  background: var(--color-warning-fill);
+  color: #2b2207;
+}
+
+.none {
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-primary);
+  color: var(--color-text-muted);
+}
+
+.ahead {
+  border: 1px dashed var(--color-border-primary);
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.current {
+  box-shadow: 0 0 0 2px var(--color-bg-secondary), 0 0 0 4px var(--color-text-primary);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 14px;
+  margin-top: 12px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}

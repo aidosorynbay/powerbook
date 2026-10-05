@@ -24,6 +24,7 @@ import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews } from '@/widgets';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { BarysCard } from '@/widgets/Mascot';
+import { ShareDay } from '@/widgets/ShareDay';
 import anim from '@/shared/styles/animations.module.css';
 import { quietDayIcon, quietDayQuoteKeys, finishFlagIcon } from '@/shared/lib/quietDays';
 import { ReadingBooks, booksPayload, sumMinutes } from './ReadingBooks';
@@ -174,6 +175,9 @@ export function DashboardPage() {
   const [todayComment, setTodayComment] = useState('');
   const [todayCommentPrivate, setTodayCommentPrivate] = useState(false);
   const [isSavingToday, setIsSavingToday] = useState(false);
+  // «Поделиться днём»: the sheet, and whether this save is the one that reached 30 minutes.
+  const [shareOpen, setShareOpen] = useState(false);
+  const [goalJustMet, setGoalJustMet] = useState(false);
   const [todayBooks, setTodayBooks] = useState<DayBook[]>([]);
 
   const fetchRoundStatus = useCallback(async () => {
@@ -727,6 +731,7 @@ export function DashboardPage() {
     const multi = todayBooks.length > 1;
     const minutes = multi ? sumMinutes(todayBooks) : parseInt(todayMinutes, 10) || 0;
     const finished = multi ? todayBooks.some((b) => b.finished) : todayBookFinished;
+    const before = todayData?.minutes ?? 0;
     setIsSavingToday(true);
     const { data } = await apiPost(
       `/rounds/${roundStatus.round.id}/reading_logs`,
@@ -739,6 +744,8 @@ export function DashboardPage() {
     );
     if (data) {
       track('minutes_logged', { minutes, where: 'today', book_finished: finished, books: todayBooks.length });
+      // The moment a runner posts the run: the day has just reached its 30 minutes.
+      if (before < DAILY_GOAL_MINUTES && minutes >= DAILY_GOAL_MINUTES) setGoalJustMet(true);
       await fetchCalendar(roundStatus.round.id);
       await fetchLeaderboard(roundStatus.round.id);
       await fetchRoster(roundStatus.round.id);
@@ -765,6 +772,8 @@ export function DashboardPage() {
   const monthName = roundStatus?.round
     ? t(`month.${roundStatus.round.month}`)
     : '';
+  // Lit only while today really has its 30: a page left open overnight starts the new day plain.
+  const goalLit = goalJustMet && (todayData?.minutes ?? 0) >= DAILY_GOAL_MINUTES;
 
   const displayStatus = roundStatus?.round?.status === 'registration_open' && !isBeforeDeadline
     ? 'locked' as const
@@ -1084,6 +1093,20 @@ export function DashboardPage() {
                       <Button onClick={handleSaveToday} disabled={isSavingToday}>
                         {isSavingToday ? t('dashboard.saving') : t('dashboard.save')}
                       </Button>
+
+                      {/* Once the day has minutes saved, it can go out: Strava's post-a-run, for reading. */}
+                      {(todayData?.minutes ?? 0) > 0 && (
+                        <div className={`${styles.shareDay} ${goalLit ? styles.shareDayLit : ''}`}>
+                          {goalLit && <p className={styles.shareDayNote}>{t('shareDay.goalMet')}</p>}
+                          <button type="button" className={styles.shareDayBtn} onClick={() => setShareOpen(true)}>
+                            <Icon name="share" size="sm" aria-hidden="true" />
+                            {t('shareDay.button')}
+                          </button>
+                        </div>
+                      )}
+                      {shareOpen && (
+                        <ShareDay day={todayStr} roundId={roundStatus?.round?.id} onClose={() => setShareOpen(false)} />
+                      )}
                     </div>
                   </div>
                 )}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiGet, apiPost, colorFromSeed, useAuth, useI18n, useResolvedTheme, track } from '@/shared/lib';
 import { HALLS, charFor, createRoomEngine, seatChar, type HallKey, type RoomEngine } from './engine';
 import { Ding, Snd, type SoundChannel } from './sound';
+import { ShareDay } from '@/widgets/ShareDay';
 import styles from './ReadingRoom.module.css';
 
 /**
@@ -157,6 +158,8 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   const [book, setBook] = useState('');
   const [suggest, setSuggest] = useState<string[]>(readRecent);
   const [finished, setFinished] = useState<Finished | null>(null);
+  // The day a finished sitting went to, while «Поделиться» is open for it.
+  const [shareDay, setShareDay] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<'readers' | 'chat'>('readers');
   const [drawer, setDrawer] = useState(false);
@@ -889,6 +892,9 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
           {finished.credited ? t('room.savedToday', { min: finished.minutes, date: dayLabel(finished.date) }) : finished.reason === 'short' ? t('room.tooShort') : finished.reason === 'not_in_round' ? t('room.readForGuest', { min: finished.minutes }) : t('room.readFor', { min: finished.minutes })}
         </span>
         {finished.credited && <button className={`${styles.btn} ${styles.link}`} type="button" onClick={() => undo(finished)}>{t('room.undo')}</button>}
+        {finished.credited && finished.date && (
+          <button className={styles.btn} type="button" onClick={() => setShareDay(finished.date)}>{t('shareDay.short')}</button>
+        )}
         <button className={styles.btn} type="button" onClick={() => openPick(null)}>{t('room.readMore')}</button>
       </>
     );
@@ -1028,6 +1034,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
           {toast.action && <button type="button" onClick={() => { toast.action!.run(); setToast(null); }}>{toast.action.label}</button>}
         </div>
       )}
+      {shareDay && <ShareDay day={shareDay} onClose={() => setShareDay(null)} />}
       {goal > 0 && (
         <div className={styles.goal} role="status" key={goal}>
           <div className={styles.goalIn}>

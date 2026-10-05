@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { Suspense, lazy, useEffect } from 'react';
 import * as Sentry from '@sentry/react';
 import { AuthProvider, useAuth, I18nProvider, useI18n, isReaderPath, setAnalyticsUser } from '@/shared/lib';
-import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage, JoinPage } from '@/pages';
+import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage, JoinPage, ReaderDayPage } from '@/pages';
 import { ArchivePrompt, BottomNav, JoinPrompt, LastCallNotice } from '@/widgets';
 import '@/app/styles/theme.css';
 
@@ -85,6 +85,8 @@ function AppRoutes() {
         <Route path="/claim" element={<ClaimPage />} />
         {/* Open to anyone: it is the page members send to friends. */}
         <Route path="/join" element={<JoinPage />} />
+        {/* A reader's shared day: open to anyone, it is where the link leads. */}
+        <Route path="/r/:username" element={<ReaderDayPage />} />
         <Route path="/hall-of-fame" element={<HallOfFamePage />} />
         {/* Public and unauthenticated on purpose: both app stores need a
             policy URL reachable without an account. */}

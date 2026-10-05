@@ -101,6 +101,32 @@ export type CalendarResponse = {
   days: CalendarDay[];
 };
 
+/** A reader's round as a shared day shows it: minutes only, never books or comments. */
+export type CardDay = { date: string; minutes: number; score: number };
+
+export type DayCard = {
+  username: string;
+  display_name: string;
+  avatar_data: string | null;
+  year: number;
+  month: number;
+  first_day: string;
+  last_day: string;
+  /** The day the card is about, and its number within the round. */
+  day: string;
+  day_number: number;
+  minutes: number;
+  streak: number;
+  goal_days: number;
+  total_minutes: number;
+  /** Every day of the round; those after `day` are still ahead. */
+  days: CardDay[];
+};
+
+export type MyDayCard = DayCard & { round_id: string; invited: number };
+
+export type ShareChannel = 'whatsapp' | 'telegram' | 'x' | 'copy' | 'native';
+
 // Results
 export type RoundResultEntry = {
   user_id: string;

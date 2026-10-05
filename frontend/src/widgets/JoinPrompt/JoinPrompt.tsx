@@ -10,8 +10,8 @@ import styles from './JoinPrompt.module.css';
 type Kind = 'open' | 'reg' | 'wait';
 
 // Pages where a prompt would be in the way: signing in, the invitation page
-// itself, and a book open in the reader.
-const QUIET = [/^\/login/, /^\/register/, /^\/forgot-password/, /^\/join/, /^\/claim/, /^\/library\/(?!hall)[^/]+$/];
+// itself, a shared day (it has its own way in), and a book open in the reader.
+const QUIET = [/^\/login/, /^\/register/, /^\/forgot-password/, /^\/join/, /^\/r\//, /^\/claim/, /^\/library\/(?!hall)[^/]+$/];
 
 function dismissKey(kind: Kind, year: number, month: number) {
   return `pb.joinPrompt.${kind}.${year}-${month}`;
