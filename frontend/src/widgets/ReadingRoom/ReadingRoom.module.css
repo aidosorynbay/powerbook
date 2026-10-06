@@ -346,9 +346,10 @@
   80% { box-shadow: 0 0 0 12px rgba(255, 241, 222, 0); }
   100% { box-shadow: 0 0 0 0 rgba(255, 241, 222, 0); }
 }
+/* phones keep each reader's time: who is reading right now, and for how long, is the point of the room */
 @media (max-width: 600px) {
   .tag b {
-    display: none;
+    font-size: 10.5px;
   }
   .tag {
     font-size: 11px;
