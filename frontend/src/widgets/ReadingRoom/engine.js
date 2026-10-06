@@ -4,6 +4,7 @@
    Ported from the prototype (prototypes/reading-room/index.html), where every number here was measured and checked.
    Phones get the founder's portrait render of the hall (m-*, rig in rig-m.js, built by prototypes/reading-room/mobile/). */
 import {RIG_M,PAGES_M} from './rig-m.js';
+import {CAST_EYES} from './casts.js';
 const clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v));
 const seg=(p,a,b)=>clamp((p-a)/(b-a));
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -236,8 +237,8 @@ function putInv(m,buf,o){const det=m[0]*m[3]-m[1]*m[2],a=m[3]/det,b=-m[1]/det,c=
 /* each reader's habits, on their own clocks: breathing, eyes running along the lines, blinks, the book never quite still in the hands,
    now and then a new way of sitting, and the page turn with the hand that lifts the sheet */
 let MOT={};
-/* the hall's two casts, when it has them: which readers do not blink in which cast (their new eyes are elsewhere) */
-let CASTS=null;
+/* the hall's two casts, when it has them: each new face's eyes (casts.js), and which time of day is on show */
+let CASTS=null,CAST_V='day';
 const bump=t=>t<=0||t>=1?0:Math.sin(Math.PI*t)**2;
 const smooth=t=>{t=clamp(t);return t*t*t*(t*(t*6-15)+10)};
 const POSE0={tA:0,tX:0,tY:0,hA:0,hX:0,hY:0,bA:0,bX:0,bY:0,bS:1};
@@ -280,7 +281,8 @@ function handGesture(id,e){
 /* fills the reader's slot for this frame, and a page slot and eye slots when they have them */
 function motion(id,p,now,vis){
   const R=RIG[id],G=PAGES[id],F=frameSlots;if(F.ns>=NS)return;const sl=F.ns++,o=sl*32;
-  const male=!!(CASTS&&p&&p.gender==='m'),EY=R.eyes&&!(CASTS&&CASTS.noBlink[male?'m':'f'].includes(id))?R.eyes:null;
+  /* in a hall with two casts the eyes are this face's own: day and night, women and men were rendered apart */
+  const male=!!(CASTS&&p&&p.gender==='m'),EY=CASTS?CASTS.eyes[CAST_V]?.[male?'m':'f']?.[id]||null:R.eyes||null;
   const m=MOT[id]||(MOT[id]={seed:Math.random()*100,period:3.6+Math.random()*.9,line:3.2+Math.random()*.9,cur:{...POSE0},from:{...POSE0},to:{...POSE0},pt0:-99,pdur:3,pnext:now+8+Math.random()*14,blinkT:-9,blinkNext:now+1+Math.random()*3,blinkK:1,paused:false,flipSeen:null});
   const paused=!!(p&&p.status==='paused'),e=p&&p.flipAt!=null?now-p.flipAt:-99,turning=e>-FLIP.reach&&e<FLIP.dur+FLIP.back;
   /* a new way of sitting every 15–40 s, never in the middle of a page turn, and soon after a pause or a return to the book */
@@ -328,8 +330,8 @@ function motion(id,p,now,vis){
    hides that cup in the render (its steam stops while they sit there); sway: leaves that move in the air */
 export const HALLS={
   /* casts: the founder's renders of 2026-10-06 put a woman and a man in every chair (build_casts.py), so a seat shows
-     whoever takes it. Blinks only where the new face's eyes are where the rig measured them */
-  a:{files:'a',casts:{noBlink:{f:[3,7],m:[1,2,3,7]}},sun:[.5,.05],win:[.5,.1,.13,.17],fire:[.915,.78],fireBox:[.893,.712,.938,.852],
+     whoever takes it, blinking with their own eyes (casts.js) */
+  a:{files:'a',casts:{eyes:CAST_EYES.a},sun:[.5,.05],win:[.5,.1,.13,.17],fire:[.915,.78],fireBox:[.893,.712,.938,.852],
     lamps:[[.15,.66,1],[.705,.38,.75],[.855,.70,1]],
     seats:[[.33,.335,-1],[.355,.44,-1],[.33,.52,-1],[.235,.63,0],[.2,.89,-1],[.42,.905,-1],[.58,.905,-1],[.79,.89,-1],[.735,.62,2],[.65,.5,-1],[.66,.36,1],[.515,.32,-1]],
     chars:{1:{seat:1,g:'f',head:[.318,.292],ring:[.325,.394]},2:{seat:10,g:'f',head:[.644,.252],ring:[.6425,.3136]},3:{seat:8,g:'m',head:[.754,.437],ring:[.757,.49]},4:{seat:4,g:'m',head:[.19,.705],ring:[.205,.79]},5:{seat:7,g:'f',head:[.793,.732],ring:[.7825,.851]},
@@ -352,7 +354,7 @@ export const HALLS={
 /* Phones: the founder's portrait render of the same hall, eleven readers, the same picture for both halls. Seat numbers
    are the server's, as in the wide halls: the round keeps room A's (seat 2 has no chair here either), the library keeps
    its six and adds the five that only the portrait has */
-const M={files:'m',portrait:true,pw:1536,ph:2752,pad:[.004,.004],gk:.55,steam:[.52,1.6],fitU:[.045,.955],
+const M={files:'m',casts:{eyes:CAST_EYES.m},portrait:true,pw:1536,ph:2752,pad:[.004,.004],gk:.55,steam:[.52,1.6],fitU:[.045,.955],
   sun:[.5,.06],win:[.5,.1,.3,.12],fire:[.995,.69],fireBox:[.972,.668,1.02,.715],
   lamps:[[.063,.425,1],[.83,.44,.8],[.592,.328,.7],[.378,.327,.7],[.07,.309,.6]],
   cups:[[.5501,.456],[.5811,.461],[.5615,.7295],[.6144,.7436]],
@@ -539,7 +541,7 @@ export function createRoomEngine(opts){
     T+=dt;applyUI();
     const want=loadVariant(variant);
     if(want.ready)shown=want;
-    const tex=shown||want;night+=((shown&&shown===V.night?1:0)-night)*Math.min(1,dt*3);
+    const tex=shown||want;night+=((shown&&shown===V.night?1:0)-night)*Math.min(1,dt*3);CAST_V=tex===V.night?'night':'day';
     const loadK=tex.ready?clamp((now-tex.readyAt)/600):0;
     computeMap(P,tex.ar);
     const live=seg(P,.8,1);

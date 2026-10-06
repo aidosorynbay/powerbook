@@ -15,8 +15,9 @@ export interface Hall {
   portrait?: boolean;
   seats: [number, number, number][];
   chars: Record<number, HallChar>;
-  /** Renders of every chair with a woman and with a man: any reader can take any chair with a character. */
-  casts?: { noBlink: { f: number[]; m: number[] } };
+  /** Renders of every chair with a woman and with a man: any reader can take any chair with a character.
+   *  eyes: each face's blinking eyes, by time of day, cast and reader (casts.js). */
+  casts?: { eyes: Record<'day' | 'night', Partial<Record<'f' | 'm', Record<number, number[][]>>>> };
 }
 
 export const HALLS: Record<HallKey, Hall>;

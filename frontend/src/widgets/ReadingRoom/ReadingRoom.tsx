@@ -640,8 +640,8 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
 
   /* ---------- seats ---------- */
   const taken = new Set(readers.map((r) => r.seat));
-  // A reader sits only where the photo can show them, so they are always seen in it: in a hall with both casts any chair
-  // with a character, elsewhere (the phones' portrait, the library) one whose character is of their gender.
+  // A reader sits only where the photo can show them, so they are always seen in it: in a hall with both casts (the
+  // round's, wide and portrait) any chair with a character, elsewhere one whose character is of their gender.
   // Chairs that would show just a name tag are not offered.
   function canSit(i: number) {
     const sc = seatChar(hk, i);
