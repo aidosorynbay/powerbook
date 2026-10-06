@@ -21,15 +21,17 @@ void main(){vec2 uv=vUv;vec2 d=(uv-uSun)/56.;vec2 s=uv;vec3 acc=vec3(0.);float w
  gl_FragColor=vec4(acc/56.*2.2,1.);}`;
 const MAIN_FS=`precision highp float;varying vec2 vUv;
 uniform sampler2D uImg;uniform sampler2D uRay;uniform vec2 uRes;uniform vec2 uOff;uniform vec2 uSize;uniform vec2 uPar;uniform float uTime;uniform float uWake;uniform float uNight;uniform float uRayK;
-uniform vec4 uWin;uniform vec3 uFire;uniform vec4 uFireBox;uniform vec4 uLamp[24];uniform int uNL;uniform vec4 uSway[6];uniform float uLoaded;uniform sampler2D uWith;uniform sampler2D uMask;uniform sampler2D uRig;uniform sampler2D uSoft;uniform sampler2D uPages;
+uniform vec4 uWin;uniform vec3 uFire;uniform vec4 uFireBox;uniform vec4 uLamp[24];uniform int uNL;uniform vec4 uSway[6];uniform float uLoaded;uniform sampler2D uWith;uniform sampler2D uWith2;uniform sampler2D uMask;uniform sampler2D uRig;uniform sampler2D uSoft;uniform sampler2D uPages;
 uniform vec4 uS[${NS*8}];uniform vec4 uPg[${NP*7}];uniform vec4 uEye[${NE}];uniform vec4 uLid[${NE}];uniform vec4 uCup[8];uniform float uGK;uniform vec2 uSteamK;uniform vec2 uMaskPx;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 vec2 aff(vec4 m,vec2 t,vec2 p){return vec2(m.x*p.x+m.y*p.y,m.z*p.x+m.w*p.y)+t;}
-/* every reader comes from the same render of the hall */
-vec3 photo(vec2 s,float id){return texture2D(uWith,s).rgb;}
+/* every reader comes from a render of the hall: where the hall has two casts, a reader numbered past 32 is a man from the
+   second render (uWith2) and his outline is in the mask's blue channel; the women, and every other hall, use uWith and red */
+vec3 photo(vec2 s,float id){return mix(texture2D(uWith,s).rgb,texture2D(uWith2,s).rgb,step(31.5,id));}
 /* the reader's own pixel at s: its colour, and its coverage only where the mask belongs to this reader. The reader's number
    is read at the middle of the mask's pixel: filtered between two readers who touch, it would belong to neither */
-vec4 person(vec2 s,float id){float g=texture2D(uMask,(floor(s*uMaskPx)+.5)/uMaskPx).g;return vec4(photo(s,id),texture2D(uMask,s).r*(1.-step(.04,abs(g*25.5-id))));}
+vec4 person(vec2 s,float id){float g=texture2D(uMask,(floor(s*uMaskPx)+.5)/uMaskPx).g;vec4 m=texture2D(uMask,s);
+ return vec4(photo(s,id),mix(m.r,m.b,step(31.5,id))*(1.-step(.04,abs(g*25.5-mod(id,32.)))));}
 /* a blink: the upper lid comes down over the eye. Its skin takes the colour of the skin at the crease and under the eye,
    and the lash line travels down with the lid's edge, column by column */
 vec3 lid(vec2 s,vec3 col,vec4 E,vec4 L,float w,float id){
@@ -234,6 +236,8 @@ function putInv(m,buf,o){const det=m[0]*m[3]-m[1]*m[2],a=m[3]/det,b=-m[1]/det,c=
 /* each reader's habits, on their own clocks: breathing, eyes running along the lines, blinks, the book never quite still in the hands,
    now and then a new way of sitting, and the page turn with the hand that lifts the sheet */
 let MOT={};
+/* the hall's two casts, when it has them: which readers do not blink in which cast (their new eyes are elsewhere) */
+let CASTS=null;
 const bump=t=>t<=0||t>=1?0:Math.sin(Math.PI*t)**2;
 const smooth=t=>{t=clamp(t);return t*t*t*(t*(t*6-15)+10)};
 const POSE0={tA:0,tX:0,tY:0,hA:0,hX:0,hY:0,bA:0,bX:0,bY:0,bS:1};
@@ -276,11 +280,12 @@ function handGesture(id,e){
 /* fills the reader's slot for this frame, and a page slot and eye slots when they have them */
 function motion(id,p,now,vis){
   const R=RIG[id],G=PAGES[id],F=frameSlots;if(F.ns>=NS)return;const sl=F.ns++,o=sl*32;
+  const male=!!(CASTS&&p&&p.gender==='m'),EY=R.eyes&&!(CASTS&&CASTS.noBlink[male?'m':'f'].includes(id))?R.eyes:null;
   const m=MOT[id]||(MOT[id]={seed:Math.random()*100,period:3.6+Math.random()*.9,line:3.2+Math.random()*.9,cur:{...POSE0},from:{...POSE0},to:{...POSE0},pt0:-99,pdur:3,pnext:now+8+Math.random()*14,blinkT:-9,blinkNext:now+1+Math.random()*3,blinkK:1,paused:false,flipSeen:null});
   const paused=!!(p&&p.status==='paused'),e=p&&p.flipAt!=null?now-p.flipAt:-99,turning=e>-FLIP.reach&&e<FLIP.dur+FLIP.back;
   /* a new way of sitting every 15–40 s, never in the middle of a page turn, and soon after a pause or a return to the book */
   if(paused!==m.paused){m.paused=paused;m.pnext=Math.min(m.pnext,now+.6+Math.random())}
-  if(now>m.pnext&&!turning){m.from={...m.cur};m.to=newPose(id,m.cur,paused);m.pt0=now;m.pdur=2.4+Math.random()*1.2;m.pnext=now+15+Math.random()*25;if(R.eyes&&Math.random()<.7)m.blinkNext=Math.min(m.blinkNext,now+.12)}
+  if(now>m.pnext&&!turning){m.from={...m.cur};m.to=newPose(id,m.cur,paused);m.pt0=now;m.pdur=2.4+Math.random()*1.2;m.pnext=now+15+Math.random()*25;if(EY&&Math.random()<.7)m.blinkNext=Math.min(m.blinkNext,now+.12)}
   /* the torso moves first, the book a beat later, the head last */
   const kt=smooth((now-m.pt0)/m.pdur),kb=smooth((now-m.pt0-.12)/m.pdur),kh=smooth((now-m.pt0-.22)/m.pdur);
   for(const k in POSE0)m.cur[k]=lerp(m.from[k],m.to[k],k[0]==='t'?kt:k[0]==='h'?kh:kb);
@@ -288,7 +293,7 @@ function motion(id,p,now,vis){
   m.brPh=(m.brPh||0)+dtm*2*Math.PI/(m.period*(paused?1.2:1));m.readK=lerp(m.readK??(paused?0:1),paused?0:1,Math.min(1,dtm*1.5));
   const br=Math.sin(m.brPh+s);
   /* eyes running along the lines, carried a little by the head: a slow sweep, then a soft return to the next line */
-  let rx=.5;if(R.eyes){const lp=((now+s)%m.line)/m.line;rx=.5+((lp<.84?smooth(lp/.84):1-smooth((lp-.84)/.16))-.5)*m.readK}
+  let rx=.5;if(EY){const lp=((now+s)%m.line)/m.line;rx=.5+((lp<.84?smooth(lp/.84):1-smooth((lp-.84)/.16))-.5)*m.readK}
   let tA=c.tA+.0012*br,tX=c.tX,tY=c.tY-.45*br,
       hA=c.hA+(rx-.5)*.006+.004*Math.sin(.37*now+s),hX=c.hX+(rx-.5)*.7,hY=c.hY+rx*.3+.2*Math.sin(.29*now+s*5),
       bA=c.bA+.003*Math.sin(.63*now+s)+.002*Math.sin(1.71*now+s*2),bX=c.bX+.35*Math.sin(.8*now+s*3),bY=c.bY+.4*Math.sin(.55*now+s*4),bS=c.bS;
@@ -299,20 +304,20 @@ function motion(id,p,now,vis){
     bA+=.012*bump(f)*(G.away?1:-1);bY-=.8*bump(f);hA+=(G.away?.02:-.018)*bump(f);hY-=.6*bump(f);
     if(R.wrist)hand=handGesture(id,e);
     /* the eyes jump from the end of one page to the top of the next, and blink on the way */
-    if(R.eyes&&e>FLIP.dur*.45&&m.flipSeen!==p.flipAt){m.flipSeen=p.flipAt;m.blinkNext=now}
+    if(EY&&e>FLIP.dur*.45&&m.flipSeen!==p.flipAt){m.flipSeen=p.flipAt;m.blinkNext=now}
   }
   /* blinks, now and then twice */
-  if(R.eyes&&now>m.blinkNext){m.blinkT=now;m.blinkK=.88+Math.random()*.12;m.blinkNext=now+(Math.random()<.14?.34:2.8+Math.random()*4.5)}
+  if(EY&&now>m.blinkNext){m.blinkT=now;m.blinkK=.88+Math.random()*.12;m.blinkNext=now+(Math.random()<.14?.34:2.8+Math.random()*4.5)}
   /* parts, parent first: the head rides on the torso, the book on most of the torso's lean, the hand on the book */
   const T0=aRot(R.hip,tA,1,tX,tY),Th=aMul(T0,aRot(R.neck,hA,1,hX,hY)),Tb=aMul(aRot(R.hip,tA*.6,1,tX*.6,tY*.6),aRot(R.book,bA,bS,bX,bY));
   const Tw=R.wrist?aMul(Tb,aRot(R.wrist,hand[2],hand[3],hand[0],hand[1])):Tb;
   /* the site's masks run a soft seam past each reader's outline, so the box they may be drawn in is padded */
   const B=R.box;slotBuf.set([B[0]-PAD[0],B[1]-PAD[1],B[2]+PAD[0],B[3]+PAD[1]],o);slotBuf.set(R.torso,o+4);putInv(T0,slotBuf,o+8);putInv(Th,slotBuf,o+14);putInv(Tb,slotBuf,o+20);
-  slotBuf[o+26]=id;slotBuf[o+27]=vis;slotBuf[o+28]=R.eyes?blinkAmt(now-m.blinkT)*m.blinkK:0;
+  slotBuf[o+26]=id+(male?32:0);slotBuf[o+27]=vis;slotBuf[o+28]=EY?blinkAmt(now-m.blinkT)*m.blinkK:0;
   if(G&&F.np<NP){const q=F.np++*28;
     pgBuf.set([...G.s0,...G.d,...G.r,...G.l,...G.up,G.away,1,ph,G.tiles[0],G.tiles[1],sl,...G.tint,G.under],q);
     if(R.wrist){putInv(Tw,pgBuf,q+20);pgBuf[q+26]=1}}
-  for(const e of R.eyes||[])if(F.ne<NE){const k=F.ne++*4;eyeBuf.set(e.slice(0,4),k);lidBuf.set([...e.slice(4,7),sl],k)}
+  for(const e of EY||[])if(F.ne<NE){const k=F.ne++*4;eyeBuf.set(e.slice(0,4),k);lidBuf.set([...e.slice(4,7),sl],k)}
 }
 
 
@@ -322,7 +327,9 @@ function motion(id,p,now,vis){
    else's chair behind it). lamps glow brighter when someone reads beside them; cups steam: u, v, and the reader whose head
    hides that cup in the render (its steam stops while they sit there); sway: leaves that move in the air */
 export const HALLS={
-  a:{files:'a',sun:[.5,.05],win:[.5,.1,.13,.17],fire:[.915,.78],fireBox:[.893,.712,.938,.852],
+  /* casts: the founder's renders of 2026-10-06 put a woman and a man in every chair (build_casts.py), so a seat shows
+     whoever takes it. Blinks only where the new face's eyes are where the rig measured them */
+  a:{files:'a',casts:{noBlink:{f:[3,7],m:[1,2,3,7]}},sun:[.5,.05],win:[.5,.1,.13,.17],fire:[.915,.78],fireBox:[.893,.712,.938,.852],
     lamps:[[.15,.66,1],[.705,.38,.75],[.855,.70,1]],
     seats:[[.33,.335,-1],[.355,.44,-1],[.33,.52,-1],[.235,.63,0],[.2,.89,-1],[.42,.905,-1],[.58,.905,-1],[.79,.89,-1],[.735,.62,2],[.65,.5,-1],[.66,.36,1],[.515,.32,-1]],
     chars:{1:{seat:1,g:'f',head:[.318,.292],ring:[.325,.394]},2:{seat:10,g:'f',head:[.644,.252],ring:[.6425,.3136]},3:{seat:8,g:'m',head:[.754,.437],ring:[.757,.49]},4:{seat:4,g:'m',head:[.19,.705],ring:[.205,.79]},5:{seat:7,g:'f',head:[.793,.732],ring:[.7825,.851]},
@@ -361,23 +368,24 @@ const portraitHall=order=>({...M,rig:RIG_M,pages:PAGES_M,seats:order.map(id=>id?
   chars:Object.fromEntries(order.map((id,seat)=>[id,{seat,...MCHAR[id]}]).filter(([id])=>+id))});
 HALLS.mr=portraitHall([6,1,0,7,4,8,9,5,3,10,2,11]);
 HALLS.ml=portraitHall([7,3,4,8,9,5,1,2,6,10,11]);
-/* which reader of the render shows a person in a seat: only one of their own gender */
+/* which reader of the render shows a person in a seat: one of their own gender, or, in a hall with both casts, the seat's own */
 export function charFor(hall,seat,gender){
   const g=gender==='male'?'m':gender==='female'?'f':null;if(!g)return 0;
-  for(const [id,c] of Object.entries(HALLS[hall].chars))if(c.seat===seat&&c.g===g)return +id;
+  const H=HALLS[hall];
+  for(const [id,c] of Object.entries(H.chars))if(c.seat===seat&&(H.casts||c.g===g))return +id;
   return 0;
 }
 export function seatChar(hall,seat){for(const [id,c] of Object.entries(HALLS[hall].chars))if(c.seat===seat)return {id:+id,...c};return null}
 
 const DUST=[...Array(170)].map((_,i)=>{const r=rng(i*7+3);return {t:r(),s:r()*2-1,ph:r()*6.28,sp:.2+r()*.6,sz:.5+r()*1.4,a:.25+r()*.75}});
 const EMBERS=[...Array(26)].map((_,i)=>{const r=rng(i*13+5);return {x:r(),t:r(),sp:.35+r()*.6,dr:r()*2-1,sz:.6+r()*1.2}});
-const UNIFORMS=['uImg','uRay','uRes','uOff','uSize','uPar','uTime','uWake','uNight','uRayK','uWin','uFire','uFireBox','uLamp','uNL','uSway','uLoaded','uWith','uMask','uRig','uSoft','uPages','uS','uPg','uEye','uLid','uCup','uGK','uSteamK','uMaskPx'];
+const UNIFORMS=['uImg','uRay','uRes','uOff','uSize','uPar','uTime','uWake','uNight','uRayK','uWin','uFire','uFireBox','uLamp','uNL','uSway','uLoaded','uWith','uWith2','uMask','uRig','uSoft','uPages','uS','uPg','uEye','uLid','uCup','uGK','uSteamK','uMaskPx'];
 
 /* opts: hall, base (url of the photos), canvas, fx, stage, frame, edge, teaser, ui, tags, scrollEl (null: the room is shown whole),
    variant ('day' | 'night'), small (phone-sized photos), reduced (less motion), onFlip(key) when a reader turns a page */
 export function createRoomEngine(opts){
   const H=HALLS[opts.hall],{canvas:cv,fx,stage}=opts,fxc=fx.getContext('2d');
-  MOT={};RIG=H.rig||RIG_A;PAGES=H.pages||PAGES_A;PW=H.pw||2752;PH=H.ph||1536;PAD=H.pad||[.012,.03];
+  MOT={};CASTS=H.casts||null;RIG=H.rig||RIG_A;PAGES=H.pages||PAGES_A;PW=H.pw||2752;PH=H.ph||1536;PAD=H.pad||[.012,.03];
   const gl=cv.getContext('webgl2',{antialias:false,alpha:false})||cv.getContext('webgl',{antialias:false,alpha:false});
   const GL2=typeof WebGL2RenderingContext!=='undefined'&&gl instanceof WebGL2RenderingContext;
   let progMain=null,progRays=null;const U={};
@@ -391,7 +399,7 @@ export function createRoomEngine(opts){
   }
 
   /* ---------- photos: per time of day the empty hall, the hall with everyone, where each reader is, and their pages ---------- */
-  const url=(name,big)=>`${opts.base}${H.files}-${name}${big&&opts.small?'-m':''}.${name.endsWith('mask')||name.endsWith('pages')||name==='rig'||name==='soft'?'png':'jpg'}`;
+  const url=(name,big)=>`${opts.base}${H.files}-${name}${big&&opts.small?'-m':''}.${/(mask|pages|people)$/.test(name)||name==='rig'||name==='soft'?'png':'jpg'}`;
   const texFrom=(img,photo)=>{
     const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
     gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL,photo?gl.BROWSER_DEFAULT_WEBGL:gl.NONE);
@@ -423,11 +431,13 @@ export function createRoomEngine(opts){
       if(dead)return;e.img=img;e.ar=img.naturalWidth/img.naturalHeight;
       if(gl){e.tex=texFrom(img,true);e.ray=bakeRays(e.tex,e.ar)}
       e.ready=true;e.readyAt=performance.now();opts.onReady?.();
-      return Promise.all([loadImg(url(v,true)),loadImg(url(`${v}-mask`)),loadImg(url(`${v}-pages`)),shared.rig?null:loadImg(url('rig')),shared.soft?null:loadImg(url('soft'))]);
+      /* a hall with two casts: the women's render, the men's, and one mask for both */
+      return Promise.all([loadImg(url(CASTS?`${v}-women`:v,true)),CASTS?loadImg(url(`${v}-men`,true)):null,loadImg(url(CASTS?`${v}-people`:`${v}-mask`)),loadImg(url(`${v}-pages`)),shared.rig?null:loadImg(url('rig')),shared.soft?null:loadImg(url('soft'))]);
     }).then(r=>{
-      if(!r||dead||!gl)return;const [ph,mask,pages,rigI,softI]=r;
+      if(!r||dead||!gl)return;const [ph,ph2,mask,pages,rigI,softI]=r;
       if(rigI)shared.rig=texFrom(rigI,false);if(softI)shared.soft=texFrom(softI,false);
-      e.people={tex:texFrom(ph,true),mask:texFrom(mask,false),pages:texFrom(pages,false)};
+      const tex=texFrom(ph,true);
+      e.people={tex,tex2:ph2?texFrom(ph2,true):tex,mask:texFrom(mask,false),pages:texFrom(pages,false)};
     }).catch(()=>{});
     return e;
   }
@@ -553,13 +563,13 @@ export function createRoomEngine(opts){
       const gate=seg(P,.6+(i%8)*.02,.74+(i%8)*.02);
       if(n<24&&s.u>=0){lampBuf.set([s.u,s.v-.02,s.level*fm*gate*(o&&o.char?.22:s.lamp>=0?.35:.62)*(1+Math.sin(T*1.6+i)*.04),s.lamp>=0?.55:.8],n*4);n++}
       const ch=o&&o.char?o.char:s.lastChar||0;
-      if(ch){const on=o&&o.char?1:0;s.lastChar=ch;s.vis+=(on*seg(P,.55,.75)-s.vis)*Math.min(1,dt*2.4);if(s.vis>.001&&peopleReady)motion(ch,o||{status:'reading',flipAt:null},T,s.vis);if(!on&&s.vis<.002)s.lastChar=0}
+      if(ch){const on=o&&o.char?1:0;s.lastChar=ch;if(on)s.lastG=o.gender;s.vis+=(on*seg(P,.55,.75)-s.vis)*Math.min(1,dt*2.4);if(s.vis>.001&&peopleReady)motion(ch,o||{status:'reading',flipAt:null,gender:s.lastG},T,s.vis);if(!on&&s.vis<.002)s.lastChar=0}
     });
     H.sway.forEach((m,i)=>swayBuf.set(m,i*4));for(let i=H.sway.length;i<6;i++)swayBuf.set([0,0,0,0],i*4);
     if(gl&&tex.ready){
       gl.viewport(0,0,cv.width,cv.height);gl.useProgram(progMain);
       const P6=tex.people;
-      [['uWith',P6&&P6.tex,2],['uMask',P6&&P6.mask,3],['uRig',shared.rig,4],['uSoft',shared.soft,5],['uPages',P6&&P6.pages,6]].forEach(([u,t,i])=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,peopleReady&&t?t:tex.ray);gl.uniform1i(U[u],i)});
+      [['uWith',P6&&P6.tex,2],['uMask',P6&&P6.mask,3],['uRig',shared.rig,4],['uSoft',shared.soft,5],['uPages',P6&&P6.pages,6],['uWith2',P6&&P6.tex2,7]].forEach(([u,t,i])=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,peopleReady&&t?t:tex.ray);gl.uniform1i(U[u],i)});
       if(!peopleReady)frameSlots.ns=0,slotBuf.fill(0);
       gl.uniform4fv(U.uS,slotBuf);gl.uniform4fv(U.uPg,pgBuf);gl.uniform4fv(U.uEye,eyeBuf);gl.uniform4fv(U.uLid,lidBuf);
       const shown={};for(const s of seats)if(s.lastChar)shown[s.lastChar]=Math.max(shown[s.lastChar]||0,s.vis);
@@ -609,7 +619,7 @@ export function createRoomEngine(opts){
     setVariant(v){variant=v;loadVariant(v)},
     setOccupants(list){
       const next=new Map();
-      for(const o of list){const prev=occ.get(o.key);next.set(o.key,prev?Object.assign(prev,{seat:o.seat,char:o.char,status:o.status}):{...o,flipAt:null})}
+      for(const o of list){const prev=occ.get(o.key);next.set(o.key,prev?Object.assign(prev,{seat:o.seat,char:o.char,status:o.status,gender:o.gender}):{...o,flipAt:null})}
       occ=next;seats.forEach(s=>{s.occ=null});
       for(const o of occ.values())if(seats[o.seat])seats[o.seat].occ=o;
     },

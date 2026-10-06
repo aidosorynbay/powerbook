@@ -15,11 +15,13 @@ export interface Hall {
   portrait?: boolean;
   seats: [number, number, number][];
   chars: Record<number, HallChar>;
+  /** Renders of every chair with a woman and with a man: any reader can take any chair with a character. */
+  casts?: { noBlink: { f: number[]; m: number[] } };
 }
 
 export const HALLS: Record<HallKey, Hall>;
 
-/** The render's reader who shows a person of this gender in this seat, or 0 when the seat has none. */
+/** The render's reader who shows a person of this gender in this seat (in a hall with casts, the seat's own), or 0 when there is none. */
 export function charFor(hall: HallKey, seat: number, gender: string): number;
 /** The render's reader in this seat, whoever it is. */
 export function seatChar(hall: HallKey, seat: number): (HallChar & { id: number }) | null;
@@ -30,6 +32,8 @@ export interface Occupant {
   /** the render's reader shown in the chair, 0 for none (only a name tag and a lamp) */
   char: number;
   status: 'reading' | 'paused';
+  /** which cast draws them, in a hall with both */
+  gender?: 'm' | 'f';
 }
 
 export interface RoomEngine {

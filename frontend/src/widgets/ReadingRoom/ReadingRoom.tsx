@@ -374,6 +374,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   useEffect(() => {
     engineRef.current?.setOccupants(readers.map((r) => ({
       key: r.session_id, seat: r.seat, char: charFor(hk, r.seat, r.gender), status: r.status,
+      gender: r.gender === 'male' ? 'm' : 'f',
     })));
   }, [readers, hk]);
 
@@ -639,11 +640,12 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
 
   /* ---------- seats ---------- */
   const taken = new Set(readers.map((r) => r.seat));
-  // For now a reader sits only where the render has a character of their gender, so they are always seen in the photo.
+  // A reader sits only where the photo can show them, so they are always seen in it: in a hall with both casts any chair
+  // with a character, elsewhere (the phones' portrait, the library) one whose character is of their gender.
   // Chairs that would show just a name tag are not offered.
   function canSit(i: number) {
     const sc = seatChar(hk, i);
-    return !!sc && !!myG && sc.g === myG;
+    return !!sc && !!myG && (!!H.casts || sc.g === myG);
   }
   const freeSeen = H.seats.filter((_, i) => !taken.has(i) && canSit(i)).length;
   const showRings = !!state?.can_sit && !mine && !finished;
