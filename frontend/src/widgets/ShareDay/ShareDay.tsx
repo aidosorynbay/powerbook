@@ -74,7 +74,8 @@ export function ShareDay({ day, roundId, onClose }: { day: string; roundId?: str
   const sent = (channel: ShareChannel, detail: Record<string, string> = {}) => {
     if (!card) return;
     track('day_share', { method: channel, minutes: card.minutes, streak: card.streak, ...detail });
-    apiPost('/share/day', { round_id: card.round_id, day: card.day, channel }, { requireAuth: true });
+    // A sticker's template, action and ink go to our own count too (/admin → «Стикеры»).
+    apiPost('/share/day', { round_id: card.round_id, day: card.day, channel, ...detail }, { requireAuth: true, keepalive: true });
   };
 
   const choose = (next: Tab) => {

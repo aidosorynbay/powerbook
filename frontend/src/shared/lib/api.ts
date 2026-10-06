@@ -99,13 +99,15 @@ export async function apiFetch<T>(
 export async function apiPost<T, B = unknown>(
   endpoint: string,
   body: B,
-  options?: { requireAuth?: boolean }
+  options?: { requireAuth?: boolean; keepalive?: boolean }
 ): Promise<{ data: T | null; error: string | null }> {
   return apiFetch<T>(endpoint, {
     method: 'POST',
     headers: getJsonHeaders(),
     body: JSON.stringify(body),
     requireAuth: options?.requireAuth,
+    // Sent even if the page is left right after (a reader off to Instagram).
+    keepalive: options?.keepalive,
   });
 }
 
