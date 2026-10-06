@@ -4,7 +4,7 @@
    Ported from the prototype (prototypes/reading-room/index.html), where every number here was measured and checked.
    Phones get the founder's portrait render of the hall (m-*, rig in rig-m.js, built by prototypes/reading-room/mobile/). */
 import {RIG_M,PAGES_M} from './rig-m.js';
-import {CAST_EYES} from './casts.js';
+import {CAST_BOX,CAST_EYES,CAST_PAGES} from './casts.js';
 const clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v));
 const seg=(p,a,b)=>clamp((p-a)/(b-a));
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -22,7 +22,7 @@ void main(){vec2 uv=vUv;vec2 d=(uv-uSun)/56.;vec2 s=uv;vec3 acc=vec3(0.);float w
  gl_FragColor=vec4(acc/56.*2.2,1.);}`;
 const MAIN_FS=`precision highp float;varying vec2 vUv;
 uniform sampler2D uImg;uniform sampler2D uRay;uniform vec2 uRes;uniform vec2 uOff;uniform vec2 uSize;uniform vec2 uPar;uniform float uTime;uniform float uWake;uniform float uNight;uniform float uRayK;
-uniform vec4 uWin;uniform vec3 uFire;uniform vec4 uFireBox;uniform vec4 uLamp[24];uniform int uNL;uniform vec4 uSway[6];uniform float uLoaded;uniform sampler2D uWith;uniform sampler2D uWith2;uniform sampler2D uMask;uniform sampler2D uRig;uniform sampler2D uSoft;uniform sampler2D uPages;
+uniform vec4 uWin;uniform vec3 uFire;uniform vec4 uFireBox;uniform vec4 uLamp[24];uniform int uNL;uniform vec4 uSway[6];uniform float uLoaded;uniform float uCasts;uniform sampler2D uWith;uniform sampler2D uWith2;uniform sampler2D uMask;uniform sampler2D uRig;uniform sampler2D uSoft;uniform sampler2D uPages;
 uniform vec4 uS[${NS*8}];uniform vec4 uPg[${NP*7}];uniform vec4 uEye[${NE}];uniform vec4 uLid[${NE}];uniform vec4 uCup[8];uniform float uGK;uniform vec2 uSteamK;uniform vec2 uMaskPx;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 vec2 aff(vec4 m,vec2 t,vec2 p){return vec2(m.x*p.x+m.y*p.y,m.z*p.x+m.w*p.y)+t;}
@@ -30,9 +30,11 @@ vec2 aff(vec4 m,vec2 t,vec2 p){return vec2(m.x*p.x+m.y*p.y,m.z*p.x+m.w*p.y)+t;}
    second render (uWith2) and his outline is in the mask's blue channel; the women, and every other hall, use uWith and red */
 vec3 photo(vec2 s,float id){return mix(texture2D(uWith,s).rgb,texture2D(uWith2,s).rgb,step(31.5,id));}
 /* the reader's own pixel at s: its colour, and its coverage only where the mask belongs to this reader. The reader's number
-   is read at the middle of the mask's pixel: filtered between two readers who touch, it would belong to neither */
-vec4 person(vec2 s,float id){float g=texture2D(uMask,(floor(s*uMaskPx)+.5)/uMaskPx).g;vec4 m=texture2D(uMask,s);
- return vec4(photo(s,id),mix(m.r,m.b,step(31.5,id))*(1.-step(.04,abs(g*25.5-mod(id,32.)))));}
+   is read at the middle of the mask's pixel: filtered between two readers who touch, it would belong to neither. A hall
+   with two casts keeps both numbers in green, 16 x the woman's + the man's, since the two casts' figures differ */
+vec4 person(vec2 s,float id){float g=floor(texture2D(uMask,(floor(s*uMaskPx)+.5)/uMaskPx).g*255.+.5);vec4 m=texture2D(uMask,s);
+ float man=step(31.5,id),hi=floor(g/16.+.01),own=uCasts>.5?mix(hi,g-16.*hi,man):g/10.;
+ return vec4(photo(s,id),mix(m.r,m.b,man)*(1.-step(.2,abs(own-mod(id,32.)))));}
 /* a blink: the upper lid comes down over the eye. Its skin takes the colour of the skin at the crease and under the eye,
    and the lash line travels down with the lid's edge, column by column */
 vec3 lid(vec2 s,vec3 col,vec4 E,vec4 L,float w,float id){
@@ -93,7 +95,11 @@ void main(){
   vec2 s=mix(p,pT,smoothstep(1.,.4,length((p-To.xy)/To.zw)));
   vec3 sw=texture2D(uSoft,s).rgb;
   s=mix(s,pH,sw.r);s=mix(s,pB,sw.g);s=mix(s,pW,sw.b);
-  vec4 q=person(s,id);c=mix(c,q.rgb,q.a*vis);
+  /* blinks wherever the face is drawn: a new face need not sit where the rig's rigid head is */
+  float bl=uS[i*8+7].x;
+  vec4 q=person(s,id);
+  if(bl>.002)for(int e=0;e<${NE};e++){vec4 L=uLid[e];if(abs(L.w-float(i))<.5)q.rgb=lid(s,q.rgb,uEye[e],L,bl,id);}
+  c=mix(c,q.rgb,q.a*vis);
   /* the book with the hands holding it, crisp and whole */
   vec3 rB=texture2D(uRig,pB).rgb;
   if(rB.g>.002){q=person(pB,id);c=mix(c,q.rgb,q.a*rB.g*vis);}
@@ -106,18 +112,21 @@ void main(){
    if(PC.w>=0.&&rB.b>.002&&onR)c=mix(c,texture2D(uPages,vec2((PC.w+clamp(bR,.02,.97))/${NT}.,.5+clamp(aR,.01,.99)*.5)).rgb,rB.b*vis*smoothstep(.95,.9,aR)*smoothstep(.99,.95,bR));
    /* page turn: the right-hand sheet lifts off, curls over the spine and settles on the left. It is lit by the angle it makes
       with the light, shows the page's front and then its back, and casts a soft shadow on the pages underneath */
-   float ph=PT.x;
+   /* PU.z: 0 an open book; 1 a book turned to us; 2 an open book whose sheet borrows another book's pages, so it shows only
+      while it is lifted off them; 3 a book seen from its cover: only the top of the sheet flicks up past it */
+   float ph=PT.x,away=step(.5,PU.z)*step(PU.z,1.5),lent=step(1.5,PU.z);
    if(ph>=0.&&length(qb-d*.5)<length(d)+length(R)+length(L)){
     float th=3.14159*(.5-.5*cos(3.14159*ph)),fade=1.;
-    if(PU.z>.5){th=mix(1.5708,3.14159,smoothstep(0.,1.,ph));fade=smoothstep(0.,.18,ph)*(1.-smoothstep(.6,.88,ph));}
+    if(away>.5){th=mix(1.5708,3.14159,smoothstep(0.,1.,ph));fade=smoothstep(0.,.18,ph)*(1.-smoothstep(.6,.88,ph));}
+    if(lent>.5)fade=smoothstep(.3,.8,sin(th));
     float sh=0.;
     if(onR&&th<1.5708)sh=.38*sin(th)*(1.-smoothstep(cos(th)*.85,cos(th)*.85+.4,bR));
     if(onL&&th>1.5708)sh=.38*sin(th)*(1.-smoothstep(-cos(th)*.85,-cos(th)*.85+.4,bL));
-    c*=1.-sh*fade*vis;
+    c*=1.-sh*fade*vis*step(PU.z,2.5);
     /* the sheet, drawn as eight strips so it can bend */
     vec2 Pk=vec2(0.);float hit=0.,tp=0.,ha=0.,hk=0.,fr=1.,ea=1.3/length(d*uSize);
     for(int k=0;k<8;k++){
-     float tk=th-.62*sin(th)*(float(k)+.5)/8.;if(PU.z>.5)tk=max(tk,1.5708);
+     float tk=th-.62*sin(th)*(float(k)+.5)/8.;if(away>.5)tk=max(tk,1.5708);
      vec2 e=(((1.+cos(tk))*.5)*R+((1.-cos(tk))*.5)*L+sin(tk)*Up)/8.;
      vec2 r=qb-Pk;float det=d.x*e.y-d.y*e.x;
      if(abs(det)>1e-10){float a=(r.x*e.y-r.y*e.x)/det,b=(d.x*r.y-d.y*r.x)/det;
@@ -126,9 +135,9 @@ void main(){
      Pk+=e;
     }
     /* a book turned to us: the sheet is behind its cover until it clears it */
-    if(PU.z>.5)hit*=1.-smoothstep(0.,.03,aR)*smoothstep(1.,.97,aR)*smoothstep(-.01,.02,bR)*smoothstep(1.,.97,bR);
+    if(away>.5)hit*=1.-smoothstep(0.,.03,aR)*smoothstep(1.,.97,aR)*smoothstep(-.01,.02,bR)*smoothstep(1.,.97,bR);
     if(hit>0.){
-     float tile=(fr>.5&&PU.z<.5)?PT.y:PT.z;
+     float tile=(fr>.5&&away<.5)?PT.y:PT.z;
      /* lying flat it is exactly the page in the photo; in the air it is lit by its angle */
      vec2 tuv=vec2((tile+clamp(tp,.02,.97))/${NT}.,clamp(ha,.01,.99)*.5);float mid=smoothstep(0.,.5,sin(hk));
      vec3 pg=mix(texture2D(uPages,tuv+vec2(0.,.5)).rgb,texture2D(uPages,tuv).rgb,mid)*PC.rgb;
@@ -143,7 +152,7 @@ void main(){
   if(rW>.002){q=person(pW,id);c=mix(c,q.rgb,q.a*rW*vis);}
   /* the head, rigid, with its own blinks */
   float rH=texture2D(uRig,pH).r;
-  if(rH>.002){float bl=uS[i*8+7].x;q=person(pH,id);
+  if(rH>.002){q=person(pH,id);
    if(bl>.002)for(int e=0;e<${NE};e++){vec4 L=uLid[e];if(abs(L.w-float(i))<.5)q.rgb=lid(pH,q.rgb,uEye[e],L,bl,id);}
    c=mix(c,q.rgb,q.a*rH*vis);}
  }
@@ -303,7 +312,8 @@ function motion(id,p,now,vis){
   if(G&&turning){
     ph=e>=0&&e<FLIP.dur?e/FLIP.dur:-1;
     const f=clamp((e+FLIP.reach)/(FLIP.dur*.9+FLIP.reach));
-    bA+=.012*bump(f)*(G.away?1:-1);bY-=.8*bump(f);hA+=(G.away?.02:-.018)*bump(f);hY-=.6*bump(f);
+    const toUs=(G.mode??G.away)%2;
+    bA+=.012*bump(f)*(toUs?1:-1);bY-=.8*bump(f);hA+=(toUs?.02:-.018)*bump(f);hY-=.6*bump(f);
     if(R.wrist)hand=handGesture(id,e);
     /* the eyes jump from the end of one page to the top of the next, and blink on the way */
     if(EY&&e>FLIP.dur*.45&&m.flipSeen!==p.flipAt){m.flipSeen=p.flipAt;m.blinkNext=now}
@@ -314,12 +324,15 @@ function motion(id,p,now,vis){
   const T0=aRot(R.hip,tA,1,tX,tY),Th=aMul(T0,aRot(R.neck,hA,1,hX,hY)),Tb=aMul(aRot(R.hip,tA*.6,1,tX*.6,tY*.6),aRot(R.book,bA,bS,bX,bY));
   const Tw=R.wrist?aMul(Tb,aRot(R.wrist,hand[2],hand[3],hand[0],hand[1])):Tb;
   /* the site's masks run a soft seam past each reader's outline, so the box they may be drawn in is padded */
-  const B=R.box;slotBuf.set([B[0]-PAD[0],B[1]-PAD[1],B[2]+PAD[0],B[3]+PAD[1]],o);slotBuf.set(R.torso,o+4);putInv(T0,slotBuf,o+8);putInv(Th,slotBuf,o+14);putInv(Tb,slotBuf,o+20);
-  slotBuf[o+26]=id+(male?32:0);slotBuf[o+27]=vis;slotBuf[o+28]=EY?blinkAmt(now-m.blinkT)*m.blinkK:0;
-  if(G&&F.np<NP){const q=F.np++*28;
-    pgBuf.set([...G.s0,...G.d,...G.r,...G.l,...G.up,G.away,1,ph,G.tiles[0],G.tiles[1],sl,...G.tint,G.under],q);
+  const B=CASTS&&CASTS.box[id]||R.box;slotBuf.set([B[0]-PAD[0],B[1]-PAD[1],B[2]+PAD[0],B[3]+PAD[1]],o);slotBuf.set(R.torso,o+4);putInv(T0,slotBuf,o+8);putInv(Th,slotBuf,o+14);putInv(Tb,slotBuf,o+20);
+  const blink=EY?blinkAmt(now-m.blinkT)*m.blinkK:0;
+  slotBuf[o+26]=id+(male?32:0);slotBuf[o+27]=vis;slotBuf[o+28]=blink;
+  /* a page slot only while the page turns, and eye slots only while the eyes blink: with every reader able to do both,
+     the shader's few slots go to whoever is doing it right now */
+  if(G&&turning&&F.np<NP){const q=F.np++*28;
+    pgBuf.set([...G.s0,...G.d,...G.r,...G.l,...G.up,G.mode??G.away,1,ph,G.tiles[0],G.tiles[1],sl,...G.tint,G.under],q);
     if(R.wrist){putInv(Tw,pgBuf,q+20);pgBuf[q+26]=1}}
-  for(const e of EY||[])if(F.ne<NE){const k=F.ne++*4;eyeBuf.set(e.slice(0,4),k);lidBuf.set([...e.slice(4,7),sl],k)}
+  if(blink>0)for(const e of EY||[])if(F.ne<NE){const k=F.ne++*4;eyeBuf.set(e.slice(0,4),k);lidBuf.set([...e.slice(4,7),sl],k)}
 }
 
 
@@ -331,7 +344,7 @@ function motion(id,p,now,vis){
 export const HALLS={
   /* casts: the founder's renders of 2026-10-06 put a woman and a man in every chair (build_casts.py), so a seat shows
      whoever takes it, blinking with their own eyes (casts.js) */
-  a:{files:'a',casts:{eyes:CAST_EYES.a},sun:[.5,.05],win:[.5,.1,.13,.17],fire:[.915,.78],fireBox:[.893,.712,.938,.852],
+  a:{files:'a',casts:{eyes:CAST_EYES.a,box:CAST_BOX.a,pages:CAST_PAGES.a},sun:[.5,.05],win:[.5,.1,.13,.17],fire:[.915,.78],fireBox:[.893,.712,.938,.852],
     lamps:[[.15,.66,1],[.705,.38,.75],[.855,.70,1]],
     seats:[[.33,.335,-1],[.355,.44,-1],[.33,.52,-1],[.235,.63,0],[.2,.89,-1],[.42,.905,-1],[.58,.905,-1],[.79,.89,-1],[.735,.62,2],[.65,.5,-1],[.66,.36,1],[.515,.32,-1]],
     chars:{1:{seat:1,g:'f',head:[.318,.292],ring:[.325,.394]},2:{seat:10,g:'f',head:[.644,.252],ring:[.6425,.3136]},3:{seat:8,g:'m',head:[.754,.437],ring:[.757,.49]},4:{seat:4,g:'m',head:[.19,.705],ring:[.205,.79]},5:{seat:7,g:'f',head:[.793,.732],ring:[.7825,.851]},
@@ -354,7 +367,7 @@ export const HALLS={
 /* Phones: the founder's portrait render of the same hall, eleven readers, the same picture for both halls. Seat numbers
    are the server's, as in the wide halls: the round keeps room A's (seat 2 has no chair here either), the library keeps
    its six and adds the five that only the portrait has */
-const M={files:'m',casts:{eyes:CAST_EYES.m},portrait:true,pw:1536,ph:2752,pad:[.004,.004],gk:.55,steam:[.52,1.6],fitU:[.045,.955],
+const M={files:'m',casts:{eyes:CAST_EYES.m,box:CAST_BOX.m,pages:CAST_PAGES.m},portrait:true,pw:1536,ph:2752,pad:[.004,.004],gk:.55,steam:[.52,1.6],fitU:[.045,.955],
   sun:[.5,.06],win:[.5,.1,.3,.12],fire:[.995,.69],fireBox:[.972,.668,1.02,.715],
   lamps:[[.063,.425,1],[.83,.44,.8],[.592,.328,.7],[.378,.327,.7],[.07,.309,.6]],
   cups:[[.5501,.456],[.5811,.461],[.5615,.7295],[.6144,.7436]],
@@ -381,13 +394,14 @@ export function seatChar(hall,seat){for(const [id,c] of Object.entries(HALLS[hal
 
 const DUST=[...Array(170)].map((_,i)=>{const r=rng(i*7+3);return {t:r(),s:r()*2-1,ph:r()*6.28,sp:.2+r()*.6,sz:.5+r()*1.4,a:.25+r()*.75}});
 const EMBERS=[...Array(26)].map((_,i)=>{const r=rng(i*13+5);return {x:r(),t:r(),sp:.35+r()*.6,dr:r()*2-1,sz:.6+r()*1.2}});
-const UNIFORMS=['uImg','uRay','uRes','uOff','uSize','uPar','uTime','uWake','uNight','uRayK','uWin','uFire','uFireBox','uLamp','uNL','uSway','uLoaded','uWith','uWith2','uMask','uRig','uSoft','uPages','uS','uPg','uEye','uLid','uCup','uGK','uSteamK','uMaskPx'];
+const UNIFORMS=['uImg','uRay','uRes','uOff','uSize','uPar','uTime','uWake','uNight','uRayK','uWin','uFire','uFireBox','uLamp','uNL','uSway','uLoaded','uCasts','uWith','uWith2','uMask','uRig','uSoft','uPages','uS','uPg','uEye','uLid','uCup','uGK','uSteamK','uMaskPx'];
 
 /* opts: hall, base (url of the photos), canvas, fx, stage, frame, edge, teaser, ui, tags, scrollEl (null: the room is shown whole),
    variant ('day' | 'night'), small (phone-sized photos), reduced (less motion), onFlip(key) when a reader turns a page */
 export function createRoomEngine(opts){
   const H=HALLS[opts.hall],{canvas:cv,fx,stage}=opts,fxc=fx.getContext('2d');
-  MOT={};CASTS=H.casts||null;RIG=H.rig||RIG_A;PAGES=H.pages||PAGES_A;PW=H.pw||2752;PH=H.ph||1536;PAD=H.pad||[.012,.03];
+  /* every reader of a hall with two casts turns pages: the rig's own page turns, and the new ones (casts.js) */
+  MOT={};CASTS=H.casts||null;RIG=H.rig||RIG_A;PAGES={...(H.pages||PAGES_A),...(CASTS?.pages||{})};PW=H.pw||2752;PH=H.ph||1536;PAD=H.pad||[.012,.03];
   const gl=cv.getContext('webgl2',{antialias:false,alpha:false})||cv.getContext('webgl',{antialias:false,alpha:false});
   const GL2=typeof WebGL2RenderingContext!=='undefined'&&gl instanceof WebGL2RenderingContext;
   let progMain=null,progRays=null;const U={};
@@ -575,7 +589,7 @@ export function createRoomEngine(opts){
       if(!peopleReady)frameSlots.ns=0,slotBuf.fill(0);
       gl.uniform4fv(U.uS,slotBuf);gl.uniform4fv(U.uPg,pgBuf);gl.uniform4fv(U.uEye,eyeBuf);gl.uniform4fv(U.uLid,lidBuf);
       const shown={};for(const s of seats)if(s.lastChar)shown[s.lastChar]=Math.max(shown[s.lastChar]||0,s.vis);
-      cupBuf.fill(0);H.cups.slice(0,8).forEach((cp,i)=>cupBuf.set([cp[0],cp[1]-.004,seg(P,.6,.85)*(1-(cp[2]?shown[cp[2]]||0:0)),.55+cp[1]*.75],i*4));gl.uniform4fv(U.uCup,cupBuf);gl.uniform4f(U.uFireBox,...H.fireBox);gl.uniform1f(U.uGK,H.gk||1);gl.uniform2f(U.uMaskPx,PW,PH);gl.uniform2f(U.uSteamK,...(H.steam||[1,1]));
+      cupBuf.fill(0);H.cups.slice(0,8).forEach((cp,i)=>cupBuf.set([cp[0],cp[1]-.004,seg(P,.6,.85)*(1-(cp[2]?shown[cp[2]]||0:0)),.55+cp[1]*.75],i*4));gl.uniform4fv(U.uCup,cupBuf);gl.uniform4f(U.uFireBox,...H.fireBox);gl.uniform1f(U.uGK,H.gk||1);gl.uniform1f(U.uCasts,CASTS?1:0);gl.uniform2f(U.uMaskPx,PW,PH);gl.uniform2f(U.uSteamK,...(H.steam||[1,1]));
       gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex.tex);gl.uniform1i(U.uImg,0);
       gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,tex.ray);gl.uniform1i(U.uRay,1);
       gl.uniform2f(U.uRes,view.w,view.h);gl.uniform2f(U.uOff,view.ox,view.oy);gl.uniform2f(U.uSize,view.W,view.H);gl.uniform2f(U.uPar,view.parX,view.parY);

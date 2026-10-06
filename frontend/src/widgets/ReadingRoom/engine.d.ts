@@ -16,8 +16,13 @@ export interface Hall {
   seats: [number, number, number][];
   chars: Record<number, HallChar>;
   /** Renders of every chair with a woman and with a man: any reader can take any chair with a character.
-   *  eyes: each face's blinking eyes, by time of day, cast and reader (casts.js). */
-  casts?: { eyes: Record<'day' | 'night', Partial<Record<'f' | 'm', Record<number, number[][]>>>> };
+   *  eyes: each face's blinking eyes, by time of day, cast and reader; box: each reader's box, fitted to their
+   *  figures in every render (casts.js). */
+  casts?: {
+    eyes: Record<'day' | 'night', Partial<Record<'f' | 'm', Record<number, number[][]>>>>;
+    box: Record<number, number[]>;
+    pages: Record<number, unknown>;
+  };
 }
 
 export const HALLS: Record<HallKey, Hall>;
