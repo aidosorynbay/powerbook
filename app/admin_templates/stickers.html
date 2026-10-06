@@ -1,0 +1,64 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+{# sqladmin's row-deck turns every column into a flex row; this page is one tall column. #}
+<div class="col-12 d-block">
+<div class="w-100">
+  <div class="mb-3">
+    {% for m in data.months %}
+      {% if m.current %}<span class="badge bg-primary me-1">{{ m.label }}</span>
+      {% else %}<a class="badge bg-secondary-lt me-1" href="{{ base }}/stickers?m={{ m.key }}">{{ m.label }}</a>{% endif %}
+    {% endfor %}
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">
+      <h3 class="card-title">{{ data.month_label|capitalize }}: {{ data.headline }}</h3>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead>
+          <tr><th>Стикер</th><th class="w-25"></th><th class="text-end">Скопировали</th><th class="text-end">Сохранили</th>
+              <th class="text-end">Картинка с фоном</th><th class="text-end">Всего</th><th class="text-end">Читателей</th></tr>
+        </thead>
+        <tbody>
+          {% for r in data.table %}
+          <tr>
+            <td>{% if r.leader %}<b>{{ r.name }}</b>{% else %}{{ r.name }}{% endif %}</td>
+            <td><div class="progress progress-sm"><div class="progress-bar {% if r.leader %}bg-orange{% else %}bg-secondary{% endif %}" style="width: {{ r.share }}%"></div></div></td>
+            <td class="text-end">{{ r.copied }}</td>
+            <td class="text-end">{{ r.saved }}</td>
+            <td class="text-end">{{ r.picture }}</td>
+            <td class="text-end"><b>{{ r.total }}</b></td>
+            <td class="text-end">{{ r.readers }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer text-muted">
+      Цвет: белый {{ data.inks['белый'] }}, чёрный {{ data.inks['чёрный'] }}.
+      Каждому читателю первым показывается случайный стикер, поэтому сравнивать их честно.
+      Google Analytics показывает меньше: на iPhone он не успевает отправить событие, пока человек уходит в Instagram.
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Последние</h3></div>
+    {% if data.recent %}
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead><tr><th>Когда (Астана)</th><th>Читатель</th><th>Стикер</th><th>Что сделали</th><th>Цвет</th></tr></thead>
+        <tbody>
+          {% for u in data.recent %}
+          <tr><td class="text-muted">{{ u.at }}</td><td>{{ u.reader }}</td><td>{{ u.sticker }}</td><td>{{ u.done }}</td><td>{{ u.ink }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card-body text-muted">В этом месяце стикеры ещё не брали.</div>
+    {% endif %}
+  </div>
+</div>
+</div>
+{% endblock %}

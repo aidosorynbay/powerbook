@@ -418,6 +418,7 @@ def setup_admin(app):
 
     from app.admin_books import BookLinkAdmin, BookMergeView
     from app.admin_coverage import ArchiveCoverageView
+    from app.admin_stickers import StickersView
 
     auth_backend = AdminAuth(secret_key="sqladmin-powerbook-secret")
     # Our own pages (the archive coverage) extend sqladmin's layout from here.
@@ -437,4 +438,5 @@ def setup_admin(app):
     admin.add_base_view(ArchiveCoverageView)
     admin.add_base_view(BookMergeView)
     admin.add_view(BookLinkAdmin)
+    admin.add_base_view(StickersView)
     return admin

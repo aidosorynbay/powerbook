@@ -9,10 +9,19 @@ from pydantic import BaseModel
 Channel = Literal["whatsapp", "telegram", "x", "copy", "native", "sticker", "story"]
 
 
+Template = Literal["page", "shelf", "calendar", "shelfCalendar"]
+StickerAction = Literal["copy", "save", "download", "share"]
+Ink = Literal["light", "dark"]
+
+
 class ShareDayIn(BaseModel):
     round_id: str
     day: date
     channel: Channel
+    # For a sticker or the whole story picture: which one, what was done with it, in which ink.
+    template: Template | None = None
+    action: StickerAction | None = None
+    ink: Ink | None = None
 
 
 class CardDayOut(BaseModel):

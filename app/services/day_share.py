@@ -25,6 +25,7 @@ from app.models.enums import RoundParticipantStatus
 from app.models.group import Group
 from app.models.reading_room import ReadingRoomSession
 from app.models.round import ReadingLog, ReadingLogBook, Round, RoundParticipant
+from app.models.sticker_use import StickerUse
 from app.models.user import User
 from app.schemas.share import CardDayOut, DayCardOut, MyDayCardOut
 
@@ -149,7 +150,17 @@ def my_card(db: Session, *, user: User, day: date, round_id: str | None = None) 
     )
 
 
-def share(db: Session, *, user: User, round_id: str, day: date, channel: str) -> None:
+def share(
+    db: Session,
+    *,
+    user: User,
+    round_id: str,
+    day: date,
+    channel: str,
+    template: str | None = None,
+    action: str | None = None,
+    ink: str | None = None,
+) -> None:
     rnd = _round(db, round_id)
     if not rnd.covers(day):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Day is outside this round")
@@ -162,6 +173,15 @@ def share(db: Session, *, user: User, round_id: str, day: date, channel: str) ->
     ).first()
     if in_round is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a participant")
+
+    # Every sticker taken is counted, not just the day's first.
+    if template is not None:
+        db.add(StickerUse(
+            user_id=user.id, round_id=rnd.id, day=day, channel=channel, template=template,
+            action=action or "copy", ink=ink or "light",
+        ))
+        db.commit()
+
     seen = db.execute(
         select(DayShare.id).where(DayShare.user_id == user.id, DayShare.day == day, DayShare.channel == channel)
     ).first()

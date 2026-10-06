@@ -22,6 +22,7 @@ from app.models.enums import Gender, RoundParticipantStatus, RoundStatus
 from app.models.group import Group
 from app.models.reading_room import ReadingRoomSession
 from app.models.round import ReadingLog, ReadingLogBook, Round, RoundParticipant
+from app.models.sticker_use import StickerUse
 from app.models.user import User
 from app.services import day_share
 
@@ -83,9 +84,11 @@ def env(monkeypatch):
     yield type("Env", (), dict(db=db, client=client, h=h, aigerim=aigerim, dana=dana, round=rnd, read=read, user=user))
 
 
-def _share(env, u, day=OCT5, channel="whatsapp"):
+def _share(env, u, day=OCT5, channel="whatsapp", **sticker):
     return env.client.post(
-        "/api/share/day", json={"round_id": str(env.round.id), "day": day.isoformat(), "channel": channel}, headers=env.h(u)
+        "/api/share/day",
+        json={"round_id": str(env.round.id), "day": day.isoformat(), "channel": channel, **sticker},
+        headers=env.h(u),
     )
 
 
@@ -156,6 +159,30 @@ def test_the_readers_own_card_names_their_book_for_the_sticker(env):
     assert _share(env, env.aigerim, channel="sticker").status_code == 200
     public = env.client.get("/api/share/r/aigerim").json()
     assert "book" not in public and "Сто лет" not in str(public)
+
+
+def test_every_sticker_taken_is_counted_for_the_month(env):
+    from app import admin_stickers
+
+    assert _share(env, env.aigerim, channel="sticker", template="calendar", action="copy", ink="light").status_code == 200
+    assert _share(env, env.aigerim, channel="sticker", template="calendar", action="copy", ink="dark").status_code == 200
+    assert _share(env, env.aigerim, channel="sticker", template="shelfCalendar", action="save", ink="light").status_code == 200
+    assert _share(env, env.aigerim, channel="story", template="page", action="share", ink="light").status_code == 200
+    assert _share(env, env.aigerim, channel="sticker", template="fax").status_code == 422
+
+    uses = env.db.execute(select(StickerUse)).scalars().all()
+    assert len(uses) == 4
+    # The day itself is still sent once per channel.
+    assert env.db.execute(select(func.count()).select_from(DayShare)).scalar_one() == 2
+
+    month = admin_stickers.build(env.db, 2026, 10)
+    rows = {r["key"]: r for r in month["table"]}
+    assert (rows["calendar"]["copied"], rows["calendar"]["total"], rows["calendar"]["readers"]) == (2, 2, 1)
+    assert rows["shelfCalendar"]["saved"] == 1 and rows["page"]["picture"] == 1 and rows["shelf"]["total"] == 0
+    assert rows["calendar"]["leader"] and not rows["page"]["leader"]
+    assert (month["total"], month["readers"], month["inks"]["чёрный"]) == (4, 1, 1)
+    assert month["recent"][0]["reader"] == "@aigerim"
+    assert admin_stickers.build(env.db, 2026, 11)["total"] == 0
 
 
 def test_sharing_is_for_the_circle_and_its_own_days(env):

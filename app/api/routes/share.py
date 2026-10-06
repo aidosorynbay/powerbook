@@ -26,7 +26,10 @@ def my_day(
 
 @router.post("/day")
 def share_day(payload: ShareDayIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
-    day_share.share(db, user=user, round_id=payload.round_id, day=payload.day, channel=payload.channel)
+    day_share.share(
+        db, user=user, round_id=payload.round_id, day=payload.day, channel=payload.channel,
+        template=payload.template, action=payload.action, ink=payload.ink,
+    )
     return {"ok": True}
 
 
