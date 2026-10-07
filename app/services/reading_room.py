@@ -35,6 +35,9 @@ CHAT_GAP = timedelta(seconds=2)
 # The reading day turns at 03:00 Astana time, not at midnight: a sitting finished at 02:00 on the 30th is the 29th's
 # reading, and its minutes go to the 29th.
 DAY_TURNS_AT = timedelta(hours=3)
+# Once the day has turned, a reader can still be finishing last night's reading: a sitting begun before 03:00, or one
+# finished in the small hours (up to 06:00), may belong to either day, and the reader is asked which (2026-10-07).
+ASK_DAY_UNTIL = timedelta(hours=3)
 # How many of the day's comings and goings the chat shows.
 EVENTS_LIMIT = 60
 IN_CIRCLE = {RoundParticipantStatus.active, RoundParticipantStatus.locked}
@@ -182,12 +185,26 @@ class ReadingRoomService:
         s.credited_minutes, s.credited_round_id, s.credited_date = minutes, rnd.id, day
         return None
 
-    def _close(self, s: ReadingRoomSession, *, at: datetime | None = None) -> tuple[int, str | None]:
+    def day_choices(self, s: ReadingRoomSession, now: datetime, rnd: Round | None = None) -> list[date]:
+        """The days a sitting's minutes may go to when the reader has to be asked (none when there is no question):
+        last night's and today's, after 03:00 under a sitting begun the day before, or in the small hours. Only for a
+        reader of the current circle, and only days the circle takes minutes for."""
+        today = reading_day(now)
+        began = reading_day(_aware(s.created_at) or now)
+        if began == today and now - reading_day_start(today) >= ASK_DAY_UNTIL:
+            return []
+        rnd = rnd or self.current_round()
+        if not self.in_circle(rnd, s.user_id):
+            return []
+        days = [d for d in (today - timedelta(days=1), today) if rnd.covers(d)]
+        return days if len(days) == 2 else []
+
+    def _close(self, s: ReadingRoomSession, *, at: datetime | None = None, day: date | None = None) -> tuple[int, str | None]:
         at = at or _now()
         seconds = self.elapsed_seconds(s, at)
         s.accumulated_seconds, s.run_started_at, s.status, s.ended_at = seconds, None, "ended", at
         # a sitting closed long after its reader left goes to the day they left on, not the day it was noticed
-        why = self._credit(s, seconds // 60, reading_day(at))
+        why = self._credit(s, seconds // 60, day or reading_day(at))
         self.db.commit()
         return seconds // 60, why
 
@@ -241,8 +258,10 @@ class ReadingRoomService:
             "in_round": self.in_circle(rnd, user.id),
             "today_minutes": self.today_minutes(rnd, user.id),
             "readers": readers,
-            # A sitting in the other hall still counts as mine: the client offers to go back to it.
-            "my_session": self._session_out(mine, now) if mine else None,
+            # A sitting in the other hall still counts as mine: the client offers to go back to it. «days»: the two
+            # days to ask about on «Закончить» (see day_choices), or none.
+            "my_session": {**self._session_out(mine, now), "days": [d.isoformat() for d in self.day_choices(mine, now, rnd)]}
+            if mine else None,
             "messages": self.messages(hall=hall, rnd=rnd, user=user, since=since) if can_sit else [],
             "reading_day": today.isoformat(),
             "day": self.day(hall=hall, scope=scope, now=now) if can_sit and (hall == "library" or rnd is not None) else None,
@@ -330,14 +349,16 @@ class ReadingRoomService:
         self.db.commit()
         return self._session_out(s)
 
-    def finish(self, *, session_id: uuid.UUID, user: User) -> dict:
+    def finish(self, *, session_id: uuid.UUID, user: User, day: date | None = None) -> dict:
+        """Gets the reader up. `day`: their answer to «за какой день?», taken when it is one of day_choices."""
         s = self._mine(session_id, user)
+        now = _now()
         # (a silence not answered for stays out: the page asks about it before «Закончить» is offered)
-        self._back(s, _now())
+        self._back(s, now)
         if s.ended_at is not None:
             minutes, why = int(s.accumulated_seconds) // 60, None if s.credited_minutes else "already_ended"
         else:
-            minutes, why = self._close(s)
+            minutes, why = self._close(s, at=now, day=day if day is not None and day in self.day_choices(s, now) else None)
         rnd = self.current_round()
         return {
             "minutes": minutes, "credited": int(s.credited_minutes) > 0, "reason": why,

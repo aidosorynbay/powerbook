@@ -1006,6 +1006,11 @@
   max-width: 280px;
   line-height: 1.4;
 }
+/* a question on a line of its own, its answers in a row under it */
+.dockAsk {
+  flex-basis: 100%;
+  max-width: none;
+}
 .btn {
   border: 1px solid var(--pline);
   background: var(--soft);

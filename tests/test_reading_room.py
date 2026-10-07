@@ -21,7 +21,8 @@ from app.models.group import Group
 from app.models.reading_room import ReadingRoomSession
 from app.models.round import ReadingLog, Round, RoundParticipant
 from app.models.user import User
-from app.services.reading_room import reading_day
+from app.services import reading_room
+from app.services.reading_room import reading_day, reading_day_start
 
 
 @pytest.fixture()
@@ -276,3 +277,65 @@ def test_the_day_in_the_chat(env):
     assert sat["gender"] == "female" and sat["book"] == "Сто лет"
     # the round's hall has its own day
     assert c.get("/api/reading-room/round/state", headers=env.h(env.guest)).json()["day"]["readers"] == 0
+
+
+def test_after_three_the_reader_picks_the_day(env, monkeypatch):
+    """Sat down at 02:40, got up at 03:20: the day has turned under the sitting, so the reader says which day it was."""
+    yesterday = env.today - timedelta(days=1)
+    if not env.rnd.covers(yesterday) or env.today == env.rnd.last_day_date or yesterday == env.rnd.last_day_date:
+        pytest.skip("this round does not take minutes for both days")
+    turn = reading_day_start(env.today)
+    monkeypatch.setattr(reading_room, "_now", lambda: turn + timedelta(minutes=20))
+    c, h = env.client, env.h(env.reader)
+    sid = c.post("/api/reading-room/round/sit", json={"seat": 3, "book": "Дюна"}, headers=h).json()["id"]
+    s = env.db.get(ReadingRoomSession, uuid.UUID(sid))
+    s.created_at = s.run_started_at = turn - timedelta(minutes=40)
+    s.last_seen_at = turn + timedelta(minutes=20)
+    env.db.commit()
+
+    mine = c.get("/api/reading-room/round/state", headers=h).json()["my_session"]
+    assert mine["days"] == [str(yesterday), str(env.today)]
+    r = c.post(f"/api/reading-room/sessions/{sid}/finish", json={"day": str(yesterday)}, headers=h).json()
+    assert r["minutes"] == 60 and r["credited"] and r["date"] == str(yesterday)
+    env.db.expire_all()
+    assert env.db.query(ReadingLog).filter_by(user_id=env.reader.id, date=yesterday).one().minutes == 60
+    assert env.db.query(ReadingLog).filter_by(user_id=env.reader.id, date=env.today).count() == 0
+    # undo takes them back out of the day they went to
+    c.post(f"/api/reading-room/sessions/{sid}/undo", headers=h)
+    env.db.expire_all()
+    assert env.db.query(ReadingLog).filter_by(user_id=env.reader.id, date=yesterday).one().minutes == 0
+
+
+def test_a_day_not_offered_is_not_taken(env, monkeypatch):
+    """In the afternoon a sitting begun after 03:00 is today's: nothing to ask, and a day sent anyway is ignored."""
+    if _last_day_of_round(env):
+        pytest.skip("the round's last day only takes corrections")
+    turn = reading_day_start(env.today)
+    monkeypatch.setattr(reading_room, "_now", lambda: turn + timedelta(hours=12))
+    c, h = env.client, env.h(env.reader)
+    sid = c.post("/api/reading-room/round/sit", json={"seat": 4, "book": "Дюна"}, headers=h).json()["id"]
+    s = env.db.get(ReadingRoomSession, uuid.UUID(sid))
+    s.created_at = s.run_started_at = turn + timedelta(hours=11, minutes=30)
+    s.last_seen_at = turn + timedelta(hours=12)
+    env.db.commit()
+    assert c.get("/api/reading-room/round/state", headers=h).json()["my_session"]["days"] == []
+    r = c.post(f"/api/reading-room/sessions/{sid}/finish", json={"day": str(env.today - timedelta(days=5))}, headers=h).json()
+    assert r["minutes"] == 30 and r["date"] == str(env.today)
+
+
+def test_small_hours_ask_and_guests_are_not_asked(env, monkeypatch):
+    """At 04:00 even a sitting begun after the turn may be last night's reading; a guest has no days to choose from."""
+    yesterday = env.today - timedelta(days=1)
+    if not env.rnd.covers(yesterday) or env.today == env.rnd.last_day_date or yesterday == env.rnd.last_day_date:
+        pytest.skip("this round does not take minutes for both days")
+    turn = reading_day_start(env.today)
+    monkeypatch.setattr(reading_room, "_now", lambda: turn + timedelta(hours=1))
+    c = env.client
+    for who, seat in ((env.reader, 5), (env.guest, 6)):
+        sid = c.post("/api/reading-room/round/sit", json={"seat": seat, "book": "Дюна"}, headers=env.h(who)).json()["id"]
+        s = env.db.get(ReadingRoomSession, uuid.UUID(sid))
+        s.created_at = s.run_started_at = turn + timedelta(minutes=20)
+        s.last_seen_at = turn + timedelta(hours=1)
+        env.db.commit()
+    assert c.get("/api/reading-room/round/state", headers=env.h(env.reader)).json()["my_session"]["days"] == [str(yesterday), str(env.today)]
+    assert c.get("/api/reading-room/round/state", headers=env.h(env.guest)).json()["my_session"]["days"] == []

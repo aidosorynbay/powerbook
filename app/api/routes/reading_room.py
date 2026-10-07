@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -25,6 +25,11 @@ class MessageRequest(BaseModel):
 
 class AwayAnswer(BaseModel):
     count: bool
+
+
+class FinishRequest(BaseModel):
+    # the reader's answer to «за какой день?» (state.my_session.days), when the room asked
+    day: date | None = None
 
 
 @router.get("/{hall}/state")
@@ -70,9 +75,12 @@ def resume(session_id: uuid.UUID, db: Session = Depends(get_db), user=Depends(ge
 
 
 @router.post("/sessions/{session_id}/finish")
-def finish(session_id: uuid.UUID, db: Session = Depends(get_db), user=Depends(get_current_user)) -> dict:
+def finish(
+    session_id: uuid.UUID, payload: FinishRequest | None = None, db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> dict:
     """Gets up: the reading time goes into «Сегодня» when the reader is in the current circle."""
-    return ReadingRoomService(db).finish(session_id=session_id, user=user)
+    return ReadingRoomService(db).finish(session_id=session_id, user=user, day=payload.day if payload else None)
 
 
 @router.post("/sessions/{session_id}/undo")

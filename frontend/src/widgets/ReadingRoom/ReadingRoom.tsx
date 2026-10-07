@@ -33,8 +33,10 @@ type Message = { id: string; user_id: string; display_name: string; text: string
 /* the hall's day, for the chat: each reader sitting down with a book and getting up with their minutes */
 type RoomEvent = { kind: 'sit' | 'finish'; at: string; user_id: string; display_name: string; gender: string; book: string; minutes?: number };
 type HallDay = { date: string; readers: number; names: string[]; minutes: number; events: RoomEvent[] };
-/* away_seconds: a stretch the page was silent (a locked screen, another app), waiting for the reader to say whether they read */
-type MySession = { id: string; hall: HallName; seat: number; book: string; status: 'reading' | 'paused'; elapsed_seconds: number; away_seconds: number };
+/* away_seconds: a stretch the page was silent (a locked screen, another app), waiting for the reader to say whether they read;
+   days: last night's and today's reading day when the day turned at 03:00 under the sitting (or it is the small hours), so
+   «Закончить» asks which day the minutes go to */
+type MySession = { id: string; hall: HallName; seat: number; book: string; status: 'reading' | 'paused'; elapsed_seconds: number; away_seconds: number; days?: string[] };
 type RoomState = {
   hall: HallName;
   seats: number;
@@ -161,6 +163,8 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   // The day a finished sitting went to, while «Поделиться» is open for it.
   const [shareDay, setShareDay] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // «За какой день записать?» is on the dock (see MySession.days)
+  const [askDay, setAskDay] = useState(false);
   const [tab, setTab] = useState<'readers' | 'chat'>('readers');
   const [drawer, setDrawer] = useState(false);
   const [unread, setUnread] = useState(0);
@@ -596,11 +600,21 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     load();
   };
 
-  const finish = async () => {
+  // After 03:00 the reading can still be last night's: the reader says which day before the minutes are written.
+  const askFirst = !!mine && !!state?.in_round && (mine.days?.length ?? 0) === 2 && elapsed(mine) >= 60;
+  useEffect(() => {
+    if (!mine) setAskDay(false);
+  }, [mine]);
+  const finish = async (day?: string) => {
     if (!mine || busy) return;
+    if (!day && askFirst) {
+      setAskDay(true);
+      return;
+    }
     setBusy(true);
+    setAskDay(false);
     held.current = null;
-    const { data } = await apiPost<FinishOut>(`/reading-room/sessions/${mine.id}/finish`, {}, { requireAuth: true });
+    const { data } = await apiPost<FinishOut>(`/reading-room/sessions/${mine.id}/finish`, day ? { day } : {}, { requireAuth: true });
     setBusy(false);
     if (data) {
       const f = { sessionId: mine.id, minutes: data.minutes, credited: data.credited, reason: data.reason, date: data.date };
@@ -836,11 +850,21 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     );
   } else if (!mine && !finished && !pick && freeSeen === 0) {
     dock = <span className={styles.dockNote}>{t('room.fullSeen')}</span>;
+  } else if (mine && askDay && mine.days?.length === 2) {
+    const [last, today] = mine.days;
+    dock = (
+      <>
+        <span className={`${styles.dockNote} ${styles.dockAsk}`}>{t('room.whichDay', { min: Math.floor(elapsed(mine) / 60) })}</span>
+        <button className={`${styles.btn} ${styles.primary}`} type="button" onClick={() => finish(last)} disabled={busy}>{t('room.dayYesterday', { date: dayLabel(last) })}</button>
+        <button className={styles.btn} type="button" onClick={() => finish(today)} disabled={busy}>{t('room.dayToday', { date: dayLabel(today) })}</button>
+        <button className={`${styles.btn} ${styles.link}`} type="button" onClick={() => setAskDay(false)}>{t('room.cancel')}</button>
+      </>
+    );
   } else if (mine && !mineHere) {
     dock = (
       <>
         <span className={styles.dockNote}>{t('room.elsewhere', { hall: t(mine.hall === 'round' ? 'room.titleRound' : 'room.titleLibrary') })}</span>
-        <button className={`${styles.btn} ${styles.primary}`} type="button" onClick={finish} disabled={busy}>{t('room.finish')}</button>
+        <button className={`${styles.btn} ${styles.primary}`} type="button" onClick={() => finish()} disabled={busy}>{t('room.finish')}</button>
       </>
     );
   } else if (mineHere && mineHere.away_seconds > 0) {
@@ -864,7 +888,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
         {mineHere.status === 'reading'
           ? <button className={styles.btn} type="button" onClick={() => act('pause')}>{t('room.pause')}</button>
           : <button className={styles.btn} type="button" onClick={() => act('resume')}>{t('room.resume')}</button>}
-        <button className={`${styles.btn} ${styles.primary}`} type="button" onClick={finish} disabled={busy}>{t('room.finish')}</button>
+        <button className={`${styles.btn} ${styles.primary}`} type="button" onClick={() => finish()} disabled={busy}>{t('room.finish')}</button>
       </>
     );
   } else if (pick) {
