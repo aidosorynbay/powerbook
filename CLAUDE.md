@@ -65,3 +65,8 @@ it in a browser, phone width (390px) included.
   score; `reading_log_books` splits it across books («Что читаю»). A finished book's title
   is also the first line of the day's comment, which the shelf and covers read.
 - Existing members stay free forever; monetisation ideas must not take away what they have.
+- **Reading room pictures:** `frontend/public/reading-room/` and `widgets/ReadingRoom/casts.js` are built on the
+  founder's Mac by `~/powerbook-sync/prototypes/reading-room/` (not in git): `seg_birefnet.py` → `dump_owners.py` →
+  `sam_masks.py` → `build_figures.py` → `build_lids.py` → `casts_js.py`. The top-left corner of each `*-people.png`
+  holds the readers' closed eyelids: never crop or repaint it. The engine asks for these files with a hash of their
+  bytes in the URL (`__RR_V__`, set in `vite.config.ts`), so a changed picture reaches browsers at once.

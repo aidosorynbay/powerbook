@@ -11,8 +11,10 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 const eio=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
 const rng=seed=>{let a=seed>>>0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}};
 
-/* the shader draws up to NS readers at once, NP of them turning pages, with NE eyes that blink; the pages texture holds NT page tiles */
-const NS=12,NP=5,NE=8,NT=10;
+/* the shader draws up to NS readers at once, NP of them turning pages, with NE eyes that blink; the pages texture holds NT page tiles.
+   NE covers every eye of a hall at once (9 in the wide hall): with fewer, a face blinking in the same moment as the
+   others could get one eye and wink */
+const NS=12,NP=5,NE=10,NT=10;
 const VS=`attribute vec2 aPos;varying vec2 vUv;void main(){vUv=aPos*.5+.5;gl_Position=vec4(aPos,0.,1.);}`;
 const RAYS_FS=`precision highp float;varying vec2 vUv;uniform sampler2D uImg;uniform vec2 uSun;uniform float uAR;
 void main(){vec2 uv=vUv;vec2 d=(uv-uSun)/56.;vec2 s=uv;vec3 acc=vec3(0.);float w=1.;
@@ -23,7 +25,7 @@ void main(){vec2 uv=vUv;vec2 d=(uv-uSun)/56.;vec2 s=uv;vec3 acc=vec3(0.);float w
 const mainFS=H=>`precision highp float;varying vec2 vUv;
 uniform sampler2D uImg;uniform sampler2D uRay;uniform vec2 uRes;uniform vec2 uOff;uniform vec2 uSize;uniform vec2 uPar;uniform float uTime;uniform float uWake;uniform float uNight;uniform float uRayK;
 uniform vec4 uWin;uniform vec3 uFire;uniform vec4 uFireBox;uniform vec4 uLamp[24];uniform int uNL;uniform vec4 uSway[6];uniform float uLoaded;uniform float uCasts;uniform sampler2D uWith;uniform sampler2D uWith2;uniform sampler2D uMask;uniform sampler2D uRig;uniform sampler2D uSoft;uniform sampler2D uPages;
-uniform vec4 uS[${NS*8}];uniform vec4 uPg[${NP*7}];uniform vec4 uEye[${NE}];uniform vec4 uLid[${NE}];uniform vec4 uCup[8];uniform float uGK;uniform vec2 uSteamK;uniform vec2 uMaskPx;
+uniform vec4 uS[${NS*8}];uniform vec4 uPg[${NP*7}];uniform vec4 uEye[${NE}];uniform vec4 uLid[${NE}];uniform vec4 uLidK[${NE}];uniform vec4 uCup[8];uniform float uGK;uniform vec2 uSteamK;uniform vec2 uMaskPx;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 vec2 aff(vec4 m,vec2 t,vec2 p){return vec2(m.x*p.x+m.y*p.y,m.z*p.x+m.w*p.y)+t;}
 /* every reader comes from a render of the hall: where the hall has two casts, a reader numbered past 32 is a man from the
@@ -42,9 +44,30 @@ vec4 person(vec2 s,float id){float g=floor(texture2D(uMask,(floor(s*uMaskPx)+.5)
    the old lid was one flat colour with a hard top, and showed on the face as a plate) */
 vec3 eyeRow(float x,float y,float dx,float id){return (photo(vec2(x-dx,y),id)+2.*photo(vec2(x,y),id)+photo(vec2(x+dx,y),id))*.25;}
 vec3 brighter(vec3 a,vec3 b){return dot(b,vec3(.299,.587,.114))>dot(a,vec3(.299,.587,.114))?b:a;}
-vec3 lid(vec2 s,vec3 col,vec4 E,vec4 L,float w,float id){
+/* a face of the two casts closes its eye with lids made for it (2026-10-07: prototypes/reading-room/build_lids.py; the
+   painted lid above still showed as a plate on some faces): the upper lid's skin, filled in from the face around the
+   eye, slides down from the lash line, the lash line rides on its edge, and the shut eye's lower lid is skin too. The
+   lids wait in a corner of the people mask that no reader reaches: K.xy is the offset to the upper lid, K.z the step to
+   the lower lid and on to the lash band. K.w is where the eye itself ends, in the outline's half widths: the outline is
+   wider than the eye, and past the eye's end the lid does nothing (a wide one had carried the other eye's corner across
+   the nose). The px values match build_lids.py (LIFT .4, LOW 2.5) */
+vec3 lidMade(vec2 s,vec3 col,vec4 E,vec4 L,vec4 K,float w,float x,float ax){
+ float end=K.w+1.5/(E.z*uMaskPx.x);
+ if(ax>=end)return col;
+ float py=1./uMaskPx.y,pr=max(0.,1.-x*x),yc=E.y+E.w*x,top=yc-L.x*pr,bot=yc+L.y*pr;
+ float T=top-L.z*(.4+.6*pr),lt=top-T,M=top+(bot+.2*L.z*pr-top)*w,e0=M-lt,B=bot+.2*L.z*pr+2.5*py;
+ if(s.y<T-py||s.y>B+py)return col;
+ vec3 o;
+ if(s.y<e0)o=texture2D(uMask,s+K.xy).rgb*(1.-.05*w*clamp((s.y-T)/max(e0-T,1e-6),0.,1.));
+ else if(s.y<M)o=texture2D(uMask,vec2(s.x+K.x+2.*K.z,T-.4*py+(s.y-e0)+K.y)).rgb;
+ else o=mix(col,texture2D(uMask,s+K.xy+vec2(K.z,0.)).rgb,smoothstep(.7,1.,w));
+ return mix(col,o,smoothstep(T-.6*py,T+.4*py,s.y)*(1.-smoothstep(B-.5*py,B+.5*py,s.y))*(1.-smoothstep(K.w,end,ax))*smoothstep(0.,.06,w));
+}
+vec3 lid(vec2 s,vec3 col,vec4 E,vec4 L,vec4 K,float w,float id){
  if(w<.002||E.z<=0.)return col;
- float x=(s.x-E.x)/E.z,ax=abs(x);if(ax>=1.05)return col;
+ float x=(s.x-E.x)/E.z,ax=abs(x);
+ if(K.w>0.)return lidMade(s,col,E,L,K,w,x,ax);
+ if(ax>=1.05)return col;
  float py=1./uMaskPx.y,pr=max(0.,1.-ax*ax),yc=E.y+E.w*x,top=yc-L.x*pr,bot=yc+L.y*pr,lt=L.z*(.4+.6*pr);
  float T=min(top-lt-py,yc-(L.x+L.z)*sqrt(pr)-.5*py),M=mix(top,bot+.15*L.z*pr,w),y0=M-lt;
  if(s.y<T-py||s.y>M+py)return col;
@@ -115,7 +138,7 @@ void main(){
   /* blinks wherever the face is drawn: a new face need not sit where the rig's rigid head is */
   float bl=uS[i*8+7].x;
   vec4 q=person(s,id);
-  if(bl>.002)for(int e=0;e<${NE};e++){vec4 L=uLid[e];if(abs(L.w-float(i))<.5)q.rgb=lid(s,q.rgb,uEye[e],L,bl,id);}
+  if(bl>.002)for(int e=0;e<${NE};e++){vec4 L=uLid[e];if(abs(L.w-float(i))<.5)q.rgb=lid(s,q.rgb,uEye[e],L,uLidK[e],bl,id);}
   c=mix(c,q.rgb,q.a*vis);
 ${limbsGLSL(H)}
   /* the book with the hands holding it, crisp and whole */
@@ -171,7 +194,7 @@ ${limbsGLSL(H)}
   /* the head, rigid, with its own blinks */
   float rH=texture2D(uRig,pH).r;
   if(rH>.002){q=person(pH,id);
-   if(bl>.002)for(int e=0;e<${NE};e++){vec4 L=uLid[e];if(abs(L.w-float(i))<.5)q.rgb=lid(pH,q.rgb,uEye[e],L,bl,id);}
+   if(bl>.002)for(int e=0;e<${NE};e++){vec4 L=uLid[e];if(abs(L.w-float(i))<.5)q.rgb=lid(pH,q.rgb,uEye[e],L,uLidK[e],bl,id);}
    c=mix(c,q.rgb,q.a*rH*vis);}
  }
  /* steam over the hot cups: a soft plume that rises, widens, curls and thins out */
@@ -265,7 +288,7 @@ const PAGES_A={
 /* what the shader gets each frame: a slot per reader in view (box, torso reach, the torso, head and book maps, id, fade, blink),
    a slot per reader who turns pages (the page, its phase and tiles, the wrist map), and every eye with the slot it belongs to */
 let RIG=RIG_A,PAGES=PAGES_A;
-const slotBuf=new Float32Array(NS*32),pgBuf=new Float32Array(NP*28),eyeBuf=new Float32Array(NE*4),lidBuf=new Float32Array(NE*4),cupBuf=new Float32Array(32);
+const slotBuf=new Float32Array(NS*32),pgBuf=new Float32Array(NP*28),eyeBuf=new Float32Array(NE*4),lidBuf=new Float32Array(NE*4),lidKBuf=new Float32Array(NE*4),cupBuf=new Float32Array(32);
 let frameSlots={ns:0,np:0,ne:0};
 /* affine maps in photo pixels: [a,b,c,d,e,f] is x'=a·x+b·y+e, y'=c·x+d·y+f */
 const aMul=(m,n)=>[m[0]*n[0]+m[1]*n[2],m[0]*n[1]+m[1]*n[3],m[2]*n[0]+m[3]*n[2],m[2]*n[1]+m[3]*n[3],m[0]*n[4]+m[1]*n[5]+m[4],m[2]*n[4]+m[3]*n[5]+m[5]];
@@ -363,7 +386,7 @@ function motion(id,p,now,vis){
   if(G&&turning&&F.np<NP){const q=F.np++*28;
     pgBuf.set([...G.s0,...G.d,...G.r,...G.l,...G.up,G.mode??G.away,1,ph,G.tiles[0],G.tiles[1],sl,...G.tint,G.under],q);
     if(R.wrist){putInv(Tw,pgBuf,q+20);pgBuf[q+26]=1}}
-  if(blink>0)for(const e of EY||[])if(F.ne<NE){const k=F.ne++*4;eyeBuf.set(e.slice(0,4),k);lidBuf.set([...e.slice(4,7),sl],k)}
+  if(blink>0)for(const e of EY||[])if(F.ne<NE){const k=F.ne++*4;eyeBuf.set(e.slice(0,4),k);lidBuf.set([...e.slice(4,7),sl],k);lidKBuf.set(e.length>11?[e[8],e[9],e[10],e[11]]:[0,0,0,0],k)}
 }
 
 
@@ -429,7 +452,7 @@ export function seatChar(hall,seat){for(const [id,c] of Object.entries(HALLS[hal
 
 const DUST=[...Array(170)].map((_,i)=>{const r=rng(i*7+3);return {t:r(),s:r()*2-1,ph:r()*6.28,sp:.2+r()*.6,sz:.5+r()*1.4,a:.25+r()*.75}});
 const EMBERS=[...Array(26)].map((_,i)=>{const r=rng(i*13+5);return {x:r(),t:r(),sp:.35+r()*.6,dr:r()*2-1,sz:.6+r()*1.2}});
-const UNIFORMS=['uImg','uRay','uRes','uOff','uSize','uPar','uTime','uWake','uNight','uRayK','uWin','uFire','uFireBox','uLamp','uNL','uSway','uLoaded','uCasts','uWith','uWith2','uMask','uRig','uSoft','uPages','uS','uPg','uEye','uLid','uCup','uGK','uSteamK','uMaskPx'];
+const UNIFORMS=['uImg','uRay','uRes','uOff','uSize','uPar','uTime','uWake','uNight','uRayK','uWin','uFire','uFireBox','uLamp','uNL','uSway','uLoaded','uCasts','uWith','uWith2','uMask','uRig','uSoft','uPages','uS','uPg','uEye','uLid','uLidK','uCup','uGK','uSteamK','uMaskPx'];
 
 /* opts: hall, base (url of the photos), canvas, fx, stage, frame, edge, teaser, ui, tags, scrollEl (null: the room is shown whole),
    variant ('day' | 'night'), small (phone-sized photos), reduced (less motion), onFlip(key) when a reader turns a page */
@@ -608,7 +631,7 @@ export function createRoomEngine(opts){
       const gate=seg(P,.5+i*.035,.62+i*.035);let boost=0;for(const s of seats)if(s.lamp===i)boost=Math.max(boost,s.level);
       lampBuf.set([L[0],L[1],gate*(.35+.95*boost)*(1-.6*night),L[2]],n*4);n++;
     });
-    slotBuf.fill(0);pgBuf.fill(0);eyeBuf.fill(0);lidBuf.fill(0);for(let k=0;k<NP;k++)pgBuf[k*28+15]=-1;for(let k=0;k<NE;k++)lidBuf[k*4+3]=-1;frameSlots={ns:0,np:0,ne:0};
+    slotBuf.fill(0);pgBuf.fill(0);eyeBuf.fill(0);lidBuf.fill(0);lidKBuf.fill(0);for(let k=0;k<NP;k++)pgBuf[k*28+15]=-1;for(let k=0;k<NE;k++)lidBuf[k*4+3]=-1;frameSlots={ns:0,np:0,ne:0};
     const peopleReady=!!(tex.people&&shared.rig&&shared.soft),moving=[];
     seats.forEach((s,i)=>{
       const o=s.occ,tgt=o?(o.status==='reading'?1:.3):0;
@@ -628,7 +651,7 @@ export function createRoomEngine(opts){
       const P6=tex.people;
       [['uWith',P6&&P6.tex,2],['uMask',P6&&P6.mask,3],['uRig',shared.rig,4],['uSoft',shared.soft,5],['uPages',P6&&P6.pages,6],['uWith2',P6&&P6.tex2,7]].forEach(([u,t,i])=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,peopleReady&&t?t:tex.ray);gl.uniform1i(U[u],i)});
       if(!peopleReady)frameSlots.ns=0,slotBuf.fill(0);
-      gl.uniform4fv(U.uS,slotBuf);gl.uniform4fv(U.uPg,pgBuf);gl.uniform4fv(U.uEye,eyeBuf);gl.uniform4fv(U.uLid,lidBuf);
+      gl.uniform4fv(U.uS,slotBuf);gl.uniform4fv(U.uPg,pgBuf);gl.uniform4fv(U.uEye,eyeBuf);gl.uniform4fv(U.uLid,lidBuf);gl.uniform4fv(U.uLidK,lidKBuf);
       const shown={};for(const s of seats)if(s.lastChar)shown[s.lastChar]=Math.max(shown[s.lastChar]||0,s.vis);
       cupBuf.fill(0);H.cups.slice(0,8).forEach((cp,i)=>cupBuf.set([cp[0],cp[1]-.004,seg(P,.6,.85)*(1-(cp[2]?shown[cp[2]]||0:0)),.55+cp[1]*.75],i*4));gl.uniform4fv(U.uCup,cupBuf);gl.uniform4f(U.uFireBox,...H.fireBox);gl.uniform1f(U.uGK,H.gk||1);gl.uniform1f(U.uCasts,CASTS?1:0);gl.uniform2f(U.uMaskPx,PW,PH);gl.uniform2f(U.uSteamK,...(H.steam||[1,1]));
       gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex.tex);gl.uniform1i(U.uImg,0);
