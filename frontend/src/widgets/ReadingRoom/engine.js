@@ -25,7 +25,7 @@ void main(){vec2 uv=vUv;vec2 d=(uv-uSun)/56.;vec2 s=uv;vec3 acc=vec3(0.);float w
 const mainFS=H=>`precision highp float;varying vec2 vUv;
 uniform sampler2D uImg;uniform sampler2D uRay;uniform vec2 uRes;uniform vec2 uOff;uniform vec2 uSize;uniform vec2 uPar;uniform float uTime;uniform float uWake;uniform float uNight;uniform float uRayK;
 uniform vec4 uWin;uniform vec3 uFire;uniform vec4 uFireBox;uniform vec4 uLamp[24];uniform int uNL;uniform vec4 uSway[6];uniform float uLoaded;uniform float uCasts;uniform sampler2D uWith;uniform sampler2D uWith2;uniform sampler2D uMask;uniform sampler2D uRig;uniform sampler2D uSoft;uniform sampler2D uPages;
-uniform vec4 uS[${NS*8}];uniform vec4 uPg[${NP*7}];uniform vec4 uEye[${NE}];uniform vec4 uLid[${NE}];uniform vec4 uLidK[${NE}];uniform vec4 uLeg[2];uniform vec4 uCup[8];uniform float uGK;uniform vec2 uSteamK;uniform vec2 uMaskPx;
+uniform vec4 uS[${NS*8}];uniform vec4 uPg[${NP*7}];uniform vec4 uEye[${NE}];uniform vec4 uLid[${NE}];uniform vec4 uLidK[${NE}];uniform vec4 uLeg[3];uniform vec4 uCup[8];uniform float uGK;uniform vec2 uSteamK;uniform vec2 uMaskPx;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 vec2 aff(vec4 m,vec2 t,vec2 p){return vec2(m.x*p.x+m.y*p.y,m.z*p.x+m.w*p.y)+t;}
 /* every reader comes from a render of the hall: where the hall has two casts, a reader numbered past 32 is a man from the
@@ -139,6 +139,7 @@ void main(){
   float bl=uS[i*8+7].x;
   vec4 q=person(s,id);
   if(bl>.002)for(int e=0;e<${NE};e++){vec4 L=uLid[e];if(abs(L.w-float(i))<.5)q.rgb=lid(s,q.rgb,uEye[e],L,uLidK[e],bl,id);}
+${legsCutGLSL(H)}
   c=mix(c,q.rgb,q.a*vis);
 ${limbsGLSL(H)}
 ${legsGLSL(H)}
@@ -254,13 +255,15 @@ function limbsGLSL(H){
 }
 
 /* Legs drawn for a reader whose render hides them (HALLS.*.legs, casts.js CAST_LEGS): in the box uLeg[0] (uv) the colour
-   and the coverage wait in the people mask at the offsets uLeg[1].xy and .zw. They stay put, and the readers drawn after
-   (in front) cover them */
+   waits in the people mask at the offset uLeg[1].xy, and at .zw the new legs' coverage (R) and how far the reader's own
+   legs give way to them (G). uLeg[2].x: how much they show (1 while the chair in front is empty; with someone there, the
+   render's own legs stay, since that reader covers them as the render drew it) */
+const legsIn=H=>H.legs?`abs(id-${(H.legs.id+(H.legs.man?32:0)).toFixed(1)})<.5&&uLeg[2].x>.001&&uv0.x>uLeg[0].x&&uv0.x<uLeg[0].z&&uv0.y>uLeg[0].y&&uv0.y<uLeg[0].w`:'false';
+function legsCutGLSL(H){
+  return H.legs?`  if(${legsIn(H)})q.a*=1.-uLeg[2].x*texture2D(uMask,uv0+uLeg[1].zw).g;`:'';
+}
 function legsGLSL(H){
-  if(!H.legs)return '';
-  const id=H.legs.id+(H.legs.man?32:0);
-  return `  if(abs(id-${id.toFixed(1)})<.5&&uLeg[0].z>0.&&uv0.x>uLeg[0].x&&uv0.x<uLeg[0].z&&uv0.y>uLeg[0].y&&uv0.y<uLeg[0].w){
-   c=mix(c,texture2D(uMask,uv0+uLeg[1].xy).rgb,texture2D(uMask,uv0+uLeg[1].zw).r*vis);}`;
+  return H.legs?`  if(${legsIn(H)})c=mix(c,texture2D(uMask,uv0+uLeg[1].xy).rgb,texture2D(uMask,uv0+uLeg[1].zw).r*uLeg[2].x*vis);`:'';
 }
 
 /* the photo in use: its size in px and its rig (set by createRoomEngine from the hall) */
@@ -417,9 +420,9 @@ export const HALLS={
       9:{seat:6,g:'m',head:[.614,.768],ring:[.60,.905]},10:{seat:9,g:'m',head:[.677,.349],ring:[.665,.455]},11:{seat:11,g:'m',head:[.511,.199],ring:[.512,.29]}},
     cups:[[.19,.715,4],[.177,.753,4],[.535,.745],[.57,.772],[.81,.772,5],[.53,.415]],
     sway:[[.5,.13,.14,.15],[.22,.3,.09,.17],[.04,.85,.06,.16],[.955,.9,.05,.12],[.73,.32,.05,.1]],
-    /* the man in reader 2's chair: his right shin and foot are behind reader 10's legs in the render (alone, he had one
-       leg); they are his left one's, a leg's width over */
-    limbs:[{id:2,man:1,front:10,off:[35,3],win:[[1680,614,1668,651,15],[1667,659,1627,696,11]]}],
+    /* the man in reader 2's chair: the render hides his shins behind reader 10's legs; the founder drew them
+       (2026-10-07, build_legs.py) */
+    legs:CAST_LEGS.a,
     dust:{skew:-.05}},
   /* the library: its front row is room A's, chair for chair. Its back row and balcony are part of the picture until an
      empty render of the library exists, so only these six chairs come and go */
@@ -664,7 +667,7 @@ export function createRoomEngine(opts){
       const P6=tex.people;
       [['uWith',P6&&P6.tex,2],['uMask',P6&&P6.mask,3],['uRig',shared.rig,4],['uSoft',shared.soft,5],['uPages',P6&&P6.pages,6],['uWith2',P6&&P6.tex2,7]].forEach(([u,t,i])=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,peopleReady&&t?t:tex.ray);gl.uniform1i(U[u],i)});
       if(!peopleReady)frameSlots.ns=0,slotBuf.fill(0);
-      gl.uniform4fv(U.uS,slotBuf);gl.uniform4fv(U.uPg,pgBuf);gl.uniform4fv(U.uEye,eyeBuf);gl.uniform4fv(U.uLid,lidBuf);gl.uniform4fv(U.uLidK,lidKBuf);const LG=H.legs&&H.legs[CAST_V];gl.uniform4fv(U.uLeg,LG?[...LG.box,...LG.off]:[0,0,0,0,0,0,0,0]);
+      gl.uniform4fv(U.uS,slotBuf);gl.uniform4fv(U.uPg,pgBuf);gl.uniform4fv(U.uEye,eyeBuf);gl.uniform4fv(U.uLid,lidBuf);gl.uniform4fv(U.uLidK,lidKBuf);const LG=H.legs&&H.legs[CAST_V];let lf=0;if(LG)for(const s of seats)if(s.lastChar===H.legs.front)lf=Math.max(lf,s.vis);gl.uniform4fv(U.uLeg,LG?[...LG.box,...LG.off,1-lf,0,0,0]:[0,0,0,0,0,0,0,0,0,0,0,0]);
       const shown={};for(const s of seats)if(s.lastChar)shown[s.lastChar]=Math.max(shown[s.lastChar]||0,s.vis);
       cupBuf.fill(0);H.cups.slice(0,8).forEach((cp,i)=>cupBuf.set([cp[0],cp[1]-.004,seg(P,.6,.85)*(1-(cp[2]?shown[cp[2]]||0:0)),.55+cp[1]*.75],i*4));gl.uniform4fv(U.uCup,cupBuf);gl.uniform4f(U.uFireBox,...H.fireBox);gl.uniform1f(U.uGK,H.gk||1);gl.uniform1f(U.uCasts,CASTS?1:0);gl.uniform2f(U.uMaskPx,PW,PH);gl.uniform2f(U.uSteamK,...(H.steam||[1,1]));
       gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex.tex);gl.uniform1i(U.uImg,0);
