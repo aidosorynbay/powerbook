@@ -2,6 +2,8 @@
 
 // Git commit of the build, set in vite.config.ts.
 declare const __SENTRY_RELEASE__: string;
+// The reading room's files, each with a hash of its bytes (vite.config.ts).
+declare const __RR_V__: Record<string, string>;
 
 interface ImportMetaEnv {
   readonly VITE_SENTRY_DSN?: string;

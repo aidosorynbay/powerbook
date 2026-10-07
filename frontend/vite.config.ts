@@ -2,6 +2,8 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { execSync } from 'child_process';
+import { createHash } from 'crypto';
+import fs from 'fs';
 import path from 'path';
 
 // The release Sentry files errors under: SENTRY_RELEASE if the deploy sets
@@ -14,6 +16,24 @@ function gitCommit(): string {
   } catch {
     return '';
   }
+}
+
+// The reading room's photos and masks keep their names when they change, and
+// the server sends them with no cache rule, so a browser could go on showing
+// the old ones for hours after a deploy (2026-10-07: the founder saw readers
+// with cut legs that had been fixed that morning). The engine asks for each
+// file with a hash of its bytes in the URL, so a changed file is a new URL.
+function readingRoomVersions(): Record<string, string> {
+  const dir = path.resolve(__dirname, 'public/reading-room');
+  const out: Record<string, string> = {};
+  try {
+    for (const name of fs.readdirSync(dir)) {
+      out[name] = createHash('md5').update(fs.readFileSync(path.join(dir, name))).digest('hex').slice(0, 10);
+    }
+  } catch {
+    /* no folder: plain URLs */
+  }
+  return out;
 }
 
 export default defineConfig(({ mode }) => {
@@ -41,6 +61,7 @@ export default defineConfig(({ mode }) => {
     ],
     define: {
       __SENTRY_RELEASE__: JSON.stringify(release),
+      __RR_V__: JSON.stringify(readingRoomVersions()),
     },
     build: {
       sourcemap: uploadSourceMaps ? 'hidden' : false,

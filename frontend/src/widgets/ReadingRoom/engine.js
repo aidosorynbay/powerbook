@@ -450,7 +450,10 @@ export function createRoomEngine(opts){
   }
 
   /* ---------- photos: per time of day the empty hall, the hall with everyone, where each reader is, and their pages ---------- */
-  const url=(name,big)=>`${opts.base}${H.files}-${name}${big&&opts.small?'-m':''}.${/(mask|pages|people)$/.test(name)||name==='rig'||name==='soft'?'png':'jpg'}`;
+  /* each file's URL carries a hash of its bytes (vite.config.ts): a photo or mask that changed is a new URL, never the old
+     copy a browser kept */
+  const RR_V=typeof __RR_V__!=='undefined'?__RR_V__:{};
+  const url=(name,big)=>{const f=`${H.files}-${name}${big&&opts.small?'-m':''}.${/(mask|pages|people)$/.test(name)||name==='rig'||name==='soft'?'png':'jpg'}`;return opts.base+f+(RR_V[f]?'?v='+RR_V[f]:'')};
   const texFrom=(img,photo)=>{
     const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
     gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL,photo?gl.BROWSER_DEFAULT_WEBGL:gl.NONE);
