@@ -19,12 +19,18 @@ export const Snd=(()=>{
   function buf(sec,br){const n=Math.floor(ctx.sampleRate*sec),b=ctx.createBuffer(1,n,ctx.sampleRate),d=b.getChannelData(0);let l=0;for(let i=0;i<n;i++){const w=Math.random()*2-1;if(br){l=(l+.02*w)/1.02;d[i]=l*3.5}else d[i]=w}return b}
   function impulse(sec){const n=Math.floor(ctx.sampleRate*sec),b=ctx.createBuffer(2,n,ctx.sampleRate);for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2.6)}return b}
   function loopNoise(b,filters,gain,dest,lfo){const s=ctx.createBufferSource();s.buffer=b;s.loop=true;let node=s;for(const [type,f] of filters){const bf=ctx.createBiquadFilter();bf.type=type;bf.frequency.value=f;node.connect(bf);node=bf}const g=ctx.createGain();g.gain.value=gain;node.connect(g);g.connect(dest);if(lfo){const o=ctx.createOscillator();o.frequency.value=.13;const og=ctx.createGain();og.gain.value=gain*.35;o.connect(og);og.connect(g.gain);o.start()}s.start()}
-  function burst(t,type,freq,qq,dur,gain,dest){const s=ctx.createBufferSource();s.buffer=noise;const f=ctx.createBiquadFilter();f.type=type;f.frequency.value=freq;f.Q.value=qq;const g=ctx.createGain();g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(gain,t+.003);g.gain.exponentialRampToValueAtTime(.0001,t+dur);s.connect(f);f.connect(g);g.connect(dest);s.start(t,Math.random()*3,dur+.05)}
+  function burst(t,type,freq,qq,dur,gain,dest,att=.003){const s=ctx.createBufferSource();s.buffer=noise;const f=ctx.createBiquadFilter();f.type=type;f.frequency.value=freq;f.Q.value=qq;const g=ctx.createGain();g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(gain,t+att);g.gain.exponentialRampToValueAtTime(.0001,t+Math.max(dur,att+.004));s.connect(f);f.connect(g);g.connect(dest);s.start(t,Math.random()*3,dur+att+.05)}
   function schedule(){
     if(!ctx||ctx.state!=='running')return;const now=ctx.currentTime;
     // Quiet rain on the glass, not a downpour: a drop or two now and then, and now and then a heavier one off the ledge.
     if(on.rain){if(Math.random()<.5){const n=Math.random()<.8?1:2;for(let i=0;i<n;i++)burst(now+Math.random()*.09,'bandpass',1100+Math.random()*2000,8,.015+Math.random()*.02,.02+Math.random()*.04,bus.rain)}if(Math.random()<.03)burst(now,'bandpass',620+Math.random()*280,10,.05,.06,bus.rain)}
-    if(on.fire&&Math.random()<.35){const k=1+Math.floor(Math.random()*3);for(let i=0;i<k;i++)burst(now+Math.random()*.08,'highpass',1200+Math.random()*2500,.8,.006+Math.random()*.02,.15+Math.random()*.5,bus.fire);if(Math.random()<.08)burst(now,'bandpass',220+Math.random()*200,1.5,.09,.5,bus.fire)}
+    // The fire: the flames' low breathing (in init), now and then a soft crackle, and rarely an ember settling with a dull
+    // pop. Bright clicks several times a second cut the ear (the founder, 2026-10-07): the crackles are fewer, quieter,
+    // lower and rounder now, and the fire's channel loses its top (see init).
+    if(on.fire){
+      if(Math.random()<.12){const k=Math.random()<.75?1:2;for(let i=0;i<k;i++)burst(now+Math.random()*.08,'bandpass',1000+Math.random()*1300,1.4,.012+Math.random()*.03,.2+Math.random()*.35,bus.fire,.006)}
+      if(Math.random()<.02)burst(now,'lowpass',240+Math.random()*160,.7,.09+Math.random()*.07,.2,bus.fire,.012)
+    }
   }
   const CH=[[50,57,60,64,65],[46,53,57,58,62],[43,50,55,58,65],[45,52,57,60,64]];
   function chord(t){const notes=CH[chordIdx++%CH.length],lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=950;lp.Q.value=.3;const env=ctx.createGain();env.gain.setValueAtTime(.0001,t);env.gain.exponentialRampToValueAtTime(.09,t+3.5);env.gain.setValueAtTime(.09,t+8);env.gain.exponentialRampToValueAtTime(.0001,t+13);lp.connect(env);env.connect(bus.music);
@@ -37,8 +43,10 @@ export const Snd=(()=>{
     const conv=ctx.createConvolver();conv.buffer=impulse(3.4);revIn=ctx.createGain();const revOut=ctx.createGain();revOut.gain.value=.5;revIn.connect(conv);conv.connect(revOut);revOut.connect(master);
     noise=buf(4,false);brown=buf(6,true);
     for(const k of Object.keys(vol)){const g=ctx.createGain();g.gain.value=on[k]?vol[k]:0;g.connect(master);bus[k]=g}
+    /* the fire's channel without its top: what is left of a crackle is the snap of wood, not a click */
+    {const tone=ctx.createBiquadFilter();tone.type='lowpass';tone.frequency.value=2600;tone.Q.value=.5;bus.fire.disconnect();bus.fire.connect(tone);tone.connect(master)}
     for(const [k,v] of[['music',.7],['pages',.25],['fire',.12],['rain',.22]]){const s=ctx.createGain();s.gain.value=v;bus[k].connect(s);s.connect(revIn)}
-    loopNoise(noise,[['highpass',260],['lowpass',1500]],.11,bus.rain,true);loopNoise(brown,[['lowpass',320]],.9,bus.fire,true);
+    loopNoise(noise,[['highpass',260],['lowpass',1500]],.11,bus.rain,true);loopNoise(brown,[['lowpass',320]],.85,bus.fire,true);loopNoise(noise,[['bandpass',360],['lowpass',600]],.03,bus.fire,true);
     setInterval(schedule,90);
     let next=ctx.currentTime+.1,nextPl=ctx.currentTime+2.5;
     setInterval(()=>{if(ctx.state!=='running')return;const now=ctx.currentTime;if(!on.music){next=Math.max(next,now);nextPl=Math.max(nextPl,now);return}while(next<now+1){chord(next);next+=10}while(nextPl<now+1){pluck(nextPl);nextPl+=2.5+Math.random()*4.5}},300);
