@@ -35,19 +35,30 @@ vec3 photo(vec2 s,float id){return mix(texture2D(uWith,s).rgb,texture2D(uWith2,s
 vec4 person(vec2 s,float id){float g=floor(texture2D(uMask,(floor(s*uMaskPx)+.5)/uMaskPx).g*255.+.5);vec4 m=texture2D(uMask,s);
  float man=step(31.5,id),hi=floor(g/16.+.01),own=uCasts>.5?mix(hi,g-16.*hi,man):g/10.;
  return vec4(photo(s,id),mix(m.r,m.b,man)*(1.-step(.2,abs(own-mod(id,32.)))));}
-/* a blink: the upper lid comes down over the eye. Its skin takes the colour of the skin at the crease and under the eye,
-   and the lash line travels down with the lid's edge, column by column */
+/* a blink: the upper lid comes down over the eye with the lashes riding on its edge. It reaches above the lashes as far as
+   the eye's own outline goes (an iris peeking over the opening is covered), and it is skin: the brightest of three rows
+   above it, so a thick lash line or the crease is never taken for skin, turning into the skin under the eye; at its very
+   top it is the face just above it unless that is lash or iris, so it meets the face without an outline (2026-10-07:
+   the old lid was one flat colour with a hard top, and showed on the face as a plate) */
+vec3 eyeRow(float x,float y,float dx,float id){return (photo(vec2(x-dx,y),id)+2.*photo(vec2(x,y),id)+photo(vec2(x+dx,y),id))*.25;}
+vec3 brighter(vec3 a,vec3 b){return dot(b,vec3(.299,.587,.114))>dot(a,vec3(.299,.587,.114))?b:a;}
 vec3 lid(vec2 s,vec3 col,vec4 E,vec4 L,float w,float id){
  if(w<.002||E.z<=0.)return col;
- float x=(s.x-E.x)/E.z,ax=abs(x);if(ax>=1.)return col;
- float pr=1.-ax*ax,yc=E.y+E.w*x,top=yc-L.x*pr,bot=yc+L.y*pr,lt=L.z*(.4+.6*pr);
- float L0=mix(top-lt,yc-(L.x+L.z)*sqrt(pr)-.0002,smoothstep(0.,.3,w));
- float M=mix(top,bot+.15*L.z*pr,w),y0=M-lt;
- if(s.y<L0||s.y>M)return col;
- if(s.y>=y0)return photo(vec2(s.x,top-lt+s.y-y0),id);
- float by=bot+.001+L.y*.2*pr,dx=E.z*.35,k=(s.y-L0)/max(y0-L0,1e-6);
- vec3 a=photo(vec2(s.x,L0-.0003),id),b=(photo(vec2(s.x-dx,by),id)+2.*photo(vec2(s.x,by),id)+photo(vec2(s.x+dx,by),id))*.25;
- return mix(a,b,smoothstep(0.,.55,k))*(1.-.08*smoothstep(.55,1.,k));
+ float x=(s.x-E.x)/E.z,ax=abs(x);if(ax>=1.05)return col;
+ float py=1./uMaskPx.y,pr=max(0.,1.-ax*ax),yc=E.y+E.w*x,top=yc-L.x*pr,bot=yc+L.y*pr,lt=L.z*(.4+.6*pr);
+ float T=min(top-lt-py,yc-(L.x+L.z)*sqrt(pr)-.5*py),M=mix(top,bot+.15*L.z*pr,w),y0=M-lt;
+ if(s.y<T-py||s.y>M+py)return col;
+ vec3 o;
+ if(s.y>=y0)o=photo(vec2(s.x,top-lt+s.y-y0),id);
+ else{
+  float dx=E.z*.1;
+  vec3 cT=brighter(brighter(eyeRow(s.x,T-1.2*py,dx,id),eyeRow(s.x,T-2.6*py,dx,id)),eyeRow(s.x,T-4.*py,dx,id));
+  vec3 c0=eyeRow(s.x,T-.6*py,dx,id),cB=brighter(eyeRow(s.x,bot+1.6*py,dx,id),eyeRow(s.x,bot+3.*py,dx,id));
+  c0=mix(cT,c0,smoothstep(.72,.9,dot(c0,vec3(.299,.587,.114))/max(dot(cT,vec3(.299,.587,.114)),1e-4)));
+  vec3 skin=mix(cT,cB,smoothstep(0.,1.,clamp((s.y-T)/max(bot-T,1e-6),0.,1.))*.5);
+  o=mix(c0,skin,smoothstep(0.,2.5*py,s.y-T))*(1.-.07*smoothstep(.5,1.,clamp((s.y-T)/max(M-T,1e-6),0.,1.)));
+ }
+ return mix(col,o,smoothstep(T-.8*py,T+.6*py,s.y)*smoothstep(1.05,.88,ax)*(1.-smoothstep(M-.1*py,M+.7*py,s.y))*smoothstep(0.,.06,w));
 }
 /* who the mask gives a pixel to in a cast (0: the room), and how much of a pixel's neighbourhood is that reader's, for a
    soft edge where two readers touch */
