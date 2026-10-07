@@ -4,7 +4,7 @@
    Ported from the prototype (prototypes/reading-room/index.html), where every number here was measured and checked.
    Phones get the founder's portrait render of the hall (m-*, rig in rig-m.js, built by prototypes/reading-room/mobile/). */
 import {RIG_M,PAGES_M} from './rig-m.js';
-import {CAST_BOX,CAST_EYES,CAST_PAGES} from './casts.js';
+import {CAST_BOX,CAST_EYES,CAST_LEGS,CAST_PAGES} from './casts.js';
 const clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v));
 const seg=(p,a,b)=>clamp((p-a)/(b-a));
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -25,7 +25,7 @@ void main(){vec2 uv=vUv;vec2 d=(uv-uSun)/56.;vec2 s=uv;vec3 acc=vec3(0.);float w
 const mainFS=H=>`precision highp float;varying vec2 vUv;
 uniform sampler2D uImg;uniform sampler2D uRay;uniform vec2 uRes;uniform vec2 uOff;uniform vec2 uSize;uniform vec2 uPar;uniform float uTime;uniform float uWake;uniform float uNight;uniform float uRayK;
 uniform vec4 uWin;uniform vec3 uFire;uniform vec4 uFireBox;uniform vec4 uLamp[24];uniform int uNL;uniform vec4 uSway[6];uniform float uLoaded;uniform float uCasts;uniform sampler2D uWith;uniform sampler2D uWith2;uniform sampler2D uMask;uniform sampler2D uRig;uniform sampler2D uSoft;uniform sampler2D uPages;
-uniform vec4 uS[${NS*8}];uniform vec4 uPg[${NP*7}];uniform vec4 uEye[${NE}];uniform vec4 uLid[${NE}];uniform vec4 uLidK[${NE}];uniform vec4 uCup[8];uniform float uGK;uniform vec2 uSteamK;uniform vec2 uMaskPx;
+uniform vec4 uS[${NS*8}];uniform vec4 uPg[${NP*7}];uniform vec4 uEye[${NE}];uniform vec4 uLid[${NE}];uniform vec4 uLidK[${NE}];uniform vec4 uLeg[2];uniform vec4 uCup[8];uniform float uGK;uniform vec2 uSteamK;uniform vec2 uMaskPx;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 vec2 aff(vec4 m,vec2 t,vec2 p){return vec2(m.x*p.x+m.y*p.y,m.z*p.x+m.w*p.y)+t;}
 /* every reader comes from a render of the hall: where the hall has two casts, a reader numbered past 32 is a man from the
@@ -141,6 +141,7 @@ void main(){
   if(bl>.002)for(int e=0;e<${NE};e++){vec4 L=uLid[e];if(abs(L.w-float(i))<.5)q.rgb=lid(s,q.rgb,uEye[e],L,uLidK[e],bl,id);}
   c=mix(c,q.rgb,q.a*vis);
 ${limbsGLSL(H)}
+${legsGLSL(H)}
   /* the book with the hands holding it, crisp and whole */
   vec3 rB=texture2D(uRig,pB).rgb;
   if(rB.g>.002){q=person(pB,id);c=mix(c,q.rgb,q.a*rB.g*vis);}
@@ -250,6 +251,16 @@ function limbsGLSL(H){
     return `  if(abs(id-${f(id)})<.5){vec2 sp=uv0-vec2(${f(l.off[0]/W)},${f(l.off[1]/Hh)}),P=sp*uMaskPx;float w=${w};
    if(w>.001){vec4 mk=texture2D(uMask,sp);float k=w*owns(sp,${man},${f(l.id)})*owns(uv0,${man},${f(l.front)})*mix(mk.r,mk.b,${man});c=mix(c,photo(sp,id),k*vis);}}`;
   }).join('\n');
+}
+
+/* Legs drawn for a reader whose render hides them (HALLS.*.legs, casts.js CAST_LEGS): in the box uLeg[0] (uv) the colour
+   and the coverage wait in the people mask at the offsets uLeg[1].xy and .zw. They stay put, and the readers drawn after
+   (in front) cover them */
+function legsGLSL(H){
+  if(!H.legs)return '';
+  const id=H.legs.id+(H.legs.man?32:0);
+  return `  if(abs(id-${id.toFixed(1)})<.5&&uLeg[0].z>0.&&uv0.x>uLeg[0].x&&uv0.x<uLeg[0].z&&uv0.y>uLeg[0].y&&uv0.y<uLeg[0].w){
+   c=mix(c,texture2D(uMask,uv0+uLeg[1].xy).rgb,texture2D(uMask,uv0+uLeg[1].zw).r*vis);}`;
 }
 
 /* the photo in use: its size in px and its rig (set by createRoomEngine from the hall) */
@@ -429,7 +440,9 @@ const M={files:'m',casts:{eyes:CAST_EYES.m,box:CAST_BOX.m,pages:CAST_PAGES.m},po
   lamps:[[.063,.425,1],[.83,.44,.8],[.592,.328,.7],[.378,.327,.7],[.07,.309,.6]],
   cups:[[.5501,.456],[.5811,.461],[.5615,.7295],[.6144,.7436]],
   sway:[[.5,.13,.22,.05],[.45,.3,.1,.05],[.08,.42,.07,.06],[.9,.36,.06,.05],[.97,.73,.05,.05]],
-  limbs:[{id:2,man:1,front:10,off:[30,4],win:[[1036,1222,1029,1264,13],[1028,1274,1000,1310,9]]}],
+  /* the man in reader 2's chair: the render hides his shins behind reader 10's legs; the founder drew them
+     (2026-10-07, build_legs.py) */
+  legs:CAST_LEGS.m,
   dust:{skew:-.02}};
 const MSEAT={1:[.246,.44,0],2:[.711,.418,-1],3:[.752,.565,-1],4:[.15,.77,-1],5:[.843,.775,-1],6:[.293,.40,-1],7:[.11,.54,-1],8:[.426,.79,-1],9:[.615,.80,-1],10:[.727,.465,1],11:[.483,.39,2]};
 const MCHAR={1:{g:'f',head:[.201,.393],ring:[.2116,.4526]},2:{g:'f',head:[.737,.37],ring:[.7324,.4072]},3:{g:'m',head:[.815,.496],ring:[.815,.516]},
@@ -452,7 +465,7 @@ export function seatChar(hall,seat){for(const [id,c] of Object.entries(HALLS[hal
 
 const DUST=[...Array(170)].map((_,i)=>{const r=rng(i*7+3);return {t:r(),s:r()*2-1,ph:r()*6.28,sp:.2+r()*.6,sz:.5+r()*1.4,a:.25+r()*.75}});
 const EMBERS=[...Array(26)].map((_,i)=>{const r=rng(i*13+5);return {x:r(),t:r(),sp:.35+r()*.6,dr:r()*2-1,sz:.6+r()*1.2}});
-const UNIFORMS=['uImg','uRay','uRes','uOff','uSize','uPar','uTime','uWake','uNight','uRayK','uWin','uFire','uFireBox','uLamp','uNL','uSway','uLoaded','uCasts','uWith','uWith2','uMask','uRig','uSoft','uPages','uS','uPg','uEye','uLid','uLidK','uCup','uGK','uSteamK','uMaskPx'];
+const UNIFORMS=['uImg','uRay','uRes','uOff','uSize','uPar','uTime','uWake','uNight','uRayK','uWin','uFire','uFireBox','uLamp','uNL','uSway','uLoaded','uCasts','uWith','uWith2','uMask','uRig','uSoft','uPages','uS','uPg','uEye','uLid','uLidK','uLeg','uCup','uGK','uSteamK','uMaskPx'];
 
 /* opts: hall, base (url of the photos), canvas, fx, stage, frame, edge, teaser, ui, tags, scrollEl (null: the room is shown whole),
    variant ('day' | 'night'), small (phone-sized photos), reduced (less motion), onFlip(key) when a reader turns a page */
@@ -651,7 +664,7 @@ export function createRoomEngine(opts){
       const P6=tex.people;
       [['uWith',P6&&P6.tex,2],['uMask',P6&&P6.mask,3],['uRig',shared.rig,4],['uSoft',shared.soft,5],['uPages',P6&&P6.pages,6],['uWith2',P6&&P6.tex2,7]].forEach(([u,t,i])=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,peopleReady&&t?t:tex.ray);gl.uniform1i(U[u],i)});
       if(!peopleReady)frameSlots.ns=0,slotBuf.fill(0);
-      gl.uniform4fv(U.uS,slotBuf);gl.uniform4fv(U.uPg,pgBuf);gl.uniform4fv(U.uEye,eyeBuf);gl.uniform4fv(U.uLid,lidBuf);gl.uniform4fv(U.uLidK,lidKBuf);
+      gl.uniform4fv(U.uS,slotBuf);gl.uniform4fv(U.uPg,pgBuf);gl.uniform4fv(U.uEye,eyeBuf);gl.uniform4fv(U.uLid,lidBuf);gl.uniform4fv(U.uLidK,lidKBuf);const LG=H.legs&&H.legs[CAST_V];gl.uniform4fv(U.uLeg,LG?[...LG.box,...LG.off]:[0,0,0,0,0,0,0,0]);
       const shown={};for(const s of seats)if(s.lastChar)shown[s.lastChar]=Math.max(shown[s.lastChar]||0,s.vis);
       cupBuf.fill(0);H.cups.slice(0,8).forEach((cp,i)=>cupBuf.set([cp[0],cp[1]-.004,seg(P,.6,.85)*(1-(cp[2]?shown[cp[2]]||0:0)),.55+cp[1]*.75],i*4));gl.uniform4fv(U.uCup,cupBuf);gl.uniform4f(U.uFireBox,...H.fireBox);gl.uniform1f(U.uGK,H.gk||1);gl.uniform1f(U.uCasts,CASTS?1:0);gl.uniform2f(U.uMaskPx,PW,PH);gl.uniform2f(U.uSteamK,...(H.steam||[1,1]));
       gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex.tex);gl.uniform1i(U.uImg,0);
