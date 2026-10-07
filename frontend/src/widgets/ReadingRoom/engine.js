@@ -20,7 +20,7 @@ void main(){vec2 uv=vUv;vec2 d=(uv-uSun)/56.;vec2 s=uv;vec3 acc=vec3(0.);float w
   float near=smoothstep(.36,.1,length((s-uSun)*vec2(uAR,1.)));
   acc+=c*smoothstep(.62,.95,l)*near*w;w*=.972;}
  gl_FragColor=vec4(acc/56.*2.2,1.);}`;
-const MAIN_FS=`precision highp float;varying vec2 vUv;
+const mainFS=H=>`precision highp float;varying vec2 vUv;
 uniform sampler2D uImg;uniform sampler2D uRay;uniform vec2 uRes;uniform vec2 uOff;uniform vec2 uSize;uniform vec2 uPar;uniform float uTime;uniform float uWake;uniform float uNight;uniform float uRayK;
 uniform vec4 uWin;uniform vec3 uFire;uniform vec4 uFireBox;uniform vec4 uLamp[24];uniform int uNL;uniform vec4 uSway[6];uniform float uLoaded;uniform float uCasts;uniform sampler2D uWith;uniform sampler2D uWith2;uniform sampler2D uMask;uniform sampler2D uRig;uniform sampler2D uSoft;uniform sampler2D uPages;
 uniform vec4 uS[${NS*8}];uniform vec4 uPg[${NP*7}];uniform vec4 uEye[${NE}];uniform vec4 uLid[${NE}];uniform vec4 uCup[8];uniform float uGK;uniform vec2 uSteamK;uniform vec2 uMaskPx;
@@ -49,6 +49,12 @@ vec3 lid(vec2 s,vec3 col,vec4 E,vec4 L,float w,float id){
  vec3 a=photo(vec2(s.x,L0-.0003),id),b=(photo(vec2(s.x-dx,by),id)+2.*photo(vec2(s.x,by),id)+photo(vec2(s.x+dx,by),id))*.25;
  return mix(a,b,smoothstep(0.,.55,k))*(1.-.08*smoothstep(.55,1.,k));
 }
+/* who the mask gives a pixel to in a cast (0: the room), and how much of a pixel's neighbourhood is that reader's, for a
+   soft edge where two readers touch */
+float ownerAt(vec2 s,float man){float g=floor(texture2D(uMask,(floor(s*uMaskPx)+.5)/uMaskPx).g*255.+.5),hi=floor(g/16.+.01);return uCasts>.5?mix(hi,g-16.*hi,man):g/10.;}
+float owns(vec2 s,float man,float k){vec2 h=.5/uMaskPx;return .25*(step(abs(ownerAt(s-h,man)-k),.2)+step(abs(ownerAt(s+h,man)-k),.2)+step(abs(ownerAt(s+vec2(h.x,-h.y),man)-k),.2)+step(abs(ownerAt(s+vec2(-h.x,h.y),man)-k),.2));}
+/* inside a capsule (a segment with a radius, photo px), softly */
+float cap(vec2 P,vec2 a,vec2 b,float r){vec2 v=b-a;float t=clamp(dot(P-a,v)/dot(v,v),0.,1.);return smoothstep(r+1.2,r-1.2,length(P-a-t*v));}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x),f.y);}
 float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<4;i++){v+=a*noise(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return v;}
 void main(){
@@ -100,6 +106,7 @@ void main(){
   vec4 q=person(s,id);
   if(bl>.002)for(int e=0;e<${NE};e++){vec4 L=uLid[e];if(abs(L.w-float(i))<.5)q.rgb=lid(s,q.rgb,uEye[e],L,bl,id);}
   c=mix(c,q.rgb,q.a*vis);
+${limbsGLSL(H)}
   /* the book with the hands holding it, crisp and whole */
   vec3 rB=texture2D(uRig,pB).rgb;
   if(rB.g>.002){q=person(pB,id);c=mix(c,q.rgb,q.a*rB.g*vis);}
@@ -197,6 +204,19 @@ void main(){
  vec2 vq=px/uRes-.5;c*=1.-dot(vq,vq)*.55;
  c+=(hash(px+fract(uTime*7.)*91.)-.5)*.02;
  gl_FragColor=vec4(c,1.);}`;
+
+/* A leg the render hides behind the reader in front (HALLS.*.limbs): drawn from the same reader's other leg, moved by
+   `off`, inside the capsules `win` around that leg (photo px), and only where the reader in front was. The readers are
+   drawn back to front, so whoever sits in front covers it again. */
+function limbsGLSL(H){
+  const W=H.pw||2752,Hh=H.ph||1536,f=v=>(+v).toFixed(6);
+  return (H.limbs||[]).map(l=>{
+    const id=l.id+(l.man?32:0),man=l.man?'1.':'0.';
+    const w=l.win.map(([ax,ay,bx,by,r])=>`cap(P,vec2(${f(ax)},${f(ay)}),vec2(${f(bx)},${f(by)}),${f(r)})`).reduce((a,b)=>`max(${a},${b})`);
+    return `  if(abs(id-${f(id)})<.5){vec2 sp=uv0-vec2(${f(l.off[0]/W)},${f(l.off[1]/Hh)}),P=sp*uMaskPx;float w=${w};
+   if(w>.001){vec4 mk=texture2D(uMask,sp);float k=w*owns(sp,${man},${f(l.id)})*owns(uv0,${man},${f(l.front)})*mix(mk.r,mk.b,${man});c=mix(c,photo(sp,id),k*vis);}}`;
+  }).join('\n');
+}
 
 /* the photo in use: its size in px and its rig (set by createRoomEngine from the hall) */
 let PW=2752,PH=1536,PAD=[.012,.03];
@@ -352,6 +372,9 @@ export const HALLS={
       9:{seat:6,g:'m',head:[.614,.768],ring:[.60,.905]},10:{seat:9,g:'m',head:[.677,.349],ring:[.665,.455]},11:{seat:11,g:'m',head:[.511,.199],ring:[.512,.29]}},
     cups:[[.19,.715,4],[.177,.753,4],[.535,.745],[.57,.772],[.81,.772,5],[.53,.415]],
     sway:[[.5,.13,.14,.15],[.22,.3,.09,.17],[.04,.85,.06,.16],[.955,.9,.05,.12],[.73,.32,.05,.1]],
+    /* the man in reader 2's chair: his right shin and foot are behind reader 10's legs in the render (alone, he had one
+       leg); they are his left one's, a leg's width over */
+    limbs:[{id:2,man:1,front:10,off:[35,3],win:[[1680,614,1668,651,15],[1667,659,1627,696,11]]}],
     dust:{skew:-.05}},
   /* the library: its front row is room A's, chair for chair. Its back row and balcony are part of the picture until an
      empty render of the library exists, so only these six chairs come and go */
@@ -372,6 +395,7 @@ const M={files:'m',casts:{eyes:CAST_EYES.m,box:CAST_BOX.m,pages:CAST_PAGES.m},po
   lamps:[[.063,.425,1],[.83,.44,.8],[.592,.328,.7],[.378,.327,.7],[.07,.309,.6]],
   cups:[[.5501,.456],[.5811,.461],[.5615,.7295],[.6144,.7436]],
   sway:[[.5,.13,.22,.05],[.45,.3,.1,.05],[.08,.42,.07,.06],[.9,.36,.06,.05],[.97,.73,.05,.05]],
+  limbs:[{id:2,man:1,front:10,off:[30,4],win:[[1036,1222,1029,1264,13],[1028,1274,1000,1310,9]]}],
   dust:{skew:-.02}};
 const MSEAT={1:[.246,.44,0],2:[.711,.418,-1],3:[.752,.565,-1],4:[.15,.77,-1],5:[.843,.775,-1],6:[.293,.40,-1],7:[.11,.54,-1],8:[.426,.79,-1],9:[.615,.80,-1],10:[.727,.465,1],11:[.483,.39,2]};
 const MCHAR={1:{g:'f',head:[.201,.393],ring:[.2116,.4526]},2:{g:'f',head:[.737,.37],ring:[.7324,.4072]},3:{g:'m',head:[.815,.496],ring:[.815,.516]},
@@ -410,7 +434,7 @@ export function createRoomEngine(opts){
   if(gl){
     const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
-    progMain=program(MAIN_FS);progRays=program(RAYS_FS);
+    progMain=program(mainFS(H));progRays=program(RAYS_FS);
     for(const n of UNIFORMS)U[n]=gl.getUniformLocation(progMain,n);
   }
 
@@ -571,7 +595,7 @@ export function createRoomEngine(opts){
       lampBuf.set([L[0],L[1],gate*(.35+.95*boost)*(1-.6*night),L[2]],n*4);n++;
     });
     slotBuf.fill(0);pgBuf.fill(0);eyeBuf.fill(0);lidBuf.fill(0);for(let k=0;k<NP;k++)pgBuf[k*28+15]=-1;for(let k=0;k<NE;k++)lidBuf[k*4+3]=-1;frameSlots={ns:0,np:0,ne:0};
-    const peopleReady=!!(tex.people&&shared.rig&&shared.soft);
+    const peopleReady=!!(tex.people&&shared.rig&&shared.soft),moving=[];
     seats.forEach((s,i)=>{
       const o=s.occ,tgt=o?(o.status==='reading'?1:.3):0;
       if(tgt>0&&s.target===0)s.flick=.5;s.target=tgt;s.level+=(tgt-s.level)*Math.min(1,dt*2.5);
@@ -579,8 +603,11 @@ export function createRoomEngine(opts){
       const gate=seg(P,.6+(i%8)*.02,.74+(i%8)*.02);
       if(n<24&&s.u>=0){lampBuf.set([s.u,s.v-.02,s.level*fm*gate*(o&&o.char?.22:s.lamp>=0?.35:.62)*(1+Math.sin(T*1.6+i)*.04),s.lamp>=0?.55:.8],n*4);n++}
       const ch=o&&o.char?o.char:s.lastChar||0;
-      if(ch){const on=o&&o.char?1:0;s.lastChar=ch;if(on)s.lastG=o.gender;s.vis+=(on*seg(P,.55,.75)-s.vis)*Math.min(1,dt*2.4);if(s.vis>.001&&peopleReady)motion(ch,o||{status:'reading',flipAt:null,gender:s.lastG},T,s.vis);if(!on&&s.vis<.002)s.lastChar=0}
+      if(ch){const on=o&&o.char?1:0;s.lastChar=ch;if(on)s.lastG=o.gender;s.vis+=(on*seg(P,.55,.75)-s.vis)*Math.min(1,dt*2.4);if(s.vis>.001&&peopleReady)moving.push([ch,o||{status:'reading',flipAt:null,gender:s.lastG},s.vis]);if(!on&&s.vis<.002)s.lastChar=0}
     });
+    /* back to front, by where each head is: a reader in front covers whoever is behind (the two casts are separate
+       renders, and a leg drawn in for a hidden one, see HALLS.*.limbs, must go under the reader who hid it) */
+    moving.sort((a,b)=>(H.chars[a[0]]?.head?.[1]??0)-(H.chars[b[0]]?.head?.[1]??0)).forEach(([ch,o,v])=>motion(ch,o,T,v));
     H.sway.forEach((m,i)=>swayBuf.set(m,i*4));for(let i=H.sway.length;i<6;i++)swayBuf.set([0,0,0,0],i*4);
     if(gl&&tex.ready){
       gl.viewport(0,0,cv.width,cv.height);gl.useProgram(progMain);
