@@ -1,4 +1,4 @@
-import { INKS, ORANGE, SANS, SERIF, ascent, fit, font, roundRect, seeded, surface, withHalo, type Ctx, type Ink } from './canvas';
+import { INKS, ORANGE, SANS, SERIF, ascent, fit, font, roundRect, seeded, spaced, surface, withHalo, type Ctx, type Ink } from './canvas';
 import { calendarHeight, calendarWidth, drawCalendar, type CalendarSize } from './calendar';
 import { crop, imprint } from './parts';
 import type { StickerData } from './types';
@@ -74,7 +74,8 @@ function stats(ctx: Ctx, data: StickerData, colors: (typeof INKS)[Ink]): number 
   return valueBase;
 }
 
-/** The month's name under the shelf and PowerBook at the right, then the sticker as it goes out. */
+/** The month's name under the shelf and PowerBook at the right, «Книга дочитана»
+ * under the month on the day a book was finished, then the sticker as it goes out. */
 function finish(c: HTMLCanvasElement, ctx: Ctx, data: StickerData, ink: Ink, mark: HTMLCanvasElement | null, shelfTop: number): HTMLCanvasElement {
   const colors = INKS[ink];
   ctx.textAlign = 'left';
@@ -83,7 +84,15 @@ function finish(c: HTMLCanvasElement, ctx: Ctx, data: StickerData, ink: Ink, mar
   const foot = shelfTop + 150;
   ctx.fillText(data.words.month, M, foot);
   imprint(ctx, W - M, foot - 42, colors.soft, mark, 'right', 46);
-  return withHalo(crop(c, foot + 70), ink);
+  let bottom = foot;
+  if (data.words.finished) {
+    const label = data.words.finished.toUpperCase();
+    ctx.font = font(36, 700, SANS);
+    ctx.fillStyle = ORANGE;
+    bottom += 30 + ascent(ctx, label);
+    spaced(ctx, label, M, bottom, 3, 'left');
+  }
+  return withHalo(crop(c, bottom + 70), ink);
 }
 
 type Area = { x: number; width: number; height: number };

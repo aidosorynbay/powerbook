@@ -60,3 +60,6 @@ class MyDayCardOut(DayCardOut):
     # The book the reader is on, for their own story sticker. The public card
     # never has it.
     book: str | None = None
+    # The round's days the reader finished a book on, for the day picker and
+    # the sticker. Own card only, like the book.
+    finished_days: list[date] = []

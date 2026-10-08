@@ -15,6 +15,7 @@ import {
   type StickerAssets,
   type StickerKind,
 } from './stickers';
+import { localToday } from './shareText';
 import styles from './StoryShare.module.css';
 
 /** A sticker kept as its file: the canvas it was drawn on is let go at once. */
@@ -46,11 +47,6 @@ function remember(key: string, value: string) {
   } catch {
     /* private mode: it is only a convenience */
   }
-}
-
-function localToday(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 /** A picture on the clipboard: Safari and Chrome on phones, most desktop browsers. */

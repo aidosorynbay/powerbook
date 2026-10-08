@@ -123,8 +123,9 @@ export type DayCard = {
   days: CardDay[];
 };
 
-/** The reader's own card: `book` is for their story sticker, and never on the public card. */
-export type MyDayCard = DayCard & { round_id: string; invited: number; book: string | null };
+/** The reader's own card: `book` and the days a book was finished are for their
+ * story sticker and the day picker, and never on the public card. */
+export type MyDayCard = DayCard & { round_id: string; invited: number; book: string | null; finished_days: string[] };
 
 /** 'sticker': the story sticker, copied or saved; 'story': the whole story picture. */
 export type ShareChannel = 'whatsapp' | 'telegram' | 'x' | 'copy' | 'native' | 'sticker' | 'story';

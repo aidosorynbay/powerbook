@@ -25,6 +25,35 @@ export function daySquares(card: DayCard): string {
   return rows.join('\n');
 }
 
+/** The reader's own date, the way the round page has it. */
+export function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Whole days from `iso` back to `today`: 0 for today, 1 for yesterday. */
+export function daysAgo(iso: string, today: string): number {
+  const at = (s: string) => {
+    const [y, m, d] = s.split('-').map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((at(today) - at(iso)) / 86_400_000);
+}
+
+// Kazakh months by hand: Chrome has no Kazakh dates and prints "M10 6".
+const KK_MONTHS = ['қаңтар', 'ақпан', 'наурыз', 'сәуір', 'мамыр', 'маусым', 'шілде', 'тамыз', 'қыркүйек', 'қазан', 'қараша', 'желтоқсан'];
+
+/** "6 окт." on the day picker, "6 октября" on a sticker; "6 қазан" in Kazakh. */
+export function dayDate(iso: string, locale: Locale, long = false): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  if (locale === 'kk') return `${d} ${KK_MONTHS[m - 1]}`;
+  try {
+    return new Intl.DateTimeFormat(locale, { day: 'numeric', month: long ? 'long' : 'short' }).format(new Date(y, m - 1, d, 12));
+  } catch {
+    return `${d}.${String(m).padStart(2, '0')}`;
+  }
+}
+
 /** "powerbook.kz/r/madik": short enough to read in a chat, and every messenger makes it a link. */
 export function dayLink(username: string): string {
   return `${window.location.host}/r/${encodeURIComponent(username)}`;

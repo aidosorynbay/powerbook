@@ -46,6 +46,98 @@
   font-weight: var(--font-weight-bold);
 }
 
+/* Which day goes out: today, yesterday, any day of the round with minutes. The latest first. */
+.days {
+  display: flex;
+  gap: 6px;
+  margin: 12px -16px 0;
+  padding: 2px 16px 4px;
+  overflow-x: auto;
+  scroll-padding-inline: 16px;
+  scrollbar-width: none;
+}
+
+.days::-webkit-scrollbar {
+  display: none;
+}
+
+.day {
+  display: grid;
+  flex: 0 0 auto;
+  align-content: start;
+  justify-items: start;
+  gap: 2px;
+  min-width: 76px;
+  padding: 7px 12px 8px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.day[aria-pressed='true'] {
+  border-color: var(--color-accent-primary);
+  background: var(--color-accent-primary-muted);
+  box-shadow: inset 0 0 0 1px var(--color-accent-primary);
+}
+
+.day:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 1px;
+}
+
+.dayName {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+}
+
+.dayMinutes {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The day's square, as on the round's calendar: orange at 30+, yellow under it. */
+.dayMinutes i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.goal {
+  background: var(--color-accent-primary);
+}
+
+.some {
+  background: var(--color-warning-fill);
+}
+
+.none {
+  border: 1px solid var(--color-border-primary);
+}
+
+.dayDone {
+  color: var(--color-text-accent);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+/* Another day on its way: the one on screen stays until it comes. */
+.loading {
+  opacity: 0.55;
+  transition: opacity 160ms ease;
+  pointer-events: none;
+}
+
 /* «Сторис» or «Сообщение». */
 .tabs {
   display: grid;

@@ -1,4 +1,4 @@
-import { INKS, SANS, SERIF, ascent, fit, font, spaced, surface, withHalo, wrap, type Ctx, type Ink } from './canvas';
+import { INKS, ORANGE, SANS, SERIF, ascent, fit, font, spaced, surface, withHalo, wrap, type Ctx, type Ink } from './canvas';
 import { calendarWidth, drawCalendar, type CalendarSize } from './calendar';
 import { imprint, crop } from './parts';
 import type { StickerData } from './types';
@@ -79,8 +79,9 @@ export function drawCalendarPage(data: StickerData, ink: Ink, mark: HTMLCanvasEl
 
 /**
  * The minutes as large as the page allows, the unit under them in italic, and
- * the book (two lines at most). `top` is where the numerals' tops go; returns
- * the y under the last line.
+ * the book (two lines at most), with «Книга дочитана» in orange under it on
+ * the day it was finished. `top` is where the numerals' tops go; returns the
+ * y under the last line.
  */
 function title(ctx: Ctx, data: StickerData, ink: Ink, top: number, maxSize: number): number {
   const { words } = data;
@@ -106,6 +107,14 @@ function title(ctx: Ctx, data: StickerData, ink: Ink, top: number, maxSize: numb
       y += 70;
       ctx.fillText(line, CX, y);
     }
+  }
+  if (words.finished) {
+    const label = words.finished.toUpperCase();
+    ctx.font = font(42, 700, SANS);
+    ctx.fillStyle = ORANGE;
+    y += 34 + ascent(ctx, label);
+    spaced(ctx, label, CX, y, 4);
+    ctx.fillStyle = colors.fg;
   }
   return y;
 }

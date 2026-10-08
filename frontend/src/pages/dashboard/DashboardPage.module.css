@@ -770,6 +770,13 @@
   border-color: var(--color-border-accent);
 }
 
+/* «Поделиться этим днём» in a logged day's form, above its buttons. */
+.modalShare {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--spacing-4);
+}
+
 .modalActions {
   display: flex;
   gap: var(--spacing-3);

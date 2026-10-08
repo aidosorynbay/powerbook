@@ -112,12 +112,15 @@ def _round_for(db: Session, day: date) -> Round | None:
 def _book(db: Session, *, user: User, rnd: Round, day: date) -> str | None:
     """The book the reader is on by `day`, for the title on their sticker: the
     latest day's book with the most minutes, from «Что читаю» or from a sitting
-    in the reading room. A day logged without a book keeps the one before it."""
+    in the reading room. A day logged without a book keeps the one before it,
+    and a day a book was finished names that book."""
     logged = db.execute(
-        select(ReadingLog.date, ReadingLogBook.minutes, ReadingLogBook.title)
+        select(ReadingLog.date, ReadingLogBook.minutes, ReadingLogBook.title, ReadingLogBook.finished)
         .join(ReadingLogBook, ReadingLogBook.reading_log_id == ReadingLog.id)
         .where(ReadingLog.round_id == rnd.id, ReadingLog.user_id == user.id, ReadingLog.date <= day)
-        .order_by(ReadingLog.date.desc(), ReadingLogBook.minutes.desc(), ReadingLogBook.position)
+        .order_by(
+            ReadingLog.date.desc(), ReadingLogBook.finished.desc(), ReadingLogBook.minutes.desc(), ReadingLogBook.position
+        )
         .limit(1)
     ).first()
     sat = db.execute(
@@ -131,22 +134,41 @@ def _book(db: Session, *, user: User, rnd: Round, day: date) -> str | None:
         .order_by(ReadingRoomSession.credited_date.desc(), ReadingRoomSession.credited_minutes.desc())
         .limit(1)
     ).first()
+    # The book finished that day, even if the reading room had more minutes.
+    if logged is not None and logged[0] == day and logged[3] and logged[2].strip():
+        return logged[2].strip()
     found = [row for row in (logged, sat) if row is not None and row[2].strip()]
     if not found:
         return None
     return max(found, key=lambda row: (row[0], row[1]))[2].strip()
 
 
+def _finished_days(db: Session, *, user: User, rnd: Round) -> list[date]:
+    """The round's days the reader finished a book on: the day picker marks
+    them, and the sticker of such a day says so."""
+    return list(db.execute(
+        select(ReadingLog.date)
+        .where(ReadingLog.round_id == rnd.id, ReadingLog.user_id == user.id, ReadingLog.book_finished.is_(True))
+        .order_by(ReadingLog.date)
+    ).scalars())
+
+
 def my_card(db: Session, *, user: User, day: date, round_id: str | None = None) -> MyDayCardOut:
     """The reader's own day, for the text they are about to send. `day` is
-    the reader's own date: the page knows it better than the server does."""
+    the reader's own date: the page knows it better than the server does.
+    It can be any day of the round: yesterday's long read, or the day a book
+    was finished, goes out the next day as well as on the day."""
     rnd = _round(db, round_id) if round_id else _round_for(db, day)
     if rnd is None:
         raise _not_found("Round not found")
     invited = db.execute(select(func.count()).select_from(User).where(User.invited_by == user.id)).scalar_one()
     card = _card(db, user=user, rnd=rnd, day=day)
     return MyDayCardOut(
-        **card, round_id=str(rnd.id), invited=int(invited), book=_book(db, user=user, rnd=rnd, day=card["day"])
+        **card,
+        round_id=str(rnd.id),
+        invited=int(invited),
+        book=_book(db, user=user, rnd=rnd, day=card["day"]),
+        finished_days=_finished_days(db, user=user, rnd=rnd),
     )
 
 

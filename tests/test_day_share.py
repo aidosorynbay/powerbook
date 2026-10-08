@@ -219,3 +219,36 @@ def test_archive_names_have_no_day_page(env):
     env.db.commit()
     assert env.client.get("/api/share/r/old_nick").status_code == 404
     assert env.client.get("/api/share/r/nobody").status_code == 404
+
+
+def test_an_earlier_day_goes_out_with_the_book_finished_on_it(env):
+    """Nothing read today, but yesterday was long and a book was finished: the
+    reader sends yesterday."""
+    env.read(env.aigerim, date(2026, 10, 3), 30)
+    env.read(env.aigerim, date(2026, 10, 4), 95)
+    log = env.db.execute(select(ReadingLog).where(ReadingLog.date == date(2026, 10, 4))).scalar_one()
+    log.book_finished = True
+    for i, (title, minutes, finished) in enumerate([("Абай жолы", 70, False), ("Шантарам", 25, True)]):
+        env.db.add(ReadingLogBook(
+            reading_log_id=log.id, user_id=env.aigerim.id, title=title, title_norm=title.lower(), minutes=minutes,
+            finished=finished, position=i,
+        ))
+    env.db.commit()
+
+    yesterday = env.client.get(
+        "/api/share/day", params={"day": "2026-10-04", "round_id": str(env.round.id)}, headers=env.h(env.aigerim)
+    ).json()
+    assert (yesterday["day"], yesterday["minutes"], yesterday["streak"]) == ("2026-10-04", 95, 2)
+    # The finished book names the day, though another had more minutes.
+    assert yesterday["book"] == "Шантарам"
+    assert yesterday["finished_days"] == ["2026-10-04"]
+
+    # Today is empty, and the picker still sees every day read.
+    today = env.client.get("/api/share/day", params={"day": "2026-10-05"}, headers=env.h(env.aigerim)).json()
+    assert today["minutes"] == 0 and [d["minutes"] for d in today["days"][2:4]] == [30, 95]
+
+    assert _share(env, env.aigerim, day=date(2026, 10, 4), channel="sticker").status_code == 200
+    shared = env.db.execute(select(DayShare)).scalar_one()
+    assert shared.day == date(2026, 10, 4)
+    public = env.client.get("/api/share/r/aigerim").json()
+    assert "finished_days" not in public and "Шантарам" not in str(public)

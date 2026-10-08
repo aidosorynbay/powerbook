@@ -1,3 +1,3 @@
 export { ShareDay } from './ShareDay';
 export { DayGrid, DayLegend } from './DayGrid';
-export { dayKind, dayLink, dayShareText, daySquares } from './shareText';
+export { dayKind, dayLink, dayShareText, daySquares, localToday } from './shareText';

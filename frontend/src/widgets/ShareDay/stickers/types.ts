@@ -4,7 +4,7 @@ export type StickerKind = (typeof STICKERS)[number];
 
 /** Every word a sticker prints, already in the reader's language. */
 export type StickerWords = {
-  /** "минут сегодня", or "минут" for another day than today. */
+  /** "минут сегодня", "минут вчера", or "минут" for a day before that. */
   unit: string;
   /** "день 5 из 31" */
   dayOf: string;
@@ -16,6 +16,8 @@ export type StickerWords = {
   weekdays: string[];
   /** «Шантарам» or “Shantaram”. */
   quoted: string | null;
+  /** "Книга дочитана", on the day a book was finished. */
+  finished: string | null;
   /** The shelf's three figures, label over value, the way Strava sets distance, pace and time. */
   stats: { label: string; value: string; unit: string }[];
 };

@@ -176,7 +176,8 @@ export function DashboardPage() {
   const [todayCommentPrivate, setTodayCommentPrivate] = useState(false);
   const [isSavingToday, setIsSavingToday] = useState(false);
   // «Поделиться днём»: the sheet, and whether this save is the one that reached 30 minutes.
-  const [shareOpen, setShareOpen] = useState(false);
+  // The day the share sheet is open on: today, or a day picked on the calendar.
+  const [sharing, setSharing] = useState<string | null>(null);
   const [goalJustMet, setGoalJustMet] = useState(false);
   const [todayBooks, setTodayBooks] = useState<DayBook[]>([]);
 
@@ -774,6 +775,9 @@ export function DashboardPage() {
     : '';
   // Lit only while today really has its 30: a page left open overnight starts the new day plain.
   const goalLit = goalJustMet && (todayData?.minutes ?? 0) >= DAILY_GOAL_MINUTES;
+  // A day before today with minutes: something to share even on a day not read yet.
+  const readBefore = !!calendar?.days.some(d => d.date < todayStr && d.minutes > 0);
+  const selectedDay = selectedDate ? calendar?.days.find(d => d.date === selectedDate) : undefined;
 
   const displayStatus = roundStatus?.round?.status === 'registration_open' && !isBeforeDeadline
     ? 'locked' as const
@@ -1094,18 +1098,19 @@ export function DashboardPage() {
                         {isSavingToday ? t('dashboard.saving') : t('dashboard.save')}
                       </Button>
 
-                      {/* Once the day has minutes saved, it can go out: Strava's post-a-run, for reading. */}
-                      {(todayData?.minutes ?? 0) > 0 && (
+                      {/* Once a day has minutes saved, it can go out: Strava's post-a-run, for reading.
+                          Today first; with nothing yet today, the sheet opens on the latest day read. */}
+                      {((todayData?.minutes ?? 0) > 0 || readBefore) && (
                         <div className={`${styles.shareDay} ${goalLit ? styles.shareDayLit : ''}`}>
                           {goalLit && <p className={styles.shareDayNote}>{t('shareDay.goalMet')}</p>}
-                          <button type="button" className={styles.shareDayBtn} onClick={() => setShareOpen(true)}>
+                          <button type="button" className={styles.shareDayBtn} onClick={() => setSharing(todayStr)}>
                             <Icon name="share" size="sm" aria-hidden="true" />
                             {t('shareDay.button')}
                           </button>
                         </div>
                       )}
-                      {shareOpen && (
-                        <ShareDay day={todayStr} roundId={roundStatus?.round?.id} onClose={() => setShareOpen(false)} />
+                      {sharing && (
+                        <ShareDay day={sharing} roundId={roundStatus?.round?.id} onClose={() => setSharing(null)} />
                       )}
                     </div>
                   </div>
@@ -1541,6 +1546,23 @@ export function DashboardPage() {
                 {t('dashboard.hideComment')}
               </label>
             </div>
+            {/* A day already logged can go out from here: yesterday's long read, the day a book was finished. */}
+            {selectedDate && selectedDate <= todayStr && (selectedDay?.minutes ?? 0) > 0 && (
+              <div className={styles.modalShare}>
+                <button
+                  type="button"
+                  className={styles.shareDayBtn}
+                  onClick={() => {
+                    const day = selectedDate;
+                    closeLogModal();
+                    setSharing(day);
+                  }}
+                >
+                  <Icon name="share" size="sm" aria-hidden="true" />
+                  {t('shareDay.thisDay')}
+                </button>
+              </div>
+            )}
             <div className={styles.modalActions}>
               <Button variant="ghost" onClick={closeLogModal}>
                 {t('dashboard.cancel')}
