@@ -86,7 +86,10 @@ class ReadingService:
         comment: str | None = None,
         comment_private: bool = False,
         books: list | None = None,
+        started_on: date | None = None,
     ) -> ReadingLog:
+        """`started_on`: the day the book finished today was begun, so that
+        days with no book named since then count for it (book_finish.py)."""
         rnd = self.rounds.get_round(round_id)
         if rnd is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Round not found")
@@ -130,6 +133,7 @@ class ReadingService:
         # its own minutes are given; split minutes never exceed the day's
         # total — if they do, the total grows to match them.
         day_books = _clean_books(books) if books is not None else None
+        finished_title = None
         if day_books:
             if len(day_books) == 1 and day_books[0]["minutes"] == 0:
                 day_books[0]["minutes"] = minutes
@@ -140,6 +144,7 @@ class ReadingService:
             if done:
                 book_finished = True
                 comment = _comment_with_title(comment, done[0]["title"])
+                finished_title = done[0]["title"]
 
         # Last day date itself: allow logging but score=0
         force_score = 0 if day == last_day_date else None
@@ -165,6 +170,15 @@ class ReadingService:
             # An older page changed the total of a one-book day: the book follows.
             row.books[0].minutes = row.minutes
             self.db.commit()
+        if started_on is not None and book_finished:
+            if finished_title is None and comment and not row.books:
+                from app.services.bookcase import _split_comment
+
+                finished_title = _split_comment(comment)[0]
+            if finished_title:
+                from app.services import book_finish
+
+                book_finish.give_days(self.db, user_id=user_id, title=finished_title, day=day, start=started_on)
         # A book finished in the open: whoever watches it hears (app/services/notify.py).
         if book_finished and comment and not comment_private and not was_public_finish:
             from app.services import notify

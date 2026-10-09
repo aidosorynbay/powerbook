@@ -102,3 +102,115 @@
   border-color: var(--color-border-accent);
   background: var(--color-accent-primary-muted);
 }
+
+/* A few words of the review, two lines at most. */
+.quote {
+  display: -webkit-box;
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.tune,
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.tune {
+  margin-top: 12px;
+}
+
+.tune:hover,
+.back:hover {
+  color: var(--color-accent-primary);
+}
+
+.settings {
+  display: grid;
+  gap: 10px;
+}
+
+.back {
+  justify-self: start;
+}
+
+.switches {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.switches label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.switches small {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.switches input {
+  position: relative;
+  flex-shrink: 0;
+  width: 42px;
+  height: 24px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--color-border-primary);
+  appearance: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.switches input::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 25%);
+  transition: transform 0.15s;
+}
+
+.switches input:checked {
+  background: var(--color-accent-primary);
+}
+
+.switches input:checked::after {
+  transform: translateX(18px);
+}
+
+.switches input:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}

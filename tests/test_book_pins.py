@@ -145,3 +145,35 @@ def test_likely_doubles_pair_the_same_author_and_a_longer_title(env):
     assert frozenset(("Атомные привычки", "Атомные привычки. Как приобрести хорошие привычки")) in titles or len(
         [w for w in idx.works.values() if w.title.startswith("Атомные")]
     ) == 1
+
+
+def test_a_copy_pinned_to_a_book_does_not_rename_it(env):
+    """«Граф Монте-Кристо 2» said to be «Граф Монте-Кристо»: one book, under
+    the name it already had, though the copy and its mark outnumber it."""
+    c = env.client
+    env.db.add(ManualBook(user_id=env.dana.id, title="Граф Монте-Кристо", title_norm="граф монте-кристо", author="Александр Дюма"))
+    mine = ManualBook(user_id=env.erlan.id, title="Граф Монте-Кристо 2", title_norm="граф монте-кристо 2")
+    env.db.add(mine)
+    env.db.commit()
+    catalog.invalidate()
+    _mark(env, env.erlan, f"m:{mine.id}", 10)
+
+    r = c.put(f"/api/library/overrides/m:{mine.id}/work", json={"work_key": "grafmontekristo"}, headers=env.h(env.erlan))
+    assert r.status_code == 200, r.text
+    found = c.get("/api/books/match", params={"q": "Граф Монте-Кристо", "editions": "false"}, headers=env.h(env.erlan)).json()
+    assert [(w["key"], w["title"], w["readers"]) for w in found["works"]] == [("grafmontekristo", "Граф Монте-Кристо", 2)]
+    assert found["works"][0]["pb_rating"] == 10
+
+
+def test_a_change_in_one_server_process_reaches_the_other(env, monkeypatch, tmp_path):
+    monkeypatch.setattr(catalog, "_STAMP", str(tmp_path / "stamp"))
+    catalog.invalidate()
+    first = catalog.index(env.db)
+    assert catalog.index(env.db) is first
+    # The other process said something changed: the copy here is built again.
+    import os
+    import time
+
+    later = time.time() + 5
+    os.utime(tmp_path / "stamp", (later, later))
+    assert catalog.index(env.db) is not first

@@ -3024,3 +3024,18 @@
 .wanted svg {
   font-size: 15px;
 }
+
+/* «Уточнить по дням» beside a book's reading time. */
+.factAction {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

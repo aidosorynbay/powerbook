@@ -13,10 +13,12 @@ type Props = {
   onClose: () => void;
   /** The book's marks changed: the list behind may want to show it. */
   onChanged?: () => void;
+  /** A review to show at once: the bell's news of it leads here. */
+  review?: string | null;
 };
 
 /** One book of the shared library: what PowerBook readers and the world think of it. */
-export function WorkSheet({ workKey, title, onClose, onChanged }: Props) {
+export function WorkSheet({ workKey, title, onClose, onChanged, review }: Props) {
   const { t, locale } = useI18n();
   const count = useCount();
   const [work, setWork] = useState<Work | null>(null);
@@ -39,6 +41,12 @@ export function WorkSheet({ workKey, title, onClose, onChanged }: Props) {
     setWork(null);
     load();
   }, [load]);
+
+  const loaded = !!work;
+  useEffect(() => {
+    if (!loaded || !review) return;
+    document.getElementById(`review-${review}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [loaded, review]);
 
   // Not on my shelf yet: put it there as read, then the mark can follow.
   const addToShelf = async () => {
@@ -182,7 +190,7 @@ export function WorkSheet({ workKey, title, onClose, onChanged }: Props) {
             ) : (
               <ul className={styles.reviewList}>
                 {work.reviews.map((r) => (
-                  <li key={r.id} className={styles.review}>
+                  <li key={r.id} id={`review-${r.id}`} className={`${styles.review} ${r.id === review ? styles.reviewNew : ''}`}>
                     <div className={styles.reviewHead}>
                       <Avatar src={r.avatar_data} name={r.display_name} size="sm" />
                       <Link to={`/readers/${r.user_id}`}>{r.is_viewer ? `${r.display_name} (${t('work.you')})` : r.display_name}</Link>

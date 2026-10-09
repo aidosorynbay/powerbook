@@ -28,6 +28,7 @@ import { ShareDay } from '@/widgets/ShareDay';
 import anim from '@/shared/styles/animations.module.css';
 import { quietDayIcon, quietDayQuoteKeys, finishFlagIcon } from '@/shared/lib/quietDays';
 import { ReadingBooks, booksPayload, sumMinutes } from './ReadingBooks';
+import { FinishBook, finishedBook, pickTitle, savedFinish } from './FinishBook';
 import styles from './DashboardPage.module.css';
 
 function getStatusVariant(status: RoundStatus): 'success' | 'accent' | 'default' {
@@ -149,6 +150,8 @@ export function DashboardPage() {
   const [modalComment, setModalComment] = useState('');
   const [modalCommentPrivate, setModalCommentPrivate] = useState(false);
   const [modalBooks, setModalBooks] = useState<DayBook[]>([]);
+  // The day the book finished in the form was begun (FinishBook).
+  const [modalStart, setModalStart] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   // «Что читаю»: the book the forms start with, and recent others to offer.
   const [readingBooks, setReadingBooks] = useState<ReadingBooksResponse | null>(null);
@@ -180,6 +183,7 @@ export function DashboardPage() {
   const [sharing, setSharing] = useState<string | null>(null);
   const [goalJustMet, setGoalJustMet] = useState(false);
   const [todayBooks, setTodayBooks] = useState<DayBook[]>([]);
+  const [todayStart, setTodayStart] = useState<string | null>(null);
 
   const fetchRoundStatus = useCallback(async () => {
     const { data } = await apiGet<CurrentRoundStatusResponse>(
@@ -475,6 +479,7 @@ export function DashboardPage() {
         date: selectedDate, minutes, book_finished: finished,
         comment: modalComment || null, comment_private: modalCommentPrivate,
         books: booksPayload(modalBooks, minutes, modalBookFinished),
+        started_on: finished ? modalStart : null,
       },
       { requireAuth: true }
     );
@@ -740,6 +745,7 @@ export function DashboardPage() {
         date: todayStr, minutes, book_finished: finished,
         comment: todayComment || null, comment_private: todayCommentPrivate,
         books: booksPayload(todayBooks, minutes, todayBookFinished),
+        started_on: finished ? todayStart : null,
       },
       { requireAuth: true }
     );
@@ -778,6 +784,9 @@ export function DashboardPage() {
   // A day before today with minutes: something to share even on a day not read yet.
   const readBefore = !!calendar?.days.some(d => d.date < todayStr && d.minutes > 0);
   const selectedDay = selectedDate ? calendar?.days.find(d => d.date === selectedDate) : undefined;
+  // The book each form marks finished, if any: FinishBook finds it on the shelf and counts its time.
+  const todayFinish = finishedBook(todayBooks, todayBookFinished, todayComment, parseInt(todayMinutes, 10) || 0);
+  const modalFinish = finishedBook(modalBooks, modalBookFinished, modalComment, parseInt(minutesInput, 10) || 0);
 
   const displayStatus = roundStatus?.round?.status === 'registration_open' && !isBeforeDeadline
     ? 'locked' as const
@@ -1073,6 +1082,21 @@ export function DashboardPage() {
                           />
                           {t('dashboard.bookFinished')}
                         </label>
+                      )}
+
+                      {todayFinish && roundStatus?.round && (
+                        <FinishBook
+                          roundId={roundStatus.round.id}
+                          day={todayStr}
+                          book={todayFinish}
+                          savedTitle={savedFinish(todayData)}
+                          onStart={setTodayStart}
+                          onPick={(title) => {
+                            const next = pickTitle(todayBooks, todayComment, todayFinish, title);
+                            setTodayBooks(next.books);
+                            setTodayComment(next.comment);
+                          }}
+                        />
                       )}
 
                       <div className={styles.todayField}>
@@ -1525,6 +1549,22 @@ export function DashboardPage() {
                   />
                   {t('dashboard.bookFinished')}
                 </label>
+              </div>
+            )}
+            {modalFinish && roundStatus?.round && selectedDate && (
+              <div className={styles.modalField}>
+                <FinishBook
+                  roundId={roundStatus.round.id}
+                  day={selectedDate}
+                  book={modalFinish}
+                  savedTitle={savedFinish(selectedDay)}
+                  onStart={setModalStart}
+                  onPick={(title) => {
+                    const next = pickTitle(modalBooks, modalComment, modalFinish, title);
+                    setModalBooks(next.books);
+                    setModalComment(next.comment);
+                  }}
+                />
               </div>
             )}
             <div className={styles.modalField}>

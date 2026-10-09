@@ -147,3 +147,61 @@ def test_a_private_finish_tells_no_one(env):
     finally:
         s.close()
     assert env.db.query(Notification).count() == 0
+
+
+def test_a_review_is_news_for_every_reader_who_wants_it(env):
+    c = env.client
+    ghost = User(username="old_nick", display_name="Old", password_hash="x", gender=Gender.female, is_claimable=True)
+    env.db.add(ghost)
+    env.db.commit()
+    book = env.db.query(ManualBook).filter_by(user_id=env.erlan.id).one()
+    vol = f"m:{book.id}"
+
+    # Dana would rather not hear about reviews.
+    assert c.get("/api/notifications/settings", headers=env.h(env.dana)).json() == {
+        "new_review": True, "watch_listing": True, "watch_finished": True, "wanted_by": True,
+    }
+    r = c.put("/api/notifications/settings", json={"settings": {"new_review": False}}, headers=env.h(env.dana))
+    assert r.status_code == 200 and r.json()["new_review"] is False and r.json()["watch_listing"] is True
+    assert c.put("/api/notifications/settings", json={"settings": {"spam": True}}, headers=env.h(env.dana)).status_code == 422
+
+    # A mark with no words is not a review.
+    assert c.put("/api/books/reviews", json={"volume_key": vol, "rating": 8}, headers=env.h(env.erlan)).status_code == 200
+    assert env.db.query(Notification).count() == 0
+
+    long = "Очень сильная книга про Бомбей, дружбу и выбор. " * 6
+    assert c.put("/api/books/reviews", json={"volume_key": vol, "rating": 9, "text": long}, headers=env.h(env.erlan)).status_code == 200
+    notes = c.get("/api/notifications", headers=env.h(env.aigerim)).json()
+    assert [n["kind"] for n in notes] == ["new_review"]
+    d = notes[0]["data"]
+    assert (d["title"], d["rating"], d["reader"], d["gender"]) == ("Шантарам", 9, "Erlan", "female")
+    assert d["work_key"] and d["review_id"]
+    assert d["quote"].startswith("Очень сильная книга") and d["quote"].endswith("…") and len(d["quote"]) <= 141
+    # Not the one who wrote it, not whoever switched reviews off, not an archive name.
+    assert _kinds(env, env.erlan) == [] and _kinds(env, env.dana) == []
+    assert env.db.query(Notification).filter_by(user_id=ghost.id).count() == 0
+
+    # Fixing a word or the mark says nothing new.
+    c.put("/api/books/reviews", json={"volume_key": vol, "rating": 10, "text": "Перечитаю."}, headers=env.h(env.erlan))
+    assert _kinds(env, env.aigerim) == ["new_review"]
+
+    # The review gone, so is the news of it.
+    assert c.delete(f"/api/books/reviews/{d['review_id']}", headers=env.h(env.erlan)).status_code == 204
+    assert _kinds(env, env.aigerim) == []
+
+
+def test_a_kind_switched_off_stays_quiet(env):
+    c = env.client
+    c.put("/api/books/watch/shantaram", headers=env.h(env.dana))
+    c.put("/api/notifications/settings", json={"settings": {"watch_listing": False}}, headers=env.h(env.dana))
+    listing = c.post("/api/market", json={"title": "Шантарам", "price": 3000, "condition": "good", "contact": "+7 777 123 45 67"}, headers=env.h(env.erlan))
+    assert listing.status_code == 201, listing.text
+    assert _kinds(env, env.dana) == []
+
+    # Words taken out of a review take the news back too.
+    book = env.db.query(ManualBook).filter_by(user_id=env.erlan.id).one()
+    c.put("/api/notifications/settings", json={"settings": {"watch_listing": True}}, headers=env.h(env.dana))
+    c.put("/api/books/reviews", json={"volume_key": f"m:{book.id}", "rating": 9, "text": "Сильно"}, headers=env.h(env.erlan))
+    assert _kinds(env, env.dana) == ["new_review"]
+    c.put("/api/books/reviews", json={"volume_key": f"m:{book.id}", "rating": 9, "text": " "}, headers=env.h(env.erlan))
+    assert _kinds(env, env.dana) == []

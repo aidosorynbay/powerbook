@@ -43,6 +43,7 @@ export {
   DEFAULT_GROUP_SLUG,
   STORAGE_KEY_TOKEN,
   STORAGE_KEY_LOCALE,
+  KK_MONTHS,
 } from './constants';
 
 // Types
@@ -127,6 +128,9 @@ export type {
   BookChatMessage,
   BookChatState,
   SiteNotification,
+  NotificationSettings,
+  BookFinish,
+  BookDays,
   BookWatch,
   CardDay,
   DayCard,

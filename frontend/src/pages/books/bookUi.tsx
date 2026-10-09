@@ -1,5 +1,5 @@
 import { KeyboardEvent as ReactKeyboardEvent, ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { getApiBaseUrl, useI18n, type Locale } from '@/shared/lib';
+import { getApiBaseUrl, KK_MONTHS, useI18n, type Locale } from '@/shared/lib';
 import { paletteFor } from '../library/bookcase/bookArt';
 import { plural } from '../library/bookcase/plural';
 import styles from './Store.module.css';
@@ -67,6 +67,7 @@ export function formatDay(iso: string | null | undefined, locale: Locale): strin
   if (!iso) return '';
   const d = new Date(iso.length === 10 ? `${iso}T12:00:00` : iso);
   if (Number.isNaN(d.getTime())) return '';
+  if (locale === 'kk') return `${d.getDate()} ${KK_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
   return d.toLocaleDateString(INTL[locale], { day: 'numeric', month: 'long', year: 'numeric' }).replace(/\s?г\.$/, '');
 }
 

@@ -24,6 +24,8 @@ every request and only looked up against it.
 """
 from __future__ import annotations
 
+import os
+import tempfile
 import threading
 import time
 import uuid
@@ -47,8 +49,14 @@ from app.repositories.insights import normalize_book_title
 from app.services import covers
 
 _TTL_SECONDS = 300
-_cache: dict[str, object] = {"at": 0.0, "index": None}
+_cache: dict[str, object] = {"at": 0.0, "index": None, "stamp": 0.0}
 _building = threading.Lock()
+# The server runs as two processes, each with its own copy of the index. A
+# change made in one (a book pinned, a mark given) is told to the other by
+# this file's time: without it the other went on showing the old library
+# for up to five minutes, and a reader who had just said which book their
+# copy is saw nothing change.
+_STAMP = os.path.join(tempfile.gettempdir(), "powerbook-catalog.stamp")
 
 
 @dataclass
@@ -102,6 +110,8 @@ class _Entry:
     account: uuid.UUID
     volume_key: str | None
     at: date | None
+    # The title the reader said this copy is («Какая это книга?»).
+    pinned_title: str | None = None
 
 
 class _Union:
@@ -160,24 +170,29 @@ def _build(db: Session) -> CatalogIndex:
     entries: list[_Entry] = []
     wanted_covers: set[str] = set()
 
-    # Readers' own word on which book a copy is: (account, shelf key) -> nodes.
-    pins: dict[tuple[uuid.UUID, str], list[str]] = {}
-    for user_id, volume_key, pinned, source, source_id in db.execute(
-        select(ShelfOverride.user_id, ShelfOverride.volume_key, ShelfOverride.work_key, ShelfOverride.source, ShelfOverride.source_id)
+    # Readers' own word on which book a copy is: (account, shelf key) -> nodes, and the title they took.
+    pins: dict[tuple[uuid.UUID, str], tuple[list[str], str | None]] = {}
+    for user_id, volume_key, pinned, source, source_id, pinned_title in db.execute(
+        select(
+            ShelfOverride.user_id, ShelfOverride.volume_key, ShelfOverride.work_key, ShelfOverride.source,
+            ShelfOverride.source_id, ShelfOverride.title,
+        )
         .where(ShelfOverride.work_key.is_not(None))
     ).all():
         nodes = [pinned]
         if source in ("google", "openlibrary") and source_id:
             nodes.append(f"@{source}:{source_id}")
-        pins[(user_id, volume_key)] = nodes
+        pins[(user_id, volume_key)] = (nodes, pinned_title)
 
     def add(raw_key: str | None, clean: str, hint: str | None, account: uuid.UUID, volume_key: str | None, at: object) -> None:
         nodes = [k for k in dict.fromkeys([raw_key, canonical_key(clean)]) if k]
+        pinned_title = None
         if volume_key:
             # A claimed archive book sits on its claimant's shelf, so their pin counts for it too.
             pinned = pins.get((account, volume_key)) or pins.get((fold.get(account, account), volume_key))
             if pinned:
-                nodes.extend(k for k in pinned if k not in nodes)
+                nodes.extend(k for k in pinned[0] if k not in nodes)
+                pinned_title = pinned[1]
         if not nodes:
             return
         wanted_covers.add(covers.cover_key(clean))
@@ -191,6 +206,7 @@ def _build(db: Session) -> CatalogIndex:
                 account=account,
                 volume_key=volume_key,
                 at=_as_date(at),
+                pinned_title=pinned_title,
             )
         )
 
@@ -258,8 +274,14 @@ def _build(db: Session) -> CatalogIndex:
         source_url = None
         for e in group:
             row = e.cover
-            # The corrected spelling counts double: it is the book's own.
-            titles[(row.title if row is not None and row.title else e.title)] += 2 if row is not None else 1
+            if e.pinned_title:
+                # The reader said which book this is: their copy's old spelling
+                # does not get to name it («Граф Монте-Кристо 2» joining
+                # «Граф Монте-Кристо» must not rename it).
+                titles[e.pinned_title] += 2
+            else:
+                # The corrected spelling counts double: it is the book's own.
+                titles[(row.title if row is not None and row.title else e.title)] += 2 if row is not None else 1
             if row is not None and row.author:
                 authors[row.author] += 1
             if e.author_hint:
@@ -302,21 +324,44 @@ def _build(db: Session) -> CatalogIndex:
     return CatalogIndex(works=works, by_member=by_member, by_person=dict(by_person), fold=fold, representative=representative)
 
 
-def index(db: Session) -> CatalogIndex:
+def _stamp() -> float:
+    try:
+        return os.stat(_STAMP).st_mtime
+    except OSError:
+        return 0.0
+
+
+def _fresh(stamp: float) -> CatalogIndex | None:
     cached = _cache.get("index")
-    if cached is not None and time.monotonic() - float(_cache["at"]) < _TTL_SECONDS:
-        return cached  # type: ignore[return-value]
+    if cached is None or time.monotonic() - float(_cache["at"]) >= _TTL_SECONDS or stamp > float(_cache["stamp"]):
+        return None
+    return cached  # type: ignore[return-value]
+
+
+def index(db: Session) -> CatalogIndex:
+    stamp = _stamp()
+    cached = _fresh(stamp)
+    if cached is not None:
+        return cached
     with _building:
-        cached = _cache.get("index")
-        if cached is not None and time.monotonic() - float(_cache["at"]) < _TTL_SECONDS:
-            return cached  # type: ignore[return-value]
+        cached = _fresh(stamp)
+        if cached is not None:
+            return cached
         built = _build(db)
-        _cache["index"], _cache["at"] = built, time.monotonic()
+        # The stamp read before building: a change made meanwhile builds again.
+        _cache["index"], _cache["at"], _cache["stamp"] = built, time.monotonic(), stamp
         return built
 
 
 def invalidate() -> None:
     _cache["index"] = None
+    try:
+        now = time.time()
+        with open(_STAMP, "a"):
+            pass
+        os.utime(_STAMP, (now, now))
+    except OSError:  # this process at least builds afresh
+        pass
 
 
 def search_matches(work: Work, query: str) -> bool:

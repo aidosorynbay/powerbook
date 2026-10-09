@@ -1,4 +1,4 @@
-import type { DayCard, Locale } from '@/shared/lib';
+import { KK_MONTHS, type DayCard, type Locale } from '@/shared/lib';
 import { plural } from '@/pages/library/bookcase/plural';
 
 type T = (key: string, params?: Record<string, string | number>) => string;
@@ -39,9 +39,6 @@ export function daysAgo(iso: string, today: string): number {
   };
   return Math.round((at(today) - at(iso)) / 86_400_000);
 }
-
-// Kazakh months by hand: Chrome has no Kazakh dates and prints "M10 6".
-const KK_MONTHS = ['қаңтар', 'ақпан', 'наурыз', 'сәуір', 'мамыр', 'маусым', 'шілде', 'тамыз', 'қыркүйек', 'қазан', 'қараша', 'желтоқсан'];
 
 /** "6 окт." on the day picker, "6 октября" on a sticker; "6 қазан" in Kazakh. */
 export function dayDate(iso: string, locale: Locale, long = false): string {

@@ -1,0 +1,101 @@
+.layer {
+  position: relative;
+  z-index: calc(var(--z-index-modal) + 10);
+}
+
+.hint {
+  margin: 0 0 12px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.total {
+  margin: 0 0 12px;
+  color: var(--color-accent-primary);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+
+.days {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.days li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-md);
+}
+
+.days li.on {
+  border-color: var(--color-border-accent);
+  background: var(--color-accent-primary-muted);
+}
+
+.tick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.tick input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-accent-primary);
+}
+
+.tick strong {
+  display: block;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.tick small {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+.minutes {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.minutes input {
+  width: 64px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: right;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.actions .hint {
+  margin: 0;
+}

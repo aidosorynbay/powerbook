@@ -331,6 +331,7 @@ def reviews_for_shelf(db: Session, owner_id: uuid.UUID) -> list[BookReview]:
 
 
 def save_review(db: Session, *, user: User, payload: ReviewIn) -> ShelfReviewOut:
+    from app.services import notify
     from app.services.bookcase import BookcaseService
 
     shelf = BookcaseService(db).bookcase(owner_id=user.id, viewer_id=user.id)
@@ -351,15 +352,18 @@ def save_review(db: Session, *, user: User, payload: ReviewIn) -> ShelfReviewOut
     same_book = db.execute(
         select(BookReview).where(BookReview.user_id == user.id, BookReview.work_key == key)
     ).scalar_one_or_none()
+    gone = None
     if review is None:
         review = same_book
     elif same_book is not None and same_book.id != review.id:
         # Two copies of one book on the shelf: one mark for the book.
+        gone = same_book.id
         db.delete(same_book)
         db.flush()
     if review is None:
         review = BookReview(user_id=user.id, work_key=key, rating=payload.rating)
         db.add(review)
+    had_text = bool(review.text and review.text.strip())
     review.work_key = key
     review.volume_key = volume.key
     review.title = (work.title if work else volume.title)[:300]
@@ -371,16 +375,25 @@ def save_review(db: Session, *, user: User, payload: ReviewIn) -> ShelfReviewOut
     db.commit()
     db.refresh(review)
     catalog.invalidate()
+    if gone:
+        notify.take_back_review(db, gone)
+    if had_text and not text:
+        notify.take_back_review(db, review.id)
+    else:
+        notify.on_review(db, review, had_text=had_text)
     return ShelfReviewOut.model_validate(review, from_attributes=True)
 
 
 def delete_review(db: Session, *, user: User, review_id: uuid.UUID) -> None:
+    from app.services import notify
+
     review = db.get(BookReview, review_id)
     if review is None or review.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="review_not_found")
     db.delete(review)
     db.commit()
     catalog.invalidate()
+    notify.take_back_review(db, review_id)
 
 
 _TOKENS = re.compile(r"[\s_\-.,:;!?()\[\]«»\"'/]+")
@@ -414,11 +427,16 @@ def match_works(db: Session, *, viewer_id: uuid.UUID, query: str, limit: int = 8
         if share >= 0.5:
             scored.append((share, work))
     scored.sort(key=lambda x: (-x[0], -len(x[1].readers), x[1].title.casefold()))
-    best = [w for _s, w in scored[:limit]]
-    if not best:
+    return items_for(db, viewer_id=viewer_id, works=[w for _s, w in scored[:limit]])
+
+
+def items_for(db: Session, *, viewer_id: uuid.UUID, works: list[Work]) -> list[CatalogItemOut]:
+    """Books of the shared library as the catalog shows them: marks, cover, readers."""
+    if not works:
         return []
+    idx = catalog.index(db)
     marks = _marks(db, idx)
     facts = facts_by_work(db, idx)
     sale = _for_sale(db, idx)
     mine = _mine(db, idx, viewer_id)
-    return [_item(w, marks.get(w.key), facts.get(w.key), sale.get(w.key, 0), mine.get(w.key)) for w in best]
+    return [_item(w, marks.get(w.key), facts.get(w.key), sale.get(w.key, 0), mine.get(w.key)) for w in works]

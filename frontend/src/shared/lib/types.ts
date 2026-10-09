@@ -88,6 +88,38 @@ export type DayBook = {
   finished: boolean;
 };
 
+/** «Книга прочитана», before saving: which book of the shelf or the library
+ * the title is, and the time it took from the day it was begun. */
+export type BookFinish = {
+  exact: boolean;
+  choices: { key: string; title: string; author: string | null; cover_thumb_url: string | null; readers: number; on_shelf: boolean }[];
+  start: string;
+  suggested: string;
+  earliest: string;
+  minutes: number;
+  days: number;
+  filled_days: number;
+  /** Books the days with no book named are shared with: read at the same time. */
+  shared_with: string[];
+};
+
+/** «Дни чтения»: a finished book's days, one by one, and what each gave it. */
+export type BookDays = {
+  title: string;
+  day: string;
+  earliest: string;
+  minutes: number;
+  days_read: number;
+  days: {
+    date: string;
+    total: number;
+    minutes: number;
+    offer: number;
+    finish: boolean;
+    others: { title: string; minutes: number }[];
+  }[];
+};
+
 /** The book the minutes form starts with, and others read lately. */
 export type ReadingBooksResponse = {
   current: string[];
@@ -887,11 +919,14 @@ export type BookChatState = {
 // The header bell.
 export type SiteNotification = {
   id: string;
-  kind: 'watch_listing' | 'watch_finished' | 'wanted_by' | string;
+  kind: 'new_review' | 'watch_listing' | 'watch_finished' | 'wanted_by' | string;
   data: Record<string, unknown>;
   created_at: string | null;
   read: boolean;
 };
+
+// What a reader wants to hear about, kind by kind; on unless switched off.
+export type NotificationSettings = Record<string, boolean>;
 
 // «Мои подписки»: books a reader is waiting for.
 export type BookWatch = {

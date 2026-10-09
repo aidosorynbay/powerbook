@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, String, Uuid
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -30,8 +30,9 @@ class Notification(TimestampMixin, Base):
 
     kind: "watch_listing" (a watched book is on the bazaar), "watch_finished"
     (someone in the circle finished it), "wanted_by" (readers are looking
-    for a book the reader just finished). `data` holds what the text and
-    the link need; the page words it in the reader's language.
+    for a book the reader just finished), "new_review" (someone wrote a
+    review of a book). `data` holds what the text and the link need; the
+    page words it in the reader's language.
     """
 
     __tablename__ = "notifications"
@@ -46,3 +47,19 @@ class Notification(TimestampMixin, Base):
     # Same thing twice in a day is said once (kind + this key).
     dedupe: Mapped[str | None] = mapped_column(String(200), nullable=True, default=None)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+
+
+class NotificationPref(TimestampMixin, Base):
+    """A kind of notification a reader turned off (or back on).
+
+    No row means on: everyone hears everything until they say otherwise.
+    The bell and the app's pushes follow the same switch.
+    """
+
+    __tablename__ = "notification_prefs"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    kind: Mapped[str] = mapped_column(String(30), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)

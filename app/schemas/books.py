@@ -247,3 +247,9 @@ class NotificationOut(BaseModel):
 
 class NotificationsReadIn(BaseModel):
     ids: list[uuid.UUID] | None = None
+
+
+class NotificationSettingsIn(BaseModel):
+    """Kinds to switch on or off; the ones left out stay as they are."""
+
+    settings: dict[str, bool]

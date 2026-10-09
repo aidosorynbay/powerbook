@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
@@ -10,6 +11,7 @@ from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.books import PinWorkIn
+from app.schemas.reading import BookDaysIn, BookDaysOut
 from app.schemas.library import (
     CustomShelfOut,
     PlacementIn,
@@ -34,6 +36,36 @@ from app.services.bookcase import BookcaseService
 from app.services.library import LibraryService
 
 router = APIRouter(prefix="/library", tags=["library"])
+
+
+@router.get("/book-days", response_model=BookDaysOut)
+def book_days(
+    title: str | None = Query(default=None, min_length=1, max_length=300),
+    day: date | None = Query(default=None),
+    volume_key: str | None = Query(default=None, max_length=80),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> BookDaysOut:
+    """«Дни чтения»: the reader's days before they finished this book (by
+    title and day, or a book of their shelf), and the minutes each gave it."""
+    from app.services import book_finish
+
+    if volume_key:
+        title, day = book_finish.finish_of(db, user=user, volume_key=volume_key)
+    if not title or day is None:
+        raise HTTPException(status_code=422, detail="title_and_day")
+    return BookDaysOut(**book_finish.days_of(db, user=user, title=title, day=day))
+
+
+@router.put("/book-days", response_model=BookDaysOut)
+def save_book_days(
+    payload: BookDaysIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+) -> BookDaysOut:
+    """The reader's own word on which days were this book's, and how long."""
+    from app.services import book_finish
+
+    minutes = {d.date: d.minutes for d in payload.days}
+    return BookDaysOut(**book_finish.set_days(db, user=user, title=payload.title, day=payload.day, minutes=minutes))
 
 
 @router.get("/books", response_model=list[LibraryBookOut])

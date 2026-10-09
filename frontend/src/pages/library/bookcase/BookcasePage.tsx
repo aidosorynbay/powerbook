@@ -27,6 +27,7 @@ import { bookMeta, extractCover } from '../extractCover';
 import { EditBookSheet } from './EditBookSheet';
 import { WhichBookSheet } from './WorkPicker';
 import { BookChat } from '@/widgets/BookChat';
+import { BookDays } from '@/widgets/BookDays';
 import { MarkForm } from '../../books/MarkForm';
 import { ExtBadge, PbBadge } from '../../books/bookUi';
 import { LibrarySwitch } from '../../books/LibrarySwitch';
@@ -307,6 +308,8 @@ export function BookcasePage({ ownerId }: Props) {
 
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<BookcaseBook | null>(null);
+  // «Дни чтения» of a finished book: which days were its.
+  const [daysOf, setDaysOf] = useState<string | null>(null);
   // «Какая это книга?» right after a file is brought in.
   const [which, setWhich] = useState<{ key: string; query: string } | null>(null);
   // «Обсудить с AI» about the book in front.
@@ -1101,14 +1104,21 @@ export function BookcasePage({ ownerId }: Props) {
                         <dd>{current.times_finished}</dd>
                       </div>
                     )}
-                    {(current.minutes_read ?? 0) > 0 && (
+                    {((current.minutes_read ?? 0) > 0 || (isSelf && current.status === 'finished' && current.finished_on)) && (
                       <div>
                         <dt>{t('shelf.factTime')}</dt>
                         <dd>
-                          {t('shelf.factTimeDays', {
-                            time: formatMinutes(current.minutes_read ?? 0, t('rings.hoursShort'), t('rings.minutesShort')),
-                            days: current.days_read ?? 0,
-                          })}
+                          {(current.minutes_read ?? 0) > 0
+                            ? t('shelf.factTimeDays', {
+                                time: formatMinutes(current.minutes_read ?? 0, t('rings.hoursShort'), t('rings.minutesShort')),
+                                days: current.days_read ?? 0,
+                              })
+                            : '—'}
+                          {isSelf && current.status === 'finished' && current.finished_on && (current.source === 'round' || current.source === 'manual') && (
+                            <button type="button" className={styles.factAction} onClick={() => setDaysOf(current.key)}>
+                              {t('finish.byDay')}
+                            </button>
+                          )}
                         </dd>
                       </div>
                     )}
@@ -1511,6 +1521,8 @@ export function BookcasePage({ ownerId }: Props) {
           }}
         />
       )}
+
+      {daysOf && <BookDays volumeKey={daysOf} onClose={() => setDaysOf(null)} onSaved={() => void load()} />}
 
       {editing && (
         <EditBookSheet

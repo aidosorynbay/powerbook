@@ -75,6 +75,7 @@ export function CatalogPage() {
     const next = new URLSearchParams(params);
     if (key) next.set('book', key);
     else next.delete('book');
+    next.delete('review');
     setParams(next, { replace: !key });
   };
 
@@ -190,7 +191,7 @@ export function CatalogPage() {
         </Container>
       </main>
 
-      {openKey && <WorkSheet workKey={openKey} title={openItem?.title} onClose={() => open(null)} onChanged={() => load(0)} />}
+      {openKey && <WorkSheet workKey={openKey} title={openItem?.title} review={params.get('review')} onClose={() => open(null)} onChanged={() => load(0)} />}
     </div>
   );
 }

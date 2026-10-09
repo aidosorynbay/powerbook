@@ -22,6 +22,9 @@ class LogMinutesRequest(BaseModel):
     # None leaves the day's books as they were (an older page that knows
     # nothing of them); a list, even empty, says what the day was spent on.
     books: list[LogBookIn] | None = Field(default=None, max_length=5)
+    # With a book finished: the day it was begun. Days since then with no
+    # book named count for it.
+    started_on: date | None = None
 
 
 class LogSessionRequest(BaseModel):
@@ -52,3 +55,72 @@ class RosterEntryOut(BaseModel):
     score: int
     book_finished: bool
     comment: str | None
+
+
+class FinishChoiceOut(BaseModel):
+    """A book of the shelf or the shared library the finished title may be."""
+
+    key: str
+    # The title to save it under: the shelf's spelling when the reader has it.
+    title: str
+    author: str | None
+    cover_thumb_url: str | None
+    readers: int
+    on_shelf: bool
+
+
+class BookFinishOut(BaseModel):
+    """«Книга прочитана», before saving: which book, and how long it took."""
+
+    exact: bool
+    choices: list[FinishChoiceOut]
+    start: date
+    suggested: date
+    earliest: date
+    minutes: int
+    days: int
+    filled_days: int
+    # Books that days with no book named are shared with (read at the same time).
+    shared_with: list[str] = []
+
+
+class BookDayOtherOut(BaseModel):
+    title: str
+    minutes: int
+
+
+class BookDayOut(BaseModel):
+    date: date
+    # The day's minutes, all books.
+    total: int
+    # This book's.
+    minutes: int
+    # What ticking the day would give it.
+    offer: int
+    # The day it was finished.
+    finish: bool
+    others: list[BookDayOtherOut]
+
+
+class BookDaysOut(BaseModel):
+    """«Дни чтения»: a finished book's days, one by one."""
+
+    title: str
+    day: date
+    earliest: date
+    days: list[BookDayOut]
+    minutes: int
+    days_read: int
+
+
+class BookDayIn(BaseModel):
+    date: date
+    minutes: int = Field(ge=0, le=24 * 60)
+
+
+class BookDaysIn(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    # The day the book was finished.
+    day: date
+    # Every day shown, with this book's minutes (0: not its day).
+    days: list[BookDayIn] = Field(max_length=400)

@@ -10,6 +10,9 @@ site's bell; pushes come with the app) when:
 and whoever finishes a book that readers are watching hears that, with
 the way to sell it, unless they already have it on the bazaar.
 
+Everyone hears when someone writes a review of any book (a mark with no
+words is not a review). Each kind can be switched off; no switch means on.
+
 Nothing here may break what triggered it: logging the day's minutes or
 putting up a listing always succeeds, whatever happens to a notification.
 """
@@ -20,17 +23,24 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.orm import Session
 
 from app.models.book_listing import BookListing
-from app.models.notification import BookWatch, Notification
+from app.models.book_review import BookReview
+from app.models.notification import BookWatch, Notification, NotificationPref
 from app.models.user import User
 from app.services import catalog
 
 logger = logging.getLogger(__name__)
 
 KEEP_DAYS = 90
+
+# Everything the bell says, in the order the settings list them.
+KINDS = ("new_review", "watch_listing", "watch_finished", "wanted_by")
+
+# How much of a review the bell quotes.
+QUOTE_CHARS = 140
 
 
 def _now() -> datetime:
@@ -39,6 +49,8 @@ def _now() -> datetime:
 
 def notify(db: Session, user_id: uuid.UUID, kind: str, data: dict, *, dedupe: str | None = None) -> bool:
     """Add one notification; the same thing (kind + dedupe) twice in a day is said once."""
+    if user_id in _muted(db, kind):
+        return False
     if dedupe:
         seen = db.execute(
             select(Notification.id).where(
@@ -52,6 +64,35 @@ def notify(db: Session, user_id: uuid.UUID, kind: str, data: dict, *, dedupe: st
             return False
     db.add(Notification(user_id=user_id, kind=kind, data=data, dedupe=dedupe))
     return True
+
+
+# ---------- what each reader wants to hear ----------
+
+
+def _muted(db: Session, kind: str) -> set[uuid.UUID]:
+    return set(db.execute(
+        select(NotificationPref.user_id).where(NotificationPref.kind == kind, NotificationPref.enabled.is_(False))
+    ).scalars())
+
+
+def settings(db: Session, user_id: uuid.UUID) -> dict[str, bool]:
+    saved = dict(db.execute(
+        select(NotificationPref.kind, NotificationPref.enabled).where(NotificationPref.user_id == user_id)
+    ).all())
+    return {kind: saved.get(kind, True) for kind in KINDS}
+
+
+def save_settings(db: Session, user_id: uuid.UUID, changes: dict[str, bool]) -> dict[str, bool]:
+    for kind, enabled in changes.items():
+        if kind not in KINDS:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="unknown_kind")
+        row = db.get(NotificationPref, (user_id, kind))
+        if row is None:
+            db.add(NotificationPref(user_id=user_id, kind=kind, enabled=enabled))
+        else:
+            row.enabled = enabled
+    db.commit()
+    return settings(db, user_id)
 
 
 # ---------- watching ----------
@@ -189,6 +230,63 @@ def on_finished(db: Session, *, reader_id: uuid.UUID, comment: str | None, day=N
         db.commit()
     except Exception:  # never in the way of logging the day
         logger.exception("finish notifications failed")
+        db.rollback()
+
+
+def _quote(text: str) -> str:
+    words = " ".join(text.split())
+    if len(words) <= QUOTE_CHARS:
+        return words
+    return words[:QUOTE_CHARS].rsplit(" ", 1)[0].rstrip(",.;:—-") + "…"
+
+
+def on_review(db: Session, review: BookReview, *, had_text: bool) -> None:
+    """Someone wrote a review: every reader hears, but the one who wrote it.
+
+    Only once, when the words first appear: a mark changed from 8 to 9 or a
+    sentence fixed says nothing new.
+    """
+    try:
+        text = (review.text or "").strip()
+        if had_text or not text:
+            return
+        reviewer = db.get(User, review.user_id)
+        if reviewer is None:
+            return
+        work = catalog.index(db).find(review.work_key)
+        data = {
+            "review_id": str(review.id),
+            "work_key": work.key if work else review.work_key,
+            "title": review.title,
+            "rating": review.rating,
+            "quote": _quote(text),
+            "reader": reviewer.display_name or reviewer.username,
+            "reader_id": str(reviewer.id),
+            "gender": reviewer.gender.value if reviewer.gender else None,
+        }
+        muted = _muted(db, "new_review")
+        readers = db.execute(
+            select(User.id).where(User.id != reviewer.id, User.is_active.is_(True), User.is_claimable.is_(False))
+        ).scalars()
+        rows = [
+            {"user_id": user_id, "kind": "new_review", "data": data, "dedupe": str(review.id)}
+            for user_id in readers if user_id not in muted
+        ]
+        if rows:
+            db.execute(insert(Notification), rows)
+            db.commit()
+    except Exception:  # never in the way of saving the review
+        logger.exception("review notifications failed")
+        db.rollback()
+
+
+def take_back_review(db: Session, review_id: uuid.UUID) -> None:
+    """The review is gone, or its words are: so is the news of it."""
+    try:
+        db.execute(delete(Notification).where(Notification.kind == "new_review", Notification.dedupe == str(review_id)))
+        db.commit()
+    except Exception:
+        logger.exception("taking back review notifications failed")
         db.rollback()
 
 

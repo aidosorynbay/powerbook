@@ -256,6 +256,10 @@ class ReadingLogBook(TimestampMixin, Base):
     minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     finished: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     position: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    # The reader named no book that day; finishing this one, they said they
+    # had been reading it since before it (app/services/book_finish.py). A
+    # later, shorter period takes such days back.
+    filled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
     log: Mapped["ReadingLog"] = relationship(back_populates="books")
 

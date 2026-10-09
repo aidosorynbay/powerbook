@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_admin
 from app.db.session import get_db
 from app.models.enums import RoundStatus
-from app.schemas.reading import LogMinutesRequest, LogSessionRequest, ReactionOut, ReadingBooksOut
+from app.schemas.reading import BookFinishOut, LogMinutesRequest, LogSessionRequest, ReactionOut, ReadingBooksOut
 from app.schemas.rounds import ParticipantOut, RoundCreateRequest, RoundOut
 from app.services.groups import GroupService
 from app.services.reading import ReadingService
@@ -124,7 +125,7 @@ def log_minutes(
     row = ReadingService(db).log_minutes(
         round_id=round_id, user_id=user.id, day=payload.date, minutes=payload.minutes,
         book_finished=payload.book_finished, comment=payload.comment,
-        comment_private=payload.comment_private, books=payload.books,
+        comment_private=payload.comment_private, books=payload.books, started_on=payload.started_on,
     )
     return _log_out(row)
 
@@ -160,6 +161,26 @@ def reading_books(
 ) -> ReadingBooksOut:
     """«Что читаю»: the book the minutes form starts with, and recent others."""
     return ReadingBooksOut(**ReadingService(db).reading_books(user_id=user.id))
+
+
+@router.get("/{round_id}/book_finish", response_model=BookFinishOut)
+def book_finish(
+    round_id: uuid.UUID,
+    title: str = Query(min_length=1, max_length=300),
+    day: date = Query(),
+    start: date | None = Query(default=None),
+    minutes: int = Query(default=0, ge=0, le=24 * 60),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> BookFinishOut:
+    """«Книга прочитана», before saving: the book of the shelf or the library
+    this title is, and the time it took from `start` (or the day offered)."""
+    from app.services import book_finish as finish
+
+    return BookFinishOut(
+        **finish.which_book(db, user=user, title=title),
+        **finish.how_long(db, user=user, title=title, day=day, start=start, minutes_today=minutes),
+    )
 
 
 @router.post("/{round_id}/reading_logs/{reading_log_id}/react", response_model=ReactionOut)
