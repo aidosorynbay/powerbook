@@ -14,7 +14,7 @@ the whole circle.
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 
 from sqlalchemy import case, func, select
@@ -50,6 +50,8 @@ class BookTime:
     days: int = 0
     last_day: date | None = None
     finished: bool = False
+    # every spelling the reader used for it
+    titles: set[str] = field(default_factory=set)
 
 
 def of_readers(db: Session, user_ids: list[uuid.UUID], idx: catalog.CatalogIndex | None = None) -> dict[str, BookTime]:
@@ -78,6 +80,7 @@ def of_readers(db: Session, user_ids: list[uuid.UUID], idx: catalog.CatalogIndex
         bt = out.get(key)
         if bt is None:
             bt = out[key] = BookTime(key=key, title=work.title if work else title)
+        bt.titles.add(title)
         bt.minutes += int(minutes or 0)
         # (two spellings on one day count that day twice: rare enough to let be)
         bt.days += int(days or 0)

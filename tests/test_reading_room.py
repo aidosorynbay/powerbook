@@ -382,3 +382,24 @@ def test_the_rooms_minutes_go_to_the_book_everywhere(env):
     c.post(f"/api/reading-room/sessions/{sid}/undo", headers=h)
     env.db.expire_all()
     assert env.db.query(ReadingLogBook).join(ReadingLog).filter(ReadingLog.date == env.today).count() == 0
+
+
+def test_a_book_on_the_shelf_does_not_stand_twice(env):
+    """A book finished by the day's comment (no «дочитана» on its «Что читаю» row) and read on other days stays one
+    book on the shelf, with all its time."""
+    from app.models.round import ReadingLogBook
+    from app.services import catalog
+
+    c, h = env.client, env.h(env.reader)
+    for back, finished in ((3, False), (2, False), (1, True)):
+        log = ReadingLog(round_id=env.rnd.id, user_id=env.reader.id, date=env.today - timedelta(days=back), minutes=40,
+                         score=1, book_finished=finished, comment="Граф Монте-Кристо 2" if finished else None)
+        env.db.add(log)
+        env.db.flush()
+        env.db.add(ReadingLogBook(reading_log_id=log.id, user_id=env.reader.id, title="Граф Монте-Кристо 2",
+                                  title_norm="граф монте-кристо 2", minutes=40, finished=False, position=0))
+    env.db.commit()
+    catalog.invalidate()
+    shelf = c.get("/api/library/bookcase", headers=h).json()
+    shelf = shelf["books"] if isinstance(shelf, dict) else shelf
+    assert [(b["title"], b["status"], b["minutes_read"]) for b in shelf] == [("Граф Монте-Кристо 2", "finished", 120)]

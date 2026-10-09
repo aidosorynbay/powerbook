@@ -320,7 +320,11 @@ class BookcaseService:
                     vol_of.setdefault(key, vol)
         today = datetime.now(tz=ROUND_TZ).date()
         for bt in sorted(book_time.of_readers(self.db, list(ids), idx).values(), key=lambda b: b.last_day or today):
-            vol = vol_of.get(bt.key)
+            # the library's word first, then the shelf's own: the same title or the same key as a book already there
+            vol = vol_of.get(bt.key) or next(
+                (v for t in sorted(bt.titles) if (v := find(normalize_book_title(t) or t.casefold(), matching_key(t))) is not None),
+                None,
+            )
             if vol is None:
                 if bt.finished or bt.last_day is None or (today - bt.last_day).days > READING_LATELY_DAYS:
                     continue
@@ -378,6 +382,21 @@ class BookcaseService:
             if is_self:
                 vol.cover_mode = override.cover_mode
                 vol.edited = True
+
+        # A book standing as «Читаю» from the days alone that turns out, under the reader's own titles, to be a
+        # book already on the shelf is that book: its time goes there, and it does not stand twice.
+        named = {}
+        for vol in volumes:
+            if vol.source != "log":
+                for k in (vol.title.casefold(), vol.match_key):
+                    if k:
+                        named.setdefault(k, vol)
+        for vol in [v for v in volumes if v.source == "log"]:
+            twin = named.get(vol.title.casefold()) or (named.get(vol.match_key) if vol.match_key else None)
+            if twin is not None:
+                twin.minutes_read += vol.minutes_read
+                twin.days_read += vol.days_read
+                volumes.remove(vol)
 
         # Where each book stands in the owner's bookcase. An archive record
         # has nobody to arrange it.
