@@ -85,12 +85,12 @@ export function JoinPrompt() {
     setError(false);
     if (!isAuthenticated) {
       close();
-      if (kind === 'wait') {
-        markJoinIntent();
-        navigate('/join');
-      } else {
-        navigate('/register');
-      }
+      // To the invitation page either way: it shows the rules, the book
+      // exchange included, before anyone commits, and its sign-up button
+      // brings the new reader back already in the circle. Straight to
+      // /register, they made an account and landed on the front page outside it.
+      if (kind === 'wait') markJoinIntent();
+      navigate('/join');
       return;
     }
     setBusy(true);
@@ -136,7 +136,7 @@ export function JoinPrompt() {
         <div className={styles.actions}>
           {!done && (
             <button type="button" className={styles.cta} onClick={act} disabled={busy}>
-              {!isAuthenticated && kind !== 'wait' ? t('wl.register') : kind === 'wait' ? t('wl.joinList') : kind === 'open' ? t('wl.confirm') : t('wl.join')}
+              {kind === 'wait' ? t('wl.joinList') : kind === 'open' && isAuthenticated ? t('wl.confirm') : t('wl.join')}
             </button>
           )}
           {done === 'joined' && (

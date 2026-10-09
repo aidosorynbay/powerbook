@@ -42,6 +42,10 @@ export function JoinPage() {
 
   const month = state ? monthOf(t, state.month) : '';
   const registration = state?.phase === 'registration';
+  const joined = registration && !!state?.in_open_round;
+  // Sign-up stays open into the month: someone joining on the 9th should know
+  // the circle began without them, and that those days are not lost.
+  const started = registration && !!state && state.starts_on < new Date().toLocaleDateString('en-CA');
   const invitedBy = ref && ref.replace(/^@/, '') !== user?.username ? ref.replace(/^@/, '') : null;
 
   return (
@@ -61,8 +65,17 @@ export function JoinPage() {
                   : t('wl.starts', { date: dayOf(state.starts_on, locale, t) })}
               </span>
               <h1 className={styles.title}>
-                {registration ? t('wl.pageTitleReg', { month }) : t('wl.pageTitleWait', { month })}
+                {joined
+                  ? t('wl.joined', { month })
+                  : registration
+                    ? t('wl.pageTitleReg', { month })
+                    : t('wl.pageTitleWait', { month })}
               </h1>
+              {joined ? (
+                <p className={styles.note}>{t('wl.joinedNext')}</p>
+              ) : started ? (
+                <p className={styles.note}>{t('wl.lateNote')}</p>
+              ) : null}
               <RoundRules />
 
               {registration && state.joined > 0 && (
@@ -96,10 +109,7 @@ export function JoinPage() {
                   </>
                 ) : registration ? (
                   state.in_open_round ? (
-                    <>
-                      <p className={styles.ok}>✓ {t('wl.alreadyIn')}</p>
-                      <Link className={styles.cta} to="/round">{t('hero.goToRound')}</Link>
-                    </>
+                    <Link className={styles.cta} to="/round">{t('hero.goToRound')}</Link>
                   ) : (
                     <button type="button" className={styles.cta} onClick={() => act('round')} disabled={busy}>
                       {state.waited_for_open ? t('wl.confirm') : t('wl.join')}

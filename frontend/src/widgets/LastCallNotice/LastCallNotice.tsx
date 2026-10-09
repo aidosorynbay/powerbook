@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
-import { useI18n, apiGet, DEFAULT_GROUP_SLUG, type CurrentRoundStatusResponse } from '@/shared/lib';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useI18n, apiGet, apiPost, track, DEFAULT_GROUP_SLUG, type CurrentRoundStatusResponse } from '@/shared/lib';
 import { Icon, type IconName } from '@/shared/ui';
 import styles from './LastCallNotice.module.css';
 
@@ -80,15 +80,26 @@ const NOTICES: Record<NoticeKind, { icon: IconName; title: string; body: string;
   },
 };
 
+// Signing up, signing in, the invitation: someone there is in the middle of
+// joining, and «Сегодня последний день записаться» over that form only startled
+// them. The notice waits for the first ordinary page.
+const QUIET = ['/register', '/login', '/forgot-password', '/join', '/claim', '/r/'];
+const DAY = 24 * 60 * 60 * 1000;
+
 export function LastCallNotice() {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const quiet = QUIET.some((p) => pathname.startsWith(p));
+  const checked = useRef(false);
   const [roundId, setRoundId] = useState<string | null>(null);
   const [kind, setKind] = useState<NoticeKind | null>(null);
   // the circle that registration opens for next: the month after this one
   const [nextMonth, setNextMonth] = useState(1);
 
   useEffect(() => {
+    if (quiet || checked.current) return;
+    checked.current = true;
     let cancelled = false;
     apiGet<CurrentRoundStatusResponse>(
       `/groups/by-slug/${DEFAULT_GROUP_SLUG}/current-round-status`,
@@ -116,7 +127,12 @@ export function LastCallNotice() {
       } else if (today === lastReadingDay && lastReadingDay >= (r.start_day ?? 1)) {
         next = isParticipant ? 'lastReading' : 'lastReadingOut';
       } else if (today === r.registration_open_until_day && r.status === 'registration_open') {
-        next = isParticipant ? 'deadlineStay' : 'deadlineJoin';
+        // «Last day to leave» is for those who have read with the circle for
+        // days, not for someone who took their place a minute ago.
+        const at = data.participation?.joined_at;
+        const joinedAt = at ? Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(at) ? at : `${at}Z`) : 0;
+        const justJoined = isParticipant && now.getTime() - joinedAt < DAY;
+        next = justJoined ? null : isParticipant ? 'deadlineStay' : 'deadlineJoin';
       }
       if (!next) return;
       // After 20:00 on the final day the results are out and the next circle is open: nothing left to warn about.
@@ -128,7 +144,7 @@ export function LastCallNotice() {
       if (localStorage.getItem(dismissKey(next, r.id)) !== '1') setKind(next);
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [quiet]);
 
   const close = () => {
     if (roundId && kind) localStorage.setItem(dismissKey(kind, roundId), '1');
@@ -144,7 +160,7 @@ export function LastCallNotice() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, roundId]);
 
-  if (!kind) return null;
+  if (!kind || quiet) return null;
 
   const notice = NOTICES[kind];
 
@@ -158,7 +174,16 @@ export function LastCallNotice() {
           <button
             type="button"
             className={styles.cta}
-            onClick={() => { close(); navigate('/round'); }}
+            onClick={async () => {
+              // «Записаться в круг» on the last day of sign-up should do just
+              // that, not open a page with a second button to find.
+              if (kind === 'deadlineJoin' && roundId) {
+                const { error } = await apiPost(`/rounds/${roundId}/join`, {}, { requireAuth: true });
+                if (!error) track('round_join', { via: 'deadline_notice' });
+              }
+              close();
+              navigate('/round');
+            }}
           >
             {t(notice.cta)}
           </button>

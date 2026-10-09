@@ -17,6 +17,9 @@
 
 .card {
   display: grid;
+  /* One column no wider than the phone: the invitation link and a long ?ref=
+     name had stretched it past the screen, cutting off the heading. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   padding: 28px 24px;
   border: 1px solid var(--color-border-accent);
@@ -31,6 +34,8 @@
   color: var(--color-text-accent);
   font-size: 14px;
   font-weight: 700;
+  /* The name comes from the link as typed; a long one breaks, not the card. */
+  overflow-wrap: anywhere;
 }
 
 .badge {
@@ -73,6 +78,16 @@
   letter-spacing: var(--letter-spacing-tight);
   line-height: 1.15;
   text-wrap: balance;
+}
+
+/* The one thing to know next, held close under the heading: what to do now,
+   or that the circle began without you and those days are not lost. */
+.note {
+  margin: -6px 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  text-wrap: pretty;
 }
 
 .rules {

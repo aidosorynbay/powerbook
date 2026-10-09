@@ -31,9 +31,11 @@ export function Explainer() {
 
   const month = state ? t(`month.${state.month}`) : '';
   const cta = (() => {
-    if (!state) return { label: t('hero.joinBtn'), to: isAuthenticated ? '/round' : '/register' };
+    // A visitor goes through /join, never straight to /register: there the
+    // sign-up also takes the place in the circle.
+    if (!state) return { label: t('hero.joinBtn'), to: isAuthenticated ? '/round' : '/join' };
     if (state.in_current_round || state.in_open_round) return { label: t('hero.goToRound'), to: '/round' };
-    if (state.phase === 'registration') return { label: t('wl.heroJoin', { month }), to: isAuthenticated ? '/join' : '/register' };
+    if (state.phase === 'registration') return { label: t('wl.heroJoin', { month }), to: '/join' };
     return { label: state.on_waitlist ? t('wl.heroOnList') : t('wl.heroWait', { month }), to: '/join' };
   })();
 
