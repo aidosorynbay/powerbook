@@ -528,6 +528,21 @@
   border: 1px solid var(--color-border-primary);
 }
 
+.legendDot.legendBeforeJoin {
+  background: var(--color-bg-secondary);
+  border: 1px dashed var(--color-text-muted);
+}
+
+/* Under the calendar, where the dashed days are: what they are and that a
+   tap on one is how to fill it. */
+.beforeJoinNote {
+  margin: 12px 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
 .legendDot.legendLastDay {
   background: repeating-linear-gradient(
     45deg,
@@ -621,6 +636,14 @@
 .calendarDay.dayFuture {
   background: var(--color-bg-secondary);
   color: var(--color-text-muted);
+}
+
+/* A day of the circle that passed before the reader joined, still empty:
+   a blank page left open, not a miss. Dashed, so it reads as "can be filled". */
+.calendarDay.dayBeforeJoin {
+  background: var(--color-bg-secondary);
+  border: 1px dashed var(--color-border-primary);
+  color: var(--color-text-secondary);
 }
 
 .calendarDay.dayLastDay {

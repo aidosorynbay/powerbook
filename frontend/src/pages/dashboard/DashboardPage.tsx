@@ -40,7 +40,13 @@ function getStatusVariant(status: RoundStatus): 'success' | 'accent' | 'default'
 /** Minutes a day has to reach to score a point. */
 const DAILY_GOAL_MINUTES = 30;
 
-function getDayColorClass(minutes: number, dateStr: string, isLastDay: boolean, s: Record<string, string>): string {
+function getDayColorClass(
+  minutes: number,
+  dateStr: string,
+  isLastDay: boolean,
+  s: Record<string, string>,
+  joinedDay?: string | null,
+): string {
   if (isLastDay) return s.dayLastDay;
 
   const today = new Date();
@@ -50,6 +56,10 @@ function getDayColorClass(minutes: number, dateStr: string, isLastDay: boolean, 
   if (day > today) return s.dayFuture;
   if (minutes >= DAILY_GOAL_MINUTES) return s.dayGreen;
   if (minutes >= 2) return s.dayYellow;
+  // An empty day from before the reader joined is not a miss: it is still
+  // theirs to fill in. Red there greeted every late joiner with a row of
+  // failures on their very first visit.
+  if (joinedDay && dateStr < joinedDay) return s.dayBeforeJoin;
   return s.dayRed;
 }
 
@@ -586,6 +596,37 @@ export function DashboardPage() {
   const isParticipant = roundStatus?.participation?.is_participant &&
     roundStatus.participation.status === 'active';
 
+  // The day this reader took their place, in the circle's own time zone.
+  const joinedDay = useMemo(() => {
+    const at = roundStatus?.participation?.joined_at;
+    if (!at) return null;
+    // Stored in UTC; a value without an offset (SQLite drops it) is UTC too.
+    const utc = /[zZ]|[+-]\d\d:?\d\d$/.test(at) ? at : `${at}Z`;
+    try {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: roundStatus?.round?.timezone || undefined,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date(utc));
+    } catch {
+      return at.slice(0, 10);
+    }
+  }, [roundStatus?.participation?.joined_at, roundStatus?.round?.timezone]);
+
+  // Empty days of this circle that passed before the reader joined: they get
+  // a word under the calendar, since a late joiner can still log them.
+  const emptyBeforeJoin = useMemo(() => {
+    if (!joinedDay || !isParticipant) return 0;
+    return calendarGrid.filter(
+      (c) => c !== null && c.in_round && c.date < joinedDay && c.minutes < 2,
+    ).length;
+  }, [calendarGrid, joinedDay, isParticipant]);
+
+  // A brand-new account has just answered the archive question at sign-up;
+  // the round page should not raise it again in its first two weeks.
+  const isNewAccount = !!user && Date.now() - Date.parse(user.created_at) < 14 * 24 * 60 * 60 * 1000;
+
   const isBeforeDeadline = useMemo(() => {
     if (!roundStatus?.round) return false;
     const today = new Date();
@@ -969,7 +1010,7 @@ export function DashboardPage() {
                 </div>
               )}
 
-              {isParticipant && user && <ArchiveNews userId={user.id} />}
+              {isParticipant && user && !isNewAccount && <ArchiveNews userId={user.id} />}
 
               {/* Color & symbol legend */}
               <div className={styles.legend}>
@@ -985,6 +1026,12 @@ export function DashboardPage() {
                   <span className={`${styles.legendDot} ${styles.legendRed}`} />
                   {t('dashboard.legendMissed')}
                 </span>
+                {emptyBeforeJoin > 0 && (
+                  <span className={styles.legendItem}>
+                    <span className={`${styles.legendDot} ${styles.legendBeforeJoin}`} />
+                    {t('dashboard.legendBeforeJoin')}
+                  </span>
+                )}
                 <span className={styles.legendItem}>
                   <span className={styles.legendSymbol}>&#9733;</span>
                   {t('dashboard.legendStar')}
@@ -1390,7 +1437,7 @@ export function DashboardPage() {
                             </div>
                           );
                         }
-                        const colorClass = getDayColorClass(cell.minutes, cell.date, cellIsLastDay, styles);
+                        const colorClass = getDayColorClass(cell.minutes, cell.date, cellIsLastDay, styles, joinedDay);
                         const lastDayClickable = cellIsLastDay && correctionsOpen;
                         const canClick = !cellIsLastDay || lastDayClickable;
                         return (
@@ -1415,6 +1462,9 @@ export function DashboardPage() {
                         );
                       })}
                     </div>
+                    {calendarView === 'mine' && emptyBeforeJoin > 0 && (
+                      <p className={styles.beforeJoinNote}>{t('dashboard.beforeJoinNote')}</p>
+                    )}
                   </div>
                 ) : null}
 

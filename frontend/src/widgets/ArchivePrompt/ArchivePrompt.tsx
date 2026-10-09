@@ -54,8 +54,10 @@ export function ArchivePrompt() {
     const prev = read(user.id);
     if (prev?.a === 'no') return;
     if (prev && Date.now() - prev.at < (prev.a === 'yes' ? AGAIN_AFTER_YES : AGAIN_AFTER_LATER)) return;
-    // Someone who signed up minutes ago has just been through the archive step of sign-up.
-    if (Date.now() - Date.parse(user.created_at) < 15 * 60 * 1000) return;
+    // Someone who signed up this week has just been through the archive step
+    // of sign-up. Fifteen minutes was too short: a newcomer was asked the same
+    // question again later in their very first session.
+    if (Date.now() - Date.parse(user.created_at) < 7 * DAY) return;
 
     let cancelled = false;
     let timer = 0;
