@@ -691,6 +691,12 @@
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+/* on a phone PowerBook's tab bar lies over the sheet's foot: its last row ends above the bar, not under it */
+@media (max-width: 900px) {
+  .sheetBody {
+    padding-bottom: calc(28px + 64px + env(safe-area-inset-bottom));
+  }
+}
 
 .hero {
   display: grid;
