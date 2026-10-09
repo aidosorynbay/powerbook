@@ -597,6 +597,8 @@ export type BookcaseBook = {
   shelf_id?: string | null;
   status: 'finished' | 'reading' | 'unread';
   source: 'round' | 'manual' | 'upload' | 'log';
+  /** «Убрать с полки»: the owner took it off (only the owner gets it, to put it back). */
+  hidden?: boolean;
   finished_on: string | null;
   round_year: number | null;
   round_month: number | null;

@@ -120,6 +120,8 @@ class BookcaseBookOut(BaseModel):
     round_year: int | None
     round_month: int | None
     times_finished: int
+    # «Убрать с полки»: the owner took it off (only they get it back, marked, to return it).
+    hidden: bool = False
     # Minutes the reader's days in the circle put on this book («Что читаю»).
     minutes_read: int = 0
     days_read: int = 0

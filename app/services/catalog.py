@@ -184,7 +184,14 @@ def _build(db: Session) -> CatalogIndex:
             nodes.append(f"@{source}:{source_id}")
         pins[(user_id, volume_key)] = (nodes, pinned_title)
 
+    # what readers took off their shelves as no book at all («Убрать с полки»)
+    hidden = {(u, vk) for u, vk in db.execute(
+        select(ShelfOverride.user_id, ShelfOverride.volume_key).where(ShelfOverride.hidden.is_(True))
+    ).all()}
+
     def add(raw_key: str | None, clean: str, hint: str | None, account: uuid.UUID, volume_key: str | None, at: object) -> None:
+        if volume_key and ((account, volume_key) in hidden or (fold.get(account, account), volume_key) in hidden):
+            return
         nodes = [k for k in dict.fromkeys([raw_key, canonical_key(clean)]) if k]
         pinned_title = None
         if volume_key:

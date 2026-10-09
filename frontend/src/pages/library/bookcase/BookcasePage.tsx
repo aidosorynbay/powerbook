@@ -341,6 +341,10 @@ export function BookcasePage({ ownerId }: Props) {
   const [shelvesOpen, setShelvesOpen] = useState(false);
   // «Время на книгах», open to anyone looking at the shelf
   const [timeOpen, setTimeOpen] = useState(false);
+  // «Найти на полке», and the books taken off it («Убрать с полки»)
+  const [query, setQuery] = useState('');
+  const [hidden, setHidden] = useState<BookcaseBook[]>([]);
+  const [hiddenOpen, setHiddenOpen] = useState(false);
   const changeView = useCallback((next: 'shelf' | 'sections') => {
     setView(next);
     try {
@@ -449,7 +453,9 @@ export function BookcasePage({ ownerId }: Props) {
       requireAuth: true,
     });
     if (next) {
-      setData(next);
+      // what the owner took off the shelf stays out of everything here, but for «Убранные» to put it back
+      setHidden(next.books.filter((b) => b.hidden));
+      setData({ ...next, books: next.books.filter((b) => !b.hidden) });
       setLoadError(false);
     } else {
       setLoadError(true);
@@ -470,11 +476,15 @@ export function BookcasePage({ ownerId }: Props) {
     const collator = new Intl.Collator(INTL[locale], { sensitivity: 'base', numeric: true });
     let list = data.books.slice();
     if (effectiveFilter === 'files') list = list.filter((b) => b.has_file);
+    const q = query.trim().toLocaleLowerCase();
+    // nothing found: the shelf stays whole (an empty scene has nothing to stand on), and the search says so
+    const found = q ? list.filter((b) => `${b.title} ${b.author ?? ''}`.toLocaleLowerCase().includes(q)) : list;
+    if (found.length) list = found;
     if (sort === 'az') list.sort((a, b) => collator.compare(a.title, b.title));
     else if (sort === 'popular') list.sort((a, b) => b.fellow_readers - a.fellow_readers || collator.compare(a.title, b.title));
     // "recent" is the order the server already sends.
     return list;
-  }, [data, sort, effectiveFilter, locale]);
+  }, [data, sort, effectiveFilter, locale, query]);
 
   const current: BookcaseBook | undefined = books[Math.min(active, Math.max(0, books.length - 1))];
 
@@ -863,6 +873,18 @@ export function BookcasePage({ ownerId }: Props) {
     await load();
   };
 
+  const hideBook = async (b: BookcaseBook) => {
+    if (!window.confirm(t('shelf.confirmHide', { title: b.title }))) return;
+    await apiPut(`/library/overrides/${encodeURIComponent(b.key)}/hidden`, {}, { requireAuth: true });
+    sceneRef.current?.returnToShelf();
+    await load();
+  };
+
+  const unhideBook = async (b: BookcaseBook) => {
+    await apiDelete(`/library/overrides/${encodeURIComponent(b.key)}/hidden`, { requireAuth: true });
+    await load();
+  };
+
   const removeManual = async (b: BookcaseBook) => {
     if (!b.manual_id || !window.confirm(t('shelf.confirmRemoveManual', { title: b.title }))) return;
     await apiDelete(`/insights/books/${b.manual_id}`, { requireAuth: true });
@@ -885,6 +907,8 @@ export function BookcasePage({ ownerId }: Props) {
     title.length > 48 ? styles.titleLong : title.length > 22 ? styles.titleMedium : '';
 
   const empty = !!data && data.books.length === 0;
+  const q = query.trim().toLocaleLowerCase();
+  const noMatch = !!q && !!data && !data.books.some((b) => `${b.title} ${b.author ?? ''}`.toLocaleLowerCase().includes(q));
   const showScene = !!data && !noWebgl && !empty;
   const fellowList = current?.match_key ? fellows[current.match_key] : undefined;
 
@@ -948,6 +972,19 @@ export function BookcasePage({ ownerId }: Props) {
           )}
         </div>
         <div className={styles.actions}>
+          {!empty && (
+            <label className={`${styles.search} ${noMatch ? styles.searchNone : ''}`}>
+              <Icon name="search" size="em" aria-hidden="true" />
+              <input
+                type="search"
+                value={query}
+                placeholder={t('shelf.findOnShelf')}
+                aria-label={t('shelf.findOnShelf')}
+                disabled={inspecting}
+                onChange={(e) => { setQuery(e.target.value); setActive(0); }}
+              />
+            </label>
+          )}
           {/* first in the row: on a phone the row scrolls, and the reader's time is what a visitor looks for */}
           {data && shelfMinutes(data.books) > 0 && (
             <button type="button" className={styles.timeChip} onClick={() => setTimeOpen(true)} disabled={inspecting} aria-label={t('bookTime.title')}>
@@ -993,6 +1030,11 @@ export function BookcasePage({ ownerId }: Props) {
             </Link>
           )}
 
+          {isSelf && hidden.length > 0 && (
+            <button type="button" className={styles.timeChip} onClick={() => setHiddenOpen(true)} disabled={inspecting}>
+              {t('shelf.hiddenList', { n: hidden.length })}
+            </button>
+          )}
           {isSelf && (
             <button
               type="button"
@@ -1318,7 +1360,7 @@ export function BookcasePage({ ownerId }: Props) {
                     </div>
                   )}
 
-                  {isSelf && (current.upload_id || current.manual_id) && (
+                  {isSelf && (current.upload_id || current.manual_id || current.source === 'round' || current.source === 'log') && (
                     <div className={styles.quiet}>
                       {current.upload_id && (
                         <button type="button" onClick={() => toggleVisible(current)}>
@@ -1332,6 +1374,12 @@ export function BookcasePage({ ownerId }: Props) {
                       )}
                       {current.manual_id && (
                         <button type="button" onClick={() => removeManual(current)}>
+                          {t('shelf.removeManual')}
+                        </button>
+                      )}
+                      {/* a «book» that is a finished day's comment: off the shelf, the day kept */}
+                      {!current.manual_id && !current.upload_id && (
+                        <button type="button" onClick={() => hideBook(current)}>
                           {t('shelf.removeManual')}
                         </button>
                       )}
@@ -1440,6 +1488,21 @@ export function BookcasePage({ ownerId }: Props) {
         </div>
       )}
 
+      {noMatch && <div className={styles.searchMsg} role="status">{t('shelf.searchNone', { q: query.trim() })}</div>}
+      {hiddenOpen && (
+        <Sheet label={t('shelf.hiddenList', { n: hidden.length })} onClose={() => setHiddenOpen(false)}>
+          <p className={styles.hiddenHint}>{t('shelf.hiddenHint')}</p>
+          <ul className={styles.hiddenList}>
+            {hidden.map((b) => (
+              <li key={b.key}>
+                <span>{b.title}</span>
+                <button type="button" className={styles.timeChip} onClick={() => unhideBook(b)}>{t('shelf.unhide')}</button>
+              </li>
+            ))}
+            {!hidden.length && <li className={styles.hiddenHint}>—</li>}
+          </ul>
+        </Sheet>
+      )}
       {timeOpen && data && (
         <Sheet label={t('bookTime.title')} onClose={() => setTimeOpen(false)}>
           <BookTime books={data.books} isSelf={isSelf} />

@@ -8,7 +8,7 @@ const TOP = 5;
 
 /** The minutes on a reader's shelf: what the books have had of their time, from the shelf's own minutes_read. */
 export function shelfMinutes(books: BookcaseBook[]): number {
-  return books.reduce((n, b) => n + (b.minutes_read ?? 0), 0);
+  return books.reduce((n, b) => n + (b.hidden ? 0 : b.minutes_read ?? 0), 0);
 }
 
 /**
@@ -19,7 +19,7 @@ export function shelfMinutes(books: BookcaseBook[]): number {
 export function BookTime({ books, isSelf }: { books: BookcaseBook[]; isSelf: boolean }) {
   const { t, locale } = useI18n();
   const [all, setAll] = useState(false);
-  const read = books.filter((b) => (b.minutes_read ?? 0) > 0).sort((a, b) => (b.minutes_read ?? 0) - (a.minutes_read ?? 0));
+  const read = books.filter((b) => !b.hidden && (b.minutes_read ?? 0) > 0).sort((a, b) => (b.minutes_read ?? 0) - (a.minutes_read ?? 0));
   if (!read.length) return null;
   const total = shelfMinutes(read);
   const most = read[0].minutes_read ?? 1;

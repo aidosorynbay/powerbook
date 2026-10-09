@@ -37,7 +37,8 @@ export type IconName =
   | 'play'
   | 'party'
   | 'gear'
-  | 'share';
+  | 'share'
+  | 'search';
 
 interface IconProps extends SVGAttributes<SVGElement> {
   name: IconName;
@@ -110,6 +111,12 @@ const icons: Record<IconName, JSX.Element> = {
     <>
       <path d="M15.5 4.5l4 4L9 19H5v-4L15.5 4.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
       <path d="M13.5 6.5l4 4" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    </>
+  ),
+  'search': (
+    <>
+      <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      <path d="M16 16l4.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
     </>
   ),
   'clock': (

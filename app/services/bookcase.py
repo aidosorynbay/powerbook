@@ -405,6 +405,14 @@ class BookcaseService:
                 twin.days_read += vol.days_read
                 volumes.remove(vol)
 
+        # «Убрать с полки»: what the reader said is no book (a day's comment) is off the shelf. They alone still get
+        # it, marked, to bring it back.
+        gone = {k for k, o in overrides.items() if o.hidden}
+        if gone:
+            volumes = [v for v in volumes if v.key not in gone or is_self]
+            for v in volumes:
+                v.hidden = v.key in gone
+
         # Where each book stands in the owner's bookcase. An archive record
         # has nobody to arrange it.
         shelves: list[CustomShelfOut] = []

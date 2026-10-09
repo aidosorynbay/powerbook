@@ -424,3 +424,30 @@ def test_a_renamed_file_is_the_finished_copy_not_a_second_book(env):
     shelf = env.client.get("/api/library/bookcase", headers=env.h(env.reader)).json()
     shelf = shelf["books"] if isinstance(shelf, dict) else shelf
     assert [(b["title"], b["status"], b["has_file"]) for b in shelf] == [("Граф Монте-Кристо 2", "finished", True)]
+
+
+def test_a_comment_taken_off_the_shelf(env):
+    """«Убрать с полки»: a finished day's comment that is no book leaves the shelf (others never see it, the owner sees
+    it marked, to bring back) and the shared library; the day keeps its minutes and comment."""
+    from app.services import catalog
+
+    env.db.add(ReadingLog(round_id=env.rnd.id, user_id=env.reader.id, date=env.today - timedelta(days=1), minutes=40,
+                          score=1, book_finished=True, comment="сегодня дочитала, было классно"))
+    env.db.commit()
+    catalog.invalidate()
+    c, me, other = env.client, env.h(env.reader), env.h(env.other)
+
+    def shelf(h, owner=None):
+        r = c.get(f"/api/library/bookcase{'/' + str(owner) if owner else ''}", headers=h).json()
+        return r["books"] if isinstance(r, dict) else r
+
+    key = shelf(me)[0]["key"]
+    assert c.put(f"/api/library/overrides/{key}/hidden", headers=me).status_code == 200
+    assert [b["hidden"] for b in shelf(me)] == [True]
+    assert shelf(other, env.reader.id) == []
+    assert not any("классно" in w.title for w in catalog.index(env.db).works.values())
+    env.db.expire_all()
+    assert env.db.query(ReadingLog).filter_by(user_id=env.reader.id).one().minutes == 40
+
+    assert c.delete(f"/api/library/overrides/{key}/hidden", headers=me).status_code == 200
+    assert [b["hidden"] for b in shelf(me)] == [False]

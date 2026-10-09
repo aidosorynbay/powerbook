@@ -282,6 +282,20 @@ def unpin_work(
     return {"ok": True}
 
 
+@router.put("/overrides/{volume_key}/hidden")
+def hide_volume(volume_key: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+    """«Убрать с полки»: a «book» that is no book (a day's comment) leaves the shelf and the shared library; the
+    day, its minutes and comment stay."""
+    shelf_overrides.set_hidden(db, user.id, volume_key, True)
+    return {"ok": True}
+
+
+@router.delete("/overrides/{volume_key}/hidden")
+def unhide_volume(volume_key: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+    shelf_overrides.set_hidden(db, user.id, volume_key, False)
+    return {"ok": True}
+
+
 @router.post("/overrides/{volume_key}/photo")
 async def set_override_photo(
     volume_key: str,

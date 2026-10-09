@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import ForeignKey, String, Uuid
+from sqlalchemy import Boolean, ForeignKey, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -23,7 +23,7 @@ class ShelfOverride(TimestampMixin, Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
-    # The volume's key on the bookcase: "r:<hash>", "m:<id>" or "u:<id>".
+    # The volume's key on the bookcase: "r:<hash>", "m:<id>", "u:<id>" or "l:<hash>" (read in the days only).
     volume_key: Mapped[str] = mapped_column(String(80), primary_key=True)
 
     title: Mapped[str | None] = mapped_column(String(300), nullable=True, default=None)
@@ -40,3 +40,7 @@ class ShelfOverride(TimestampMixin, Base):
     # книга?»): their copy counts as that book, whatever its file or edition
     # was called. A comparison key from app.core.booktitles.
     work_key: Mapped[str | None] = mapped_column(String(120), nullable=True, default=None)
+
+    # «Убрать с полки»: not a book at all (a finished day's comment that is no title, say). The shelf and the shared
+    # library leave it out; the day, its minutes and its comment stay as they are.
+    hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")

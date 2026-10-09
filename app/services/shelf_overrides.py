@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from app.models.shelf_override import ShelfOverride
 from app.services import covers
 
-VOLUME_KEY = re.compile(r"^[rmu]:[0-9a-f-]{6,40}$")
+VOLUME_KEY = re.compile(r"^[rmul]:[0-9a-f-]{6,40}$")
 MAX_PHOTO_BYTES = 3 * 1024 * 1024
 
 
@@ -56,7 +56,7 @@ def _drop_image(row: ShelfOverride) -> None:
 
 def _tidy(db: Session, row: ShelfOverride) -> None:
     """An override that overrides nothing is just a row; don't keep it."""
-    if row.cover_mode == "auto" and not row.title and not row.author and not row.work_key:
+    if row.cover_mode == "auto" and not row.title and not row.author and not row.work_key and not row.hidden:
         _drop_image(row)
         db.delete(row)
 
@@ -218,5 +218,17 @@ def unpin_work(db: Session, user_id: uuid.UUID, volume_key: str) -> None:
         return
     row.work_key = None
     _tidy(db, row)
+    db.commit()
+    catalog.invalidate()
+
+
+def set_hidden(db: Session, user_id: uuid.UUID, volume_key: str, hidden: bool) -> None:
+    """«Убрать с полки» / «Вернуть»: the volume stays out of the shelf and the shared library, or comes back."""
+    from app.services import catalog
+
+    row = _row(db, user_id, volume_key)
+    row.hidden = hidden
+    if not hidden:
+        _tidy(db, row)
     db.commit()
     catalog.invalidate()
