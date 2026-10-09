@@ -212,3 +212,48 @@ def test_two_books_at_once_share_the_days_nobody_named(env):
     env.client.put(f"/api/library/overrides/{shelf['Шантарам']['key']}", json={"title": "Шантарам. Книга 1"}, headers=env.h)
     again = env.client.get("/api/library/book-days", params={"volume_key": shelf["Шантарам"]["key"]}, headers=env.h).json()
     assert (again["title"], again["day"], again["minutes"]) == ("Шантарам", "2026-10-06", 105)
+
+
+def test_the_whole_history_gives_each_finish_the_days_since_the_last_one(env):
+    """The founder's rule, for the history already there: «Шантарам» finished 15 May, «Магия утра» 18 June, so the
+    days from 16 May to 18 June with no book named were «Магия утра»'s. A day the reader named stays theirs; a reader
+    can still change any of it in «Дни чтения»."""
+    from app.services import book_finish
+
+    db, me = env.db, env.aigerim
+
+    def day(d, minutes, *, comment=None, finished=False, book=None):
+        log = ReadingLog(round_id=env.round.id, user_id=me.id, date=d, minutes=minutes, score=1,
+                         book_finished=finished, comment=comment)
+        db.add(log)
+        db.flush()
+        if book:
+            db.add(ReadingLogBook(reading_log_id=log.id, user_id=me.id, title=book, title_norm=book.casefold(),
+                                  minutes=minutes, finished=False, position=0))
+
+    day(date(2026, 5, 10), 30)
+    day(date(2026, 5, 15), 40, comment="Шантарам", finished=True)
+    day(date(2026, 5, 20), 25)
+    day(date(2026, 6, 1), 35, book="Дюна")  # named that day: stays «Дюна»
+    day(date(2026, 6, 10), 20)
+    day(date(2026, 6, 18), 45, comment="Магия утра", finished=True)
+    db.commit()
+
+    book_finish.fill_everyone(db)
+    db.expire_all()
+    rows = db.execute(
+        select(ReadingLog.date, ReadingLogBook.title, ReadingLogBook.minutes, ReadingLogBook.filled)
+        .join(ReadingLogBook, ReadingLogBook.reading_log_id == ReadingLog.id)
+        .where(ReadingLog.user_id == me.id).order_by(ReadingLog.date)
+    ).all()
+    got = {(d.isoformat(), t, m) for d, t, m, _ in rows}
+    assert ("2026-05-10", "Шантарам", 30) in got and ("2026-05-15", "Шантарам", 40) in got
+    assert ("2026-05-20", "Магия утра", 25) in got and ("2026-06-10", "Магия утра", 20) in got
+    assert ("2026-06-18", "Магия утра", 45) in got and ("2026-06-01", "Дюна", 35) in got
+    assert not any(t == "Магия утра" and d.isoformat() == "2026-06-01" for d, t, _, _ in rows)
+
+    # once more changes nothing
+    book_finish.fill_everyone(db)
+    db.expire_all()
+    again = db.execute(select(ReadingLogBook.title, ReadingLogBook.minutes).order_by(ReadingLogBook.id)).all()
+    assert sorted(again) == sorted((t, m) for _, t, m, _ in rows)

@@ -321,6 +321,44 @@ def give_days(db: Session, *, user_id: uuid.UUID, title: str, day: date, start: 
     db.commit()
 
 
+def fill_history(db: Session, *, user_id: uuid.UUID) -> int:
+    """The reader's whole history, as if each finish had asked «Начали читать?» and the reader took the default: a book
+    finished on 18 June was read since the day after the book finished before it (15 May → from 16 May), so the days
+    in between with no book named are its (shared with a book open alongside, as give_days does). Days the reader
+    named stay as they are; nothing reaches back further than the «Дни чтения» window (EDIT_DAYS), so every day given
+    can be corrected there. Returns how many days now carry a filled share."""
+    from app.services.bookcase import _split_comment
+
+    finishes: dict[tuple[str, date], str] = {}
+    for comment, day in db.execute(
+        select(ReadingLog.comment, ReadingLog.date)
+        .where(ReadingLog.user_id == user_id, ReadingLog.book_finished.is_(True), ReadingLog.comment.is_not(None))
+    ).all():
+        title = _split_comment(comment)[0] if comment and comment.strip() else ""
+        if title:
+            finishes.setdefault((_norm(title), day), title)
+    for title, day in db.execute(
+        select(ReadingLogBook.title, ReadingLog.date)
+        .join(ReadingLog, ReadingLog.id == ReadingLogBook.reading_log_id)
+        .where(ReadingLogBook.user_id == user_id, ReadingLogBook.finished.is_(True))
+    ).all():
+        finishes.setdefault((_norm(title), day), title)
+    for (_, day), title in sorted(finishes.items(), key=lambda kv: kv[0][1]):
+        period = _Period(db, user_id=user_id, title=title, day=day)
+        give_days(db, user_id=user_id, title=title, day=day, start=max(period.suggested, day - timedelta(days=EDIT_DAYS)))
+    return len(db.execute(
+        select(ReadingLogBook.reading_log_id).where(ReadingLogBook.user_id == user_id, ReadingLogBook.filled.is_(True)).distinct()
+    ).all())
+
+
+def fill_everyone(db: Session) -> dict:
+    """fill_history for every reader who ever finished a book."""
+    users = {u for (u,) in db.execute(select(ReadingLog.user_id).where(ReadingLog.book_finished.is_(True)).distinct()).all()}
+    users |= {u for (u,) in db.execute(select(ReadingLogBook.user_id).where(ReadingLogBook.finished.is_(True)).distinct()).all()}
+    days = sum(fill_history(db, user_id=u) for u in sorted(users, key=str))
+    return {"readers": len(users), "filled_days": days}
+
+
 # ---------- day by day ----------
 
 
