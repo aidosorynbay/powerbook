@@ -403,3 +403,24 @@ def test_a_book_on_the_shelf_does_not_stand_twice(env):
     shelf = c.get("/api/library/bookcase", headers=h).json()
     shelf = shelf["books"] if isinstance(shelf, dict) else shelf
     assert [(b["title"], b["status"], b["minutes_read"]) for b in shelf] == [("Граф Монте-Кристо 2", "finished", 120)]
+
+
+def test_a_renamed_file_is_the_finished_copy_not_a_second_book(env):
+    """The founder's shelf: «Граф Монте-Кристо 2» finished in a round, and the file read for it, named
+    «Dumas_Graf_Monte-Kristo_tom2» and renamed on the shelf to «Граф Монте-Кристо 2»: one book, with its file."""
+    from app.models.library import LibraryBook
+    from app.models.shelf_override import ShelfOverride
+    from app.services import catalog
+
+    env.db.add(ReadingLog(round_id=env.rnd.id, user_id=env.reader.id, date=env.today - timedelta(days=1), minutes=40,
+                          score=1, book_finished=True, comment="Граф Монте-Кристо 2"))
+    up = LibraryBook(user_id=env.reader.id, title="Dumas_Graf_Monte-Kristo_tom2", file_format="epub", file_key="x",
+                     file_size=1, progress_percent=40)
+    env.db.add(up)
+    env.db.flush()
+    env.db.add(ShelfOverride(user_id=env.reader.id, volume_key=f"u:{up.id}", title="Граф Монте-Кристо 2", cover_mode="auto"))
+    env.db.commit()
+    catalog.invalidate()
+    shelf = env.client.get("/api/library/bookcase", headers=env.h(env.reader)).json()
+    shelf = shelf["books"] if isinstance(shelf, dict) else shelf
+    assert [(b["title"], b["status"], b["has_file"]) for b in shelf] == [("Граф Монте-Кристо 2", "finished", True)]

@@ -253,10 +253,18 @@ class BookcaseService:
             else self.library.list_visible_for_buddy(owner_id=owner.id)
         )
         added_on: dict[str, str] = {}
+        # The reader's own word on a file (a fixed title, «Какая это книга?») says which book it is when its file name
+        # does not: «Dumas_Graf_Monte-Kristo_tom2…» renamed «Граф Монте-Кристо 2» is the finished copy on the shelf.
+        said = {} if owner.is_claimable else shelf_overrides.overrides_for(self.db, owner.id)
         for up in uploads:
             norm = normalize_book_title(up.title)
             key = canonical_key(up.title)
             vol = find(norm, key)
+            o = said.get(f"u:{up.id}")
+            if vol is None and o is not None and o.title:
+                vol = find(normalize_book_title(o.title) or o.title.casefold(), canonical_key(o.title)) or find("", matching_key(o.title))
+            if vol is None and o is not None and o.work_key:
+                vol = by_key.get(o.work_key)
             if vol is None:
                 vol = BookcaseBookOut(
                     key=f"u:{up.id}",
@@ -310,7 +318,6 @@ class BookcaseService:
         held = {vk: work.key for work in idx.works.values() for account, vk in work.holders.items() if account in ids}
         # a file the reader said is a certain book («Какая это книга?», or a fixed title) counts as that book, whatever
         # its file name: its minutes from the reader and from «Что читаю» meet there
-        said = {} if owner.is_claimable else shelf_overrides.overrides_for(self.db, owner.id)
         for vol in volumes:
             o = said.get(vol.key)
             pinned = idx.find(o.work_key) if o is not None and o.work_key else None
