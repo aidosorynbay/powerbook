@@ -10,6 +10,7 @@ import {
   apiUploadWithProgress,
   getApiBaseUrl,
   useResolvedTheme,
+  formatSpent,
   type Bookcase,
   type BookcaseBook,
   type BookNote,
@@ -29,7 +30,8 @@ import { WhichBookSheet } from './WorkPicker';
 import { BookChat } from '@/widgets/BookChat';
 import { BookDays } from '@/widgets/BookDays';
 import { MarkForm } from '../../books/MarkForm';
-import { ExtBadge, PbBadge } from '../../books/bookUi';
+import { ExtBadge, PbBadge, Sheet } from '../../books/bookUi';
+import { BookTime, shelfMinutes } from '@/widgets/BookTime';
 import { LibrarySwitch } from '../../books/LibrarySwitch';
 import { BookcaseSections, ShelvesSheet } from './BookcaseSections';
 import { loadShelfFonts, type VolumeArt } from './bookArt';
@@ -337,6 +339,8 @@ export function BookcasePage({ ownerId }: Props) {
     }
   });
   const [shelvesOpen, setShelvesOpen] = useState(false);
+  // «Время на книгах», open to anyone looking at the shelf
+  const [timeOpen, setTimeOpen] = useState(false);
   const changeView = useCallback((next: 'shelf' | 'sections') => {
     setView(next);
     try {
@@ -944,6 +948,13 @@ export function BookcasePage({ ownerId }: Props) {
           )}
         </div>
         <div className={styles.actions}>
+          {/* first in the row: on a phone the row scrolls, and the reader's time is what a visitor looks for */}
+          {data && shelfMinutes(data.books) > 0 && (
+            <button type="button" className={styles.timeChip} onClick={() => setTimeOpen(true)} disabled={inspecting} aria-label={t('bookTime.title')}>
+              <Icon name="clock" size="em" aria-hidden="true" />
+              {formatSpent(shelfMinutes(data.books), t)}
+            </button>
+          )}
           {!empty && (
             <div className={styles.segment} role="group" aria-label={t('shelf.viewLabel')}>
               {(['shelf', 'sections'] as const).map((v) => (
@@ -1429,6 +1440,11 @@ export function BookcasePage({ ownerId }: Props) {
         </div>
       )}
 
+      {timeOpen && data && (
+        <Sheet label={t('bookTime.title')} onClose={() => setTimeOpen(false)}>
+          <BookTime books={data.books} isSelf={isSelf} />
+        </Sheet>
+      )}
       {shelvesOpen && isSelf && (
         <ShelvesSheet shelves={shelves} onClose={() => setShelvesOpen(false)} onShelves={setShelves} />
       )}

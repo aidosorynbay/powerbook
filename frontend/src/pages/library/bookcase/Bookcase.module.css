@@ -3039,3 +3039,28 @@
   text-underline-offset: 3px;
   cursor: pointer;
 }
+
+/* «⏱ 46 ч»: the reader's time on their books; opens «Время на книгах» */
+.timeChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 184, 102, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 184, 102, 0.08);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.timeChip:hover {
+  background: rgba(255, 184, 102, 0.16);
+}
+.timeChip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

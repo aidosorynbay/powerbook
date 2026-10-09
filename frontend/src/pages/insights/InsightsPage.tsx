@@ -10,6 +10,7 @@ import {
   type AllTimeProfile,
   type Archetype,
   type BookshelfEntry,
+  type BookcaseBook,
   type ReadingTwin,
   type CelebrityMatch,
   type BadgeData,
@@ -17,7 +18,7 @@ import {
   type LeagueTier,
 } from '@/shared/lib';
 import { Card, Container, PageTransition, Badge, ProgressBar, Button, BookCard, Icon } from '@/shared/ui';
-import { Header, Footer, ClaimPicker, WrappedCard } from '@/widgets';
+import { Header, Footer, ClaimPicker, WrappedCard, BookTime } from '@/widgets';
 import { paletteFor, dimensionsFor } from '@/pages/library/bookcase/bookArt';
 import { bookCount } from '@/pages/library/bookcase/plural';
 import styles from './InsightsPage.module.css';
@@ -73,6 +74,13 @@ export function InsightsPage() {
   }, []);
   const [archetype, setArchetype] = useState<Archetype | null>(null);
   const [bookshelf, setBookshelf] = useState<BookshelfEntry[]>([]);
+  // the shelf of the library, for «Время на книгах»: the time each book has had (it does not hold up the page)
+  const [shelfBooks, setShelfBooks] = useState<BookcaseBook[]>([]);
+  useEffect(() => {
+    apiGet<{ books: BookcaseBook[] }>('/library/bookcase', { requireAuth: true }).then(({ data }) => {
+      if (data?.books) setShelfBooks(data.books);
+    });
+  }, []);
   const [twins, setTwins] = useState<ReadingTwin[]>([]);
   const [celebrities, setCelebrities] = useState<CelebrityMatch[]>([]);
   const [badges, setBadges] = useState<BadgeData[]>([]);
@@ -438,6 +446,13 @@ export function InsightsPage() {
                     <span className={styles.shelfPeekArrow} aria-hidden="true">→</span>
                   </Link>
                 </section>
+
+                {shelfBooks.some((b) => (b.minutes_read ?? 0) > 0) && (
+                  <section className={styles.section}>
+                    <h2 className={styles.sectionTitle}>{t('bookTime.title')}</h2>
+                    <BookTime books={shelfBooks} isSelf />
+                  </section>
+                )}
 
                 {user && <ProfileListings userId={user.id} isSelf titleClass={styles.sectionTitle} />}
 
