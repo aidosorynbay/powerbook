@@ -212,6 +212,29 @@ class ReadingService:
             books=books,
         )
 
+    def take_back(
+        self, *, round_id: uuid.UUID, user_id: uuid.UUID, day: date, minutes: int, title: str | None,
+    ) -> ReadingLog | None:
+        """Minutes added by `log_session` taken out again (the reading room's «Отменить»): off the day, and off
+        the book they went to."""
+        before = self.logs.get_for_user_date(round_id=round_id, user_id=user_id, day=day)
+        if before is None:
+            return None
+        books = [_Book(b.title, b.minutes, b.finished) for b in before.books]
+        if title and title.strip():
+            norm = _title_norm(" ".join(title.split()))
+            for b in books:
+                if _title_norm(b.title) == norm:
+                    b.minutes = max(0, b.minutes - minutes)
+                    break
+            books = [b for b in books if b.minutes > 0 or b.finished]
+        return self.log_minutes(
+            round_id=round_id, user_id=user_id, day=day, minutes=max(0, int(before.minutes) - minutes),
+            book_finished=bool(before.book_finished), comment=before.comment,
+            comment_private=bool(before.is_comment_private),
+            books=books if before.books else None,
+        )
+
     def reading_books(self, *, user_id: uuid.UUID) -> dict:
         """The book(s) of the reader's latest day that they have not finished,
         and other books they read lately and have not finished either."""
@@ -238,7 +261,9 @@ class ReadingService:
                 current.append(title)
             elif len(recent) < RECENT_BOOKS:
                 recent.append(title)
-        return {"current": current, "recent": recent}
+        from app.services import book_time
+
+        return {"current": current, "recent": recent, "minutes": book_time.minutes_on(self.db, ids, current + recent)}
 
     def calendar_for_user(self, *, round_id: uuid.UUID, user_id: uuid.UUID, viewer_id: uuid.UUID | None = None) -> dict:
         rnd = self.rounds.get_round(round_id)

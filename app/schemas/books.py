@@ -120,6 +120,10 @@ class WorkOut(CatalogItemOut):
     # «Следить за книгой»: whether the viewer watches it, and how many readers do.
     watching: bool = False
     watchers: int = 0
+    # Minutes given this book in the circle's days and the reading room: the viewer's own, everyone's, and by how many.
+    my_minutes: int = 0
+    circle_minutes: int = 0
+    circle_readers: int = 0
 
 
 class ReviewIn(BaseModel):

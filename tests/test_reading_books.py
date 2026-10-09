@@ -87,8 +87,10 @@ def _day(env, day: int, headers=None):
     return next(d for d in cal["days"] if d["date"] == f"2026-09-{day:02d}")
 
 
-def _books(env):
-    return env.c.get(f"/api/rounds/{env.round.id}/reading_books", headers=env.h).json()
+def _books(env, minutes=False):
+    """«Что читаю»'s titles; with minutes=True, each title's book's minutes so far instead."""
+    out = env.c.get(f"/api/rounds/{env.round.id}/reading_books", headers=env.h).json()
+    return out.pop("minutes") if minutes else {k: v for k, v in out.items() if k != "minutes"}
 
 
 def test_one_book_takes_the_whole_day_and_is_offered_next_time(env):
@@ -117,6 +119,7 @@ def test_a_day_split_between_two_books(env):
     # The next day only one of them: the other one waits in «recent».
     _log(env, 12, minutes=30, books=[{"title": "Абай жолы", "minutes": 30}])
     assert _books(env) == {"current": ["Абай жолы"], "recent": ["Шантарам"]}
+    assert _books(env, minutes=True) == {"Абай жолы": 40, "Шантарам": 20}
 
 
 def test_finishing_a_book_puts_its_title_first_and_shows_its_time_on_the_shelf(env):

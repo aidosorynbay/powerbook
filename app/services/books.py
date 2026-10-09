@@ -320,7 +320,15 @@ def work_page(db: Session, *, key: str, viewer_id: uuid.UUID, locale: str = "ru"
         listings=listings,
         watching=notify.is_watching(db, viewer_id, work),
         watchers=notify.watchers_count(db, work),
+        **_time(db, work.key, list(viewer_ids)),
     )
+
+
+def _time(db: Session, key: str, viewer_ids: list[uuid.UUID]) -> dict:
+    from app.services import book_time
+
+    t = book_time.for_book(db, key, viewer_ids)
+    return {"my_minutes": t["minutes"], "circle_minutes": t["circle_minutes"], "circle_readers": t["circle_readers"]}
 
 
 # ---------- marks ----------

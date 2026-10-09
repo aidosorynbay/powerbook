@@ -339,3 +339,46 @@ def test_small_hours_ask_and_guests_are_not_asked(env, monkeypatch):
         env.db.commit()
     assert c.get("/api/reading-room/round/state", headers=env.h(env.reader)).json()["my_session"]["days"] == [str(yesterday), str(env.today)]
     assert c.get("/api/reading-room/round/state", headers=env.h(env.guest)).json()["my_session"]["days"] == []
+
+
+def test_the_rooms_minutes_go_to_the_book_everywhere(env):
+    """The book one sits down with gets the sitting's minutes: on the day («Что читаю»), on the shelf (a book not
+    finished stands there as «Читаю», spellings together), in the hall's tags; undo takes them off the book."""
+    if _last_day_of_round(env):
+        pytest.skip("the round's last day only takes corrections")
+    from app.models.round import ReadingLogBook
+    from app.services import catalog
+
+    c, h = env.client, env.h(env.reader)
+    # yesterday on «Что читаю», spelled another way
+    yesterday = env.today - timedelta(days=1)
+    log = ReadingLog(round_id=env.rnd.id, user_id=env.reader.id, date=yesterday, minutes=30, score=1)
+    env.db.add(log)
+    env.db.flush()
+    env.db.add(ReadingLogBook(reading_log_id=log.id, user_id=env.reader.id, title="граф монте-кристо",
+                              title_norm="граф монте-кристо", minutes=30, finished=False, position=0))
+    env.db.commit()
+    catalog.invalidate()
+
+    sid = c.post("/api/reading-room/round/sit", json={"seat": 3, "book": "Граф Монте-Кристо"}, headers=h).json()["id"]
+    tag = c.get("/api/reading-room/round/state", headers=h).json()["readers"][0]
+    assert tag["book_minutes"] == 30
+    _age(env, sid, 20 * 60)
+    assert c.post(f"/api/reading-room/sessions/{sid}/finish", headers=h).json()["credited"]
+
+    env.db.expire_all()
+    books = env.db.query(ReadingLogBook).join(ReadingLog).filter(ReadingLog.date == env.today).all()
+    assert [(b.title, b.minutes) for b in books] == [("Граф Монте-Кристо", 20)]
+
+    shelf = c.get("/api/library/bookcase", headers=h).json()
+    shelf = shelf["books"] if isinstance(shelf, dict) else shelf
+    mine = [b for b in shelf if b["status"] == "reading"]
+    assert len(mine) == 1 and mine[0]["source"] == "log"
+    assert mine[0]["minutes_read"] == 50 and mine[0]["days_read"] == 2
+
+    rb = c.get(f"/api/rounds/{env.rnd.id}/reading_books", headers=h).json()
+    assert rb["minutes"][rb["current"][0]] == 50
+
+    c.post(f"/api/reading-room/sessions/{sid}/undo", headers=h)
+    env.db.expire_all()
+    assert env.db.query(ReadingLogBook).join(ReadingLog).filter(ReadingLog.date == env.today).count() == 0

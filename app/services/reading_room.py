@@ -171,14 +171,10 @@ class ReadingRoomService:
             return "not_in_round"
         reading = ReadingService(self.db)
         row = reading.logs.get_for_user_date(round_id=rnd.id, user_id=s.user_id, day=day)
+        minutes = min(minutes, max(0, 24 * 60 - (int(row.minutes) if row else 0)))
         try:
-            reading.log_minutes(
-                round_id=rnd.id, user_id=s.user_id, day=day,
-                minutes=min(24 * 60, (int(row.minutes) if row else 0) + minutes),
-                book_finished=bool(row.book_finished) if row else False,
-                comment=row.comment if row else None,
-                comment_private=bool(row.is_comment_private) if row else False,
-            )
+            # on the book the reader sat down with: its minutes are the same book's on the shelf and in «Что читаю»
+            reading.log_session(round_id=rnd.id, user_id=s.user_id, day=day, minutes=minutes, title=s.book_title)
         except HTTPException as e:
             self.db.rollback()
             return str(e.detail)
@@ -235,6 +231,10 @@ class ReadingRoomService:
             )).scalars()
             logs = {r.user_id: int(r.minutes) for r in rows}
         readers = []
+        # each sitter's minutes on their book before this sitting (book_time): «всего на книге» on their tag
+        from app.services import book_time
+
+        before = dict(zip((s.id for s in sessions), book_time.of_sitters(self.db, [(s.user_id, s.book_title) for s in sessions])))
         for s in sorted(sessions, key=lambda x: x.created_at or now):
             u = users.get(s.user_id)
             if u is None:
@@ -248,7 +248,7 @@ class ReadingRoomService:
                 "status": "paused" if away else s.status,
                 "elapsed_seconds": self.elapsed_seconds(s, _aware(s.last_seen_at) if away else now),
                 "today_minutes": logs.get(s.user_id, 0), "in_round": self.in_circle(rnd, u.id),
-                "me": me,
+                "book_minutes": before.get(s.id, 0), "me": me,
             })
         return {
             "hall": hall,
@@ -375,11 +375,9 @@ class ReadingRoomService:
         reading = ReadingService(self.db)
         row = reading.logs.get_for_user_date(round_id=s.credited_round_id, user_id=user.id, day=s.credited_date)
         if row is not None:
-            reading.log_minutes(
+            reading.take_back(
                 round_id=s.credited_round_id, user_id=user.id, day=s.credited_date,
-                minutes=max(0, int(row.minutes) - int(s.credited_minutes)),
-                book_finished=bool(row.book_finished), comment=row.comment,
-                comment_private=bool(row.is_comment_private),
+                minutes=int(s.credited_minutes), title=s.book_title,
             )
         s.credited_minutes = 0
         self.db.commit()

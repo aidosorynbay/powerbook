@@ -12,16 +12,18 @@ import hashlib
 import time
 import uuid
 from collections import defaultdict
+from datetime import datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.constants import ROUND_TZ
 from app.core.booktitles import canonical_key, matching_key, matching_title
 from app.services import book_notes, covers, custom_shelves, shelf_overrides
 from app.models.library import LibraryBook
 from app.models.manual_book import ManualBook
-from app.models.round import ReadingLog, ReadingLogBook, Round
+from app.models.round import ReadingLog, Round
 from app.models.user import User
 from app.repositories.claims import ClaimsRepository
 from app.repositories.insights import normalize_book_title
@@ -45,6 +47,10 @@ _SPINE_TITLE_CHARS = 80
 # per-process copy is plenty.
 _FELLOW_TTL_SECONDS = 120
 _fellow_cache: dict[str, object] = {"at": 0.0, "index": None}
+
+
+# A book given minutes this many days ago, never finished and on no shelf, still stands there as «Читаю».
+READING_LATELY_DAYS = 60
 
 
 def _short_hash(text: str) -> str:
@@ -294,22 +300,36 @@ class BookcaseService:
                 vol.upload_id = up.id
                 vol.is_visible_to_buddies = up.is_visible_to_buddies
 
-        # 4. Time spent: the minutes each day of the circle gave a book.
-        spent = self.db.execute(
-            select(
-                func.min(ReadingLogBook.title),
-                ReadingLogBook.title_norm,
-                func.sum(ReadingLogBook.minutes),
-                func.count(func.distinct(ReadingLogBook.reading_log_id)),
-            )
-            .where(ReadingLogBook.user_id.in_(ids), ReadingLogBook.minutes > 0)
-            .group_by(ReadingLogBook.title_norm)
-        ).all()
-        for title, norm, total, days in spent:
-            vol = find(norm, matching_key(title))
-            if vol is not None:
-                vol.minutes_read += int(total or 0)
-                vol.days_read += int(days or 0)
+        # 4. Time spent: the minutes the reader's days gave each book, every spelling of it together (book_time:
+        #    «Что читаю», the reading room, the reader). A book read lately that is on no shelf yet stands there
+        #    as «Читаю», so the time given it is never lost.
+        from app.services import book_time, catalog
+
+        idx = catalog.index(self.db)
+        vol_of: dict[str, BookcaseBookOut] = {}
+        held = {vk: work.key for work in idx.works.values() for account, vk in work.holders.items() if account in ids}
+        for vol in volumes:
+            vol_of.setdefault(held.get(vol.key) or book_time.book_of(idx, vol.title), vol)
+        today = datetime.now(tz=ROUND_TZ).date()
+        for bt in sorted(book_time.of_readers(self.db, list(ids), idx).values(), key=lambda b: b.last_day or today):
+            vol = vol_of.get(bt.key)
+            if vol is None:
+                if bt.finished or bt.last_day is None or (today - bt.last_day).days > READING_LATELY_DAYS:
+                    continue
+                vol = BookcaseBookOut(
+                    key=f"l:{_short_hash(bt.key)}", title=bt.title, author=None, note=None,
+                    status="reading", source="log", finished_on=None, round_year=None, round_month=None,
+                    times_finished=0, match_key=matching_key(bt.title), fellow_readers=0, has_file=False,
+                    file_format=None, file_size=None, cover_data=None, progress_percent=0, last_read_at=None,
+                )
+                remember(vol, normalize_book_title(bt.title) or bt.title.casefold())
+                vol_of[bt.key] = vol
+                clean = covers.clean_title(bt.title)
+                if clean:
+                    lookups[vol.key] = (clean, None)
+                added_on[vol.key] = bt.last_day.isoformat()
+            vol.minutes_read += bt.minutes
+            vol.days_read += bt.days
 
         # The reader's own corrections: a fixed title is what gets looked up,
         # and then their title, author and cover choice sit over whatever the

@@ -40,6 +40,8 @@ class ReadingBooksOut(BaseModel):
 
     current: list[str]
     recent: list[str]
+    # Each of those titles' book: the reader's minutes on it so far, every spelling and the reading room counted.
+    minutes: dict[str, int] = {}
 
 
 class ReactionOut(BaseModel):
