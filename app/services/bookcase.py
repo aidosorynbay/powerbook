@@ -308,8 +308,16 @@ class BookcaseService:
         idx = catalog.index(self.db)
         vol_of: dict[str, BookcaseBookOut] = {}
         held = {vk: work.key for work in idx.works.values() for account, vk in work.holders.items() if account in ids}
+        # a file the reader said is a certain book («Какая это книга?», or a fixed title) counts as that book, whatever
+        # its file name: its minutes from the reader and from «Что читаю» meet there
+        said = {} if owner.is_claimable else shelf_overrides.overrides_for(self.db, owner.id)
         for vol in volumes:
-            vol_of.setdefault(held.get(vol.key) or book_time.book_of(idx, vol.title), vol)
+            o = said.get(vol.key)
+            pinned = idx.find(o.work_key) if o is not None and o.work_key else None
+            for key in (held.get(vol.key), pinned.key if pinned else None,
+                        book_time.book_of(idx, o.title) if o is not None and o.title else None, book_time.book_of(idx, vol.title)):
+                if key:
+                    vol_of.setdefault(key, vol)
         today = datetime.now(tz=ROUND_TZ).date()
         for bt in sorted(book_time.of_readers(self.db, list(ids), idx).values(), key=lambda b: b.last_day or today):
             vol = vol_of.get(bt.key)

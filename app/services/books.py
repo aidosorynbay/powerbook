@@ -270,7 +270,7 @@ def work_page(db: Session, *, key: str, viewer_id: uuid.UUID, locale: str = "ru"
     listings = market.listings_for_work(db, work=work, viewer_id=viewer_id, idx=idx)
 
     viewer_ids = set(ClaimsRepository(db).effective_user_ids(user_id=viewer_id))
-    my_volume = next((vk for acc, vk in work.holders.items() if acc in viewer_ids), None)
+    my_volume = next((vk for acc, vk in work.holders.items() if acc in viewer_ids), None) or _reading_volume(db, work.key, list(viewer_ids), idx)
 
     viewer_person = idx.person_of(viewer_id)
     accounts = [idx.account_of(p) for p in work.readers]
@@ -322,6 +322,22 @@ def work_page(db: Session, *, key: str, viewer_id: uuid.UUID, locale: str = "ru"
         watchers=notify.watchers_count(db, work),
         **_time(db, work.key, list(viewer_ids)),
     )
+
+
+def _reading_volume(db: Session, key: str, viewer_ids: list[uuid.UUID], idx: catalog.CatalogIndex) -> str | None:
+    """The book on the viewer's shelf as «Читаю» from their days alone (bookcase step 4), when it stands there."""
+    from datetime import datetime
+
+    from app.core.constants import ROUND_TZ
+    from app.services import book_time
+    from app.services.bookcase import READING_LATELY_DAYS, _short_hash
+
+    bt = book_time.of_readers(db, viewer_ids, idx).get(key)
+    if bt is None or bt.finished or bt.last_day is None:
+        return None
+    if (datetime.now(tz=ROUND_TZ).date() - bt.last_day).days > READING_LATELY_DAYS:
+        return None
+    return f"l:{_short_hash(bt.key)}"
 
 
 def _time(db: Session, key: str, viewer_ids: list[uuid.UUID]) -> dict:
