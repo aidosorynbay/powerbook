@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { apiGet, useI18n, type DayBook } from '@/shared/lib';
+import { apiGet, formatSpent, useI18n, type DayBook } from '@/shared/lib';
 import { Icon } from '@/shared/ui';
 import styles from './ReadingBooks.module.css';
 
@@ -15,6 +15,8 @@ type Props = {
   onTotalChange: (minutes: number) => void;
   /** The reader's current and recent books, offered first. */
   suggestions: string[];
+  /** Minutes the reader has given each of those books so far, by title (the shelf's «Время чтения»). */
+  spent?: Record<string, number>;
 };
 
 type Match = { works: { title: string; author: string | null }[] };
@@ -86,7 +88,7 @@ function TitleInput({
  * tick, and the minutes field stays the only thing to type. «+ ещё книга»
  * turns it into rows with their own minutes, for a day split between books.
  */
-export function ReadingBooks({ books, onChange, totalMinutes, onTotalChange, suggestions }: Props) {
+export function ReadingBooks({ books, onChange, totalMinutes, onTotalChange, suggestions, spent }: Props) {
   const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const focusNew = useRef(false);
@@ -115,6 +117,8 @@ export function ReadingBooks({ books, onChange, totalMinutes, onTotalChange, sug
   };
 
   const sum = sumMinutes(books);
+  // «всего 6 ч 20 мин»: what the book has had before today, the reading room's sittings and other spellings counted
+  const so = (title: string) => (spent?.[title] ? <span className={styles.spent}>{t('bookTime.spent', { time: formatSpent(spent[title], t) })}</span> : null);
 
   return (
     <div className={styles.wrap}>
@@ -127,6 +131,7 @@ export function ReadingBooks({ books, onChange, totalMinutes, onTotalChange, sug
               <Icon name="check" size="em" className={styles.tick} aria-hidden="true" />
               <span className={styles.chipTitle}>{books[0].title}</span>
             </button>
+            {so(books[0].title)}
             <button
               type="button"
               className={styles.remove}
@@ -167,6 +172,7 @@ export function ReadingBooks({ books, onChange, totalMinutes, onTotalChange, sug
                   autoFocus={focusNew.current && i === books.length - 1 && !b.title}
                   onCommit={(title) => setTitle(i, title)}
                 />
+                {so(b.title)}
               </div>
               <input
                 type="number"

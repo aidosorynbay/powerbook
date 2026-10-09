@@ -35,6 +35,9 @@ export { initAnalytics, setAnalyticsUser, track } from './analytics';
 // Image utilities
 export { resizeImageToDataUrl } from './imageResize';
 
+// The time given a book
+export { formatSpent } from './bookTime';
+
 // Color utilities
 export { colorFromSeed } from './colorHash';
 

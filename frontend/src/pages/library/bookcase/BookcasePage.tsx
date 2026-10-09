@@ -478,6 +478,11 @@ export function BookcasePage({ ownerId }: Props) {
 
   const statusLine = useCallback(
     (b: BookcaseBook): string => {
+      if (b.status === 'reading' && b.source === 'log') {
+        // a book read in the circle's days, not a file: how far is unknown, how long is not
+        const time = formatMinutes(b.minutes_read ?? 0, t('rings.hoursShort'), t('rings.minutesShort'));
+        return t(isSelf ? 'shelf.statusReadingLog' : 'shelf.statusReadingLogOther', { time });
+      }
       if (b.status === 'reading') {
         return t(isSelf ? 'shelf.statusReading' : 'shelf.statusReadingOther', { percent: b.progress_percent });
       }

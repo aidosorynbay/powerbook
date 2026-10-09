@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiGet, apiPost, colorFromSeed, useAuth, useI18n, useResolvedTheme, track } from '@/shared/lib';
+import { apiGet, apiPost, colorFromSeed, formatSpent, useAuth, useI18n, useResolvedTheme, track } from '@/shared/lib';
 import { HALLS, charFor, createRoomEngine, seatChar, type HallKey, type RoomEngine } from './engine';
 import { Ding, Snd, type SoundChannel } from './sound';
 import { ShareDay } from '@/widgets/ShareDay';
@@ -27,6 +27,8 @@ type Reader = {
   elapsed_seconds: number;
   today_minutes: number;
   in_round: boolean;
+  /* minutes the reader gave this book before this sitting (their days, other sittings): «всего на книге» */
+  book_minutes?: number;
   me: boolean;
 };
 type Message = { id: string; user_id: string; display_name: string; text: string; created_at: string; me: boolean };
@@ -779,7 +781,10 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
                 {r.status === 'paused' && <span className={styles.chip}>{t('room.paused')}</span>}
                 {!r.in_round && <span className={styles.chip}>{t('room.guest')}</span>}
               </span>
-              <span className={styles.rdBook}><i className={styles.spine} />{r.book}</span>
+              <span className={styles.rdBook}>
+                <i className={styles.spine} />{r.book}
+                {r.in_round && (r.book_minutes ?? 0) * 60 + elapsed(r) >= 60 && <small> · {t('bookTime.spent', { time: formatSpent(Math.floor((r.book_minutes ?? 0) + elapsed(r) / 60), t) })}</small>}
+              </span>
             </span>
             <span className={styles.rdTime}>
               <b>{clock(elapsed(r))}</b>
@@ -863,6 +868,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   // (every chair stays open below it, for changing one's mind). The clock, once running, is one slim row at the foot.
   let takeSeat = false;
   let picking = false;
+  let myBookMinutes = 0;
   let dockLook = '';
   let dock;
   if (noRound) {
@@ -907,12 +913,15 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     );
   } else if (mineHere) {
     dockLook = styles.dockSeated;
+    // the book's whole time so far, this sitting included
+    myBookMinutes = Math.floor((readers.find((r) => r.me)?.book_minutes ?? 0) + elapsed(mineHere) / 60);
     dock = (
       <>
         <span className={styles.clock} aria-label={t('room.timer')}>{clock(elapsed(mineHere))}</span>
         <span className={styles.dockBook}>
           <i>{mineHere.book}</i>
           {state?.in_round && <small>{t('room.todayPlus', { today: state.today_minutes, min: Math.floor(elapsed(mineHere) / 60), date: readingDay })}</small>}
+          {state?.in_round && myBookMinutes > 0 && <small>{t('bookTime.onBook', { time: formatSpent(myBookMinutes, t) })}</small>}
         </span>
         {mineHere.status === 'reading'
           ? <button className={styles.btn} type="button" onClick={() => act('pause')}>{t('room.pause')}</button>

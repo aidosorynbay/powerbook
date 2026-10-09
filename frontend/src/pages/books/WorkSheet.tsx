@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiDelete, apiGet, apiPost, apiPut, track, useI18n, type Work } from '@/shared/lib';
+import { apiDelete, apiGet, apiPost, apiPut, formatSpent, track, useI18n, type Work } from '@/shared/lib';
 import { Avatar, Icon } from '@/shared/ui';
 import { BookChat } from '@/widgets/BookChat';
 import { BookFace, PbBadge, Sheet, formatDay, formatPrice, useCount } from './bookUi';
@@ -92,6 +92,15 @@ export function WorkSheet({ workKey, title, onClose, onChanged, review }: Props)
                 {work.pages && <span>{work.pages} {t('work.pages')}</span>}
                 <span>{count('readers', work.readers)}</span>
               </p>
+              {/* the time the book has had: the viewer's own (their days, the reading room), and the circle's */}
+              {((work.my_minutes ?? 0) > 0 || (work.circle_minutes ?? 0) > 0) && (
+                <p className={styles.heroTime}>
+                  {(work.my_minutes ?? 0) > 0 && <span>{t('bookTime.mine', { time: formatSpent(work.my_minutes!, t) })}</span>}
+                  {(work.circle_minutes ?? 0) > 0 && (
+                    <span>{t('bookTime.circle', { time: formatSpent(work.circle_minutes!, t), n: work.circle_readers ?? 0 })}</span>
+                  )}
+                </p>
+              )}
             </div>
           </div>
 

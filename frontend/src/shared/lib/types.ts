@@ -124,6 +124,8 @@ export type BookDays = {
 export type ReadingBooksResponse = {
   current: string[];
   recent: string[];
+  /** Each of those titles' book: the reader's minutes on it so far, every spelling and the reading room counted. */
+  minutes?: Record<string, number>;
 };
 
 export type CalendarResponse = {
@@ -594,7 +596,7 @@ export type BookcaseBook = {
   /** Which of the owner's shelves it stands on; null is unsorted. */
   shelf_id?: string | null;
   status: 'finished' | 'reading' | 'unread';
-  source: 'round' | 'manual' | 'upload';
+  source: 'round' | 'manual' | 'upload' | 'log';
   finished_on: string | null;
   round_year: number | null;
   round_month: number | null;
@@ -754,6 +756,10 @@ export type Work = CatalogItem & {
   /** «Следить за книгой»: whether the viewer watches it, and how many readers do. */
   watching?: boolean;
   watchers?: number;
+  /** Minutes given this book in the circle's days and the reading room: the viewer's own, everyone's, and by how many. */
+  my_minutes?: number;
+  circle_minutes?: number;
+  circle_readers?: number;
 };
 
 export type MarketPage = { items: Listing[]; total: number; offset: number; cities: string[] };

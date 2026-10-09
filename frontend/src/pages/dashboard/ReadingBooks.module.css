@@ -28,6 +28,7 @@
 
 .chosen {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--spacing-2);
   min-width: 0;
@@ -142,4 +143,19 @@
 
 .add:hover {
   text-decoration: underline;
+}
+
+/* «всего 6 ч 20 мин»: the book's time so far, beside it */
+.spent {
+  font-size: var(--font-size-xs, 12px);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.rowTitle .spent {
+  display: block;
+  margin-top: 2px;
+}
+.chosen .spent {
+  order: 3;
+  flex-basis: 100%;
 }

@@ -1071,6 +1071,7 @@ export function DashboardPage() {
                         totalMinutes={parseInt(todayMinutes, 10) || 0}
                         onTotalChange={(m) => setTodayMinutes(m ? String(m) : '')}
                         suggestions={bookSuggestions}
+                        spent={readingBooks?.minutes}
                       />
 
                       {todayBooks.length <= 1 && (
@@ -1537,6 +1538,7 @@ export function DashboardPage() {
                 totalMinutes={parseInt(minutesInput, 10) || 0}
                 onTotalChange={(m) => setMinutesInput(m ? String(m) : '')}
                 suggestions={bookSuggestions}
+                        spent={readingBooks?.minutes}
               />
             </div>
             {modalBooks.length <= 1 && (
