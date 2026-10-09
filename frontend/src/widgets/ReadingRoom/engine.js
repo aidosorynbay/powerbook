@@ -471,7 +471,9 @@ const EMBERS=[...Array(26)].map((_,i)=>{const r=rng(i*13+5);return {x:r(),t:r(),
 const UNIFORMS=['uImg','uRay','uRes','uOff','uSize','uPar','uTime','uWake','uNight','uRayK','uWin','uFire','uFireBox','uLamp','uNL','uSway','uLoaded','uCasts','uWith','uWith2','uMask','uRig','uSoft','uPages','uS','uPg','uEye','uLid','uLidK','uLeg','uCup','uGK','uSteamK','uMaskPx'];
 
 /* opts: hall, base (url of the photos), canvas, fx, stage, frame, edge, teaser, ui, tags, scrollEl (null: the room is shown whole),
-   variant ('day' | 'night'), small (phone-sized photos), reduced (less motion), onFlip(key) when a reader turns a page */
+   variant ('day' | 'night'), small (phone-sized photos), reduced (less motion), onFlip(key) when a reader turns a page,
+   band() (phones): where the stage is in the open, {top, above, bottom} in px (engine.d.ts), between the hall's controls
+   and the site's header above and its panel or the site's tab bar below: every chair must stay there */
 export function createRoomEngine(opts){
   const H=HALLS[opts.hall],{canvas:cv,fx,stage}=opts,fxc=fx.getContext('2d');
   /* every reader of a hall with two casts turns pages: the rig's own page turns, and the new ones (casts.js) */
@@ -551,12 +553,58 @@ export function createRoomEngine(opts){
     view.rect=view.mobile&&opts.phoneShare?{x:0,y:0,w,h:h*opts.phoneShare}:{x:0,y:0,w,h};
   }
   const ro=new ResizeObserver(layout);ro.observe(stage);layout();
-  function computeMap(P,ar){
+  /* the whole hall at rest, at s times its size, and where its top edge rests */
+  function rest(ar,s){
     const r=view.rect;let baseH=Math.max(r.h,r.w/ar),baseW=baseH*ar;
     /* the tall photo keeps every chair on a narrow screen: it leaves a band above (under the site's header) rather than cut its sides */
     if(H.fitU){const need=r.w/(H.fitU[1]-H.fitU[0]);if(baseW>need){baseW=need;baseH=baseW/ar}}
+    baseW*=s;baseH*=s;
+    return {r,baseW,baseH,by:baseH<r.h?r.y+r.h-baseH:r.y+(r.h-baseH)/2};
+  }
+  /* phones: every free chair's ring stays in the open (opts.band), and so, as far as the rings leave room, does every
+     reader's name tag. The photo slides only as far as it must; when the rings do not fit even so (a short phone), it steps
+     back, down to FIT_MIN of its size. Each mark reaches above and below its point on the photo by its own size in px
+     (a ring is centred on its chair, a name tag hangs above the reader's head), and need only be clear of the controls
+     right over it (band.above), not of the heading's whole width. */
+  const FIT_MIN=.75,fit={s:1,d:0};
+  function fitTarget(marks,ar){
+    const b=opts.band?.();if(!b||!marks)return {s:1,d:0};
+    const rings=[],tags=[];
+    marks.els.forEach((el,i)=>{
+      const u=+el.dataset.u,v=+el.dataset.v;if(u<0)return;
+      if(marks.hs[i])tags.push({u,v,a:-12-marks.hs[i],z:-4,w:marks.ws[i]/2});
+      else if(marks.rs[i])rings.push({u,v,a:-marks.rs[i]/2-4,z:marks.rs[i]/2+6,w:marks.rs[i]/2});
+    });
+    const ceil=(x,w)=>{let c=b.top;for(const o of b.above||[])if(x+w>o[0]&&x-w<o[1])c=Math.max(c,o[2]);return c};
+    /* for each mark, how high and how low the photo's top edge may rest with it in the open, at s times its size */
+    const spans=(list,s)=>{
+      const {r,baseW,baseH}=rest(ar,s),bx=r.x+(r.w-baseW)/2;
+      return list.map(m=>{const x=clamp(bx+m.u*baseW,m.w+6,r.w-m.w-6),y=m.v*baseH;return [ceil(x,m.w)-y-m.a,b.bottom-y-m.z]});
+    };
+    const range=(list,s)=>spans(list,s).reduce(([lo,hi],[a,z])=>[Math.max(lo,a),Math.min(hi,z)],[-Infinity,Infinity]);
+    let s=1;
+    if(rings.length){
+      /* by how much the rings miss the room grows with the photo, and lies under its chord: where the chord says 0, they fit */
+      const g=s=>{const [lo,hi]=range(rings,s);return lo-hi},g1=g(1);
+      if(g1>0){const g0=g(FIT_MIN);s=g0>=0?FIT_MIN:FIT_MIN+(1-FIT_MIN)*-g0/(g1-g0)}
+    }
+    const by=rest(ar,s).by;
+    let [lo,hi]=rings.length?range(rings,s):[-Infinity,Infinity];if(lo>hi)lo=hi=(lo+hi)/2;
+    let oy=clamp(by,lo,hi);
+    if(tags.length){
+      /* the name tags, as many as can be in the open at once, the photo moved as little as that takes */
+      const iv=spans(tags,s);let n0=-1,d0=Infinity;
+      for(const c of [by,...iv.flat()]){
+        const p=clamp(c,lo,hi),n=iv.filter(([a,z])=>p>a-.5&&p<z+.5).length,d=Math.abs(p-by);
+        if(n>n0||n===n0&&d<d0){oy=p;n0=n;d0=d}
+      }
+    }
+    return {s,d:oy-by};
+  }
+  function computeMap(P,ar){
+    const {r,baseW,baseH,by:by0}=rest(ar,fit.s),by=by0+fit.d;
     const maxPan=Math.max(0,(baseW-r.w)/2);view.panX=clamp(view.panX,-maxPan,maxPan);
-    const bx=r.x+(r.w-baseW)/2+view.panX,by=baseH<r.h?r.y+r.h-baseH:r.y+(r.h-baseH)/2;
+    const bx=r.x+(r.w-baseW)/2+view.panX;
     /* the reveal: close on the window first, then back to the whole hall */
     const t=eio(seg(P,.02,.82)),Z=lerp(1.5,1,t);
     const cx=r.x+r.w/2,cy=r.y+r.h/2,fu0=(cx-bx)/baseW,fv0=(cy-by)/baseH;
@@ -634,6 +682,17 @@ export function createRoomEngine(opts){
     if(want.ready)shown=want;
     const tex=shown||want;night+=((shown&&shown===V.night?1:0)-night)*Math.min(1,dt*3);CAST_V=tex===V.night?'night':'day';
     const loadK=tex.ready?clamp((now-tex.readyAt)/600):0;
+    /* the name tags and rings over the photo, measured before anything moves: one layout per frame. Name tags near an
+       edge stay whole on the screen, and so do the labels over the rings (ws, ls); hs: a tag's height, rs: a ring's */
+    let marks=null;
+    if(opts.tags){
+      const els=[...opts.tags.querySelectorAll('[data-u]')];
+      marks={els,ws:els.map(el=>el.dataset.clamp?el.offsetWidth:0),
+        ls:els.map(el=>el.dataset.label&&el.firstElementChild?el.firstElementChild.offsetWidth:0),
+        hs:els.map(el=>el.dataset.stack?el.offsetHeight:0),rs:els.map(el=>el.dataset.label?el.offsetHeight:0)};
+    }
+    const ft=fitTarget(marks,tex.ar),fk=Math.min(1,dt*5);
+    fit.s+=(ft.s-fit.s)*fk;fit.d+=(ft.d-fit.d)*fk;
     computeMap(P,tex.ar);
     const live=seg(P,.8,1);
     /* a slow drift with the mouse on wide screens; a phone's photo stays put */
@@ -682,16 +741,20 @@ export function createRoomEngine(opts){
       const c2=cv.getContext('2d');if(c2){c2.setTransform(view.dpr,0,0,view.dpr,0,0);c2.drawImage(tex.img,view.ox,view.oy,view.W,view.H)}
     }
     drawFx(T,wake*loadK,night);
-    /* name tags and rings ride on the photo */
-    if(opts.tags){
-      /* widths first, then positions: one layout per frame. Name tags near an edge stay whole on the screen, and so do
-         the labels over the rings (the ring stays on its chair, its label slides in) */
-      const els=[...opts.tags.querySelectorAll('[data-u]')],ws=els.map(el=>el.dataset.clamp?el.offsetWidth:0),
-        ls=els.map(el=>el.dataset.label&&el.firstElementChild?el.firstElementChild.offsetWidth:0),
-        hs=els.map(el=>el.dataset.stack?el.offsetHeight:0);
+    /* name tags and rings ride on the photo (a ring stays on its chair, its label slides in) */
+    if(marks){
+      const {els,ws,ls,hs,rs}=marks;
       const pos=els.map((el,i)=>{
         const q=toPx(+el.dataset.u,+el.dataset.v),off=q.x<-40||q.x>view.w+40||q.y>view.rect.y+view.rect.h+10||q.y<-10;
         return {off,x:ws[i]?clamp(q.x,ws[i]/2+6,view.w-ws[i]/2-6):q.x,y:q.y};
+      });
+      /* a finger is wider than a ring: each ring takes the taps around it (--hit), but never past halfway to the next one,
+         so a tap between two close chairs goes to the nearer */
+      els.forEach((el,i)=>{
+        if(!rs[i]||pos[i].off)return;
+        let d=Infinity;els.forEach((_,j)=>{if(j!==i&&rs[j]&&!pos[j].off)d=Math.min(d,Math.hypot(pos[i].x-pos[j].x,pos[i].y-pos[j].y))});
+        const hit=String(Math.round(clamp(d/2-rs[i]/2,0,14)));
+        if(el.dataset.hit!==hit){el.dataset.hit=hit;el.style.setProperty('--hit',hit+'px')}
       });
       /* name tags that would cover each other in a full hall: the lower one (nearer the camera) stays over its reader,
          the one above it steps up clear of it */

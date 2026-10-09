@@ -70,6 +70,11 @@ export interface RoomEngineOptions {
   reduced: boolean;
   /** On phones the photo takes this share of the stage's height (the rest is the chat). */
   phoneShare?: number;
+  /** Phones: the stage's open band in px: below top (the site's header) and below each of above ([left, right, bottom]:
+   *  the hall's controls, a chair under one stays below its bottom), above bottom (the hall's panel or the site's tab
+   *  bar). The photo slides (on a short screen, steps back a little) to keep every chair's ring in the open, and the name
+   *  tags as far as the rings leave room. Read every frame; null leaves the photo where it rests. */
+  band?: (() => { top: number; above?: number[][]; bottom: number } | null) | null;
   onFlip?: (key: string) => void;
   onReady?: () => void;
 }

@@ -39,6 +39,14 @@
   height: calc(100vh + 170vh);
   height: calc(100svh + 170vh);
 }
+/* The round page keeps 72px under its content for the tab bar (DashboardPage.module.css). The hall makes its own room for
+   the bar (--nav) and is the last thing on the page, so it takes those 72px back: at the end of the page it still fills
+   the screen, instead of sliding its heading under the site's header. */
+@media (max-width: 900px) {
+  .scroll {
+    margin-bottom: -72px;
+  }
+}
 .full {
   height: calc(100svh - var(--shelf-top, 64px));
   min-height: 420px;
@@ -102,9 +110,12 @@
   overflow: hidden;
   overscroll-behavior: none;
 }
-/* Locked in on a phone: the bottom menu steps aside too. */
+/* Locked in on a phone: the bottom menu steps aside too, and the hall's panels at the foot come down into its place. */
 .lockedRoot [data-bottom-nav] {
   display: none;
+}
+.lockedRoot .scroll {
+  --nav: env(safe-area-inset-bottom, 0px);
 }
 .loading {
   position: absolute;
@@ -332,12 +343,13 @@
   background: rgba(242, 100, 48, 0.5);
   border-color: #fff;
 }
-/* a finger is wider than the ring: a tap anywhere about the chair takes it */
+/* a finger is wider than the ring: a tap anywhere about the chair takes it (--hit: the engine keeps it short of the
+   next ring's) */
 @media (pointer: coarse) {
   .free::after {
     content: '';
     position: absolute;
-    inset: -14px;
+    inset: calc(-1 * var(--hit, 14px));
     border-radius: 50%;
   }
 }
@@ -369,10 +381,14 @@
   pointer-events: none;
   opacity: 0;
 }
-.ui[data-live='1'] .head,
 .ui[data-live='1'] .dock,
 .ui[data-live='1'] .chips,
 .ui[data-live='1'] .drawer {
+  pointer-events: auto;
+}
+/* the heading takes a tap only on its buttons: around them (beside a short row of chips) the chairs under it are tapped */
+.ui[data-live='1'] .head button,
+.ui[data-live='1'] .sndPop {
   pointer-events: auto;
 }
 /* first-visit hints: a label and a bobbing arrow at each control, and a bar to put them away */
@@ -1000,6 +1016,9 @@
   color: var(--ink);
   box-shadow: 0 18px 44px rgba(20, 8, 2, 0.4);
 }
+@keyframes dockIn {
+  from { opacity: 0; transform: translateY(-6px); }
+}
 .dockNote {
   font-size: 12.5px;
   color: var(--ink2);
@@ -1082,6 +1101,18 @@
   gap: 10px;
   width: min(460px, 100%);
 }
+/* «Что читаете? · …» with «Отмена» at its right: the row below keeps the title and the timer side by side */
+.pickHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.pickHead .link {
+  flex: none;
+  padding: 2px 4px;
+  font-size: 13.5px;
+}
 .dockLbl {
   font-size: 12px;
   letter-spacing: 0.06em;
@@ -1106,6 +1137,12 @@
   align-items: center;
   cursor: pointer;
   max-width: 100%;
+}
+.choice span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .choice[aria-pressed='true'] {
   border-color: var(--lamp);
@@ -1185,6 +1222,56 @@
     bottom: calc(12px + var(--nav));
     max-width: none;
     padding: 10px 12px;
+  }
+  /* Choosing a chair and a book: the picker takes the heading's place, over the window where no one sits, and the floor
+     with every chair stays in the open (the engine keeps the rings below the picker, see band in engine.js). Up there
+     the phone's keyboard does not cover it either. */
+  .dockTop {
+    top: calc(var(--room-top, 0px) + 10px);
+    bottom: auto;
+    animation: dockIn 0.22s ease both;
+  }
+  .head {
+    transition: opacity 0.18s;
+  }
+  .headAway {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.18s, visibility 0s 0.18s;
+  }
+  /* as wide as the panel, never wider: the row of books scrolls instead of stretching it */
+  .dockPick {
+    width: 100%;
+    min-width: 0;
+    gap: 8px;
+  }
+  .dockLbl {
+    font-size: 11px;
+    letter-spacing: 0.03em;
+  }
+  /* the books one has been reading: one row, which scrolls sideways when there are more */
+  .choices {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .choices::-webkit-scrollbar {
+    display: none;
+  }
+  .choice {
+    flex: none;
+    max-width: 78%;
+  }
+  .pickRow {
+    flex-wrap: nowrap;
+  }
+  .pickRow input {
+    width: 0;
+    min-width: 0;
+  }
+  .pickRow .primary {
+    flex: none;
+    white-space: nowrap;
   }
   /* the general hint beside «Сесть и читать» is left out; notes that explain why one cannot sit stay */
   .dockHint {
@@ -1383,7 +1470,8 @@
   .liveDot,
   .chev i,
   .sndOn .bars i,
-  .freePicking {
+  .freePicking,
+  .dockTop {
     animation: none;
   }
   .goal,

@@ -119,6 +119,33 @@ function saveRecent(book: string) {
   }
 }
 
+/* Phones: where the hall is in the open, in the stage's px: under the site's header, and under whatever of the hall's
+   heading hangs over a chair (or under the book picker, which takes the heading's place); above the hall's panel and
+   PowerBook's tab bar. The engine keeps every chair in the open. */
+function openBand(stage: HTMLElement) {
+  const st = stage.getBoundingClientRect();
+  if (!st.height) return null;
+  // [left, right, the lowest a chair under it may reach]
+  const over = (el: Element) => {
+    const r = el.getBoundingClientRect();
+    return [r.left - st.left, r.right - st.left, r.bottom - st.top + 6];
+  };
+  const header = document.querySelector('header')?.getBoundingClientRect();
+  const top = Math.max(0, (header?.bottom ?? st.top) - st.top) + 6;
+  const dock = stage.querySelector<HTMLElement>('[data-dock]');
+  const head = stage.querySelector<HTMLElement>('[data-head]');
+  const above = dock?.dataset.dock === 'top'
+    ? [over(dock)]
+    : [...(head?.querySelectorAll(`.${styles.kicker}, .${styles.title}, .${styles.meta} > *, .${styles.ctrl} button`) ?? [])]
+        .filter((el) => !el.closest(`.${styles.sndPop}`))
+        .map(over);
+  let bottom = st.height;
+  const nav = document.querySelector('[data-bottom-nav]')?.getBoundingClientRect();
+  if (nav?.height) bottom = Math.min(bottom, nav.top - st.top);
+  if (dock?.dataset.dock === 'bottom') bottom = Math.min(bottom, dock.getBoundingClientRect().top - st.top);
+  return { top, above, bottom: bottom - 6 };
+}
+
 const BookIcon = () => (
   <svg className={styles.bk} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M2 5.5C4.5 4 8 4 12 6c4-2 7.5-2 10-.5V19c-2.5-1.5-6-1.5-10 .5-4-2-7.5-2-10-.5z" />
@@ -352,6 +379,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
       scrollEl: layout === 'scroll' ? scrollRef.current : null,
       variant: document.documentElement.dataset.theme === 'light' ? 'day' : 'night',
       small, reduced,
+      band: phone ? () => openBand(stage) : null,
       onFlip: (key) => {
         const el = tagEls.current.get(key);
         if (el) {
@@ -367,7 +395,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
       engine.destroy();
       engineRef.current = null;
     };
-  }, [hk, layout, reduced]);
+  }, [hk, layout, reduced, phone]);
 
   useEffect(() => {
     engineRef.current?.setVariant(theme === 'light' ? 'day' : 'night');
@@ -488,10 +516,10 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
         el.style.setProperty('--lx', `${lx.toFixed(1)}px`);
         el.style.visibility = 'visible';
       }
-      // on a phone the bar rests just above the dock, or at the foot between the front chairs while there is none
+      // on a phone the bar rests just above the dock, or at the foot between the front chairs while there is none at the foot
       const bar = box.querySelector<HTMLElement>('[data-bar]');
       if (bar && phone) {
-        const dock = stage.querySelector<HTMLElement>(`.${styles.dock}`);
+        const dock = stage.querySelector<HTMLElement>('[data-dock="bottom"]');
         bar.dataset.free = dock ? '' : '1';
         bar.style.top = dock ? `${dock.getBoundingClientRect().top - bar.offsetHeight - 10 - fr.top}px` : '';
       }
@@ -831,9 +859,10 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" /></svg>
   );
   // On a phone the foot of the photo is the front row of chairs, so nothing waits there while nobody is seated:
-  // «Занять место» rides in the heading (it, or a tap on a chair's ring, brings the book and the timer up from below),
-  // and the clock, once running, is one slim row.
+  // «Занять место» rides in the heading, and it, or a tap on a chair's ring, turns the heading into the book picker
+  // (every chair stays open below it, for changing one's mind). The clock, once running, is one slim row at the foot.
   let takeSeat = false;
+  let picking = false;
   let dockLook = '';
   let dock;
   if (noRound) {
@@ -892,21 +921,24 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
       </>
     );
   } else if (pick) {
+    picking = true;
     dock = (
       <div className={styles.dockPick}>
-        <div className={styles.dockLbl}>{t('room.whatBook')} · {pick.seat !== null ? t('room.seatChosen') : t('room.seatAuto')}</div>
+        <div className={styles.pickHead}>
+          <span className={styles.dockLbl}>{t('room.whatBook')} · {pick.seat !== null ? t('room.seatChosen') : t('room.seatAuto')}</span>
+          <button className={`${styles.btn} ${styles.link}`} type="button" onClick={() => setPick(null)}>{t('room.cancel')}</button>
+        </div>
         {suggest.length > 0 && (
           <div className={styles.choices}>
             {suggest.map((b) => (
               <button key={b} type="button" className={styles.choice} aria-pressed={book === b} onClick={() => setBook(b)}>
-                <i className={styles.spine} />{b}
+                <i className={styles.spine} /><span>{b}</span>
               </button>
             ))}
           </div>
         )}
         <div className={styles.pickRow}>
           <input value={book} onChange={(e) => setBook(e.target.value)} maxLength={200} placeholder={t('room.bookPlaceholder')} aria-label={t('room.bookPlaceholder')} onKeyDown={(e) => { if (e.key === 'Enter') sit(); }} />
-          <button className={`${styles.btn} ${styles.link}`} type="button" onClick={() => setPick(null)}>{t('room.cancel')}</button>
           <button className={`${styles.btn} ${styles.primary}`} type="button" onClick={sit} disabled={busy || !book.trim()}>{t('room.light')}</button>
         </div>
       </div>
@@ -946,8 +978,9 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
         <div className={styles.lockRing} />
         {!loaded && <div className={styles.loading}>{t('room.loading')}</div>}
         <div className={styles.tags} ref={tagsRef}>
-          {rings}
+          {/* the free chairs' rings over the name tags: a neighbour's tag never hides a chair one could take */}
           {tags}
+          {rings}
         </div>
         {layout === 'scroll' && (
           <div className={styles.teaser} ref={teaserRef}>
@@ -957,7 +990,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
           </div>
         )}
         <div className={styles.ui} ref={uiRef} data-live={layout === 'full' ? '1' : '0'}>
-          <div className={styles.head}>
+          <div className={`${styles.head} ${phone && picking ? styles.headAway : ''}`} data-head="">
             <div className={styles.kicker}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
               <span>{access}</span>
@@ -1020,10 +1053,18 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
               ) : chat}
             </div>
           </aside>
-          {dock && <div className={`${styles.dock} ${dockLook} ${mineHere?.status === 'paused' ? styles.dockPaused : ''}`}>{dock}</div>}
+          {dock && (
+            <div
+              className={`${styles.dock} ${dockLook} ${phone && picking ? styles.dockTop : ''} ${mineHere?.status === 'paused' ? styles.dockPaused : ''}`}
+              data-dock={phone && picking ? 'top' : 'bottom'}
+            >
+              {dock}
+            </div>
+          )}
           {coach && (
             <div className={styles.coach} ref={coachRef}>
-              {COACH.filter((c) => coach.includes(c.id)).map((c, i) => (
+              {/* on a phone the book picker stands where the hints point (the heading, the top chairs' name tags): they wait */}
+              {!(phone && picking) && COACH.filter((c) => coach.includes(c.id)).map((c, i) => (
                 <div key={c.id} className={styles.hint} data-hint={c.id} data-dir={c.id === 'sit' && phone ? 'below' : c.dir} style={{ animationDelay: `${i * 0.22}s`, visibility: 'hidden' }} aria-hidden="true">
                   <span className={styles.hintL}>{t(`room.coach.${c.id}`)}</span>
                   <svg className={styles.hintAr} viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v15M6 13l6 6 6-6" /></svg>
