@@ -156,10 +156,10 @@ function AppRoutes() {
           path="/forgot-password"
           element={isAuthenticated ? <Navigate to="/" replace /> : <ForgotPasswordPage />}
         />
-        <Route
-          path="/register"
-          element={isAuthenticated ? <Navigate to="/" replace /> : <RegisterPage />}
-        />
+        {/* The page sends a signed-in visitor away itself: a guard here also
+            fired the moment sign-up succeeded, so the new reader was thrown to
+            the front page before the archive step, and ?redirect was lost. */}
+        <Route path="/register" element={<RegisterPage />} />
       </SentryRoutes>
       <BottomNav />
       {/* Mounted at the root, not per page: the reader should see it on the

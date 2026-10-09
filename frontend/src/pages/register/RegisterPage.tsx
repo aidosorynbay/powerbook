@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth, useI18n, apiPost, invitedRef, type TokenResponse } from '@/shared/lib';
 import { Button, Card, Container, Logo, PageTransition } from '@/shared/ui';
 import { ClaimPicker, TelegramGuide } from '@/widgets';
@@ -7,12 +7,26 @@ import styles from './RegisterPage.module.css';
 
 type Gender = 'male' | 'female' | 'unknown';
 
+// Signing up signs the reader in, and while the app fetches the new account it
+// shows its loader in place of every page: this one mounts afresh with its
+// state gone. The archive step is remembered here for half an hour, so the
+// remount lands on it rather than past it — before, nobody ever saw it.
+const CLAIM_STEP_KEY = 'pb.signupClaim';
+
+function claimStepPending(): boolean {
+  try {
+    return Number(sessionStorage.getItem(CLAIM_STEP_KEY)) > Date.now() - 30 * 60 * 1000;
+  } catch {
+    return false;
+  }
+}
+
 export function RegisterPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get('redirect');
   const next = redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/';
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const { t } = useI18n();
 
   const [username, setUsername] = useState('');
@@ -22,7 +36,11 @@ export function RegisterPage() {
   const [telegramId, setTelegramId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState<'form' | 'claim'>('form');
+  const [step, setStep] = useState<'form' | 'claim'>(() => (claimStepPending() ? 'claim' : 'form'));
+
+  // Already signed in, there is no form to fill. Someone who has just signed
+  // up here is signed in too, but still has the archive step in front of them.
+  if (isAuthenticated && step === 'form') return <Navigate to={next} replace />;
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -46,10 +64,24 @@ export function RegisterPage() {
     }
 
     if (data) {
+      try {
+        sessionStorage.setItem(CLAIM_STEP_KEY, String(Date.now()));
+      } catch {
+        /* storage blocked: the step may be skipped */
+      }
       login(data.access_token);
       setStep('claim');
     }
     setIsSubmitting(false);
+  };
+
+  const finish = () => {
+    try {
+      sessionStorage.removeItem(CLAIM_STEP_KEY);
+    } catch {
+      /* nothing to forget */
+    }
+    navigate(next);
   };
 
   if (step === 'claim') {
@@ -70,7 +102,7 @@ export function RegisterPage() {
 
               <ClaimPicker />
 
-              <Button type="button" fullWidth onClick={() => navigate(next)} className={styles.claimContinueBtn}>
+              <Button type="button" fullWidth onClick={finish} className={styles.claimContinueBtn}>
                 {t('register.claimContinue')}
               </Button>
             </Card>
