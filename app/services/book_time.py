@@ -17,7 +17,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from app.core.booktitles import canonical_key, matching_key
@@ -64,7 +64,8 @@ def of_readers(db: Session, user_ids: list[uuid.UUID], idx: catalog.CatalogIndex
             func.sum(ReadingLogBook.minutes),
             func.count(func.distinct(ReadingLog.date)),
             func.max(ReadingLog.date),
-            func.max(ReadingLogBook.finished),
+            # (Postgres has no max() of a boolean)
+            func.max(case((ReadingLogBook.finished.is_(True), 1), else_=0)),
         )
         .join(ReadingLog, ReadingLog.id == ReadingLogBook.reading_log_id)
         .where(ReadingLogBook.user_id.in_(user_ids), ReadingLogBook.minutes > 0)
