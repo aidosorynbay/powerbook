@@ -2,99 +2,76 @@
   background: var(--color-bg-card);
   border: 1px solid var(--color-border-primary);
   border-radius: var(--radius-lg, 14px);
-  padding: 14px;
+  padding: 16px;
 }
-.hint {
-  margin: 0 0 12px;
-  color: var(--color-text-secondary, var(--color-text-muted));
-  font-size: 13.5px;
+.lead {
+  margin: 0 0 14px;
+  color: var(--color-text-primary);
+  font-size: 15px;
   line-height: 1.5;
 }
-.linkField {
-  display: block;
-  box-sizing: border-box;
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--color-border-primary);
-  background: var(--color-bg-secondary);
-  color: var(--color-text-primary);
-  font-size: 13px;
-}
-.buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-}
-.btn {
-  flex: 1 1 0;
-  min-width: 92px;
-  padding: 9px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--color-border-primary);
-  background: transparent;
-  color: var(--color-text-primary);
-  font-size: 13px;
-  font-weight: 600;
-  text-align: center;
-  text-decoration: none;
-  cursor: pointer;
-}
-.btn.copy {
-  border-color: var(--color-accent-primary);
-  background: var(--color-accent-primary);
-  color: #fff;
-}
-.telegram {
-  border-color: color-mix(in srgb, #2aabee 55%, transparent);
-  color: #2aabee;
-}
-.whatsapp {
-  border-color: color-mix(in srgb, #25d366 55%, transparent);
-  color: #1fb455;
-}
-.empty {
-  margin: 14px 0 0;
-  color: var(--color-text-muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-.stats {
-  display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr) minmax(0, 0.8fr);
-  gap: 8px;
-  margin-top: 14px;
-}
-.stat {
+/* the pride: what friends have read since they came */
+.hero {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--color-accent-primary) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-accent-primary) 30%, transparent);
+  align-items: center;
+  text-align: center;
+  margin: 4px 0 16px;
 }
-.stat b {
-  font-size: 19px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+.big {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--color-accent-primary);
+}
+.caption {
+  margin-top: 4px;
+  font-size: 14px;
   color: var(--color-text-primary);
-  white-space: nowrap;
 }
-.stat span {
-  font-size: 11.5px;
+.sub {
+  margin-top: 2px;
+  font-size: 12.5px;
   color: var(--color-text-muted);
 }
-.note {
-  margin: 8px 0 0;
-  font-size: 13px;
-  color: var(--color-text-secondary, var(--color-text-muted));
+/* the one button */
+.invite {
+  display: block;
+  width: 100%;
+  min-height: 54px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--color-accent-primary);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-accent-primary) 35%, transparent);
+}
+.invite:active {
+  transform: translateY(1px);
+}
+.link {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 4px;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
 }
 .list {
   list-style: none;
-  margin: 10px 0 0;
+  margin: 12px 0 0;
   padding: 0;
+  border-top: 1px solid var(--color-border-primary);
 }
 .list li + li {
   border-top: 1px solid var(--color-border-primary);
@@ -115,7 +92,7 @@
 }
 .name {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 14.5px;
   color: var(--color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -124,25 +101,10 @@
 .meta {
   font-size: 12px;
   color: var(--color-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .time {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  font-size: 11.5px;
-  color: var(--color-text-muted);
-}
-.time b {
-  font-size: 13.5px;
+  font-size: 14px;
   color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-}
-@media (max-width: 400px) {
-  .stat b {
-    font-size: 17px;
-  }
 }
