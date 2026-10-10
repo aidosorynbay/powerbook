@@ -159,7 +159,7 @@ def test_a_review_is_news_for_every_reader_who_wants_it(env):
 
     # Dana would rather not hear about reviews.
     assert c.get("/api/notifications/settings", headers=env.h(env.dana)).json() == {
-        "new_review": True, "watch_listing": True, "watch_finished": True, "wanted_by": True,
+        "new_review": True, "watch_listing": True, "watch_finished": True, "wanted_by": True, "guest_read": True,
     }
     r = c.put("/api/notifications/settings", json={"settings": {"new_review": False}}, headers=env.h(env.dana))
     assert r.status_code == 200 and r.json()["new_review"] is False and r.json()["watch_listing"] is True
