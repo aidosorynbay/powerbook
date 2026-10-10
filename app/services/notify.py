@@ -11,7 +11,8 @@ and whoever finishes a book that readers are watching hears that, with
 the way to sell it, unless they already have it on the bazaar.
 
 Everyone hears when someone writes a review of any book (a mark with no
-words is not a review). Each kind can be switched off; no switch means on.
+words is not a review). A reader hears when a friend who signed up by their
+link reads for the first time («Приведи друга», app/services/invites.py). Each kind can be switched off; no switch means on.
 
 Nothing here may break what triggered it: logging the day's minutes or
 putting up a listing always succeeds, whatever happens to a notification.
@@ -37,7 +38,7 @@ logger = logging.getLogger(__name__)
 KEEP_DAYS = 90
 
 # Everything the bell says, in the order the settings list them.
-KINDS = ("new_review", "watch_listing", "watch_finished", "wanted_by")
+KINDS = ("new_review", "watch_listing", "watch_finished", "wanted_by", "guest_read")
 
 # How much of a review the bell quotes.
 QUOTE_CHARS = 140
@@ -230,6 +231,42 @@ def on_finished(db: Session, *, reader_id: uuid.UUID, comment: str | None, day=N
         db.commit()
     except Exception:  # never in the way of logging the day
         logger.exception("finish notifications failed")
+        db.rollback()
+
+
+def on_guest_read(db: Session, *, reader_id: uuid.UUID, minutes: int) -> None:
+    """A reader who signed up by someone's link read for the first time: the
+    one who invited them hears it, once («Айгерим прочитала 25 мин — благодаря
+    вам»). The moment they are proudest is the moment they invite again."""
+    from app.models.round import ReadingLog
+
+    try:
+        reader = db.get(User, reader_id)
+        if reader is None or reader.invited_by is None or minutes <= 0:
+            return
+        days = db.execute(
+            select(func.count()).where(ReadingLog.user_id == reader_id, ReadingLog.minutes > 0)
+        ).scalar_one()
+        if days != 1:
+            return
+        said = db.execute(
+            select(Notification.id).where(
+                Notification.user_id == reader.invited_by,
+                Notification.kind == "guest_read",
+                Notification.dedupe == str(reader_id),
+            )
+        ).first()
+        if said:
+            return
+        if notify(db, reader.invited_by, "guest_read", {
+            "reader": reader.display_name or reader.username,
+            "reader_id": str(reader_id),
+            "minutes": int(minutes),
+            "gender": reader.gender.value if reader.gender else None,
+        }, dedupe=str(reader_id)):
+            db.commit()
+    except Exception:  # never in the way of logging the day
+        logger.exception("guest notification failed")
         db.rollback()
 
 

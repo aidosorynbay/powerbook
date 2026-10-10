@@ -943,7 +943,7 @@ export type BookChatState = {
 // The header bell.
 export type SiteNotification = {
   id: string;
-  kind: 'new_review' | 'watch_listing' | 'watch_finished' | 'wanted_by' | string;
+  kind: 'new_review' | 'watch_listing' | 'watch_finished' | 'wanted_by' | 'guest_read' | string;
   data: Record<string, unknown>;
   created_at: string | null;
   read: boolean;

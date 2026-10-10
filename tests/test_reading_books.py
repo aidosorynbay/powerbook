@@ -17,7 +17,7 @@ from app.db.session import get_db
 from app.main import create_app
 from app.models.enums import Gender, RoundParticipantStatus, RoundStatus
 from app.models.group import Group
-from app.models.round import Round, RoundParticipant
+from app.models.round import ReadingLog, Round, RoundParticipant
 from app.models.user import User
 from app.services import catalog
 from app.services import reading as reading_service
@@ -198,3 +198,36 @@ def test_an_ai_letter_whose_writer_died_offers_to_write_again(env):
         assert (out.status, out.error) == ("error", "interrupted")
     finally:
         s.close()
+
+
+def test_whoever_invited_a_reader_hears_their_first_day(env):
+    """«Приведи друга»: the first day a guest reads, the one whose link they
+    came by hears it in the bell, once."""
+    from app.models.notification import Notification, NotificationPref
+
+    s = env.Session()
+    dana = s.query(User).filter(User.username == "dana").one()
+    aigerim = s.get(User, env.aigerim.id)
+    aigerim.invited_by = dana.id
+    s.commit()
+
+    def bell():
+        s.expire_all()
+        return [(n.kind, n.data["reader"], n.data["minutes"]) for n in s.query(Notification).filter(Notification.user_id == dana.id)]
+
+    _log(env, 9, minutes=0)
+    assert bell() == []
+    _log(env, 10, minutes=25)
+    assert bell() == [("guest_read", "Aigerim", 25)]
+    _log(env, 10, minutes=40)  # the same day again
+    _log(env, 11, minutes=30)  # and the next
+    assert len(bell()) == 1
+
+    # Switched off: a first day says nothing.
+    s.add(NotificationPref(user_id=dana.id, kind="guest_read", enabled=False))
+    s.query(Notification).delete()
+    s.query(ReadingLog).delete()
+    s.commit()
+    _log(env, 12, minutes=30)
+    assert bell() == []
+    s.close()

@@ -10,9 +10,9 @@ import styles from './Bell.module.css';
 const POLL_MS = 60_000;
 
 // The switches, in the order the server lists them.
-const KINDS = ['new_review', 'watch_listing', 'watch_finished', 'wanted_by'] as const;
+const KINDS = ['new_review', 'watch_listing', 'watch_finished', 'wanted_by', 'guest_read'] as const;
 
-const ICONS: Record<string, IconName> = { new_review: 'chat', watch_listing: 'tag', wanted_by: 'users' };
+const ICONS: Record<string, IconName> = { new_review: 'chat', watch_listing: 'tag', wanted_by: 'users', guest_read: 'gift' };
 
 /** Where a notification leads, and what it says. */
 function useWords() {
@@ -45,6 +45,12 @@ function useWords() {
       return {
         text: t('notif.wanted', { title, n: Number(d.n ?? 1) }),
         to: `/market?sell=${encodeURIComponent(String(d.volume_key ?? ''))}&title=${encodeURIComponent(title)}${author}`,
+      };
+    }
+    if (n.kind === 'guest_read') {
+      return {
+        text: t(d.gender === 'male' ? 'notif.guestM' : 'notif.guestF', { reader: String(d.reader ?? ''), minutes: Number(d.minutes ?? 0) }),
+        to: '/insights#invite',
       };
     }
     return { text: title, to: '/books' };

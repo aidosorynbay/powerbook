@@ -149,6 +149,7 @@ class ReadingService:
         # Last day date itself: allow logging but score=0
         force_score = 0 if day == last_day_date else None
         before = self.logs.get_for_user_date(round_id=round_id, user_id=user_id, day=day)
+        before_minutes = int(before.minutes) if before else 0
         was_public_finish = bool(
             before and before.book_finished and not before.is_comment_private and before.comment == comment
         )
@@ -179,6 +180,11 @@ class ReadingService:
                 from app.services import book_finish
 
                 book_finish.give_days(self.db, user_id=user_id, title=finished_title, day=day, start=started_on)
+        # A friend's first day read: whoever invited them hears (app/services/notify.py).
+        if row.minutes > 0 and (before is None or before_minutes == 0):
+            from app.services import notify
+
+            notify.on_guest_read(self.db, reader_id=user_id, minutes=int(row.minutes))
         # A book finished in the open: whoever watches it hears (app/services/notify.py).
         if book_finished and comment and not comment_private and not was_public_finish:
             from app.services import notify
