@@ -13,7 +13,7 @@ import {
   type ManualBook,
   type BookshelfEntry,
 } from '@/shared/lib';
-import { Button, Card, Container, Logo, PageTransition, Avatar } from '@/shared/ui';
+import { Button, Card, Container, Logo, PageTransition, Avatar, PasswordInput } from '@/shared/ui';
 import styles from './ProfilePage.module.css';
 
 type Gender = 'male' | 'female' | 'unknown';
@@ -545,10 +545,9 @@ export function ProfilePage() {
                 <label className={styles.label} htmlFor="currentPassword">
                   {t('profile.currentPassword')}
                 </label>
-                <input
+                <PasswordInput
                   id="currentPassword"
                   className={styles.input}
-                  type="password"
                   autoComplete="current-password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
@@ -560,10 +559,9 @@ export function ProfilePage() {
                 <label className={styles.label} htmlFor="newPassword">
                   {t('profile.newPassword')}
                 </label>
-                <input
+                <PasswordInput
                   id="newPassword"
                   className={styles.input}
-                  type="password"
                   autoComplete="new-password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
@@ -576,10 +574,9 @@ export function ProfilePage() {
                 <label className={styles.label} htmlFor="confirmPassword">
                   {t('profile.confirmPassword')}
                 </label>
-                <input
+                <PasswordInput
                   id="confirmPassword"
                   className={styles.input}
-                  type="password"
                   autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -616,10 +613,9 @@ export function ProfilePage() {
                   <label className={styles.label} htmlFor="deletePassword">
                     {t('profile.deletePasswordLabel')}
                   </label>
-                  <input
+                  <PasswordInput
                     id="deletePassword"
                     className={styles.input}
-                    type="password"
                     autoComplete="current-password"
                     value={deletePassword}
                     onChange={(e) => setDeletePassword(e.target.value)}

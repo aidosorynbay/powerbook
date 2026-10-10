@@ -21,3 +21,5 @@ export { PageTransition } from './PageTransition';
 export { Avatar } from './Avatar';
 
 export { BookCard } from './BookCard';
+
+export { PasswordInput } from './PasswordInput';

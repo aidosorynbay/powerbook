@@ -1,7 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth, useI18n, apiPost, invitedRef, type TokenResponse } from '@/shared/lib';
-import { Button, Card, Container, Logo, PageTransition } from '@/shared/ui';
+import { Button, Card, Container, Logo, PageTransition, PasswordInput } from '@/shared/ui';
 import { ClaimPicker, TelegramGuide } from '@/widgets';
 import styles from './RegisterPage.module.css';
 
@@ -168,10 +168,9 @@ export function RegisterPage() {
               <label className={styles.label} htmlFor="password">
                 {t('register.password')}
               </label>
-              <input
+              <PasswordInput
                 id="password"
                 className={styles.input}
-                type="password"
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

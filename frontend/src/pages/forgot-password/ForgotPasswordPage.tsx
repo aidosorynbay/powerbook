@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useI18n, apiPost } from '@/shared/lib';
-import { Button, Card, Container, Logo, PageTransition } from '@/shared/ui';
+import { Button, Card, Container, Logo, PageTransition, PasswordInput } from '@/shared/ui';
 import styles from './ForgotPasswordPage.module.css';
 
 type TelegramUser = {
@@ -121,10 +121,9 @@ export function ForgotPasswordPage() {
                     <label className={styles.label} htmlFor="password">
                       {t('forgotPassword.newPassword')}
                     </label>
-                    <input
+                    <PasswordInput
                       id="password"
                       className={styles.input}
-                      type="password"
                       autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -136,10 +135,9 @@ export function ForgotPasswordPage() {
                     <label className={styles.label} htmlFor="confirm">
                       {t('forgotPassword.confirmPassword')}
                     </label>
-                    <input
+                    <PasswordInput
                       id="confirm"
                       className={styles.input}
-                      type="password"
                       autoComplete="new-password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}

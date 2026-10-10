@@ -1,7 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth, useI18n, apiPost, type TokenResponse } from '@/shared/lib';
-import { Button, Card, Container, Logo, PageTransition } from '@/shared/ui';
+import { Button, Card, Container, Logo, PageTransition, PasswordInput } from '@/shared/ui';
 import styles from './LoginPage.module.css';
 
 export function LoginPage() {
@@ -77,10 +77,9 @@ export function LoginPage() {
               <label className={styles.label} htmlFor="password">
                 {t('login.password')}
               </label>
-              <input
+              <PasswordInput
                 id="password"
                 className={styles.input}
-                type="password"
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
