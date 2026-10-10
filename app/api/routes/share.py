@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.share import DayCardOut, MyDayCardOut, ShareDayIn
-from app.services import day_share
+from app.schemas.share import DayCardOut, InvitesOut, MyDayCardOut, ShareDayIn
+from app.services import day_share, invites
 
 router = APIRouter(prefix="/share", tags=["share"])
 
@@ -31,6 +31,12 @@ def share_day(payload: ShareDayIn, db: Session = Depends(get_db), user: User = D
         template=payload.template, action=payload.action, ink=payload.ink,
     )
     return {"ok": True}
+
+
+@router.get("/invites", response_model=InvitesOut)
+def my_invites(db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> InvitesOut:
+    """«Приведи друга»: who came by the reader's link and what they have read."""
+    return invites.mine(db, user=user)
 
 
 @router.get("/r/{username}", response_model=DayCardOut)

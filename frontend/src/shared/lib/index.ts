@@ -138,6 +138,8 @@ export type {
   CardDay,
   DayCard,
   MyDayCard,
+  Invites,
+  InviteGuest,
   ShareChannel,
 } from './types';
 export { useTheme, useResolvedTheme, readThemeChoice, resolveTheme, applyTheme, THEME_KEY, type ThemeChoice } from './theme';

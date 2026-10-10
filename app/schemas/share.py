@@ -63,3 +63,32 @@ class MyDayCardOut(DayCardOut):
     # The round's days the reader finished a book on, for the day picker and
     # the sticker. Own card only, like the book.
     finished_days: list[date] = []
+
+
+class InviteGuestOut(BaseModel):
+    user_id: str
+    username: str
+    display_name: str
+    avatar_data: str | None = None
+    joined: date | None = None
+    minutes: int
+    days: int
+    finished: int
+    last_day: date | None = None
+    # How many came by this guest's own link.
+    brought: int = 0
+
+
+class InviteTotalsOut(BaseModel):
+    people: int
+    minutes: int
+    days: int
+    finished: int
+
+
+class InvitesOut(BaseModel):
+    username: str
+    guests: list[InviteGuestOut]
+    # Those who signed up by the reader's own link, and those who came after them.
+    direct: InviteTotalsOut
+    further: InviteTotalsOut

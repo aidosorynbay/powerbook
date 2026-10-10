@@ -260,7 +260,9 @@
 }
 
 .invited {
+  display: block;
   margin: 6px 0 0;
+  text-decoration: none;
   color: var(--color-text-accent);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);

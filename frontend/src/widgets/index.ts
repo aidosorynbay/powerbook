@@ -21,3 +21,4 @@ export { BookChat } from './BookChat';
 export { Bell } from './Notifications';
 export { Barys, BarysCard, BarysIntro } from './Mascot';
 export { BookTime, shelfMinutes } from './BookTime';
+export { InviteFriends } from './InviteFriends/InviteFriends';

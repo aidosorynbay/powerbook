@@ -18,7 +18,7 @@ import {
   type LeagueTier,
 } from '@/shared/lib';
 import { Card, Container, PageTransition, Badge, ProgressBar, Button, BookCard, Icon } from '@/shared/ui';
-import { Header, Footer, ClaimPicker, WrappedCard, BookTime } from '@/widgets';
+import { Header, Footer, ClaimPicker, WrappedCard, BookTime, InviteFriends } from '@/widgets';
 import { paletteFor, dimensionsFor } from '@/pages/library/bookcase/bookArt';
 import { bookCount } from '@/pages/library/bookcase/plural';
 import styles from './InsightsPage.module.css';
@@ -55,16 +55,20 @@ export function InsightsPage() {
   // Arrived from «Вы раньше участвовали в кругах? — Да»: down to the archive section, lit for a moment.
   const [claimLit, setClaimLit] = useState(false);
   useEffect(() => {
-    if (window.location.hash !== '#claim') return;
+    // «Приведи друга», from the guests line of «Поделиться днём»: down to it, lit the same way
+    const hash = window.location.hash;
+    if (hash !== '#claim' && hash !== '#invite') return;
+    const target = hash.slice(1);
     let tries = 0;
     let timer = 0;
     const find = () => {
-      const el = document.getElementById('claim');
+      const el = document.getElementById(target);
       if (!el) {
         if (tries++ < 30) timer = window.setTimeout(find, 200);
         return;
       }
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (target === 'invite') return;
       el.querySelector('input')?.focus({ preventScroll: true });
       setClaimLit(true);
       timer = window.setTimeout(() => setClaimLit(false), 2600);
@@ -453,6 +457,11 @@ export function InsightsPage() {
                     <BookTime books={shelfBooks} isSelf />
                   </section>
                 )}
+
+                <section id="invite" className={styles.section}>
+                  <h2 className={styles.sectionTitle}>{t('invite.title')}</h2>
+                  <InviteFriends />
+                </section>
 
                 {user && <ProfileListings userId={user.id} isSelf titleClass={styles.sectionTitle} />}
 

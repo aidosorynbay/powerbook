@@ -269,7 +269,7 @@ export function ShareDay({ day: opened, roundId, onClose }: { day: string; round
             <p className={styles.hint}>{t('shareDay.privacy')}</p>
           </div>
         )}
-        {card && card.invited > 0 && <p className={styles.invited}>{t('shareDay.invited', { n: card.invited })}</p>}
+        {card && card.invited > 0 && <a className={styles.invited} href="/insights#invite">{t('shareDay.invited', { n: card.invited })} →</a>}
       </div>
     </div>
   );

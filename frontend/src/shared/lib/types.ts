@@ -161,6 +161,22 @@ export type DayCard = {
  * story sticker and the day picker, and never on the public card. */
 export type MyDayCard = DayCard & { round_id: string; invited: number; book: string | null; finished_days: string[] };
 
+/** «Приведи друга»: a guest who signed up by the reader's link, and what they have read since (/share/invites). */
+export type InviteGuest = {
+  user_id: string;
+  username: string;
+  display_name: string;
+  avatar_data: string | null;
+  joined: string | null;
+  minutes: number;
+  days: number;
+  finished: number;
+  last_day: string | null;
+  brought: number;
+};
+export type InviteTotals = { people: number; minutes: number; days: number; finished: number };
+export type Invites = { username: string; guests: InviteGuest[]; direct: InviteTotals; further: InviteTotals };
+
 /** 'sticker': the story sticker, copied or saved; 'story': the whole story picture. */
 export type ShareChannel = 'whatsapp' | 'telegram' | 'x' | 'copy' | 'native' | 'sticker' | 'story';
 

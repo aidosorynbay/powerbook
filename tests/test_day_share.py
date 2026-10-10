@@ -252,3 +252,34 @@ def test_an_earlier_day_goes_out_with_the_book_finished_on_it(env):
     assert shared.day == date(2026, 10, 4)
     public = env.client.get("/api/share/r/aigerim").json()
     assert "finished_days" not in public and "Шантарам" not in str(public)
+
+
+def test_a_reader_sees_who_came_by_their_link_and_what_they_read(env):
+    """«Приведи друга»: the guests by the reader's link, their days and
+    minutes, and the readers they brought in turn."""
+    sara = env.user("sara", invited_by=env.aigerim.id)
+    bota = env.user("bota", invited_by=env.aigerim.id)
+    nurik = env.user("nurik", invited_by=sara.id)
+    env.user("stranger")
+    env.read(sara, date(2026, 10, 3), 40)
+    env.read(sara, OCT5, 25)
+    env.read(nurik, OCT5, 30)
+    env.db.add(ReadingLog(round_id=env.round.id, user_id=bota.id, date=OCT5, minutes=0, score=0))
+    env.db.commit()
+
+    out = env.client.get("/api/share/invites", headers=env.h(env.aigerim))
+    assert out.status_code == 200, out.text
+    out = out.json()
+    assert out["username"] == "aigerim"
+    assert [(g["username"], g["minutes"], g["days"], g["brought"]) for g in out["guests"]] == [
+        ("sara", 65, 2, 1), ("bota", 0, 0, 0),
+    ]
+    assert out["guests"][0]["last_day"] == "2026-10-05"
+    assert out["direct"] == {"people": 2, "minutes": 65, "days": 2, "finished": 0}
+    assert out["further"] == {"people": 1, "minutes": 30, "days": 1, "finished": 0}
+
+    # Sara sees only her own guest; someone who invited nobody sees nothing.
+    assert [g["username"] for g in env.client.get("/api/share/invites", headers=env.h(sara)).json()["guests"]] == ["nurik"]
+    empty = env.client.get("/api/share/invites", headers=env.h(env.dana)).json()
+    assert empty["guests"] == [] and empty["direct"]["people"] == 0
+    assert env.client.get("/api/share/invites").status_code == 401
