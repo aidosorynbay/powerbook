@@ -137,3 +137,25 @@ def test_the_founder_links_a_reader_and_the_coverage_counts_follow(env):
 
     after = build(env.db)["counts"]
     assert after["with_approved"] == 1 and after["neither"] == 0 and after["ghosts_granted"] == 1
+
+
+def test_the_founder_hears_in_telegram_when_a_reader_asks(env, monkeypatch):
+    from app.core.config import settings
+    from app.services import admin_ping
+
+    sent = []
+    monkeypatch.setattr(settings, "telegram_bot_token", "t")
+    monkeypatch.setattr(settings, "telegram_admin_chat_ids", "111, 222")
+    monkeypatch.setattr(admin_ping, "_send", lambda chat_id, text: sent.append((chat_id, text)))
+    monkeypatch.setattr(admin_ping.threading, "Thread",
+                        lambda target, args, daemon: type("T", (), {"start": lambda self: target(*args)})())
+
+    env.client.post("/api/claims", json={"ghost_user_id": str(env.ghost_saira.id)}, headers=env.h(env.saira))
+    assert [chat for chat, _ in sent] == ["111", "222"]
+    assert "Сайра Кенже (@saira_k)" in sent[0][1] and "(@Saira)" in sent[0][1]
+    assert "/admin/username-claim/list" in sent[0][1]
+
+    # The founder linking someone themselves is not news to them.
+    sent.clear()
+    ClaimsService(env.db).link_by_admin(user_id=env.saira.id, ghost_user_id=env.ghost_bolat.id, admin_id=env.aidos.id)
+    assert sent == []

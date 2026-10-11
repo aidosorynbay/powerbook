@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.schemas.claims import ClaimCandidateOut, ClaimCreateRequest, ClaimSuggestionsOut, MyClaimOut
+from app.services import admin_ping
 from app.services.claims import ClaimsService
 
 router = APIRouter(prefix="/claims", tags=["claims"])
@@ -39,11 +40,17 @@ def create_claim(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ) -> MyClaimOut:
-    return ClaimsService(db).submit_claim(
+    service = ClaimsService(db)
+    out = service.submit_claim(
         user_id=user.id,
         ghost_user_id=uuid.UUID(payload.ghost_user_id),
         note=payload.note,
     )
+    # The founder hears in Telegram, so nobody waits for them to open /admin.
+    ghost = service.users.get(uuid.UUID(out.ghost_user_id))
+    if ghost is not None and out.status == "pending":
+        admin_ping.claim_waiting(claimant=user, ghost=ghost, rounds=out.rounds)
+    return out
 
 
 @router.delete("/{claim_id}")

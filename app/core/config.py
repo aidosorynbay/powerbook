@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # Telegram bot (login widget / password reset)
     telegram_bot_token: str = ""
     telegram_bot_username: str = "PowerbookKZBot"
+    # Who the bot tells about what waits in /admin (app/services/admin_ping.py):
+    # numeric chat ids, comma-separated. Empty means nobody.
+    telegram_admin_chat_ids: str = ""
 
     # Google Books API key for cover lookups (app/services/covers.py). Empty
     # means the keyless public feed, which works but searches less well.
