@@ -139,23 +139,65 @@ def test_the_founder_links_a_reader_and_the_coverage_counts_follow(env):
     assert after["with_approved"] == 1 and after["neither"] == 0 and after["ghosts_granted"] == 1
 
 
-def test_the_founder_hears_in_telegram_when_a_reader_asks(env, monkeypatch):
+
+@pytest.fixture()
+def telegram(monkeypatch):
+    """Telegram itself replaced by a list of what the bot would have said."""
     from app.core.config import settings
     from app.services import admin_ping
 
-    sent = []
+    calls = []
     monkeypatch.setattr(settings, "telegram_bot_token", "t")
     monkeypatch.setattr(settings, "telegram_admin_chat_ids", "111, 222")
-    monkeypatch.setattr(admin_ping, "_send", lambda chat_id, text: sent.append((chat_id, text)))
-    monkeypatch.setattr(admin_ping.threading, "Thread",
-                        lambda target, args, daemon: type("T", (), {"start": lambda self: target(*args)})())
+    monkeypatch.setattr(admin_ping, "_later", lambda method, payload: calls.append((method, payload)))
+    return calls
 
+
+def test_the_founder_hears_in_telegram_when_a_reader_asks(env, telegram):
     env.client.post("/api/claims", json={"ghost_user_id": str(env.ghost_saira.id)}, headers=env.h(env.saira))
-    assert [chat for chat, _ in sent] == ["111", "222"]
-    assert "Сайра Кенже (@saira_k)" in sent[0][1] and "(@Saira)" in sent[0][1]
-    assert "/admin/username-claim/list" in sent[0][1]
+    assert [(m, p["chat_id"]) for m, p in telegram] == [("sendMessage", "111"), ("sendMessage", "222")]
+    text = telegram[0][1]["text"]
+    assert "Сайра Кенже (@saira_k)" in text and "(@Saira)" in text
+    buttons = telegram[0][1]["reply_markup"]["inline_keyboard"][0]
+    assert [b["text"] for b in buttons] == ["✅ Одобрить", "❌ Отказать"]
 
     # The founder linking someone themselves is not news to them.
-    sent.clear()
+    telegram.clear()
     ClaimsService(env.db).link_by_admin(user_id=env.saira.id, ghost_user_id=env.ghost_bolat.id, admin_id=env.aidos.id)
-    assert sent == []
+    assert telegram == []
+
+
+def _press(env, data, *, sender=111, secret=None):
+    from app.services import admin_ping
+
+    update = {"callback_query": {"id": "q", "data": data, "from": {"id": sender},
+                                 "message": {"message_id": 5, "chat": {"id": sender}, "text": "🙋 Заявка"}}}
+    return env.client.post("/api/telegram/webhook", json=update,
+                           headers={"X-Telegram-Bot-Api-Secret-Token": secret or admin_ping.webhook_secret()})
+
+
+def test_the_founder_approves_or_refuses_from_telegram(env, telegram):
+    c = env.client
+    asked = c.post("/api/claims", json={"ghost_user_id": str(env.ghost_saira.id)}, headers=env.h(env.saira)).json()
+    other = c.post("/api/claims", json={"ghost_user_id": str(env.ghost_dana.id)}, headers=env.h(env.saira)).json()
+    telegram.clear()
+
+    # Not Telegram (no secret), and not the founder: nothing changes.
+    assert _press(env, f"claim:a:{asked['id']}", secret="wrong").status_code == 403
+    _press(env, f"claim:a:{asked['id']}", sender=999)
+    env.db.expire_all()
+    assert env.db.get(UsernameClaim, __import__("uuid").UUID(asked["id"])).status == ClaimStatus.pending
+
+    telegram.clear()
+    assert _press(env, f"claim:a:{asked['id']}").status_code == 200
+    _press(env, f"claim:r:{other['id']}")
+    env.db.expire_all()
+    mine = {m["ghost_username"]: m["status"] for m in c.get("/api/claims/mine", headers=env.h(env.saira)).json()}
+    assert mine == {"Saira": "approved", "dana_reads": "revoked"}
+    edits = [p["text"] for m, p in telegram if m == "editMessageText"]
+    assert edits == ["🙋 Заявка\n\n✅ Одобрено", "🙋 Заявка\n\n❌ Отказано"]
+
+    # A second press says it is settled and changes nothing.
+    telegram.clear()
+    _press(env, f"claim:r:{asked['id']}")
+    assert [p["text"] for m, p in telegram if m == "answerCallbackQuery"] == ["Уже одобрено"]

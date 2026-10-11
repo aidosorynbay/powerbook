@@ -1,5 +1,6 @@
 import calendar
 import logging
+import threading
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -168,6 +169,10 @@ async def lifespan(app: FastAPI):
     )
     scheduler.start()
     logger.info("Round lifecycle scheduler started")
+    # The bot's «Одобрить» / «Отказать» buttons come back by its webhook.
+    from app.services import admin_ping
+
+    threading.Thread(target=admin_ping.set_webhook, daemon=True).start()
     yield
     scheduler.shutdown()
     logger.info("Round lifecycle scheduler stopped")
