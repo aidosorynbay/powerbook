@@ -157,7 +157,7 @@ def test_the_founder_hears_in_telegram_when_a_reader_asks(env, telegram):
     env.client.post("/api/claims", json={"ghost_user_id": str(env.ghost_saira.id)}, headers=env.h(env.saira))
     assert [(m, p["chat_id"]) for m, p in telegram] == [("sendMessage", "111"), ("sendMessage", "222")]
     text = telegram[0][1]["text"]
-    assert "Сайра Кенже (@saira_k)" in text and "(@Saira)" in text
+    assert "Сайра Кенже (@saira_k) говорит, что это она: «Saira» (@Saira)" in text
     buttons = telegram[0][1]["reply_markup"]["inline_keyboard"][0]
     assert [b["text"] for b in buttons] == ["✅ Одобрить", "❌ Отказать"]
 

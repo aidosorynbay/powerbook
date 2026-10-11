@@ -98,9 +98,11 @@ def claim_waiting(*, claim_id: str, claimant, ghost, rounds: list[str]) -> None:
     """A reader asked for an archive nickname: it waits for a yes."""
     who = claimant.display_name or claimant.username
     tg = f", tg @{claimant.telegram_id}" if claimant.telegram_id else ""
+    gender = getattr(claimant.gender, "value", claimant.gender)
+    it = {"female": "она", "male": "он"}.get(gender, "он(а)")
     lines = [
         "🙋 Заявка на ник из истории",
-        f"{who} (@{claimant.username}{tg}) говорит, что это он(а): «{ghost.display_name}» (@{ghost.username})",
+        f"{who} (@{claimant.username}{tg}) говорит, что это {it}: «{ghost.display_name}» (@{ghost.username})",
     ]
     if rounds:
         lines.append("Круги: " + ", ".join(rounds))
