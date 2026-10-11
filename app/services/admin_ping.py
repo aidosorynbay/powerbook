@@ -85,7 +85,11 @@ def set_webhook() -> None:
         return
     info = _call("getWebhookInfo", {}) or {}
     current = (info.get("result") or {}).get("url") or ""
-    if current and current != WEBHOOK_URL:
+    # Already ours: nothing to do. Both server workers start together, and
+    # Telegram answers the second setWebhook in a row with 429.
+    if current == WEBHOOK_URL:
+        return
+    if current:
         logger.warning("the bot's webhook points elsewhere (%s); leaving it", current)
         return
     _call("setWebhook", {"url": WEBHOOK_URL, "secret_token": webhook_secret(), "allowed_updates": ["callback_query"]})
