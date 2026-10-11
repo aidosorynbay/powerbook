@@ -42,7 +42,7 @@ from app.schemas.reading_ai import (
     UnitOut,
 )
 from app.services import books as books_service
-from app.services import catalog, llm
+from app.services import catalog, llm, streaks
 from app.services.catalog import CatalogIndex
 
 logger = logging.getLogger(__name__)
@@ -90,14 +90,9 @@ def _work_of(idx: CatalogIndex, vol: BookcaseBookOut):
     return idx.find(vol.match_key) or idx.find(catalog.work_key(vol.title))
 
 
-def _streak(days: list[date]) -> int:
-    best = run = 0
-    previous = None
-    for d in sorted(set(days)):
-        run = run + 1 if previous is not None and d - previous == timedelta(days=1) else 1
-        best = max(best, run)
-        previous = d
-    return best
+def _streak(days: list[date], neutral: frozenset[date] = frozenset()) -> int:
+    """The longest run of reading days; a circle's last day does not break it (app/services/streaks.py)."""
+    return streaks.longest_and_current(days, neutral)[0]
 
 
 def overview(db: Session, *, user: User, period: str) -> ReadingOverviewOut:
@@ -190,7 +185,7 @@ def overview(db: Session, *, user: User, period: str) -> ReadingOverviewOut:
         months=months,
         minutes=sum(in_days.values()),
         days_read=len(in_days),
-        longest_streak=_streak(list(in_days)),
+        longest_streak=_streak(list(in_days), streaks.circle_last_days(db)),
         best_day=BestDayOut(date=best[0].isoformat(), minutes=best[1]) if best else None,
         units=[UnitOut(key=k, minutes=v[0], books=v[1]) for k, v in sorted(units.items())],
         books=sorted(book_rows, key=lambda r: r.finished_on or "", reverse=True),

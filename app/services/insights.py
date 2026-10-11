@@ -16,6 +16,7 @@ from app.repositories.claims import ClaimsRepository
 from app.repositories.insights import normalize_book_title, InsightsRepository
 from app.repositories.results import RoundResultRepository
 from app.repositories.rounds import RoundRepository
+from app.services import streaks
 from app.schemas.insights import (
     BadgeHolderOut,
     BadgeStatsOut,
@@ -174,35 +175,6 @@ CELEBRITY_READING_LISTS: list[dict] = [
 ]
 
 
-def _longest_and_current_streak(sorted_dates: list[date]) -> tuple[int, int]:
-    if not sorted_dates:
-        return 0, 0
-    longest = 1
-    run = 1
-    for i in range(1, len(sorted_dates)):
-        if sorted_dates[i] == sorted_dates[i - 1] + timedelta(days=1):
-            run += 1
-        elif sorted_dates[i] == sorted_dates[i - 1]:
-            continue
-        else:
-            longest = max(longest, run)
-            run = 1
-    longest = max(longest, run)
-
-    today = date.today()
-    last = sorted_dates[-1]
-    if (today - last).days > 1:
-        current = 0
-    else:
-        current = 1
-        for i in range(len(sorted_dates) - 1, 0, -1):
-            if sorted_dates[i] == sorted_dates[i - 1] + timedelta(days=1):
-                current += 1
-            else:
-                break
-    return longest, current
-
-
 class InsightsService:
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -219,7 +191,7 @@ class InsightsService:
     def all_time_profile(self, *, user_id: uuid.UUID) -> AllTimeProfileOut:
         ids = self._effective_ids(user_id)
         dates = self.repo.all_logged_dates(user_ids=ids)
-        longest, current = _longest_and_current_streak(sorted(set(dates)))
+        longest, current = streaks.longest_and_current(dates, streaks.circle_last_days(self.db))
 
         total_minutes = self.repo.total_minutes_all_time(user_ids=ids)
         total_days_logged = self.repo.total_days_logged(user_ids=ids)
@@ -850,10 +822,8 @@ class InsightsService:
             grouped: dict[uuid.UUID, list] = defaultdict(list)
             for uid, dlist in dates_raw.items():
                 grouped[resolve(uid)].extend(dlist)
-            values = {
-                uid: _longest_and_current_streak(sorted(set(dlist)))[0]
-                for uid, dlist in grouped.items()
-            }
+            neutral = streaks.circle_last_days(self.db)
+            values = {uid: streaks.longest_and_current(dlist, neutral)[0] for uid, dlist in grouped.items()}
 
         holders = [uid for uid, v in values.items() if v >= threshold]
         # One denominator for every track: everyone who has ever logged
@@ -933,9 +903,8 @@ class InsightsService:
             target = resolve(uid)
             if target is not None:
                 dates_merged[target].extend(dlist)
-        streak_merged = {
-            uid: _longest_and_current_streak(sorted(set(dlist)))[0] for uid, dlist in dates_merged.items()
-        }
+        neutral = streaks.circle_last_days(self.db)
+        streak_merged = {uid: streaks.longest_and_current(dlist, neutral)[0] for uid, dlist in dates_merged.items()}
 
         def top_entries(merged: dict[uuid.UUID, int], milestones: list[int], n: int = 5) -> list[HallOfFameEntryOut]:
             ranked = sorted(merged.items(), key=lambda x: -x[1])[:n]
