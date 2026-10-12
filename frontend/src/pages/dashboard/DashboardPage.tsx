@@ -23,7 +23,7 @@ import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews } from '@/widgets';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
-import { BarysCard } from '@/widgets/Mascot';
+import { InstallNudge } from '@/widgets/InstallNudge';
 import { ShareDay } from '@/widgets/ShareDay';
 import anim from '@/shared/styles/animations.module.css';
 import { quietDayIcon, quietDayQuoteKeys, finishFlagIcon } from '@/shared/lib/quietDays';
@@ -1060,12 +1060,6 @@ export function DashboardPage() {
                   <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay1}`}>
                     <div className={styles.sectionTitle}>{t('dashboard.today')}</div>
                     <div className={styles.todayPanel}>
-                      <BarysCard
-                        todayMinutes={todayData?.minutes ?? 0}
-                        streak={personalStreak}
-                        totalMinutes={allTime?.total_minutes ?? null}
-                        brokeYesterday={brokeYesterday}
-                      />
                       <div className={styles.todayDate}>{todayStr}</div>
 
                       {/* Correction countdown. Loud on purpose: this is the last
@@ -1187,6 +1181,9 @@ export function DashboardPage() {
                     </div>
                   </div>
                 )}
+                {/* The app on the home screen: offered once the daily habit has a
+                    page to live on, and only to members on a phone. */}
+                {isParticipant && <InstallNudge />}
                 <div className={`${styles.section} ${styles.orderLeaderboard} ${revealClass} ${anim.scrollRevealDelay2}`}>
                   <div className={styles.sectionTitle}>{t('dashboard.leaderboard')}</div>
                   {canJoin && (

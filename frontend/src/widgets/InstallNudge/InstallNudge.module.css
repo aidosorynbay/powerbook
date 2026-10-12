@@ -1,0 +1,43 @@
+.card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  background: var(--color-accent-primary-muted);
+  border: 1px solid var(--color-border-accent);
+}
+
+.icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-primary);
+  color: var(--color-on-accent-alt);
+}
+
+.text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+.title { font-size: var(--font-size-base); font-weight: var(--font-weight-bold); line-height: var(--line-height-tight); }
+
+.lead { margin: 0; color: var(--color-text-secondary); font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
+
+.actions { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+
+.later {
+  border: 0;
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  min-height: 40px;
+  padding: 0 12px;
+  cursor: pointer;
+  border-radius: var(--radius-full);
+}
+
+.later:hover { color: var(--color-text-primary); }
+.later:focus-visible { outline: 2px solid var(--color-accent-primary); outline-offset: 2px; }
