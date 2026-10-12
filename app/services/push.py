@@ -110,6 +110,17 @@ def public_key(db: Session) -> str:
     return vapid_keys(db).public_key
 
 
+def _private_key_b64(pem: str) -> str:
+    """The key in the one form pywebpush parses: base64url of the raw 32-byte scalar.
+
+    Handing it the PEM looked right and failed in production (2026-10-13,
+    "Could not deserialize key data"): Vapid.from_string() wants raw bytes.
+    """
+    key = serialization.load_pem_private_key(pem.encode(), password=None)
+    raw = key.private_numbers().private_value.to_bytes(32, "big")
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
 # ---------- subscriptions ----------
 
 def subscribe(
@@ -209,7 +220,7 @@ def send(db: Session, sub: PushSubscription, payload: dict) -> bool:
         webpush(
             subscription_info={"endpoint": sub.endpoint, "keys": {"p256dh": sub.p256dh, "auth": sub.auth}},
             data=json.dumps(payload, ensure_ascii=False),
-            vapid_private_key=keys.private_pem,
+            vapid_private_key=_private_key_b64(keys.private_pem),
             vapid_claims={"sub": VAPID_SUBJECT},
             ttl=TTL_SECONDS,
         )

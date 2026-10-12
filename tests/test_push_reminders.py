@@ -139,7 +139,7 @@ def test_api_round_trip(env):
 
     # 10:15 Berlin on 12 October is 08:15 UTC.
     assert push.tick(db, datetime(2026, 10, 12, 8, 20, tzinfo=timezone.utc)) == 2
-    assert env["sent"][0]["data"].count("Time to read") + env["sent"][0]["data"].count("book") >= 1
+    assert '"title"' in env["sent"][0]["data"] and env["sent"][0]["subscription_info"]["endpoint"].startswith("https://push.example/")
 
     assert client.post("/api/push/test", headers=headers).json()["sent"] == 2
     assert client.post("/api/push/unsubscribe", json={"endpoint": "https://push.example/two"}, headers=headers).json()["ok"] is True
@@ -153,3 +153,39 @@ def test_off_means_silence(env):
     db.commit()
     assert push.tick(db, at(21, 0)) == 0
     assert uuid.UUID(str(dana.id))  # the user is untouched
+
+
+def test_signing_with_the_stored_key_really_works(env, monkeypatch):
+    """The whole encrypt-and-sign path with pywebpush itself; only the network is faked."""
+    import base64
+    import os
+
+    import pywebpush
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from py_vapid import Vapid
+
+    db, dana = env["db"], env["dana"]
+    monkeypatch.setattr(push, "webpush", pywebpush.webpush)
+    posted = []
+
+    class Created:
+        status_code = 201
+        text = ""
+        headers = {}
+
+    monkeypatch.setattr(pywebpush.requests, "post", lambda *a, **k: (posted.append(k), Created())[1])
+
+    # A browser-shaped subscription: a real P-256 public key and a 16-byte auth secret.
+    browser = ec.generate_private_key(ec.SECP256R1())
+    p256dh = base64.urlsafe_b64encode(
+        browser.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+    ).decode().rstrip("=")
+    auth = base64.urlsafe_b64encode(os.urandom(16)).decode().rstrip("=")
+    sub = push.subscribe(db, dana, endpoint="https://push.example/real", p256dh=p256dh, auth=auth, user_agent=None, display_mode=None)
+
+    assert push.send(db, sub, {"title": "t", "body": "b"}) is True
+    assert posted and posted[0]["headers"]["Authorization"].startswith("vapid ")
+    # The key pywebpush signed with is the pair the browser was given.
+    keys = push.vapid_keys(db)
+    assert push._public_key_b64(Vapid.from_string(push._private_key_b64(keys.private_pem))) == keys.public_key
