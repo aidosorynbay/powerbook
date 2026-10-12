@@ -5,8 +5,8 @@ reader's subscribed browsers, and when they want their daily reminder.
 
 New tables only, so this is safe to apply to live data.
 
-Revision ID: a7b8c9d0e1f2
-Revises: z6a7b8c9d0e1
+Revision ID: pr20261013a1
+Revises: a3b4c5d6e7f8
 Create Date: 2026-10-13
 
 """
@@ -15,8 +15,8 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-revision = "a7b8c9d0e1f2"
-down_revision = "z6a7b8c9d0e1"
+revision = "pr20261013a1"
+down_revision = "a3b4c5d6e7f8"
 branch_labels = None
 depends_on = None
 
