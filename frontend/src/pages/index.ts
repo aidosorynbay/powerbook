@@ -19,3 +19,4 @@ export { CatalogPage, MarketPage } from './books';
 export { ReadingPage } from './reading';
 export { JoinPage } from './join';
 export { ReaderDayPage } from './share';
+export { GetPage } from './get';

@@ -22,3 +22,6 @@ export { Bell } from './Notifications';
 export { Barys, BarysCard, BarysIntro } from './Mascot';
 export { BookTime, shelfMinutes } from './BookTime';
 export { InviteFriends } from './InviteFriends/InviteFriends';
+export { InstallGuideBody, InstallSheet, Handoff } from './InstallGuide';
+export { InstallLanding } from './InstallLanding';
+export { InstallNudge } from './InstallNudge';

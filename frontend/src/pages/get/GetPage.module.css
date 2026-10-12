@@ -1,0 +1,30 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-primary);
+}
+
+.main { flex: 1; padding: 24px 0 48px; }
+
+.card {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 24px 20px;
+  border-radius: var(--radius-xl);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-primary);
+}
+
+.title {
+  margin: 0 0 6px;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+}
+
+.lead {
+  margin: 0 0 20px;
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+}
