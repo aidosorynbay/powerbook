@@ -561,3 +561,14 @@
   color: var(--color-text-primary);
   border-color: var(--color-border-accent);
 }
+
+/* «На телефон»: the app, offered quietly from every page on a computer. */
+.phoneLink {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  text-decoration: none;
+  padding: 6px 4px;
+}
+
+.phoneLink:hover { color: var(--color-text-primary); }

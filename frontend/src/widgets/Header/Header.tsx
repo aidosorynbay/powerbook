@@ -144,6 +144,7 @@ export function Header() {
                 <nav className={styles.menuPanel}>
                   <Link to="/" className={styles.navLink}>{t('header.home')}</Link>
                   {navLinks}
+                  <Link to="/get" className={styles.navLink}>{t('install.menu')}</Link>
 
                   {/* Everything that used to sit on the right of the bar lives
                       here on phones — the row simply has no room for it. */}
@@ -219,6 +220,7 @@ export function Header() {
           </div>
 
           <div className={`${styles.actions} ${styles.actionsDesktop}`}>
+            <Link to="/get" className={styles.phoneLink}>{t('install.headerLink')}</Link>
             <Link
               to={isAdmin ? '/suggestions/admin' : '/suggestions'}
               className={styles.suggestionsBtn}
