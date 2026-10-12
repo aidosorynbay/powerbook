@@ -40,6 +40,7 @@ export function Bookworm({
   size = 112,
   still = false,
   film,
+  onFilmEnd,
   className = '',
 }: {
   stage: WormStage;
@@ -49,8 +50,10 @@ export function Bookworm({
   size?: number;
   /** A picture instead of the film: tiny sizes and quiet corners. */
   still?: boolean;
-  /** Another film of the worm, looped whole: «hello» waves and invites you to read. */
-  film?: 'hello';
+  /** Another film of the worm: «hello» waves and loops; «cocoon» is the change into the butterfly, played once. */
+  film?: 'hello' | 'cocoon';
+  /** For a film played once: it is over. */
+  onFilmEnd?: () => void;
   className?: string;
 }) {
   const { t } = useI18n();
@@ -126,7 +129,8 @@ export function Bookworm({
       playsInline
       preload="auto"
       autoPlay={!!film}
-      loop={!!film}
+      loop={film === 'hello'}
+      onEnded={film === 'cocoon' ? onFilmEnd : undefined}
       poster={poster}
       aria-label={label}
     >
@@ -141,13 +145,49 @@ export function Bookworm({
  * On the round page beside «Сегодня»: the worm and one line about today.
  * Green with today's 30 minutes in; the change plays once when they land.
  */
-export function BookwormCard({ todayMinutes, dayOfRound, turn }: { todayMinutes: number; dayOfRound: number; turn: boolean }) {
+export function BookwormCard({
+  todayMinutes,
+  dayOfRound,
+  turn,
+  roundKey,
+}: {
+  todayMinutes: number;
+  dayOfRound: number;
+  turn: boolean;
+  /** The circle this is, so the change into the butterfly plays once per circle. */
+  roundKey: string;
+}) {
   const { t } = useI18n();
   const done = todayMinutes >= 30;
   const stage = wormStage(dayOfRound);
+  const cocoonKey = `pb.worm.cocoon.${roundKey}`;
+  const [cocoon, setCocoon] = useState(() => {
+    if (stage !== 'butterfly' || reducedMotion()) return false;
+    try {
+      return localStorage.getItem(cocoonKey) !== '1';
+    } catch {
+      return false;
+    }
+  });
+  const cocoonOver = () => {
+    try {
+      localStorage.setItem(cocoonKey, '1');
+    } catch {
+      /* it may play again next time, which is no harm */
+    }
+    setCocoon(false);
+  };
+  // The butterfly's film is wider than it is tall, so it gets more room.
+  const size = stage === 'butterfly' ? 132 : 112;
   return (
     <div className={styles.card}>
-      <Bookworm stage={stage} state={done ? 'green' : 'orange'} turn={turn} size={112} />
+      <div className={styles.stand} style={{ width: size, height: size }}>
+        {cocoon ? (
+          <Bookworm stage="butterfly" state="green" film="cocoon" onFilmEnd={cocoonOver} size={size} />
+        ) : (
+          <Bookworm stage={stage} state={done ? 'green' : 'orange'} turn={turn} size={size} />
+        )}
+      </div>
       <div className={styles.text}>
         <p className={styles.line}>{done ? t('worm.green') : t('worm.orange')}</p>
         <small className={styles.hint}>{stage === 'butterfly' ? t('worm.butterfly') : t('worm.untilButterfly', { n: Math.max(0, 25 - dayOfRound) })}</small>
@@ -161,7 +201,9 @@ export function BookwormIntro() {
   const { t } = useI18n();
   return (
     <div className={styles.intro}>
-      <Bookworm stage="caterpillar" state="orange" film="hello" size={96} />
+      <div className={styles.stand} style={{ width: 96, height: 96 }}>
+        <Bookworm stage="caterpillar" state="orange" film="hello" size={96} />
+      </div>
       <p>{t('worm.meet')}</p>
     </div>
   );

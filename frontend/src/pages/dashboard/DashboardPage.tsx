@@ -1062,7 +1062,7 @@ export function DashboardPage() {
                   <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay1}`}>
                     <div className={styles.sectionTitle}>{t('dashboard.today')}</div>
                     <div className={styles.todayPanel}>
-                      <BookwormCard todayMinutes={todayData?.minutes ?? 0} dayOfRound={roundDaysElapsed} turn={goalLit} />
+                      <BookwormCard todayMinutes={todayData?.minutes ?? 0} dayOfRound={roundDaysElapsed} turn={goalLit} roundKey={roundStatus?.round?.id ?? 'none'} />
                       <div className={styles.todayDate}>{todayStr}</div>
 
                       {/* Correction countdown. Loud on purpose: this is the last

@@ -5,6 +5,28 @@
   background: transparent;
 }
 
+/* The matte leaves no floor, so a soft pool of shadow grounds the worm on
+   either theme; the picture sits on top of it. */
+.stand {
+  position: relative;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+
+.stand::before {
+  content: '';
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 6%;
+  height: 14%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0) 70%);
+}
+
+.stand > * { position: relative; }
+
 .card {
   display: flex;
   align-items: center;
