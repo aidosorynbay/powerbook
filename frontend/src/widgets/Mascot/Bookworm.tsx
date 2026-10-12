@@ -71,15 +71,27 @@ export function Bookworm({
 
   // Keep the film inside its stretch. timeupdate fires a few times a second,
   // enough for an 8-second loop and far cheaper than requestAnimationFrame.
+  // The change itself is a short dissolve from the end of the orange stretch
+  // to the start of the green one: Veo's own in-between frames lose the
+  // glasses for a moment (the founder spotted it, 2026-10-13).
+  const [dim, setDim] = useState(false);
   useEffect(() => {
     const v = video.current;
     if (!v || picture || film) return;
+    let timer: number | null = null;
     const onTime = () => {
       if (mode === 'orange' && v.currentTime >= ORANGE_END) v.currentTime = 0;
       if (mode === 'green' && v.currentTime >= v.duration - 0.08) v.currentTime = GREEN_START;
+      if (mode === 'turn' && v.currentTime >= ORANGE_END && timer === null) {
+        setDim(true);
+        timer = window.setTimeout(() => {
+          v.currentTime = GREEN_START;
+          setDim(false);
+          setMode('green');
+        }, 180);
+      }
     };
     const onEnded = () => {
-      if (mode === 'turn') setMode('green');
       v.currentTime = GREEN_START;
       void v.play().catch(() => {});
     };
@@ -88,6 +100,7 @@ export function Bookworm({
     return () => {
       v.removeEventListener('timeupdate', onTime);
       v.removeEventListener('ended', onEnded);
+      if (timer !== null) window.clearTimeout(timer);
     };
   }, [mode, picture, film]);
 
@@ -121,7 +134,7 @@ export function Bookworm({
     <video
       key={reel}
       ref={video}
-      className={`${styles.worm} ${className}`}
+      className={`${styles.worm} ${dim ? styles.dim : ''} ${className}`}
       style={box}
       width={size}
       height={size}

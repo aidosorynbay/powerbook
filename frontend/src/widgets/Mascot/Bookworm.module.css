@@ -3,7 +3,10 @@
   object-fit: contain;
   flex-shrink: 0;
   background: transparent;
+  transition: opacity 0.18s ease;
 }
+
+.dim { opacity: 0; }
 
 /* The matte leaves no floor, so a soft pool of shadow grounds the worm on
    either theme; the picture sits on top of it. */
