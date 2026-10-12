@@ -24,6 +24,7 @@ import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews } from '@/widgets';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
+import { ReadingReminder } from '@/widgets/ReadingReminder';
 import { ShareDay } from '@/widgets/ShareDay';
 import anim from '@/shared/styles/animations.module.css';
 import { quietDayIcon, quietDayQuoteKeys, finishFlagIcon } from '@/shared/lib/quietDays';
@@ -1184,6 +1185,7 @@ export function DashboardPage() {
                 {/* The app on the home screen: offered once the daily habit has a
                     page to live on, and only to members on a phone. */}
                 {isParticipant && <InstallNudge />}
+                {isParticipant && <ReadingReminder />}
                 <div className={`${styles.section} ${styles.orderLeaderboard} ${revealClass} ${anim.scrollRevealDelay2}`}>
                   <div className={styles.sectionTitle}>{t('dashboard.leaderboard')}</div>
                   {canJoin && (

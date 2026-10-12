@@ -25,3 +25,4 @@ export { InviteFriends } from './InviteFriends/InviteFriends';
 export { InstallGuideBody, InstallSheet, Handoff } from './InstallGuide';
 export { InstallLanding } from './InstallLanding';
 export { InstallNudge } from './InstallNudge';
+export { ReadingReminder } from './ReadingReminder';

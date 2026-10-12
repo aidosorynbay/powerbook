@@ -9,7 +9,7 @@
  * a stale streak, is worse than seeing a loading state. Book files are skipped
  * for the same reason plus size: they are tens of MB and belong to one person.
  */
-const VERSION = 'pb-shell-v3';
+const VERSION = 'pb-shell-v4';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
@@ -71,6 +71,46 @@ self.addEventListener('fetch', (event) => {
         }
         return res;
       });
+    })
+  );
+});
+
+// The reading reminder. Every push must show a notification (iOS revokes
+// the permission otherwise), so a push without a readable body still
+// shows a plain one.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : '' };
+  }
+  const title = data.title || 'PowerBook';
+  const options = {
+    body: data.body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    // One reminder replaces the previous one instead of piling up.
+    tag: data.tag || 'powerbook',
+    data: { url: data.url || '/round?source=push' },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// A tap on it opens the round page, in the app window that is already open
+// when there is one.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || '/round', self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+          if ('navigate' in client) client.navigate(url);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(url);
     })
   );
 });
