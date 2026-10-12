@@ -23,7 +23,7 @@ declare global {
 
 let ready = false;
 
-export function initAnalytics(): void {
+export function initAnalytics(userProperties: Record<string, string | number | boolean> = {}): void {
   if (ready || !GA_ID || !import.meta.env.PROD || typeof window === 'undefined') return;
   ready = true;
   window.dataLayer = window.dataLayer || [];
@@ -33,6 +33,9 @@ export function initAnalytics(): void {
     window.dataLayer!.push(arguments);
   };
   window.gtag('js', new Date());
+  // Before config, so the first page view already carries them (display_mode:
+  // the site in a browser, or the app on the home screen).
+  if (Object.keys(userProperties).length) window.gtag('set', 'user_properties', userProperties);
   window.gtag('config', GA_ID);
   const script = document.createElement('script');
   script.async = true;
@@ -44,6 +47,21 @@ export function initAnalytics(): void {
 export function setAnalyticsUser(id: string | null): void {
   if (!ready) return;
   window.gtag?.('set', { user_id: id ?? undefined });
+}
+
+/**
+ * A fact about the person that rides along with every later event. Today
+ * that is display_mode: "browser", or "standalone" / "ios_standalone" for
+ * the app on the home screen. GA needs the same name registered once as a
+ * user-scoped custom dimension before it shows up in reports.
+ */
+export function setUserProperties(props: Record<string, string | number | boolean>): void {
+  if (!ready) return;
+  try {
+    window.gtag?.('set', 'user_properties', props);
+  } catch {
+    /* analytics must never break the page */
+  }
 }
 
 /** One thing a reader did: "reader_lock_in", "book_mark", "claim_submit"… */

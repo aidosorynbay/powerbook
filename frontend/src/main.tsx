@@ -2,9 +2,12 @@ import './instrument';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from '@/app';
-import { initAnalytics } from '@/shared/lib';
+import { getDisplayMode, initAnalytics, initInstall } from '@/shared/lib';
 
-initAnalytics();
+initAnalytics({ display_mode: getDisplayMode() });
+// After analytics, so the first thing the app on the home screen reports is
+// that it is the app; before React, so Chrome's install offer is not missed.
+initInstall();
 
 // After a deploy, a page opened before it asks for code files the new build
 // has replaced (Sentry: "Failed to fetch dynamically imported module"). Load

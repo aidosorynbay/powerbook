@@ -9,7 +9,7 @@
  * a stale streak, is worse than seeing a loading state. Book files are skipped
  * for the same reason plus size: they are tens of MB and belong to one person.
  */
-const VERSION = 'pb-shell-v2';
+const VERSION = 'pb-shell-v3';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

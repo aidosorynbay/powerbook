@@ -1,21 +1,32 @@
 {
-  "name": "PowerBook — Reading Marathon",
+  "id": "/round",
+  "name": "PowerBook — круг чтения",
   "short_name": "PowerBook",
-  "description": "Monthly reading circles, your own library, and every book you have finished — in one place.",
-  "start_url": "/round",
+  "description": "Круг чтения: 30 минут в день, вместе. Отмечайте минуты, смотрите круг, читайте в зале — с экрана «Домой».",
+  "start_url": "/round?source=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f0f0f",
-  "theme_color": "#0f0f0f",
+  "background_color": "#0D1117",
+  "theme_color": "#0D1117",
   "lang": "ru",
+  "categories": ["books", "education", "lifestyle"],
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
     { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
+  "screenshots": [
+    { "src": "/install/round-narrow.png", "sizes": "1080x1920", "type": "image/png", "form_factor": "narrow", "label": "Круг: отметить минуты за день" },
+    { "src": "/install/hall-narrow.jpg", "sizes": "1080x1920", "type": "image/jpeg", "form_factor": "narrow", "label": "Читальный зал круга" },
+    { "src": "/install/home-narrow.jpg", "sizes": "1080x1920", "type": "image/jpeg", "form_factor": "narrow", "label": "PowerBook — круг чтения" },
+    { "src": "/install/home-wide.jpg", "sizes": "1920x1080", "type": "image/jpeg", "form_factor": "wide", "label": "PowerBook — круг чтения" }
+  ],
   "shortcuts": [
-    { "name": "Отметить чтение", "url": "/round" },
-    { "name": "Библиотека", "url": "/library" }
+    { "name": "Отметить чтение", "url": "/round?source=pwa" },
+    { "name": "Библиотека", "url": "/library?source=pwa" }
+  ],
+  "related_applications": [
+    { "platform": "webapp", "url": "https://powerbook.kz/manifest.webmanifest" }
   ]
 }
