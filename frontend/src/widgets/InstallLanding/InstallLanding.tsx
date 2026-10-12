@@ -36,7 +36,7 @@ export function InstallLanding({ onContinue }: { onContinue: () => void }) {
           <ul className={styles.points}>
             <li>{t('landing.point1')}</li>
             <li>{t('landing.point2')}</li>
-            <li>{t('landing.point3')}</li>
+            <li className={styles.pointHot}>{t('landing.point3')}</li>
           </ul>
           <div className={styles.handoff}>
             <Handoff source="landing" />

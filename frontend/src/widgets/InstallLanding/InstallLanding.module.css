@@ -100,6 +100,8 @@
   background: var(--color-accent-primary);
 }
 
+.pointHot { color: var(--color-accent-primary); font-weight: var(--font-weight-bold); }
+
 .handoff {
   margin-top: 8px;
   padding: 20px;
