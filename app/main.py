@@ -167,6 +167,19 @@ async def lifespan(app: FastAPI):
         coalesce=True,
         next_run_time=datetime.now() + timedelta(seconds=90),
     )
+    # The daily reading reminder, at each reader's own time; the same file
+    # lock idea keeps the two workers from sending it twice.
+    from app.services import push
+
+    scheduler.add_job(
+        push.scheduled,
+        "interval",
+        minutes=1,
+        id="push_reminders",
+        max_instances=1,
+        coalesce=True,
+        next_run_time=datetime.now() + timedelta(seconds=30),
+    )
     scheduler.start()
     logger.info("Round lifecycle scheduler started")
     # The bot's «Одобрить» / «Отказать» buttons come back by its webhook.

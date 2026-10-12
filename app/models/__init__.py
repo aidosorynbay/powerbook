@@ -11,6 +11,7 @@ from app.models.group import Group, GroupMember
 from app.models.library import LibraryBook
 from app.models.manual_book import ManualBook
 from app.models.notification import BookWatch, Notification, NotificationPref
+from app.models.push import PushSubscription, PushVapidKey, ReadingReminder
 from app.models.reaction import ReadingLogReaction
 from app.models.round import BookExchangePair, ReadingLog, ReadingLogBook, Round, RoundParticipant, RoundResult
 from app.models.shelf_override import ShelfOverride
@@ -28,6 +29,9 @@ __all__ = [
     "BookWatch",
     "Notification",
     "NotificationPref",
+    "PushVapidKey",
+    "PushSubscription",
+    "ReadingReminder",
     "BookChat",
     "BookLink",
     "User",
