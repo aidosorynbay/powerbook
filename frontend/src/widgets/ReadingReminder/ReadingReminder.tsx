@@ -16,7 +16,7 @@ import { Button } from '@/shared/ui';
 import { InstallSheet } from '@/widgets/InstallGuide';
 import styles from './ReadingReminder.module.css';
 
-type Reminder = { enabled: boolean; hour: number; minute: number; tz: string; locale: string; subscriptions: number };
+type Reminder = { enabled: boolean; hour: number; minute: number; tz: string; locale: string; note: string | null; subscriptions: number };
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -54,7 +54,7 @@ export function ReadingReminder() {
 
   const save = useCallback(
     async (next: Partial<Reminder>) => {
-      const base = reminder ?? { enabled: false, hour: 21, minute: 0, tz: localTimeZone(), locale, subscriptions: 0 };
+      const base = reminder ?? { enabled: false, hour: 21, minute: 0, tz: localTimeZone(), locale, note: null, subscriptions: 0 };
       const body = { ...base, ...next, tz: localTimeZone(), locale };
       const { data, error } = await apiPut<Reminder>('/push/reminder', body, { requireAuth: true });
       if (data) setReminder(data);
@@ -105,6 +105,15 @@ export function ReadingReminder() {
       track('reminder_time', { hour: h });
       void save({ hour: h, minute: m, enabled: true }).then((ok) => ok && setNote(t('reminder.saved')));
     }, 600);
+  };
+
+  const changeNote = (value: string) => {
+    setReminder((prev) => (prev ? { ...prev, note: value } : prev));
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      track('reminder_note', { length: value.trim().length });
+      void save({ note: value.trim() || null, enabled: true }).then((ok) => ok && setNote(t('reminder.saved')));
+    }, 800);
   };
 
   const sendTest = async () => {
@@ -158,12 +167,26 @@ export function ReadingReminder() {
       {denied && <p className={styles.note}>{t('reminder.denied')}</p>}
 
       {support === 'ok' && !denied && on && reminder && (
-        <div className={styles.row}>
-          <label className={styles.time}>
-            <span>{t('reminder.timeLabel')}</span>
-            <input type="time" value={`${pad(reminder.hour)}:${pad(reminder.minute)}`} onChange={(e) => changeTime(e.target.value)} />
+        <div className={styles.body}>
+          <p className={styles.howTo}>{t('reminder.howTo')}</p>
+          <div className={styles.row}>
+            <label className={styles.time}>
+              <span>{t('reminder.timeLabel')}</span>
+              <input type="time" value={`${pad(reminder.hour)}:${pad(reminder.minute)}`} onChange={(e) => changeTime(e.target.value)} />
+            </label>
+            <span className={styles.tz}>{t('reminder.tzNote', { tz: localTimeZone().replace('_', ' ') })}</span>
+          </div>
+          <label className={styles.noteField}>
+            <span>{t('reminder.noteLabel')}</span>
+            <textarea
+              rows={2}
+              maxLength={200}
+              value={reminder.note ?? ''}
+              placeholder={t('reminder.notePlaceholder')}
+              onChange={(e) => changeNote(e.target.value)}
+            />
+            <small>{t('reminder.noteHint')}</small>
           </label>
-          <span className={styles.tz}>{t('reminder.tzNote', { tz: localTimeZone().replace('_', ' ') })}</span>
           <button type="button" className={styles.link} onClick={sendTest} disabled={busy}>
             {t('reminder.test')}
           </button>

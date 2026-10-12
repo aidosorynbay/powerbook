@@ -46,7 +46,7 @@ def reminder(db: Session = Depends(get_db), user: User = Depends(get_current_use
 def save_reminder(payload: ReminderIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> ReminderOut:
     return ReminderOut(
         **push.save_reminder(
-            db, user, enabled=payload.enabled, hour=payload.hour, minute=payload.minute, tz=payload.tz, locale=payload.locale
+            db, user, enabled=payload.enabled, hour=payload.hour, minute=payload.minute, tz=payload.tz, locale=payload.locale, note=payload.note
         )
     )
 
@@ -55,4 +55,4 @@ def save_reminder(payload: ReminderIn, db: Session = Depends(get_db), user: User
 def send_test(db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
     """A push right now, so the reader sees what a reminder looks like."""
     state = push.reminder_state(db, user.id)
-    return {"sent": push.send_to_user(db, user.id, push.test_message(state["locale"]))}
+    return {"sent": push.send_to_user(db, user.id, push.test_message(state["locale"], state["note"]))}

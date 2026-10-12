@@ -63,6 +63,51 @@
 .switch:disabled { opacity: 0.6; cursor: default; }
 .switch:focus-visible { outline: 2px solid var(--color-accent-primary); outline-offset: 2px; }
 
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 54px;
+}
+
+.body .row { padding-left: 0; }
+
+.howTo {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-primary-muted);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.noteField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.noteField textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+}
+
+.noteField textarea::placeholder { color: var(--color-text-muted); }
+.noteField textarea:focus-visible { outline: 2px solid var(--color-accent-primary); outline-offset: 2px; }
+.noteField small { color: var(--color-text-muted); font-size: var(--font-size-xs); }
+
 .row {
   display: flex;
   flex-wrap: wrap;
@@ -117,5 +162,5 @@
 .row .note { flex-basis: 100%; padding-left: 0; }
 
 @media (max-width: 420px) {
-  .row, .note { padding-left: 0; }
+  .row, .note, .body { padding-left: 0; }
 }

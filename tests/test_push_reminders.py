@@ -189,3 +189,21 @@ def test_signing_with_the_stored_key_really_works(env, monkeypatch):
     # The key pywebpush signed with is the pair the browser was given.
     keys = push.vapid_keys(db)
     assert push._public_key_b64(Vapid.from_string(push._private_key_b64(keys.private_pem))) == keys.public_key
+
+
+def test_the_readers_own_words_are_the_reminder(env):
+    client, headers, db, sent = env["client"], env["headers"], env["db"], env["sent"]
+    r = client.put(
+        "/api/push/reminder",
+        json={"enabled": True, "hour": 10, "minute": 0, "tz": "Asia/Almaty", "locale": "ru", "note": "  Ты в автобусе — почитай 15 минут  "},
+        headers=headers,
+    )
+    assert r.status_code == 200 and r.json()["note"] == "Ты в автобусе — почитай 15 минут"
+    assert push.tick(db, at(10, 2)) == 1
+    assert "Ты в автобусе — почитай 15 минут" in sent[-1]["data"]
+    # The test push carries the same words.
+    client.post("/api/push/test", headers=headers)
+    assert "Ты в автобусе" in sent[-1]["data"]
+    # Blank means our texts again.
+    client.put("/api/push/reminder", json={"enabled": True, "hour": 10, "minute": 0, "tz": "Asia/Almaty", "locale": "ru", "note": "   "}, headers=headers)
+    assert client.get("/api/push/reminder", headers=headers).json()["note"] is None

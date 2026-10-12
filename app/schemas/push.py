@@ -31,6 +31,8 @@ class ReminderIn(BaseModel):
     minute: int = Field(ge=0, le=59)
     tz: str = Field(min_length=1, max_length=64)
     locale: str = Field(default="ru", max_length=5)
+    # The reader's own reminder text; empty means the rotating texts.
+    note: str | None = Field(default=None, max_length=200)
 
 
 class ReminderOut(BaseModel):
@@ -39,5 +41,6 @@ class ReminderOut(BaseModel):
     minute: int
     tz: str
     locale: str
+    note: str | None
     # How many browsers of this reader can be reached.
     subscriptions: int

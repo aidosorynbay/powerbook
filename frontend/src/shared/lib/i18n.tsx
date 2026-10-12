@@ -5,6 +5,10 @@ export type Locale = 'ru' | 'kk' | 'en';
 
 const translations = {
   ru: {
+    'reminder.howTo': 'Привяжите чтение к привычке: выберите момент, когда вы и так свободны — в автобусе по дороге на работу, за утренним чаем, перед сном. Напоминание придёт именно тогда.',
+    'reminder.noteLabel': 'Свой текст напоминания',
+    'reminder.notePlaceholder': 'Например: ты сейчас в автобусе, есть 15 минут — почитай',
+    'reminder.noteHint': 'Придёт в уведомлении слово в слово. Пусто — пришлём наш текст.',
     'reminder.title': 'Напоминание о чтении',
     'reminder.lead': 'Один раз в день, в выбранное вами время, и только если день ещё не отмечен.',
     'reminder.timeLabel': 'Во сколько',
@@ -1864,6 +1868,10 @@ const translations = {
   },
 
   kk: {
+    'reminder.howTo': 'Оқуды әдетке байлаңыз: онсыз да бос болатын сәтті таңдаңыз — жұмысқа бара жатқан автобуста, таңғы шай үстінде, ұйықтар алдында. Еске салу дәл сол кезде келеді.',
+    'reminder.noteLabel': 'Еске салудың өз мәтіні',
+    'reminder.notePlaceholder': 'Мысалы: қазір автобустасың, 15 минут бос уақыт бар — оқып ал',
+    'reminder.noteHint': 'Хабарламада сөзбе-сөз келеді. Бос болса — біздің мәтін келеді.',
     'reminder.title': 'Оқу туралы еске салу',
     'reminder.lead': 'Күніне бір рет, өзіңіз таңдаған уақытта және тек күн әлі белгіленбеген болса.',
     'reminder.timeLabel': 'Қай уақытта',
@@ -3723,6 +3731,10 @@ const translations = {
   },
 
   en: {
+    'reminder.howTo': 'Tie reading to a habit: pick a moment when you are free anyway — on the bus to work, over morning tea, before sleep. The reminder arrives right then.',
+    'reminder.noteLabel': 'Your own reminder text',
+    'reminder.notePlaceholder': 'For example: you are on the bus now, 15 free minutes — read',
+    'reminder.noteHint': 'Arrives in the notification word for word. Leave it empty for our text.',
     'reminder.title': 'Reading reminder',
     'reminder.lead': 'Once a day, at a time you choose, and only if the day is not logged yet.',
     'reminder.timeLabel': 'At',

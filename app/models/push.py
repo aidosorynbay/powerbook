@@ -64,6 +64,9 @@ class ReadingReminder(TimestampMixin, Base):
     # IANA zone the reader's phone reported, e.g. Asia/Almaty.
     tz: Mapped[str] = mapped_column(String(64), nullable=False, default="Asia/Almaty")
     locale: Mapped[str] = mapped_column(String(5), nullable=False, default="ru")
+    # The reader's own words, sent as the reminder's text when set («ты сейчас
+    # в автобусе, есть 15 минут — почитай»). Empty means the rotating texts.
+    note: Mapped[str | None] = mapped_column(String(200), nullable=True, default=None)
     # The reader's local date a reminder last went out (or was skipped as
     # already read), so one day gets one.
     last_sent_on: Mapped[date | None] = mapped_column(Date, nullable=True, default=None)

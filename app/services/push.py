@@ -181,12 +181,13 @@ def reminder_state(db: Session, user_id: uuid.UUID) -> dict:
         "minute": row.minute if row else 0,
         "tz": row.tz if row else "Asia/Almaty",
         "locale": row.locale if row else "ru",
+        "note": row.note if row else None,
         "subscriptions": len(subs),
     }
 
 
 def save_reminder(
-    db: Session, user: User, *, enabled: bool, hour: int, minute: int, tz: str, locale: str
+    db: Session, user: User, *, enabled: bool, hour: int, minute: int, tz: str, locale: str, note: str | None = None
 ) -> dict:
     _zone(tz)
     if not (0 <= hour <= 23 and 0 <= minute <= 59):
@@ -201,6 +202,7 @@ def save_reminder(
     row.minute = minute
     row.tz = tz
     row.locale = locale if locale in MESSAGES else "ru"
+    row.note = (note or "").strip()[:200] or None
     # A new time should fire today if it is still ahead.
     if changed_time:
         row.last_sent_on = None
@@ -244,9 +246,9 @@ def send_to_user(db: Session, user_id: uuid.UUID, payload: dict) -> int:
     return sum(send(db, sub, payload) for sub in subscriptions_for(db, user_id))
 
 
-def test_message(locale: str) -> dict:
+def test_message(locale: str, note: str | None = None) -> dict:
     title, _ = _message(locale, uuid.UUID(int=0), date.today())
-    body = {
+    body = note or {
         "ru": "Пробное уведомление. Напоминания будут приходить так же.",
         "kk": "Сынақ хабарлама. Еске салулар дәл осылай келеді.",
         "en": "A test notification. Reminders will arrive like this.",
@@ -304,6 +306,9 @@ def tick(db: Session, now: datetime | None = None) -> int:
         if _read_today(db, reminder.user_id, reading_day(now)):
             continue
         title, body = _message(reminder.locale, reminder.user_id, local_day)
+        # The reader's own cue beats our words.
+        if reminder.note:
+            body = reminder.note
         payload = {"title": title, "body": body, "url": "/round?source=push", "tag": "reading-reminder"}
         sent += send_to_user(db, reminder.user_id, payload)
     return sent
