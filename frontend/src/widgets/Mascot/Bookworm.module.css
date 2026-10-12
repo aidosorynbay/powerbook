@@ -1,0 +1,51 @@
+.worm {
+  display: block;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: transparent;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  padding: var(--spacing-3) var(--spacing-4) var(--spacing-3) var(--spacing-2);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.line {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-primary);
+}
+
+.hint {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.intro {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  margin-top: var(--spacing-5);
+  max-width: 460px;
+}
+
+.intro p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}

@@ -1,2 +1,2 @@
-export { Barys, type BarysMood, type BarysStage } from './Barys';
-export { BarysCard, BarysIntro, barysMood, barysStage } from './BarysCard';
+export { Bookworm, BookwormCard, BookwormIntro, wormStage } from './Bookworm';
+export type { WormStage, WormState } from './Bookworm';
