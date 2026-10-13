@@ -1,4 +1,5 @@
 .worm {
+  pointer-events: none;
   display: block;
   object-fit: contain;
   flex-shrink: 0;
@@ -73,4 +74,26 @@
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
+}
+
+/* The living worm: his picture underneath, the canvas on top once it draws. */
+.live {
+  position: relative;
+  flex-shrink: 0;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.live > img,
+.live > canvas {
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.25s ease;
+}
+
+.canvas {
+  display: block;
+  cursor: pointer;
 }
