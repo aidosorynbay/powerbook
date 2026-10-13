@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useI18n } from '@/shared/lib';
 import { track } from '@/shared/lib/analytics';
 import styles from './RoundToday.module.css';
@@ -67,6 +68,8 @@ export function MinutesDial({
   const [draft, setDraft] = useState('');
   const [coach, setCoach] = useState(false);
   const [ghost, setGhost] = useState<number | null>(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const card = useRef<HTMLDivElement>(null);
   const drag = useRef<{ a: number; x: number; y: number; moved: boolean; ring: boolean } | null>(null);
 
   useEffect(() => {
@@ -163,6 +166,8 @@ export function MinutesDial({
     if (readOnly || seenCoach()) return;
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const id = window.setTimeout(() => {
+      // the dial in the middle of the screen first, so the light and the card both fit
+      wrap.current?.scrollIntoView({ block: 'center', behavior: 'instant' as ScrollBehavior });
       setCoach(true);
       track('hint_shown', { el: 'dial_coach', visit_n: 1 });
     }, 700);
@@ -173,6 +178,8 @@ export function MinutesDial({
     let raf = 0;
     const t0 = performance.now();
     const loop = (now: number) => {
+      // measured every frame: the page may still be settling (fonts, the calendar loading above)
+      if (wrap.current) setRect(wrap.current.getBoundingClientRect());
       const s = ((now - t0) / 1000) % 4.2;
       const m = s < 2.2 ? 32 * (1 - (1 - s / 2.2) ** 2) : s < 2.8 ? 32 : s < 3.6 ? 32 * (1 - (s - 2.8) / 0.8) : 0;
       setGhost(m);
@@ -201,7 +208,16 @@ export function MinutesDial({
   const tone = done ? styles.ok : styles.todo;
   const lapLabel = laps + (rest > 0 ? 1 : 0);
 
-  const box = wrap.current?.getBoundingClientRect();
+  const box = coach ? rect : null;
+  // the card under the dial if it fits, else over it, else at the foot of the screen
+  const cardH = card.current?.offsetHeight ?? 170;
+  const cardTop = box
+    ? box.bottom + 16 + cardH <= window.innerHeight - 8
+      ? box.bottom + 16
+      : box.top - 16 - cardH >= 8
+        ? box.top - 16 - cardH
+        : window.innerHeight - cardH - 12
+    : undefined;
 
   return (
     <>
@@ -290,7 +306,7 @@ export function MinutesDial({
         </div>
       </div>
 
-      {coach && (
+      {coach && createPortal(
         <div className={styles.coach} onPointerDown={(e) => { if (e.target === e.currentTarget) endCoach(); }}>
           {box && (
             <div
@@ -303,12 +319,13 @@ export function MinutesDial({
             const rr = (R / 320) * box.width;
             return <div className={styles.coachFinger} style={{ transform: `translate(${box.left + box.width / 2 + rr * Math.cos(a)}px, ${box.top + box.height / 2 + rr * Math.sin(a)}px)` }} />;
           })()}
-          <div className={styles.coachCard} style={box ? { top: box.bottom + 16 } : undefined}>
+          <div ref={card} className={styles.coachCard} style={box ? { top: cardTop, left: Math.max(16, Math.min(box.left + box.width / 2 - 200, window.innerWidth - 416)), right: 'auto', width: Math.min(400, window.innerWidth - 32) } : { visibility: 'hidden' }}>
             <b>{t('dial.coachTitle')}</b>
             <p>{t('dial.coachText')}</p>
             <button type="button" onClick={endCoach}>{t('dial.coachOk')}</button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
