@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useI18n, apiGet, useAuth, useWaitlist, type PublicStats } from '@/shared/lib';
 import { Button, Badge, ProgressBar, Container, Icon } from '@/shared/ui';
 import { JoinedCount } from '@/widgets/JoinPrompt';
-import { BookwormIntro } from '@/widgets/Mascot';
 import styles from './Hero.module.css';
 
 interface HeroProps {
@@ -117,7 +116,6 @@ export function Hero({ onJoinClick, onLearnMoreClick }: HeroProps) {
                 {t('hero.learnMore')}
               </button>
             </div>
-            {!isAuthenticated && <BookwormIntro />}
           </div>
 
           <div className={`${styles.statsCard} ${isMiniRound ? styles.statsCardAccent : ''}`}>

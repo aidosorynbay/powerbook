@@ -16,7 +16,6 @@ import {
 } from '@/shared/lib';
 import { Icon } from '@/shared/ui';
 import { BookChat } from '@/widgets/BookChat';
-import { Bookworm } from '@/widgets/Mascot';
 import styles from './ReaderPage.module.css';
 
 // pdf.js refuses to parse anything without a worker, and Vite needs the URL
@@ -614,7 +613,6 @@ export function ReaderPage() {
       {!isLoading && !error && focus && (
         <footer className={styles.focusBar}>
           <span className={styles.focusTime} title={t('reader.sessionTitle')}>
-            <Bookworm stage="caterpillar" state="orange" size={30} still className={styles.focusWorm} />
             <Icon name="clock" size="em" aria-hidden="true" /> {clock(seconds)}
           </span>
           <span className={styles.position}>{position}</span>

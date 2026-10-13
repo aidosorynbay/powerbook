@@ -24,7 +24,6 @@ import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews } from '@/widgets';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
-import { BookwormCard } from '@/widgets/Mascot';
 import { ReadingReminder } from '@/widgets/ReadingReminder';
 import { ShareDay } from '@/widgets/ShareDay';
 import anim from '@/shared/styles/animations.module.css';
@@ -1062,7 +1061,6 @@ export function DashboardPage() {
                   <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay1}`}>
                     <div className={styles.sectionTitle}>{t('dashboard.today')}</div>
                     <div className={styles.todayPanel}>
-                      <BookwormCard todayMinutes={todayData?.minutes ?? 0} dayOfRound={roundDaysElapsed} turn={goalLit} roundKey={roundStatus?.round?.id ?? 'none'} />
                       <div className={styles.todayDate}>{todayStr}</div>
 
                       {/* Correction countdown. Loud on purpose: this is the last

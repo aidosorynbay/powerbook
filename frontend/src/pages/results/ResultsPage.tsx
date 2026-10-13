@@ -16,7 +16,6 @@ import { Container, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import { RoundStory } from './RoundStory';
 import { ExchangeGallery, PhotoConfirm } from './ExchangePhotos';
-import { Bookworm } from '@/widgets/Mascot';
 import styles from './ResultsPage.module.css';
 import { RoundReview } from './RoundReview';
 
@@ -281,7 +280,6 @@ export function ResultsPage() {
                     {/* Congrats / Exchange card — only for self */}
                     {isSelf && results.my_result && (
                       <div className={styles.congratsCard}>
-                        <Bookworm stage="butterfly" state="green" size={74} still className={styles.congratsWorm} />
                         <div className={styles.congratsIcon}>
                           <Icon name={isSelectedWinner ? 'trophy' : 'book'} size="em" aria-hidden="true" />
                         </div>
