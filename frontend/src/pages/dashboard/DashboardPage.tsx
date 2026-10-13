@@ -978,7 +978,7 @@ export function DashboardPage() {
           ) : (
             <>
               <div className={`${styles.roundInfo} ${isParticipant && !inRegistrationWindow ? styles.roundInfoTight : ''}`}>
-                <div className={styles.roundHeader}>
+                <div className={`${styles.roundHeader} ${isParticipant && !inRegistrationWindow ? styles.roundHeaderMember : ''}`}>
                   <div className={styles.roundTitle}>
                     {monthName} {roundStatus.round.year}
                     {isParticipant && !inRegistrationWindow && (
@@ -1019,7 +1019,14 @@ export function DashboardPage() {
                           aria-expanded={statusMenuOpen}
                         >
                           <Badge variant={getStatusVariant(displayStatus!)}>
-                            {statusLabel}
+                            {isParticipant && !inRegistrationWindow ? (
+                              <span className={styles.statusShort} aria-label={statusLabel}>
+                                <i className={styles.statusDot} aria-hidden="true" />
+                                <span className={styles.statusShortText}>{statusLabel.replace(/^(Раунд|Round)\s+/i, '').replace(/^./, (c) => c.toUpperCase())}</span>
+                              </span>
+                            ) : (
+                              statusLabel
+                            )}
                           </Badge>
                           <span
                             className={`${styles.statusCaret} ${statusMenuOpen ? styles.statusCaretOpen : ''}`}
@@ -1225,7 +1232,7 @@ export function DashboardPage() {
                           <div className={rt.pane}>
                             {/* the book: its cover large, the ⇄ on it to change the book (the founder's idea, the council's sizes) */}
                             <div className={rt.bookRow}>
-                              <button type="button" className={rt.coverBtn} onClick={() => setDetailsOpen(true)} aria-label={t('today.changeBook')}>
+                              <button type="button" className={rt.coverBtn} onClick={() => setDetailsOpen((o) => !o)} aria-expanded={detailsOpen} aria-label={t('today.changeBook')}>
                                 {bookCover.cover ? (
                                   <img className={rt.coverBig} src={bookCover.cover} alt="" />
                                 ) : (
@@ -1248,7 +1255,32 @@ export function DashboardPage() {
                                     {t('today.noBook')} ›
                                   </button>
                                 )}
-                                {roundStatus?.round && <div className={rt.chipRow}><ReminderChip roundKey={roundStatus.round.id} userId={user?.id} /></div>}
+                              </div>
+                              {/* the rail: the reminder, the day's comment and books, sharing the day (council 2026-10-13) */}
+                              <div className={rt.rail}>
+                                {roundStatus?.round && <ReminderChip roundKey={roundStatus.round.id} userId={user?.id} compact />}
+                                <button
+                                  type="button"
+                                  className={`${rt.railBtn} ${detailsOpen ? rt.railOn : ''}`}
+                                  aria-expanded={detailsOpen}
+                                  aria-label={t('today.details')}
+                                  title={t('today.details')}
+                                  onClick={() => setDetailsOpen((o) => !o)}
+                                >
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /></svg>
+                                  {(todayComment || todayData?.comment) && <i className={rt.railDot} />}
+                                </button>
+                                {((todayData?.minutes ?? 0) > 0 || readBefore) && (
+                                  <button
+                                    type="button"
+                                    className={rt.railBtn}
+                                    aria-label={t('today.share')}
+                                    title={t('today.share')}
+                                    onClick={() => { setSharing(todayStr); track('share_open', { from: 'rail' }); }}
+                                  >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 8 5-5 5 5" /><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>
+                                  </button>
+                                )}
                               </div>
                             </div>
                             <MinutesDial
@@ -1264,16 +1296,6 @@ export function DashboardPage() {
                               >
                                 {isSavingToday ? t('dashboard.saving') : t('dashboard.save')}
                               </Button>
-                            </div>
-                            <div className={rt.more}>
-                              <button type="button" className={rt.linkBtn} onClick={() => setDetailsOpen((o) => !o)}>
-                                {t('today.details')} {detailsOpen ? '▴' : '▾'}
-                              </button>
-                              {((todayData?.minutes ?? 0) > 0 || readBefore) && (
-                                <button type="button" className={rt.linkBtn} onClick={() => { setSharing(todayStr); track('share_open', { from: 'quiet_link' }); }}>
-                                  {t('today.share')}
-                                </button>
-                              )}
                             </div>
                           </div>
                           {!wide && monthStats}

@@ -43,7 +43,7 @@ const AlarmIcon = () => (
  * none. It pulses for the first visits of a circle until it is found
  * (never for readers whose reminder is on, nor where pushes cannot work).
  */
-export function ReminderChip({ roundKey, userId }: { roundKey: string; userId?: string }) {
+export function ReminderChip({ roundKey, userId, compact = false }: { roundKey: string; userId?: string; compact?: boolean }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<ReminderState | null>(null);
@@ -55,7 +55,8 @@ export function ReminderChip({ roundKey, userId }: { roundKey: string; userId?: 
     <>
       <button
         type="button"
-        className={`${styles.chip} ${on ? '' : styles.chipOff} ${pulseClass(phase)}`}
+        className={`${styles.chip} ${compact ? styles.chipCompact : ''} ${on ? '' : styles.chipOff} ${pulseClass(phase)}`}
+        title={t('reminder.title')}
         onClick={() => {
           found(false);
           setOpen(true);
@@ -64,7 +65,7 @@ export function ReminderChip({ roundKey, userId }: { roundKey: string; userId?: 
         aria-label={t('reminder.title')}
       >
         <AlarmIcon />
-        {on && state?.time ? state.time : t('today.remindAsk')}
+        {on && state?.time ? state.time : compact ? null : t('today.remindAsk')}
       </button>
       {open ? (
         <Sheet open onClose={() => setOpen(false)} label={t('reminder.title')}>

@@ -1615,3 +1615,15 @@
   .section { padding: var(--spacing-4) 10px; }
   .calendar { gap: 2px; }
 }
+
+/* members: the round's status rides on the line «день 13 из 30 · Читатели ›» (council 2026-10-13) */
+.roundHeaderMember { position: relative; flex-wrap: nowrap; }
+.roundHeaderMember .roundSub { padding-right: 132px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.roundHeaderMember .roundHeaderActions { position: absolute; right: 0; bottom: -2px; }
+.roundHeaderMember .statusTrigger { padding: 0; }
+.statusShort { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.statusDot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-success); flex: none; font-style: normal; }
+@media (max-width: 359px) {
+  .statusShortText { display: none; }
+  .roundHeaderMember .roundSub { padding-right: 56px; }
+}
