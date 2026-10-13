@@ -643,12 +643,13 @@ export function DashboardPage() {
   // «Читатели ›» pulses on the first visit of a circle, after the reminder chip has had its turn (one pulse at a time)
   const readersPulse = usePulse({
     el: 'readers_arrow',
-    storeKey: `pb.pulse2.readers.${roundStatus?.round?.id ?? 'none'}`,
+    storeKey: 'pb.pulse2.readers',
     eligible: !!isParticipant && !!roundStatus?.round,
     userId: user?.id,
-    visits: 1,
+    // a newcomer's first three days on the page, once a day; later it stays still
+    visits: 3,
     delay: 31_000,
-    fast: 0,
+    fast: 4_000,
     slow: 10_000,
   });
 
@@ -986,7 +987,7 @@ export function DashboardPage() {
                         {' · '}
                         <button
                           type="button"
-                          className={`${rt.readersBtn} ${readersPulse.phase === 'fast' || readersPulse.phase === 'slow' ? pulseClass(readersPulse.phase) : rt.readersSoft}`}
+                          className={`${rt.readersBtn} ${readersPulse.phase === 'fast' || readersPulse.phase === 'slow' ? pulseClass(readersPulse.phase) : ''}`}
                           onClick={() => {
                             readersPulse.found(false);
                             setReadersOpen(true);
@@ -1222,25 +1223,33 @@ export function DashboardPage() {
                           }}
                         >
                           <div className={rt.pane}>
+                            {/* the book: its cover large, the ⇄ on it to change the book (the founder's idea, the council's sizes) */}
                             <div className={rt.bookRow}>
-                              {bookCover && <img className={rt.cover} src={bookCover} alt="" />}
+                              <button type="button" className={rt.coverBtn} onClick={() => setDetailsOpen(true)} aria-label={t('today.changeBook')}>
+                                {bookCover.cover ? (
+                                  <img className={rt.coverBig} src={bookCover.cover} alt="" />
+                                ) : (
+                                  <span className={rt.coverEmpty}>+</span>
+                                )}
+                                {todayBooks[0]?.title && (
+                                  <span className={rt.swapBadge} aria-hidden="true">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16" /><path d="M3 21v-5h5" /><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8" /><path d="M21 3v5h-5" /></svg>
+                                  </span>
+                                )}
+                              </button>
                               <div className={rt.bookText}>
                                 {todayBooks[0]?.title ? (
                                   <>
-                                    <span className={rt.bookTitle}>
-                                      {todayBooks.map((b) => b.title).filter(Boolean).join(' · ')}
-                                    </span>
-                                    <button type="button" className={rt.linkBtn} onClick={() => setDetailsOpen((o) => !o)}>
-                                      {t('today.changeBook')}
-                                    </button>
+                                    <span className={rt.bookTitleBig}>{todayBooks.map((b) => b.title).filter(Boolean).join(' · ')}</span>
+                                    {bookCover.author && <span className={rt.bookAuthor}>{bookCover.author}</span>}
                                   </>
                                 ) : (
                                   <button type="button" className={`${rt.linkBtn} ${rt.bookAsk}`} onClick={() => setDetailsOpen(true)}>
                                     {t('today.noBook')} ›
                                   </button>
                                 )}
+                                {roundStatus?.round && <div className={rt.chipRow}><ReminderChip roundKey={roundStatus.round.id} userId={user?.id} /></div>}
                               </div>
-                              {roundStatus?.round && <ReminderChip roundKey={roundStatus.round.id} userId={user?.id} />}
                             </div>
                             <MinutesDial
                               value={todayBooks.length > 1 ? sumMinutes(todayBooks) : parseInt(todayMinutes, 10) || 0}

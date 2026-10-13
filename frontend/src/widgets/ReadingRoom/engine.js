@@ -544,11 +544,16 @@ export function createRoomEngine(opts){
 
   /* ---------- mapping the photo onto the stage ---------- */
   const view={w:1,h:1,dpr:1,mobile:false,rect:{x:0,y:0,w:1,h:1},panX:0,ox:0,oy:0,W:1,H:1,parX:0,parY:0};
+  /* How much the phone can take (2026-10-13, the founder's iPhone XS): at 2.5× the photo and the dust were near
+     two million pixels a frame; the phone heated up, fell to 2 fps in twenty seconds and threw the page away, and
+     the stutter read as shaking. Phones now draw at most 30 frames a second at 2×, and step down (1.6×, 1.25×,
+     then without the dust and sparks) while frames keep coming slow. */
+  const quality={dpr:2,fx:true,slow:0,ema:16};
   let layouts=0;
   function layout(){
     const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;layouts++;
     // phones have 3× screens and a small canvas: drawn at 1.6× they looked soft
-    const dpr=Math.min(devicePixelRatio||1,w<760?2.5:1.6);
+    const dpr=Math.min(devicePixelRatio||1,w<760?quality.dpr:1.6);
     view.w=w;view.h=h;view.dpr=dpr;view.mobile=w<760;
     cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);fx.width=cv.width;fx.height=cv.height;
     view.rect=view.mobile&&opts.phoneShare?{x:0,y:0,w,h:h*opts.phoneShare}:{x:0,y:0,w,h};
@@ -678,8 +683,17 @@ export function createRoomEngine(opts){
   /* ---------- frame loop ---------- */
   const lampBuf=new Float32Array(24*4),swayBuf=new Float32Array(6*4);
   let last=performance.now(),raf=0,night=variant==='night'?1:0;
+  let lastDraw=0;
   function loop(now){
     raf=requestAnimationFrame(loop);
+    if(view.mobile){
+      // 30 frames a second are plenty for a room at rest, and half the heat
+      if(now-lastDraw<31)return;
+      const ft=now-lastDraw;lastDraw=now;
+      if(ft<200){quality.ema+=(ft-quality.ema)*.1;
+        if(quality.ema>48){if(++quality.slow>45){quality.slow=0;quality.ema=33;
+          if(quality.dpr>1.25){quality.dpr=quality.dpr>1.6?1.6:1.25;layout()}else quality.fx=false}}else quality.slow=Math.max(0,quality.slow-1)}
+    }
     const dt=Math.min(.05,(now-last)/1000);last=now;
     const tp=targetP();P+=(tp-P)*Math.min(1,dt*(opts.reduced?60:fixedP!=null?2.2:6.5));if(Math.abs(tp-P)<.0005)P=tp;
     if(!inView||document.hidden)return;
@@ -751,7 +765,7 @@ export function createRoomEngine(opts){
       /* no WebGL: the photo still shows */
       const c2=cv.getContext('2d');if(c2){c2.setTransform(view.dpr,0,0,view.dpr,0,0);c2.drawImage(tex.img,view.ox,view.oy,view.W,view.H)}
     }
-    drawFx(T,wake*loadK,night);
+    if(quality.fx)drawFx(T,wake*loadK,night);else if(quality.fxCleared!==true){fxc.setTransform(1,0,0,1,0,0);fxc.clearRect(0,0,fx.width,fx.height);quality.fxCleared=true}
     /* name tags and rings ride on the photo (a ring stays on its chair, its label slides in) */
     if(marks){
       const {els,ws,ls,hs,rs}=marks;
@@ -797,7 +811,7 @@ export function createRoomEngine(opts){
     setReveal(p){fixedP=p},
     get progress(){return P},
     /* ?roomdebug=1: what the hall is doing, for a phone the shaking could not be reproduced on (2026-10-13) */
-    get debug(){return {P,tp:fixedP!=null?fixedP:targetP(),fs:fit.s,fd:fit.d,gd:fitGoal?fitGoal.d:null,cand:!!fitCand,oy:view.oy,W:view.W,w:view.w,h:view.h,layouts}},
+    get debug(){return {q:quality.dpr+(quality.fx?'':'/nofx'),P,tp:fixedP!=null?fixedP:targetP(),fs:fit.s,fd:fit.d,gd:fitGoal?fitGoal.d:null,cand:!!fitCand,oy:view.oy,W:view.W,w:view.w,h:view.h,layouts}},
     destroy(){dead=true;cancelAnimationFrame(raf);ro.disconnect();io?.disconnect();stage.removeEventListener('pointermove',onMove);cv.removeEventListener('pointerdown',onDown);cv.removeEventListener('pointermove',onDrag);removeEventListener('pointerup',onUp)},
   };
 }
