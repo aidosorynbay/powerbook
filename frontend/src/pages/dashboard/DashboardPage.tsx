@@ -24,7 +24,8 @@ import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews } from '@/widgets';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
-import { MinutesDial, MonthStats, ReminderChip, ReadersSheet, WelcomeBack, Sheet, usePulse, pulseClass } from '@/widgets/RoundToday';
+import { useMediaQuery } from '@/shared/hooks';
+import { MinutesDial, MonthStats, ReminderChip, ReadersSheet, WelcomeBack, Sheet, usePulse, pulseClass, useBookCover } from '@/widgets/RoundToday';
 import rt from '@/widgets/RoundToday/RoundToday.module.css';
 import { ShareDay } from '@/widgets/ShareDay';
 import anim from '@/shared/styles/animations.module.css';
@@ -619,6 +620,26 @@ export function DashboardPage() {
   const isParticipant = roundStatus?.participation?.is_participant &&
     roundStatus.participation.status === 'active';
 
+  // a computer: «Мой месяц» stands as a third block after the calendar instead of a page behind the dial
+  const wide = useMediaQuery('(min-width: 1025px)');
+  // the cover of the book being read, over the dial
+  const bookCover = useBookCover(todayBooks[0]?.title);
+  // the last circle the reader took part in, for «+N мин к прошлому кругу на 13-е» in «Мой месяц»
+  const [prevDays, setPrevDays] = useState<CalendarDay[] | null>(null);
+  useEffect(() => {
+    if (!isParticipant) return;
+    let alive = true;
+    void (async () => {
+      const { data: last } = await apiGet<{ id: string } | null>('/rounds/last-completed', { requireAuth: true });
+      if (!last?.id || last.id === roundStatus?.round?.id) return;
+      const { data } = await apiGet<CalendarResponse>(`/rounds/${last.id}/calendar`, { requireAuth: true });
+      if (alive && data?.days?.some((d) => d.minutes > 0)) setPrevDays(data.days);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [isParticipant, roundStatus?.round?.id]);
+
   // «Читатели ›» pulses on the first visit of a circle, after the reminder chip has had its turn (one pulse at a time)
   const readersPulse = usePulse({
     el: 'readers_arrow',
@@ -879,6 +900,24 @@ export function DashboardPage() {
   const todayFinish = finishedBook(todayBooks, todayBookFinished, todayComment, parseInt(todayMinutes, 10) || 0);
   const modalFinish = finishedBook(modalBooks, modalBookFinished, modalComment, parseInt(minutesInput, 10) || 0);
 
+  // «Мой месяц»: a page behind the dial on phones, a block of its own on a computer
+  const monthStats = calendar ? (
+    <MonthStats
+      days={calendar.days}
+      todayStr={todayStr}
+      todayMinutes={todayBooks.length > 1 ? sumMinutes(todayBooks) : parseInt(todayMinutes, 10) || 0}
+      monthLabel={locale === 'en' ? monthName : monthName.toLowerCase()}
+      prevSameDay={prevDays ? prevDays.filter((d) => Number(d.date.slice(8, 10)) <= Number(todayStr.slice(8, 10))).reduce((a, d) => a + d.minutes, 0) : null}
+      dayOfRound={Math.max(1, roundDaysElapsed)}
+      roundDays={roundWindow.total}
+      place={(() => {
+        const i = leaderboard.findIndex((e) => e.user_id === user?.id);
+        return i >= 0 ? { rank: leaderboardRanks[i], of: leaderboard.length } : null;
+      })()}
+      onPlace={() => { setReadersOpen(true); track('readers_sheet_open', { from: 'stats' }); }}
+    />
+  ) : null;
+
   const displayStatus = roundStatus?.round?.status === 'registration_open' && !isBeforeDeadline
     ? 'locked' as const
     : roundStatus?.round?.status;
@@ -947,7 +986,7 @@ export function DashboardPage() {
                         {' · '}
                         <button
                           type="button"
-                          className={`${rt.readersBtn} ${pulseClass(readersPulse.phase)}`}
+                          className={`${rt.readersBtn} ${pulseClass(readersPulse.phase) || rt.readersSoft}`}
                           onClick={() => {
                             readersPulse.found();
                             setReadersOpen(true);
@@ -990,7 +1029,18 @@ export function DashboardPage() {
                         </button>
 
                         {statusMenuOpen && (
-                          <div className={styles.statusMenu} role="menu">
+                          <div
+                            className={styles.statusMenu}
+                            role="menu"
+                            ref={(el) => {
+                              // kept whole on the screen whichever side of the heading the badge wrapped to (2026-10-13)
+                              if (!el) return;
+                              el.style.transform = '';
+                              const r = el.getBoundingClientRect();
+                              const dx = r.left < 12 ? 12 - r.left : r.right > window.innerWidth - 12 ? window.innerWidth - 12 - r.right : 0;
+                              if (dx) el.style.transform = `translateX(${dx}px)`;
+                            }}
+                          >
                             <div className={styles.statusMenuRow}>
                               <span>{t('dashboard.statDaysLeft')}</span>
                               <b>{roundDaysLeft}</b>
@@ -1173,6 +1223,7 @@ export function DashboardPage() {
                         >
                           <div className={rt.pane}>
                             <div className={rt.bookRow}>
+                              {bookCover && <img className={rt.cover} src={bookCover} alt="" loading="lazy" />}
                               <div className={rt.bookText}>
                                 {todayBooks[0]?.title ? (
                                   <>
@@ -1195,7 +1246,7 @@ export function DashboardPage() {
                               value={todayBooks.length > 1 ? sumMinutes(todayBooks) : parseInt(todayMinutes, 10) || 0}
                               onChange={(m) => setTodayMinutes(m ? String(m) : '')}
                               readOnly={todayBooks.length > 1}
-                              onSwipe={(d) => goTop(topPage + d)}
+                              onSwipe={wide ? undefined : (d) => goTop(topPage + d)}
                             />
                             <div className={rt.save}>
                               <Button
@@ -1216,27 +1267,13 @@ export function DashboardPage() {
                               )}
                             </div>
                           </div>
-                          {calendar && (
-                            <MonthStats
-                              days={calendar.days}
-                              todayStr={todayStr}
-                              todayMinutes={todayBooks.length > 1 ? sumMinutes(todayBooks) : parseInt(todayMinutes, 10) || 0}
-                              monthLabel={locale === 'en' ? monthName : monthName.toLowerCase()}
-                              dayOfRound={Math.max(1, roundDaysElapsed)}
-                              roundDays={roundWindow.total}
-                              place={(() => {
-                                const i = leaderboard.findIndex((e) => e.user_id === user?.id);
-                                return i >= 0 ? { rank: leaderboardRanks[i], of: leaderboard.length } : null;
-                              })()}
-                              onPlace={() => { setReadersOpen(true); track('readers_sheet_open', { from: 'stats' }); }}
-                            />
-                          )}
+                          {!wide && monthStats}
                         </div>
-                        <div className={rt.dots}>
+                        {!wide && <div className={rt.dots}>
                           {[0, 1].map((i) => (
                             <button key={i} type="button" aria-current={topPage === i} aria-label={i ? t('stats.myMonth', { month: monthName }) : t('dial.label')} onClick={() => goTop(i)} />
                           ))}
-                        </div>
+                        </div>}
                       </div>
 
                       {detailsOpen && (
@@ -1605,6 +1642,10 @@ export function DashboardPage() {
                   </div>
                 ) : null}
 
+                {wide && isParticipant && !inRegistrationWindow && monthStats && (
+                  <div className={`${styles.section} ${styles.monthBlock} ${revealClass} ${anim.scrollRevealDelay3}`}>{monthStats}</div>
+                )}
+
                 {/* Shared circle calendar — only when the personal card (which
                     carries its own circle/mine switch) isn't on screen. */}
                 {roundStatus.round && !(isParticipant && !inRegistrationWindow) && (
@@ -1704,6 +1745,7 @@ export function DashboardPage() {
         leaderboard={leaderboard}
         today={roster?.days[todayStr] ?? []}
         userId={user?.id}
+        dayOfRound={roundDaysElapsed}
         onPick={(id, name) => {
           void selectUser(id, name);
           window.setTimeout(() => document.querySelector('[data-cal]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);

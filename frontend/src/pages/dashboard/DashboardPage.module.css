@@ -282,6 +282,7 @@
   top: calc(100% + var(--spacing-2));
   right: 0;
   min-width: 220px;
+  max-width: calc(100vw - 24px);
   padding: var(--spacing-2);
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border-primary);
@@ -1597,3 +1598,20 @@
 .legendScale i { width: 26px; height: 22px; border-radius: 6px; }
 
 .roundInfoTight { margin-bottom: var(--spacing-3); }
+
+@media (max-width: 430px) {
+  .calSeg button { padding: 6px 11px; font-size: 13px; }
+  .calLegend { font-size: 10.5px; gap: 4px; }
+  .calLegendRow { gap: 3px; }
+  .calLegendRow em, .calLegendRow u { display: none; }
+}
+@media (max-width: 360px) {
+  .calLegendRow { display: none; }
+}
+
+.monthBlock { display: flex; flex-direction: column; }
+@media (max-width: 420px) {
+  /* narrow phones: the cards give their room to the calendar's days (≥ 44 px to a finger from 375 px up) */
+  .section { padding: var(--spacing-4) 10px; }
+  .calendar { gap: 2px; }
+}

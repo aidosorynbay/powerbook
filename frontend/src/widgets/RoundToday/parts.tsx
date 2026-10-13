@@ -83,6 +83,13 @@ export function ReminderChip({ roundKey, userId }: { roundKey: string; userId?: 
   );
 }
 
+/** A reader's colour, the same every time: warm hues that sit well on both themes. */
+function hue(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return [14, 28, 40, 160, 190, 210, 260, 330][h % 8];
+}
+
 /** «Читатели круга»: everyone of the circle, the most days first, without places; a tap shows their calendar. */
 export function ReadersSheet({
   open,
@@ -90,6 +97,7 @@ export function ReadersSheet({
   leaderboard,
   today,
   userId,
+  dayOfRound,
   onPick,
 }: {
   open: boolean;
@@ -97,37 +105,52 @@ export function ReadersSheet({
   leaderboard: LeaderboardEntry[];
   today: RosterEntry[];
   userId?: string;
+  dayOfRound: number;
   onPick: (id: string, name: string) => void;
 }) {
   const { t } = useI18n();
   const todayBy = useMemo(() => new Map(today.map((e) => [e.user_id, e.minutes])), [today]);
+  const readToday = today.filter((e) => e.minutes > 0).length;
+  const doneToday = today.filter((e) => e.minutes >= 30).length;
+  const days = Math.max(1, dayOfRound);
   return (
     <Sheet open={open} onClose={onClose} label={t('readers.title')}>
       <h3 className={styles.sheetTitle}>{t('readers.title')}</h3>
-      <p className={styles.sheetLead}>{t('readers.lead', { n: leaderboard.length, today: today.filter((e) => e.minutes > 0).length })}</p>
+      <div className={styles.readersStats}>
+        <span><b>{leaderboard.length}</b>{t('readers.inCircle')}</span>
+        <span><b>{readToday}</b>{t('readers.todayRead')}</span>
+        <span className={styles.rsDone}><b>{doneToday}</b>{t('readers.todayCounted')}</span>
+      </div>
       <ul className={styles.readers}>
         {leaderboard.map((e) => {
           const m = todayBy.get(e.user_id) ?? 0;
+          const me = e.user_id === userId;
+          const h = hue(e.user_id);
           return (
             <li
               key={e.user_id}
-              className={e.user_id === userId ? styles.me : ''}
+              className={me ? styles.me : ''}
               onClick={() => {
                 onPick(e.user_id, e.display_name);
                 onClose();
               }}
             >
-              <span className={styles.av}>{(e.display_name || '?').trim().charAt(0).toUpperCase()}</span>
+              <span className={styles.av} style={{ background: `hsl(${h} 70% 55% / .18)`, color: `hsl(${h} 75% 62%)` }}>
+                {(e.display_name || '?').trim().charAt(0).toUpperCase()}
+              </span>
               <span className={styles.rn}>
                 <span className={styles.tg}>
                   {e.display_name}
-                  {e.user_id === userId ? ` ${t('readers.you')}` : ''}
+                  {me ? ` ${t('readers.you')}` : ''}
                 </span>
-                <small>{m >= 30 ? t('readers.todayDone', { n: m }) : m > 0 ? t('readers.todaySome', { n: m }) : t('readers.todayNone')}{e.telegram_id ? ` · @${e.telegram_id}` : ''}</small>
+                <span className={`${styles.st} ${m >= 30 ? styles.stDone : m > 0 ? styles.stSome : ''}`}>
+                  {m >= 30 ? t('readers.todayDone', { n: m }) : m > 0 ? t('readers.todaySome', { n: m }) : t('readers.todayNone')}
+                </span>
               </span>
               <span className={styles.rd}>
-                {e.total_score}
-                <small>{t('readers.days')}</small>
+                <b>{e.total_score}</b>
+                <small>{t('readers.ofDays', { n: days })}</small>
+                <i className={styles.rdBar}><i style={{ width: `${Math.min(100, (e.total_score / days) * 100)}%` }} /></i>
               </span>
             </li>
           );

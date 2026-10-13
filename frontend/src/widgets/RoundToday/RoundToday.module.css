@@ -4,7 +4,6 @@
 .card {
   /* it sits in the page's «Сегодня» section, which is the card already */
   overflow: hidden;
-  margin: 0 calc(-1 * var(--spacing-1));
 }
 
 .pager {
@@ -94,6 +93,8 @@
 .chip {
   position: relative;
   flex: none;
+  max-width: 46%;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -417,3 +418,46 @@
 }
 
 .bookAsk { font-size: var(--font-size-sm); }
+
+.tickLit { stroke: var(--dial); stroke-linecap: round; filter: drop-shadow(0 0 4px var(--dial)); }
+
+.statsHead .delta { font-size: 11px; font-weight: var(--font-weight-semibold); padding: 3px 8px; border-radius: 999px; text-align: right; }
+.statsHead .deltaUp { color: var(--color-success); background: var(--color-success-muted); }
+.statsHead .deltaDown { color: var(--color-text-secondary); background: var(--color-bg-secondary); }
+
+/* readers, v2: colour avatars, today's status as a pill, days as a bar */
+.readersStats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: var(--spacing-3); }
+.readersStats span { display: grid; gap: 1px; padding: 8px 10px; border-radius: 12px; background: var(--color-bg-secondary); font-size: 11px; color: var(--color-text-secondary); line-height: 1.2; }
+.readersStats b { font-size: var(--font-size-lg); font-weight: var(--font-weight-extrabold); color: var(--color-text-primary); }
+.readersStats .rsDone b { color: var(--color-success); }
+.readers li { grid-template-columns: 40px 1fr auto; padding: 9px 8px; }
+.readers .av { width: 40px; height: 40px; font-size: 16px; }
+.rn { gap: 3px; }
+.st { justify-self: start; font-size: 11px; font-weight: var(--font-weight-semibold); padding: 2px 8px; border-radius: 999px; background: var(--color-bg-secondary); color: var(--color-text-muted); }
+.stSome { background: var(--color-warning-muted); color: var(--color-warning); }
+.stDone { background: var(--color-success-muted); color: var(--color-success); }
+.rd { display: grid; justify-items: end; gap: 2px; min-width: 64px; }
+.rd b { font-size: var(--font-size-lg); font-weight: var(--font-weight-extrabold); line-height: 1; color: var(--color-text-primary); }
+.rd small { font-size: 10px; color: var(--color-text-muted); }
+.rdBar { display: block; width: 64px; height: 4px; border-radius: 4px; background: var(--color-bg-secondary); overflow: hidden; }
+.rdBar i { display: block; height: 100%; border-radius: 4px; background: var(--color-accent-primary); }
+
+/* «Читатели ›» always breathes a little, so it reads as a button (the founder, 2026-10-13) */
+.readersSoft { position: relative; }
+.readersSoft::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-accent-primary);
+  opacity: 0;
+  pointer-events: none;
+  animation: soft 3.2s ease-in-out infinite;
+}
+@keyframes soft {
+  0%, 100% { opacity: 0; transform: scale(0.96); }
+  50% { opacity: 0.45; transform: scale(1.04); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .readersSoft::after { animation: none; opacity: 0.3; }
+}

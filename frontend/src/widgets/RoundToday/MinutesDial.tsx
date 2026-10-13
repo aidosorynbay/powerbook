@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '@/shared/lib';
 import { track } from '@/shared/lib/analytics';
+import { tick } from './haptics';
 import styles from './RoundToday.module.css';
 
 /**
@@ -69,6 +70,8 @@ export function MinutesDial({
   const [coach, setCoach] = useState(false);
   const [ghost, setGhost] = useState<number | null>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
+  // the mark the hand just crossed glows a moment (the detent you see)
+  const [lit, setLit] = useState<number | null>(null);
   const card = useRef<HTMLDivElement>(null);
   const drag = useRef<{ a: number; x: number; y: number; moved: boolean; ring: boolean } | null>(null);
 
@@ -79,9 +82,15 @@ export function MinutesDial({
   const set = useCallback(
     (m: number, haptic: boolean) => {
       const v = Math.max(0, Math.min(MAX, Math.round(m)));
-      if (haptic && navigator.vibrate) {
+      if (haptic) {
+        // a tick for every 5 minutes crossed, a strong one at 30 and on each full hour
         const step = Math.floor(v / 5);
-        if (step !== lastStep.current) navigator.vibrate(v === GOAL ? 18 : 4);
+        if (step !== lastStep.current) {
+          const crossed = Math.max(step, lastStep.current) * 5;
+          tick(crossed === GOAL || crossed % 60 === 0);
+          setLit(crossed % 60);
+          window.setTimeout(() => setLit(null), 120);
+        }
         lastStep.current = step;
       }
       if (v !== value) onChange(v);
@@ -104,6 +113,7 @@ export function MinutesDial({
     wrap.current?.setPointerCapture(e.pointerId);
     if (ring) {
       total.current = value;
+      lastStep.current = Math.floor(value / 5);
       // nothing wound yet: a touch on the ring puts the hand there
       if (value === 0) {
         let m = ((a + Math.PI / 2) / (Math.PI * 2)) * 60;
@@ -249,7 +259,15 @@ export function MinutesDial({
             </filter>
           </defs>
           {TICKS.map((k, i) => (
-            <line key={i} x1={k.x1} y1={k.y1} x2={k.x2} y2={k.y2} className={k.strong ? styles.tickStrong : styles.tick} strokeWidth={k.strong ? 2 : 1.2} />
+            <line
+              key={i}
+              x1={k.x1}
+              y1={k.y1}
+              x2={k.x2}
+              y2={k.y2}
+              className={lit !== null && i === lit ? styles.tickLit : k.strong ? styles.tickStrong : styles.tick}
+              strokeWidth={lit !== null && i === lit ? 4 : k.strong ? 2 : 1.2}
+            />
           ))}
           <circle className={styles.track} cx={C} cy={C} r={R} strokeWidth={18} fill="none" />
           {laps > 0 && <circle className={styles.lapDone} cx={C} cy={C} r={R} strokeWidth={18} fill="none" />}

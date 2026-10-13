@@ -24,6 +24,7 @@ export function MonthStats({
   roundDays,
   place,
   onPlace,
+  prevSameDay = null,
 }: {
   days: CalendarDay[];
   todayStr: string;
@@ -34,6 +35,8 @@ export function MonthStats({
   roundDays: number;
   place: { rank: number; of: number } | null;
   onPlace: () => void;
+  /** The reader's minutes in their last circle up to the same day of the month, if they read in it. */
+  prevSameDay?: number | null;
 }) {
   const { t } = useI18n();
   const [picked, setPicked] = useState<string | null>(null);
@@ -100,7 +103,13 @@ export function MonthStats({
     <div className={`${styles.pane} ${styles.stats}`}>
       <div className={styles.statsHead}>
         <b>{t('stats.myMonth', { month: monthLabel })}</b>
-        <span>{t('stats.dayOf', { n: dayOfRound, total: roundDays })}</span>
+        {prevSameDay !== null ? (
+          <span className={`${styles.delta} ${s.total >= prevSameDay ? styles.deltaUp : styles.deltaDown}`}>
+            {t('stats.vsPrev', { sign: s.total >= prevSameDay ? '+' : '−', n: Math.abs(s.total - prevSameDay), d: Number(todayStr.slice(8, 10)) })}
+          </span>
+        ) : (
+          <span>{t('stats.dayOf', { n: dayOfRound, total: roundDays })}</span>
+        )}
       </div>
 
       <div className={styles.donutRow}>

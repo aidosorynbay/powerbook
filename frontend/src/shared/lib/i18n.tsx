@@ -5,6 +5,11 @@ export type Locale = 'ru' | 'kk' | 'en';
 
 const translations = {
   ru: {
+    'readers.inCircle': 'в круге',
+    'readers.todayCounted': 'засчитали сегодня',
+    'stats.vsPrev': '{sign}{n} мин к прошлому кругу на {d}-е',
+    'readers.todayRead': 'сегодня читали',
+    'readers.ofDays': 'из {n} дн.',
     'stats.myMonth': 'Мой {month}',
     'dial.label': 'Минуты за сегодня',
     'dial.valueText': '{n} мин',
@@ -1925,6 +1930,11 @@ const translations = {
   },
 
   kk: {
+    'readers.inCircle': 'шеңберде',
+    'readers.todayCounted': 'бүгін есептелді',
+    'stats.vsPrev': 'өткен шеңбермен салыстырғанда {d}-күнге {sign}{n} мин',
+    'readers.todayRead': 'бүгін оқыды',
+    'readers.ofDays': '{n} күннен',
     'stats.myMonth': 'Менің {month}',
     'dial.label': 'Бүгінгі минуттар',
     'dial.valueText': '{n} мин',
@@ -3845,6 +3855,11 @@ const translations = {
   },
 
   en: {
+    'readers.inCircle': 'in the circle',
+    'readers.todayCounted': 'counted today',
+    'stats.vsPrev': '{sign}{n} min vs last circle by day {d}',
+    'readers.todayRead': 'read today',
+    'readers.ofDays': 'of {n} days',
     'stats.myMonth': 'My {month}',
     'dial.label': 'Today\'s minutes',
     'dial.valueText': '{n} min',
