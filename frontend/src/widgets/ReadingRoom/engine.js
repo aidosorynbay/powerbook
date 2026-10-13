@@ -567,6 +567,11 @@ export function createRoomEngine(opts){
      (a ring is centred on its chair, a name tag hangs above the reader's head), and need only be clear of the controls
      right over it (band.above), not of the heading's whole width. */
   const FIT_MIN=.75,fit={s:1,d:0};
+  /* the target the photo slides to, taken only once it has held still a moment: the marks it is worked out from (a name
+     tag's size, which tags stack) depend on where the photo lies, and on a phone two answers could take turns frame by
+     frame, the photo shaking between them while the page stood still (the founder, 2026-10-13) */
+  let fitGoal=null,fitCand=null,fitCandAt=0;
+  const fitNear=(a,b)=>Math.abs(a.s-b.s)<.004&&Math.abs(a.d-b.d)<2;
   function fitTarget(marks,ar){
     const b=opts.band?.();if(!b||!marks)return {s:1,d:0};
     const rings=[],tags=[];
@@ -691,7 +696,12 @@ export function createRoomEngine(opts){
         ls:els.map(el=>el.dataset.label&&el.firstElementChild?el.firstElementChild.offsetWidth:0),
         hs:els.map(el=>el.dataset.stack?el.offsetHeight:0),rs:els.map(el=>el.dataset.label?el.offsetHeight:0)};
     }
-    const ft=fitTarget(marks,tex.ar),fk=Math.min(1,dt*5);
+    const ft0=fitTarget(marks,tex.ar),fk=Math.min(1,dt*5);
+    if(!fitGoal)fitGoal=ft0;
+    else if(fitNear(ft0,fitGoal))fitCand=null;
+    else if(fitCand&&fitNear(ft0,fitCand)){if(T-fitCandAt>.4){fitGoal=ft0;fitCand=null}}
+    else{fitCand=ft0;fitCandAt=T}
+    const ft=fitGoal;
     fit.s+=(ft.s-fit.s)*fk;fit.d+=(ft.d-fit.d)*fk;
     computeMap(P,tex.ar);
     const live=seg(P,.8,1);
