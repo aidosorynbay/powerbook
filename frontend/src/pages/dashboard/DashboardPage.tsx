@@ -1223,7 +1223,7 @@ export function DashboardPage() {
                         >
                           <div className={rt.pane}>
                             <div className={rt.bookRow}>
-                              {bookCover && <img className={rt.cover} src={bookCover} alt="" loading="lazy" />}
+                              {bookCover && <img className={rt.cover} src={bookCover} alt="" />}
                               <div className={rt.bookText}>
                                 {todayBooks[0]?.title ? (
                                   <>

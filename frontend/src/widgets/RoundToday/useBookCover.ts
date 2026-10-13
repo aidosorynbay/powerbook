@@ -6,7 +6,7 @@ import { apiGet, getApiBaseUrl } from '@/shared/lib';
  * «лучше обложка, чем одно название»). The shared library's book first, then
  * a catalogue edition; kept for the session so the dial page asks once.
  */
-type Match = { works: { cover_thumb_url: string | null }[]; editions: { thumb_url: string }[] };
+type Match = { works: { title: string; cover_thumb_url: string | null }[]; editions: { thumb_url: string }[] };
 
 const memo = new Map<string, string | null>();
 
@@ -23,11 +23,18 @@ export function useBookCover(title: string | undefined): string | null {
       return;
     }
     let alive = true;
-    void apiGet<Match>(`/books/match?q=${encodeURIComponent(title!.trim())}`, { requireAuth: true }).then(({ data }) => {
-      const found = data?.works.find((w) => w.cover_thumb_url)?.cover_thumb_url ?? data?.editions[0]?.thumb_url ?? null;
+    void apiGet<Match>(`/books/match?q=${encodeURIComponent(title!.trim())}&editions=false`, { requireAuth: true }).then(({ data }) => {
+      // only a book whose title is this one (or this one without its volume number): never a stranger's cover
+      const norm = (x: string) => x.toLowerCase().replace(/[«»"'.,:;!?()]/g, '').replace(/\s+/g, ' ').trim();
+      const want = norm(title!);
+      const same = (w: { title: string }) => {
+        const got = norm(w.title);
+        return got === want || want.startsWith(`${got} `) || got.startsWith(`${want} `);
+      };
+      const found = data?.works.find((w) => w.cover_thumb_url && same(w))?.cover_thumb_url ?? null;
       memo.set(key, found);
       try {
-        sessionStorage.setItem(`pb.cover.${key}`, found ?? '');
+        sessionStorage.setItem(`pb.cover2.${key}`, found ?? '');
       } catch {
         /* fine */
       }
@@ -43,7 +50,7 @@ export function useBookCover(title: string | undefined): string | null {
 
 function readStore(key: string): string | null {
   try {
-    const v = sessionStorage.getItem(`pb.cover.${key}`);
+    const v = sessionStorage.getItem(`pb.cover2.${key}`);
     return v ? v : null;
   } catch {
     return null;

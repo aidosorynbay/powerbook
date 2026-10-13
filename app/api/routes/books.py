@@ -51,7 +51,13 @@ def match(
 ) -> BookMatchOut:
     """«Какая это книга?»: the shared library's books first, then catalogue editions."""
     works = books.match_works(db, viewer_id=user.id, query=q)
-    found = [CoverOptionOut(**option) for option in shelf_overrides.search_editions(q)[:10]] if editions else []
+    found: list[CoverOptionOut] = []
+    if editions:
+        # the outside catalogue may be down (it answered 500, 2026-10-13): the library's books still come back
+        try:
+            found = [CoverOptionOut(**option) for option in shelf_overrides.search_editions(q)[:10]]
+        except Exception:  # noqa: BLE001
+            found = []
     return BookMatchOut(works=works, editions=found)
 
 
