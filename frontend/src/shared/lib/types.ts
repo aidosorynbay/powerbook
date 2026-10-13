@@ -65,6 +65,8 @@ export type LeaderboardEntry = {
   telegram_id: string | null;
   total_score: number;
   days_read: number;
+  /** The version of the reader's picture at /social/avatar/<id>, or null when they have none. */
+  avatar?: string | null;
 };
 
 // Calendar

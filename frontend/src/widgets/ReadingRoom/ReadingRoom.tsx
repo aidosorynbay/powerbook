@@ -224,6 +224,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   const [messages, setMessages] = useState<Message[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [tick, setTick] = useState(0);
+  const debugTaps = useRef<number[]>([]);
   const stamp = useRef(performance.now());
   const since = useRef<string | null>(null);
   const [near, setNear] = useState(layout === 'full');
@@ -436,7 +437,13 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
       },
     });
     engineRef.current = engine;
-    const stopDebug = /[?&]roomdebug/.test(window.location.search) ? roomDebug(engine, stage) : null;
+    let debugOn = /[?&]roomdebug/.test(window.location.search);
+    try {
+      debugOn = debugOn || localStorage.getItem('pb.roomdebug') === '1';
+    } catch {
+      /* no storage */
+    }
+    const stopDebug = debugOn ? roomDebug(engine, stage) : null;
     return () => {
       stopDebug?.();
       engine.destroy();
@@ -1049,7 +1056,25 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
               <span>{access}</span>
             </div>
-            <h2 className={styles.title}>{hallTitle}</h2>
+            <h2
+              className={styles.title}
+              onClick={() => {
+                // five quick taps on the title: the debug line on or off (the home-screen app has no address bar)
+                const now = Date.now();
+                debugTaps.current = debugTaps.current.filter((t0) => now - t0 < 2500).concat(now);
+                if (debugTaps.current.length >= 5) {
+                  debugTaps.current = [];
+                  try {
+                    localStorage.setItem('pb.roomdebug', localStorage.getItem('pb.roomdebug') === '1' ? '0' : '1');
+                  } catch {
+                    /* no storage */
+                  }
+                  window.location.reload();
+                }
+              }}
+            >
+              {hallTitle}
+            </h2>
             <div className={styles.meta}>
               <span className={styles.live}><i className={styles.liveDot} />{mineHere ? (readers.length > 1 ? t('room.youPlus', { n: readers.length - 1 }) : t('room.youAlone')) : t('room.readingCount', { n: reading })}</span>
               {totalMinutes > 0 && <span>{t('room.together', { min: totalMinutes })}</span>}

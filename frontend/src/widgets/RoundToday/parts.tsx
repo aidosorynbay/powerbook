@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { track, useI18n } from '@/shared/lib';
+import { getApiBaseUrl, track, useI18n } from '@/shared/lib';
 import type { CalendarDay, LeaderboardEntry, RosterEntry } from '@/shared/lib';
 import { ReadingReminder, type ReminderState } from '@/widgets/ReadingReminder';
 import { usePulse, type PulsePhase } from './pulse';
@@ -48,7 +48,7 @@ export function ReminderChip({ roundKey, userId }: { roundKey: string; userId?: 
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<ReminderState | null>(null);
   const eligible = !!state && state.loaded && !state.on && state.support !== 'unsupported' && !state.denied;
-  const { phase, found } = usePulse({ el: 'reminder_chip', storeKey: `pb.pulse.rem.${roundKey}`, eligible, userId, visits: 3 });
+  const { phase, found } = usePulse({ el: 'reminder_chip', storeKey: `pb.pulse2.rem.${roundKey}`, eligible, userId, visits: 3 });
   if (state?.support === 'unsupported') return null;
   const on = !!state?.on;
   return (
@@ -57,7 +57,7 @@ export function ReminderChip({ roundKey, userId }: { roundKey: string; userId?: 
         type="button"
         className={`${styles.chip} ${on ? '' : styles.chipOff} ${pulseClass(phase)}`}
         onClick={() => {
-          found();
+          found(false);
           setOpen(true);
           track('reminder_sheet_open', { on });
         }}
@@ -136,7 +136,11 @@ export function ReadersSheet({
               }}
             >
               <span className={styles.av} style={{ background: `hsl(${h} 70% 55% / .18)`, color: `hsl(${h} 75% 62%)` }}>
-                {(e.display_name || '?').trim().charAt(0).toUpperCase()}
+                {e.avatar ? (
+                  <img src={`${getApiBaseUrl()}/social/avatar/${e.user_id}?v=${e.avatar}`} alt="" loading="lazy" />
+                ) : (
+                  (e.display_name || '?').trim().charAt(0).toUpperCase()
+                )}
               </span>
               <span className={styles.rn}>
                 <span className={styles.tg}>

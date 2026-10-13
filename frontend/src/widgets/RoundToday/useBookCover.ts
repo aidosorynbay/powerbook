@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiGet } from '@/shared/lib';
+import { apiGet, getApiBaseUrl } from '@/shared/lib';
 
 /**
  * The cover of the book being read, for the line over the dial (the founder:
@@ -37,7 +37,8 @@ export function useBookCover(title: string | undefined): string | null {
       alive = false;
     };
   }, [key, title]);
-  return url;
+  // covers of the shared library are API paths (/library/covers/…), editions are full URLs
+  return url && !url.startsWith('http') && !url.startsWith('data:') ? `${getApiBaseUrl()}${url}` : url;
 }
 
 function readStore(key: string): string | null {

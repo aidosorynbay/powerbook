@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+import base64
+import re
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -52,3 +55,23 @@ def my_buddies(db: Session = Depends(get_db), user=Depends(get_current_user)) ->
 @router.get("/buddies/followers", response_model=list[BuddyOut])
 def my_followers(db: Session = Depends(get_db), user=Depends(get_current_user)) -> list[BuddyOut]:
     return SocialService(db).my_followers(user_id=user.id)
+
+
+_DATA_URL = re.compile(r"^data:(image/[a-z+.-]+);base64,(.+)$", re.S)
+
+
+@router.get("/avatar/{user_id}")
+def get_avatar(user_id: uuid.UUID, db: Session = Depends(get_db)) -> Response:
+    """A reader's picture as an image, for lists that show many faces (the circle's readers): the
+    leaderboard carries only whether there is one. Public, like the face on a reader's page."""
+    from app.models.user import User
+
+    user = db.get(User, user_id)
+    m = _DATA_URL.match(user.avatar_data or "") if user else None
+    if not m:
+        raise HTTPException(status_code=404, detail="No avatar")
+    return Response(
+        content=base64.b64decode(m.group(2)),
+        media_type=m.group(1),
+        headers={"Cache-Control": "public, max-age=86400"},
+    )

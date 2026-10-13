@@ -1497,3 +1497,8 @@
     display: none;
   }
 }
+
+/* the title takes taps (five of them turn the debug line on) */
+.ui[data-live='1'] .title {
+  pointer-events: auto;
+}

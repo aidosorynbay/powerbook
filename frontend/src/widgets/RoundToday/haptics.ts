@@ -8,23 +8,58 @@
  * side effect, not an API, so it is tried quietly and may one day do nothing.
  */
 
-let label: HTMLLabelElement | null = null;
 let last = 0;
+let audio: AudioContext | null = null;
 
-function iosSwitch(): HTMLLabelElement | null {
-  if (label) return label;
-  if (typeof document === 'undefined') return null;
-  const l = document.createElement('label');
-  l.setAttribute('aria-hidden', 'true');
-  l.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
+/**
+ * The click you hear: a few milliseconds of filtered noise, like the
+ * iPhone timer's wheel. Web Audio may only start inside a touch, so the
+ * dial calls this on pointerdown; on an iPhone it stays silent with the
+ * ringer switch off, as the timer does.
+ */
+export function unlockSound() {
+  try {
+    if (!audio) {
+      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctx) return;
+      audio = new Ctx();
+    }
+    if (audio.state === 'suspended') void audio.resume();
+  } catch {
+    audio = null;
+  }
+}
+
+function click(strong: boolean) {
+  const ctx = audio;
+  if (!ctx || ctx.state !== 'running') return;
+  const len = Math.floor(ctx.sampleRate * 0.006);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 3;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = strong ? 1800 : 2600;
+  const gain = ctx.createGain();
+  gain.gain.value = strong ? 0.5 : 0.28;
+  src.connect(hp).connect(gain).connect(ctx.destination);
+  src.start();
+}
+
+/** One tap of the Taptic Engine through a switch made for it and gone again (the way ios-haptics does it). */
+function iosTap() {
+  const label = document.createElement('label');
+  label.ariaHidden = 'true';
+  label.style.display = 'none';
   const input = document.createElement('input');
   input.type = 'checkbox';
   input.setAttribute('switch', '');
-  input.tabIndex = -1;
-  l.appendChild(input);
-  document.body.appendChild(l);
-  label = l;
-  return l;
+  label.appendChild(input);
+  document.head.appendChild(label);
+  label.click();
+  document.head.removeChild(label);
 }
 
 export function hapticsOn(): boolean {
@@ -41,15 +76,14 @@ export function tick(strong = false) {
   const now = performance.now();
   if (!strong && now - last < 50) return;
   last = now;
+  click(strong);
   try {
     if (typeof navigator.vibrate === 'function') {
       navigator.vibrate(strong ? 20 : 8);
       return;
     }
-    const l = iosSwitch();
-    if (!l) return;
-    l.click();
-    if (strong) window.setTimeout(() => l.click(), 80);
+    iosTap();
+    if (strong) window.setTimeout(iosTap, 80);
   } catch {
     /* no tick then */
   }

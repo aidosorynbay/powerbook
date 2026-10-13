@@ -461,3 +461,6 @@
 @media (prefers-reduced-motion: reduce) {
   .readersSoft::after { animation: none; opacity: 0.3; }
 }
+
+.av { overflow: hidden; }
+.av img { width: 100%; height: 100%; object-fit: cover; display: block; }

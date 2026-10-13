@@ -643,7 +643,7 @@ export function DashboardPage() {
   // «Читатели ›» pulses on the first visit of a circle, after the reminder chip has had its turn (one pulse at a time)
   const readersPulse = usePulse({
     el: 'readers_arrow',
-    storeKey: `pb.pulse.readers.${roundStatus?.round?.id ?? 'none'}`,
+    storeKey: `pb.pulse2.readers.${roundStatus?.round?.id ?? 'none'}`,
     eligible: !!isParticipant && !!roundStatus?.round,
     userId: user?.id,
     visits: 1,
@@ -986,9 +986,9 @@ export function DashboardPage() {
                         {' · '}
                         <button
                           type="button"
-                          className={`${rt.readersBtn} ${pulseClass(readersPulse.phase) || rt.readersSoft}`}
+                          className={`${rt.readersBtn} ${readersPulse.phase === 'fast' || readersPulse.phase === 'slow' ? pulseClass(readersPulse.phase) : rt.readersSoft}`}
                           onClick={() => {
-                            readersPulse.found();
+                            readersPulse.found(false);
                             setReadersOpen(true);
                             track('readers_sheet_open', { from: 'header' });
                           }}

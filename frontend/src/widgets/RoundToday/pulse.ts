@@ -77,7 +77,8 @@ export function usePulse({
       setUserProperties({ pulse_variant: variant });
     }
     const v = read(storeKey);
-    if (v.done || variant === 'holdout') {
+    // everyone sees it (the founder, 2026-10-13: the 20% holdout hid it from him); the property stays for GA4
+    if (v.done) {
       setPhase('none');
       return;
     }
@@ -107,15 +108,17 @@ export function usePulse({
     return () => timers.forEach((id) => window.clearTimeout(id));
   }, [eligible, storeKey, userId, visits, delay, fast, slow, el]);
 
-  /** The reader found it: no more pulses for this control this circle. */
-  const found = useCallback(() => {
-    if (phase !== 'none') {
-      track('hint_tap', { el, phase, visit_n: visit.current, ms_since_shown: Math.round(performance.now() - shownAt.current) });
-    }
-    const v = read(storeKey);
-    write(storeKey, { ...v, done: true });
-    setPhase('none');
-  }, [el, phase, storeKey]);
+  /** The reader tapped it: the pulse stops for this visit, and for the circle when `forGood`. */
+  const found = useCallback(
+    (forGood = true) => {
+      if (phase !== 'none') {
+        track('hint_tap', { el, phase, visit_n: visit.current, ms_since_shown: Math.round(performance.now() - shownAt.current) });
+      }
+      if (forGood) write(storeKey, { ...read(storeKey), done: true });
+      setPhase('none');
+    },
+    [el, phase, storeKey],
+  );
 
   return { phase, found };
 }

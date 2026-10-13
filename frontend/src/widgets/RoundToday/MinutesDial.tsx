@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '@/shared/lib';
 import { track } from '@/shared/lib/analytics';
-import { tick } from './haptics';
+import { tick, unlockSound } from './haptics';
 import styles from './RoundToday.module.css';
 
 /**
@@ -112,6 +112,8 @@ export function MinutesDial({
     drag.current = { a, x: e.clientX, y: e.clientY, moved: false, ring };
     wrap.current?.setPointerCapture(e.pointerId);
     if (ring) {
+      unlockSound();
+      tick(false);
       total.current = value;
       lastStep.current = Math.floor(value / 5);
       // nothing wound yet: a touch on the ring puts the hand there
