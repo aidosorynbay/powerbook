@@ -25,7 +25,7 @@ import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type Rin
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
 import { useMediaQuery } from '@/shared/hooks';
-import { MinutesDial, MonthStats, ReminderChip, ReadersSheet, WelcomeBack, Sheet, usePulse, pulseClass, useBookCover } from '@/widgets/RoundToday';
+import { MinutesDial, MonthStats, ReminderChip, ReadersSheet, WelcomeBack, Sheet, usePulse, pulseClass, useBookCover, flyMinutes, unlockSound } from '@/widgets/RoundToday';
 import rt from '@/widgets/RoundToday/RoundToday.module.css';
 import { ShareDay } from '@/widgets/ShareDay';
 import anim from '@/shared/styles/animations.module.css';
@@ -832,6 +832,9 @@ export function DashboardPage() {
 
   const handleSaveToday = async () => {
     if (!roundStatus?.round) return;
+    // sound may only start inside the tap: open it now for the flight after the save
+    unlockSound();
+    const dialRect = document.querySelector('[role=slider]')?.getBoundingClientRect() ?? null;
     const multi = todayBooks.length > 1;
     const minutes = multi ? sumMinutes(todayBooks) : parseInt(todayMinutes, 10) || 0;
     const finished = multi ? todayBooks.some((b) => b.finished) : todayBookFinished;
@@ -849,6 +852,12 @@ export function DashboardPage() {
     );
     if (data) {
       track('minutes_logged', { minutes, where: 'today', book_finished: finished, books: todayBooks.length });
+      // the minutes fly into today's cell of the calendar (the founder's idea, 2026-10-13)
+      if (dialRect && minutes > 0) {
+        setViewUser(null);
+        setCalendarView('mine');
+        void flyMinutes(dialRect, () => document.querySelector<HTMLElement>(`[data-day="${todayStr}"]`), minutes, minutes >= DAILY_GOAL_MINUTES);
+      }
       // The moment a runner posts the run: the day has just reached its 30 minutes.
       if (before < DAILY_GOAL_MINUTES && minutes >= DAILY_GOAL_MINUTES) setGoalJustMet(true);
       // The story sheet comes up by itself only on a milestone (the first day counted, a streak of 3/7/14/21, a book
@@ -864,7 +873,7 @@ export function DashboardPage() {
         : null;
       if (reason) {
         track('share_prompt_shown', { reason });
-        window.setTimeout(() => setSharing(todayStr), 600);
+        window.setTimeout(() => setSharing(todayStr), 2300);
       }
       await fetchCalendar(roundStatus.round.id);
       await fetchLeaderboard(roundStatus.round.id);
@@ -1648,6 +1657,7 @@ export function DashboardPage() {
                         return (
                           <div
                             key={cell.date}
+                            data-day={cell.date}
                             className={`${styles.calendarDay} ${colorClass}`}
                             style={lastDayClickable ? { cursor: 'pointer', opacity: 1 } : undefined}
                             onClick={canClick ? () => openLogModal(cell.date, cell.minutes) : undefined}

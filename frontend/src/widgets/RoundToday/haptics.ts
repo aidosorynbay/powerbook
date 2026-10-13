@@ -88,3 +88,66 @@ export function tick(strong = false) {
     /* no tick then */
   }
 }
+
+/** Pages lifting off: a short paper rustle (band-passed noise in little bursts). Called inside the tap on «Сохранить». */
+export function rustle() {
+  unlockSound();
+  const ctx = audio;
+  if (!ctx) return;
+  const play = () => {
+    const dur = 0.42;
+    const len = Math.floor(ctx.sampleRate * dur);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) {
+      const t = i / ctx.sampleRate;
+      const flutter = 0.55 + 0.45 * Math.abs(Math.sin(t * 2 * Math.PI * 14));
+      d[i] = (Math.random() * 2 - 1) * flutter * Math.min(1, t / 0.03) * (1 - t / dur) ** 1.5;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 3200;
+    bp.Q.value = 0.7;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.22;
+    src.connect(bp).connect(gain).connect(ctx.destination);
+    src.start();
+  };
+  if (ctx.state === 'running') play();
+  else void ctx.resume().then(play).catch(() => {});
+}
+
+/** The pages land in the day: a soft wooden thud, a little brighter when the day now counts, and a tap. */
+export function thud(counted: boolean) {
+  const ctx = audio;
+  if (ctx && ctx.state === 'running') {
+    const t0 = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(counted ? 220 : 170, t0);
+    osc.frequency.exponentialRampToValueAtTime(counted ? 110 : 90, t0 + 0.12);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.35, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.25);
+    if (counted) {
+      // and a small bell on top when the 30 minutes are in
+      const b = ctx.createOscillator();
+      b.type = 'triangle';
+      b.frequency.value = 1320;
+      const bg = ctx.createGain();
+      bg.gain.setValueAtTime(0.0001, t0 + 0.05);
+      bg.gain.exponentialRampToValueAtTime(0.12, t0 + 0.07);
+      bg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.6);
+      b.connect(bg).connect(ctx.destination);
+      b.start(t0 + 0.05);
+      b.stop(t0 + 0.65);
+    }
+  }
+  tick(true);
+}
