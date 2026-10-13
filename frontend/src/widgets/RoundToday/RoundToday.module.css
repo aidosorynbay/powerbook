@@ -522,3 +522,10 @@
 
 .daysLeft { margin: 6px 0 0; text-align: center; font-size: 12px; font-weight: var(--font-weight-semibold); color: var(--color-accent-primary); }
 .leaveLink { display: block; margin: 12px auto 0; font: inherit; font-size: 13px; color: color-mix(in srgb, var(--color-danger) 75%, var(--color-text-muted)); background: none; border: 0; padding: 8px; cursor: pointer; }
+
+/* «Сохранить» → ✓ drawing itself; the button squeezes a little under the finger */
+.save button { transition: transform 0.18s cubic-bezier(.34,1.56,.64,1); }
+.save button:active { transform: scale(0.97); }
+.savedCheck path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: drawCheck 0.25s cubic-bezier(.2,.8,.2,1) forwards; }
+@keyframes drawCheck { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .savedCheck path { animation: none; stroke-dashoffset: 0; } }

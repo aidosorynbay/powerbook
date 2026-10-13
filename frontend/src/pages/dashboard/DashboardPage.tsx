@@ -196,6 +196,8 @@ export function DashboardPage() {
   const [sharing, setSharing] = useState<string | null>(null);
   // the new «Сегодня» (2026-10-13): the card's two pages, the readers and the legend as sheets, the day's details
   const [readersOpen, setReadersOpen] = useState(false);
+  // «Сохранить» turns into a ✓ that draws itself for a moment after a save
+  const [justSaved, setJustSaved] = useState(false);
   const [legendOpen, setLegendOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [topPage, setTopPage] = useState(0);
@@ -853,6 +855,8 @@ export function DashboardPage() {
     if (data) {
       track('minutes_logged', { minutes, where: 'today', book_finished: finished, books: todayBooks.length });
       // the minutes fly into today's cell of the calendar (the founder's idea, 2026-10-13)
+      setJustSaved(true);
+      window.setTimeout(() => setJustSaved(false), 1500);
       if (dialRect && minutes > 0) {
         setViewUser(null);
         setCalendarView('mine');
@@ -873,7 +877,7 @@ export function DashboardPage() {
         : null;
       if (reason) {
         track('share_prompt_shown', { reason });
-        window.setTimeout(() => setSharing(todayStr), 2300);
+        window.setTimeout(() => setSharing(todayStr), 1900);
       }
       await fetchCalendar(roundStatus.round.id);
       await fetchLeaderboard(roundStatus.round.id);
@@ -1302,7 +1306,11 @@ export function DashboardPage() {
                                 onClick={handleSaveToday}
                                 disabled={isSavingToday || ((parseInt(todayMinutes, 10) || 0) === 0 && todayBooks.length <= 1 && (todayData?.minutes ?? 0) === 0 && !todayComment)}
                               >
-                                {isSavingToday ? t('dashboard.saving') : t('dashboard.save')}
+                                {justSaved ? (
+                                  <svg className={rt.savedCheck} width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-label={t('dashboard.saving')}>
+                                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                                  </svg>
+                                ) : isSavingToday ? t('dashboard.saving') : t('dashboard.save')}
                               </Button>
                               {roundDaysLeft > 0 && roundDaysLeft <= 5 && <p className={rt.daysLeft}>{t('member.daysLeft', { n: roundDaysLeft })}</p>}
                             </div>

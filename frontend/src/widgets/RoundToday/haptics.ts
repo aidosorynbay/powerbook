@@ -119,35 +119,43 @@ export function rustle() {
   else void ctx.resume().then(play).catch(() => {});
 }
 
-/** The pages land in the day: a soft wooden thud, a little brighter when the day now counts, and a tap. */
-export function thud(counted: boolean) {
+/** The minutes land in the day: one soft wooden tick (about 40 ms, low, quiet) and a light tap. */
+export function thud(_counted = false) {
   const ctx = audio;
   if (ctx && ctx.state === 'running') {
     const t0 = ctx.currentTime;
     const osc = ctx.createOscillator();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(counted ? 220 : 170, t0);
-    osc.frequency.exponentialRampToValueAtTime(counted ? 110 : 90, t0 + 0.12);
+    osc.frequency.setValueAtTime(240, t0);
+    osc.frequency.exponentialRampToValueAtTime(150, t0 + 0.05);
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(0.35, t0 + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
+    g.gain.exponentialRampToValueAtTime(0.16, t0 + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.06);
     osc.connect(g).connect(ctx.destination);
     osc.start(t0);
-    osc.stop(t0 + 0.25);
-    if (counted) {
-      // and a small bell on top when the 30 minutes are in
-      const b = ctx.createOscillator();
-      b.type = 'triangle';
-      b.frequency.value = 1320;
-      const bg = ctx.createGain();
-      bg.gain.setValueAtTime(0.0001, t0 + 0.05);
-      bg.gain.exponentialRampToValueAtTime(0.12, t0 + 0.07);
-      bg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.6);
-      b.connect(bg).connect(ctx.destination);
-      b.start(t0 + 0.05);
-      b.stop(t0 + 0.65);
-    }
+    osc.stop(t0 + 0.08);
+  }
+  tick(false);
+}
+
+/** The day now counts: a short two-note chime (a fifth up, soft sine with a quick decay) and a success tap. */
+export function chime() {
+  const ctx = audio;
+  if (ctx && ctx.state === 'running') {
+    const t0 = ctx.currentTime;
+    [[784, 0], [1175, 0.09]].forEach(([f, d]) => {
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = f;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0 + d);
+      g.gain.exponentialRampToValueAtTime(0.09, t0 + d + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.5);
+      o.connect(g).connect(ctx.destination);
+      o.start(t0 + d);
+      o.stop(t0 + d + 0.55);
+    });
   }
   tick(true);
 }
