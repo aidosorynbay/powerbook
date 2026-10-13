@@ -519,3 +519,6 @@
 /* the dial takes what the screen has */
 @media (max-height: 700px) { .dial { width: min(100%, 208px); } }
 @media (min-height: 800px) { .dial { width: min(100%, 248px); } }
+
+.daysLeft { margin: 6px 0 0; text-align: center; font-size: 12px; font-weight: var(--font-weight-semibold); color: var(--color-accent-primary); }
+.leaveLink { display: block; margin: 12px auto 0; font: inherit; font-size: 13px; color: color-mix(in srgb, var(--color-danger) 75%, var(--color-text-muted)); background: none; border: 0; padding: 8px; cursor: pointer; }

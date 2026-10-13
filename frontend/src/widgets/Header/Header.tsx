@@ -51,7 +51,11 @@ export function Header() {
 
   useEffect(() => {
     try {
-      setShowHint(localStorage.getItem(HINT_KEY) !== '1');
+      // and it gives up by itself after three days of visits (the council, 2026-10-13)
+      const day = new Date().toISOString().slice(0, 10);
+      const seen = JSON.parse(localStorage.getItem('pb.menuHintDays') || '[]') as string[];
+      if (!seen.includes(day)) localStorage.setItem('pb.menuHintDays', JSON.stringify([...seen, day].slice(-3)));
+      setShowHint(localStorage.getItem(HINT_KEY) !== '1' && (seen.includes(day) ? seen.length : seen.length + 1) <= 3);
     } catch {
       // private mode / storage blocked — just skip the hint
     }

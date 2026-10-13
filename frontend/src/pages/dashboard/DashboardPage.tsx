@@ -980,26 +980,25 @@ export function DashboardPage() {
               <div className={`${styles.roundInfo} ${isParticipant && !inRegistrationWindow ? styles.roundInfoTight : ''}`}>
                 <div className={`${styles.roundHeader} ${isParticipant && !inRegistrationWindow ? styles.roundHeaderMember : ''}`}>
                   <div className={styles.roundTitle}>
-                    {monthName} {roundStatus.round.year}
+                    {isParticipant && !inRegistrationWindow ? t(`roundTitle.${roundStatus.round.month}`) : `${monthName} ${roundStatus.round.year}`}
                     {isParticipant && !inRegistrationWindow && (
-                      <span className={styles.roundSub}>
-                        {t('stats.dayOf', { n: Math.max(1, roundDaysElapsed), total: roundWindow.total })}
-                        {' · '}
-                        <button
-                          type="button"
-                          className={`${rt.readersBtn} ${readersPulse.phase === 'fast' || readersPulse.phase === 'slow' ? pulseClass(readersPulse.phase) : ''}`}
-                          onClick={() => {
-                            readersPulse.found(false);
-                            setReadersOpen(true);
-                            track('readers_sheet_open', { from: 'header' });
-                          }}
-                        >
-                          {t('today.readers')} ›
-                        </button>
-                      </span>
+                      /* one line, one tap: you are in, which day it is, how many read with you (the council, 2026-10-13) */
+                      <button
+                        type="button"
+                        className={`${styles.memberLine} ${readersPulse.phase === 'fast' || readersPulse.phase === 'slow' ? pulseClass(readersPulse.phase) : ''}`}
+                        onClick={() => {
+                          readersPulse.found(false);
+                          setReadersOpen(true);
+                          track('readers_sheet_open', { from: 'header' });
+                        }}
+                      >
+                        <i className={styles.memberDot} aria-hidden="true" />
+                        {t('member.line', { n: Math.max(1, roundDaysElapsed), total: roundWindow.total, readers: leaderboard.length })}
+                        <span className={styles.memberMore}> ›</span>
+                      </button>
                     )}
                   </div>
-                  <div className={styles.roundHeaderActions}>
+                  <div className={`${styles.roundHeaderActions} ${isParticipant && !inRegistrationWindow ? styles.gone : ''}`}>
                     {roundStatus.round.status === 'registration_open' && !isParticipant ? (
                       <button
                         type="button"
@@ -1296,6 +1295,7 @@ export function DashboardPage() {
                               >
                                 {isSavingToday ? t('dashboard.saving') : t('dashboard.save')}
                               </Button>
+                              {roundDaysLeft > 0 && roundDaysLeft <= 5 && <p className={rt.daysLeft}>{t('member.daysLeft', { n: roundDaysLeft })}</p>}
                             </div>
                           </div>
                           {!wide && monthStats}
@@ -1777,6 +1777,7 @@ export function DashboardPage() {
         today={roster?.days[todayStr] ?? []}
         userId={user?.id}
         dayOfRound={roundDaysElapsed}
+        leave={canLeave ? { until: roundStatus?.round?.registration_open_until_day ?? null, onLeave: () => { setReadersOpen(false); openLeaveModal(); } } : undefined}
         onPick={(id, name) => {
           void selectUser(id, name);
           window.setTimeout(() => document.querySelector('[data-cal]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);

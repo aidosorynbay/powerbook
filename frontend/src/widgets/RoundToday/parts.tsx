@@ -100,6 +100,7 @@ export function ReadersSheet({
   userId,
   dayOfRound,
   onPick,
+  leave,
 }: {
   open: boolean;
   onClose: () => void;
@@ -108,6 +109,8 @@ export function ReadersSheet({
   userId?: string;
   dayOfRound: number;
   onPick: (id: string, name: string) => void;
+  /** While leaving is allowed: the link at the foot of the list. */
+  leave?: { until: number | null; onLeave: () => void };
 }) {
   const { t } = useI18n();
   const todayBy = useMemo(() => new Map(today.map((e) => [e.user_id, e.minutes])), [today]);
@@ -164,6 +167,11 @@ export function ReadersSheet({
       <button type="button" className={`${styles.sheetClose} ${styles.closeBtn}`} onClick={onClose}>
         {t('today.close')}
       </button>
+      {leave && (
+        <button type="button" className={styles.leaveLink} onClick={leave.onLeave}>
+          {leave.until ? t('member.leaveUntil', { d: leave.until }) : t('member.leave')}
+        </button>
+      )}
     </Sheet>
   );
 }

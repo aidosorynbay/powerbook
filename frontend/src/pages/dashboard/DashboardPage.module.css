@@ -1627,3 +1627,27 @@
   .statusShortText { display: none; }
   .roundHeaderMember .roundSub { padding-right: 56px; }
 }
+
+/* members: «Октябрьский круг» and one line under it (the council, 2026-10-13) */
+.memberLine {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  margin-top: 2px;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  background: none;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  text-align: left;
+}
+.memberDot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-success); flex: none; }
+.memberMore { color: var(--color-accent-primary); font-weight: var(--font-weight-bold); }
+
+.gone { display: none !important; }
+.roundHeaderMember .roundTitle { min-width: 0; }
