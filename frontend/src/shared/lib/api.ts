@@ -15,8 +15,23 @@ export function getApiBaseUrl(): string {
 /**
  * Get the stored auth token.
  */
+let memoryToken: string | null = null;
+
+/** The token of this visit, also in memory: a write to storage that did not stick must not sign the reader out. */
+export function rememberToken(token: string | null) {
+  memoryToken = token;
+}
+
+export function readToken(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEY_TOKEN) ?? memoryToken;
+  } catch {
+    return memoryToken;
+  }
+}
+
 export function getAuthToken(): string | null {
-  return localStorage.getItem(STORAGE_KEY_TOKEN);
+  return readToken();
 }
 
 /**
