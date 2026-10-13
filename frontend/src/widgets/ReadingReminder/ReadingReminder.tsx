@@ -29,7 +29,16 @@ const pad = (n: number) => String(n).padStart(2, '0');
  * works from the app on the home screen only, so Safari gets the install
  * guide instead of a switch that could not work.
  */
-export function ReadingReminder() {
+export type ReminderState = { on: boolean; time: string | null; support: 'ok' | 'needs_install' | 'unsupported'; denied: boolean; loaded: boolean };
+
+/** Habit moments to start from: a tap fills the time (the founder's «в автобусе в 10 утра»). */
+const PRESETS = [
+  { key: 'reminder.presetMorning', h: 8, m: 0 },
+  { key: 'reminder.presetRoad', h: 10, m: 0 },
+  { key: 'reminder.presetNight', h: 22, m: 30 },
+] as const;
+
+export function ReadingReminder({ onState, source = 'card', bare = false }: { onState?: (s: ReminderState) => void; source?: string; bare?: boolean } = {}) {
   const { t, locale } = useI18n();
   const support = pushSupport();
   const [reminder, setReminder] = useState<Reminder | null>(null);
@@ -64,9 +73,14 @@ export function ReadingReminder() {
     [reminder, locale, t],
   );
 
-  if (support === 'unsupported') return null;
-
   const on = Boolean(reminder?.enabled && subscribed);
+  const deniedNow = support === 'ok' && pushPermission() === 'denied';
+  const time = reminder ? `${pad(reminder.hour)}:${pad(reminder.minute)}` : null;
+  useEffect(() => {
+    onState?.({ on, time, support, denied: deniedNow, loaded: reminder !== null });
+  }, [on, time, support, deniedNow, reminder, onState]);
+
+  if (support === 'unsupported') return null;
 
   const turnOn = async () => {
     setBusy(true);
@@ -74,6 +88,7 @@ export function ReadingReminder() {
     const result = await enablePush();
     track('reminder_enable', { result });
     if (result === 'granted') {
+      track('reminder_enabled', { source });
       setSubscribed(true);
       await save({ enabled: true });
       setNote(t('reminder.saved'));
@@ -127,7 +142,7 @@ export function ReadingReminder() {
   const denied = support === 'ok' && pushPermission() === 'denied';
 
   return (
-    <section className={styles.card} aria-labelledby="reading-reminder-title">
+    <section className={bare ? styles.bare : styles.card} aria-labelledby="reading-reminder-title">
       <div className={styles.head}>
         <span className={styles.icon} aria-hidden="true">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -175,6 +190,16 @@ export function ReadingReminder() {
               <input type="time" value={`${pad(reminder.hour)}:${pad(reminder.minute)}`} onChange={(e) => changeTime(e.target.value)} />
             </label>
             <span className={styles.tz}>{t('reminder.tzNote', { tz: localTimeZone().replace('_', ' ') })}</span>
+          </div>
+          <div className={styles.presets}>
+            {PRESETS.map((p) => {
+              const v = `${pad(p.h)}:${pad(p.m)}`;
+              return (
+                <button key={p.key} type="button" className={`${styles.preset} ${time === v ? styles.presetOn : ''}`} onClick={() => changeTime(v)}>
+                  {t(p.key)} · {v}
+                </button>
+              );
+            })}
           </div>
           <label className={styles.noteField}>
             <span>{t('reminder.noteLabel')}</span>

@@ -1499,3 +1499,101 @@
   font-weight: var(--font-weight-medium);
   color: var(--color-success, var(--color-accent-primary));
 }
+
+/* ---------- the round page for members, 2026-10-13 ---------- */
+.roundSub {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+.todayDetails {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+}
+.calTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-2);
+}
+.calSeg { display: flex; gap: 6px; }
+.calSeg button {
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-primary);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.calSeg button[aria-pressed='true'] {
+  color: var(--color-accent-primary);
+  border-color: var(--color-border-accent);
+  background: var(--color-accent-primary-muted);
+}
+.calLegend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  background: none;
+  border: 0;
+  padding: 6px 0 6px 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.calLegendRow { display: inline-flex; align-items: center; gap: 4px; }
+.calLegendRow i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-left: 3px; }
+.calLegendRow i:first-child { margin-left: 0; }
+.calLegendRow em { font-style: normal; margin-left: 4px; }
+.calLegendRow u { width: 5px; height: 5px; border-radius: 50%; background: var(--color-text-secondary); display: inline-block; margin-left: 2px; }
+.calQ {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-primary);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.lgG { background: var(--color-success-fill); }
+.lgY { background: var(--color-warning-fill); }
+.lgR { background: var(--color-danger-fill); }
+.calLegendRow .lgC { width: 11px; height: 11px; border-radius: 3px; margin: 0; }
+.lgC,
+.circleSum {
+  --circle-lo: color-mix(in oklab, var(--color-accent-primary) 22%, var(--color-bg-card));
+  --circle-hi: var(--color-accent-primary);
+  background: color-mix(in oklab, var(--circle-lo) calc((1 - var(--k, 1)) * 100%), var(--circle-hi) calc(var(--k, 1) * 100%));
+}
+.circleSum {
+  border-color: var(--color-border-accent);
+  color: color-mix(in oklab, var(--color-text-primary) calc((1 - var(--k, 1)) * 100%), white calc(var(--k, 1) * 100%));
+}
+.circleSum .dayMinutes { color: inherit; opacity: 0.8; }
+.circleToday { outline: 2px solid var(--color-accent-primary); outline-offset: -2px; }
+.legendList { list-style: none; margin: var(--spacing-3) 0 0; padding: 0; display: grid; gap: 10px; }
+.legendList li { display: flex; align-items: center; gap: 12px; font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.legendList i { width: 26px; height: 22px; border-radius: 6px; flex: none; }
+.legendList em { width: 26px; text-align: center; font-style: normal; flex: none; color: var(--color-text-primary); }
+.legendList u { width: 26px; flex: none; display: grid; place-items: center; }
+.legendList u::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--color-text-primary); }
+.lgToday { outline: 2px solid var(--color-accent-primary); outline-offset: -2px; background: var(--color-bg-secondary); }
+.lgFlag { background: repeating-linear-gradient(135deg, var(--color-bg-secondary) 0 5px, transparent 5px 9px); border: 1px solid var(--color-border-primary); }
+.legendScale { display: flex; align-items: center; gap: 6px; margin: var(--spacing-3) 0 var(--spacing-1); font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.legendScale i { width: 26px; height: 22px; border-radius: 6px; }
+
+.roundInfoTight { margin-bottom: var(--spacing-3); }

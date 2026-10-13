@@ -24,7 +24,8 @@ import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews } from '@/widgets';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
-import { ReadingReminder } from '@/widgets/ReadingReminder';
+import { MinutesDial, MonthStats, ReminderChip, ReadersSheet, WelcomeBack, Sheet, usePulse, pulseClass } from '@/widgets/RoundToday';
+import rt from '@/widgets/RoundToday/RoundToday.module.css';
 import { ShareDay } from '@/widgets/ShareDay';
 import anim from '@/shared/styles/animations.module.css';
 import { quietDayIcon, quietDayQuoteKeys, finishFlagIcon } from '@/shared/lib/quietDays';
@@ -122,7 +123,7 @@ type LastDayPhase = 'normal' | 'correction' | 'registration';
 
 export function DashboardPage() {
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   const weekdays = useMemo(() => [
     t('weekday.mon'), t('weekday.tue'), t('weekday.wed'),
@@ -192,6 +193,19 @@ export function DashboardPage() {
   // «Поделиться днём»: the sheet, and whether this save is the one that reached 30 minutes.
   // The day the share sheet is open on: today, or a day picked on the calendar.
   const [sharing, setSharing] = useState<string | null>(null);
+  // the new «Сегодня» (2026-10-13): the card's two pages, the readers and the legend as sheets, the day's details
+  const [readersOpen, setReadersOpen] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [topPage, setTopPage] = useState(0);
+  const topPager = useRef<HTMLDivElement>(null);
+  const goTop = (i: number) => {
+    const el = topPager.current;
+    if (!el) return;
+    const next = Math.max(0, Math.min(1, i));
+    el.scrollTo({ left: next * el.clientWidth, behavior: 'smooth' });
+    if (next === 1) track('stats_open', {});
+  };
   const [goalJustMet, setGoalJustMet] = useState(false);
   const [todayBooks, setTodayBooks] = useState<DayBook[]>([]);
   const [todayStart, setTodayStart] = useState<string | null>(null);
@@ -504,6 +518,14 @@ export function DashboardPage() {
     setIsSaving(false);
   };
 
+  // the circle's minutes per day, and its best day, for the circle calendar's shades
+  const [circleMinutes, circleMinutesMax] = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const [date, list] of Object.entries(roster?.days ?? {})) m.set(date, list.reduce((a, e) => a + e.minutes, 0));
+    return [m, Math.max(1, ...m.values())] as const;
+  }, [roster]);
+  const calSwipe = useRef<{ x: number; y: number } | null>(null);
+
   const circleCalendarGrid = useMemo(() => {
     if (!roundStatus?.round) return [];
     const { year, month } = roundStatus.round;
@@ -596,6 +618,18 @@ export function DashboardPage() {
 
   const isParticipant = roundStatus?.participation?.is_participant &&
     roundStatus.participation.status === 'active';
+
+  // «Читатели ›» pulses on the first visit of a circle, after the reminder chip has had its turn (one pulse at a time)
+  const readersPulse = usePulse({
+    el: 'readers_arrow',
+    storeKey: `pb.pulse.readers.${roundStatus?.round?.id ?? 'none'}`,
+    eligible: !!isParticipant && !!roundStatus?.round,
+    userId: user?.id,
+    visits: 1,
+    delay: 31_000,
+    fast: 0,
+    slow: 10_000,
+  });
 
   // The day this reader took their place, in the circle's own time zone.
   const joinedDay = useMemo(() => {
@@ -795,6 +829,21 @@ export function DashboardPage() {
       track('minutes_logged', { minutes, where: 'today', book_finished: finished, books: todayBooks.length });
       // The moment a runner posts the run: the day has just reached its 30 minutes.
       if (before < DAILY_GOAL_MINUTES && minutes >= DAILY_GOAL_MINUTES) setGoalJustMet(true);
+      // The story sheet comes up by itself only on a milestone (the first day counted, a streak of 3/7/14/21, a book
+      // finished, the circle's last day); any other day it is the quiet «Поделиться днём» link (the council, 2026-10-13).
+      const prev = (calendar?.days ?? []).filter((d) => d.date < todayStr && d.in_round !== false).sort((a, b) => a.date.localeCompare(b.date));
+      let streak = minutes >= DAILY_GOAL_MINUTES ? 1 : 0;
+      if (streak) for (let i = prev.length - 1; i >= 0 && prev[i].minutes >= DAILY_GOAL_MINUTES; i--) streak++;
+      const reason =
+        before < DAILY_GOAL_MINUTES && minutes >= DAILY_GOAL_MINUTES && !prev.some((d) => d.minutes >= DAILY_GOAL_MINUTES) ? 'first_day'
+        : before < DAILY_GOAL_MINUTES && [3, 7, 14, 21].includes(streak) ? `streak_${streak}`
+        : finished && !todayData?.book_finished ? 'book_finished'
+        : isLastDay && minutes > 0 && before === 0 ? 'last_day'
+        : null;
+      if (reason) {
+        track('share_prompt_shown', { reason });
+        window.setTimeout(() => setSharing(todayStr), 600);
+      }
       await fetchCalendar(roundStatus.round.id);
       await fetchLeaderboard(roundStatus.round.id);
       await fetchRoster(roundStatus.round.id);
@@ -842,11 +891,13 @@ export function DashboardPage() {
 
         <main className={styles.main}>
         <Container>
-          <div className={styles.header}>
-            <div className={styles.greeting}>
-              {t('dashboard.greeting', { name: user?.display_name ?? 'User' })}
+          {!(isParticipant && !inRegistrationWindow) && (
+            <div className={styles.header}>
+              <div className={styles.greeting}>
+                {t('dashboard.greeting', { name: user?.display_name ?? 'User' })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Full-screen takeover: registration window after 8 PM on last day */}
           {inRegistrationWindow ? (
@@ -886,10 +937,27 @@ export function DashboardPage() {
             </div>
           ) : (
             <>
-              <div className={styles.roundInfo}>
+              <div className={`${styles.roundInfo} ${isParticipant && !inRegistrationWindow ? styles.roundInfoTight : ''}`}>
                 <div className={styles.roundHeader}>
                   <div className={styles.roundTitle}>
                     {monthName} {roundStatus.round.year}
+                    {isParticipant && !inRegistrationWindow && (
+                      <span className={styles.roundSub}>
+                        {t('stats.dayOf', { n: Math.max(1, roundDaysElapsed), total: roundWindow.total })}
+                        {' · '}
+                        <button
+                          type="button"
+                          className={`${rt.readersBtn} ${pulseClass(readersPulse.phase)}`}
+                          onClick={() => {
+                            readersPulse.found();
+                            setReadersOpen(true);
+                            track('readers_sheet_open', { from: 'header' });
+                          }}
+                        >
+                          {t('today.readers')} ›
+                        </button>
+                      </span>
+                    )}
                   </div>
                   <div className={styles.roundHeaderActions}>
                     {roundStatus.round.status === 'registration_open' && !isParticipant ? (
@@ -1013,8 +1081,8 @@ export function DashboardPage() {
 
               {isParticipant && user && !isNewAccount && <ArchiveNews userId={user.id} />}
 
-              {/* Color & symbol legend */}
-              <div className={styles.legend}>
+              {/* Color & symbol legend (members: beside their calendar, with «?») */}
+              {!(isParticipant && !inRegistrationWindow) && <div className={styles.legend}>
                 <span className={styles.legendItem}>
                   <span className={`${styles.legendDot} ${styles.legendGreen}`} />
                   {t('dashboard.legend30')}
@@ -1041,7 +1109,7 @@ export function DashboardPage() {
                   <span className={styles.legendCommentDot} />
                   {t('dashboard.legendComment')}
                 </span>
-              </div>
+              </div>}
 
               {!isParticipant && (
                 /* The three steps are one sentence, not three things to
@@ -1059,10 +1127,7 @@ export function DashboardPage() {
                 {/* Today panel — first, so logging today's reading is the primary action */}
                 {isParticipant && !inRegistrationWindow && (
                   <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay1}`}>
-                    <div className={styles.sectionTitle}>{t('dashboard.today')}</div>
                     <div className={styles.todayPanel}>
-                      <div className={styles.todayDate}>{todayStr}</div>
-
                       {/* Correction countdown. Loud on purpose: this is the last
                           chance to fix the month, and it expires tonight. */}
                       {correctionsOpen && countdownMs !== null && (
@@ -1093,20 +1158,89 @@ export function DashboardPage() {
                         </div>
                       )}
 
-                      <div className={styles.todayField}>
-                        <label className={styles.todayLabel}>{t('dashboard.logMinutes')}</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="1440"
-                          className={styles.todayInput}
-                          value={todayBooks.length > 1 ? String(sumMinutes(todayBooks)) : todayMinutes}
-                          readOnly={todayBooks.length > 1}
-                          onChange={e => setTodayMinutes(e.target.value)}
-                          placeholder="30"
-                        />
+                      {calendar && <WelcomeBack days={calendar.days} todayStr={todayStr} todayMinutes={todayData?.minutes ?? 0} />}
+
+                      {/* «Сегодня» (2026-10-13): the book and the reminder, the dial, «Сохранить»; a swipe in the
+                          dial's middle (or the dots) turns to «Мой месяц» */}
+                      <div className={rt.card}>
+                        <div
+                          className={rt.pager}
+                          ref={topPager}
+                          onScroll={(e) => {
+                            const el = e.currentTarget;
+                            setTopPage(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
+                          }}
+                        >
+                          <div className={rt.pane}>
+                            <div className={rt.bookRow}>
+                              <div className={rt.bookText}>
+                                {todayBooks[0]?.title ? (
+                                  <>
+                                    <span className={rt.bookTitle}>
+                                      {todayBooks.map((b) => b.title).filter(Boolean).join(' · ')}
+                                    </span>
+                                    <button type="button" className={rt.linkBtn} onClick={() => setDetailsOpen((o) => !o)}>
+                                      {t('today.changeBook')}
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button type="button" className={`${rt.linkBtn} ${rt.bookAsk}`} onClick={() => setDetailsOpen(true)}>
+                                    {t('today.noBook')} ›
+                                  </button>
+                                )}
+                              </div>
+                              {roundStatus?.round && <ReminderChip roundKey={roundStatus.round.id} userId={user?.id} />}
+                            </div>
+                            <MinutesDial
+                              value={todayBooks.length > 1 ? sumMinutes(todayBooks) : parseInt(todayMinutes, 10) || 0}
+                              onChange={(m) => setTodayMinutes(m ? String(m) : '')}
+                              readOnly={todayBooks.length > 1}
+                              onSwipe={(d) => goTop(topPage + d)}
+                            />
+                            <div className={rt.save}>
+                              <Button
+                                onClick={handleSaveToday}
+                                disabled={isSavingToday || ((parseInt(todayMinutes, 10) || 0) === 0 && todayBooks.length <= 1 && (todayData?.minutes ?? 0) === 0 && !todayComment)}
+                              >
+                                {isSavingToday ? t('dashboard.saving') : t('dashboard.save')}
+                              </Button>
+                            </div>
+                            <div className={rt.more}>
+                              <button type="button" className={rt.linkBtn} onClick={() => setDetailsOpen((o) => !o)}>
+                                {t('today.details')} {detailsOpen ? '▴' : '▾'}
+                              </button>
+                              {((todayData?.minutes ?? 0) > 0 || readBefore) && (
+                                <button type="button" className={rt.linkBtn} onClick={() => { setSharing(todayStr); track('share_open', { from: 'quiet_link' }); }}>
+                                  {t('today.share')}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          {calendar && (
+                            <MonthStats
+                              days={calendar.days}
+                              todayStr={todayStr}
+                              todayMinutes={todayBooks.length > 1 ? sumMinutes(todayBooks) : parseInt(todayMinutes, 10) || 0}
+                              monthLabel={locale === 'en' ? monthName : monthName.toLowerCase()}
+                              dayOfRound={Math.max(1, roundDaysElapsed)}
+                              roundDays={roundWindow.total}
+                              place={(() => {
+                                const i = leaderboard.findIndex((e) => e.user_id === user?.id);
+                                return i >= 0 ? { rank: leaderboardRanks[i], of: leaderboard.length } : null;
+                              })()}
+                              onPlace={() => { setReadersOpen(true); track('readers_sheet_open', { from: 'stats' }); }}
+                            />
+                          )}
+                        </div>
+                        <div className={rt.dots}>
+                          {[0, 1].map((i) => (
+                            <button key={i} type="button" aria-current={topPage === i} aria-label={i ? t('stats.myMonth', { month: monthName }) : t('dial.label')} onClick={() => goTop(i)} />
+                          ))}
+                        </div>
                       </div>
 
+                      {detailsOpen && (
+                        <div className={styles.todayDetails}>
                       <ReadingBooks
                         books={todayBooks}
                         onChange={setTodayBooks}
@@ -1161,21 +1295,9 @@ export function DashboardPage() {
                         {t('dashboard.hideComment')}
                       </label>
 
-                      <Button onClick={handleSaveToday} disabled={isSavingToday}>
-                        {isSavingToday ? t('dashboard.saving') : t('dashboard.save')}
-                      </Button>
-
-                      {/* Once a day has minutes saved, it can go out: Strava's post-a-run, for reading.
-                          Today first; with nothing yet today, the sheet opens on the latest day read. */}
-                      {((todayData?.minutes ?? 0) > 0 || readBefore) && (
-                        <div className={`${styles.shareDay} ${goalLit ? styles.shareDayLit : ''}`}>
-                          {goalLit && <p className={styles.shareDayNote}>{t('shareDay.goalMet')}</p>}
-                          <button type="button" className={styles.shareDayBtn} onClick={() => setSharing(todayStr)}>
-                            <Icon name="share" size="sm" aria-hidden="true" />
-                            {t('shareDay.button')}
-                          </button>
                         </div>
                       )}
+
                       {sharing && (
                         <ShareDay day={sharing} roundId={roundStatus?.round?.id} onClose={() => setSharing(null)} />
                       )}
@@ -1185,7 +1307,7 @@ export function DashboardPage() {
                 {/* The app on the home screen: offered once the daily habit has a
                     page to live on, and only to members on a phone. */}
                 {isParticipant && <InstallNudge />}
-                {isParticipant && <ReadingReminder />}
+                {!isParticipant && (
                 <div className={`${styles.section} ${styles.orderLeaderboard} ${revealClass} ${anim.scrollRevealDelay2}`}>
                   <div className={styles.sectionTitle}>{t('dashboard.leaderboard')}</div>
                   {canJoin && (
@@ -1273,10 +1395,11 @@ export function DashboardPage() {
                     </>
                   )}
                 </div>
+                )}
 
                 {/* Right panel: viewed user's calendar OR own calendar */}
                 {viewUser ? (
-                  <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay2}`}>
+                  <div data-cal className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay2}`}>
                     <div className={styles.calendarHeaderRow}>
                       <div className={styles.sectionTitle}>
                         {t('dashboard.userCalendar', { name: viewUser.name })}
@@ -1348,31 +1471,45 @@ export function DashboardPage() {
                     </div>
                   </>
                 ) : isParticipant && !inRegistrationWindow ? (
-                  <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay2}`}>
-                    <div className={styles.calendarHeaderRow}>
-                      <div className={styles.sectionTitle}>{t('dashboard.myRound')}</div>
+                  <div data-cal className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay2}`}>
+                    {/* «Мой | Круг», the legend beside it and «?» for the whole of it (2026-10-13) */}
+                    <div className={styles.calTop}>
+                      <div className={styles.calSeg}>
+                        <button type="button" aria-pressed={calendarView === 'mine'} onClick={() => setCalendarView('mine')}>
+                          {t('cal.mine')}
+                        </button>
+                        <button type="button" aria-pressed={calendarView === 'circle'} onClick={() => { setCalendarView('circle'); track('circle_calendar_open', {}); }}>
+                          {t('cal.circle')}
+                        </button>
+                      </div>
+                      <button type="button" className={styles.calLegend} onClick={() => setLegendOpen(true)} aria-label={t('cal.legendAsk')}>
+                        {calendarView === 'mine' ? (
+                          <span className={styles.calLegendRow}>
+                            <i className={styles.lgG} />30+<i className={styles.lgY} />2–29<i className={styles.lgR} />&lt;2<em>&#9733;</em><u />
+                          </span>
+                        ) : (
+                          <span className={styles.calLegendRow}>
+                            {t('cal.few')}
+                            {[1, 2, 3, 4, 5].map((k) => <i key={k} className={styles.lgC} style={{ '--k': k / 5 } as CSSProperties} />)}
+                            {t('cal.many')}
+                          </span>
+                        )}
+                        <span className={styles.calQ}>?</span>
+                      </button>
                     </div>
 
-                    {calendar && <ActivityRings rings={activityRings} totals={ringTotals} />}
-
-                    <div className={styles.calTabs}>
-                      <button
-                        type="button"
-                        className={`${styles.calTab} ${calendarView === 'mine' ? styles.calTabActive : ''}`}
-                        onClick={() => setCalendarView('mine')}
-                      >
-                        {t('dashboard.myCalendar')}
-                      </button>
-                      <button
-                        type="button"
-                        className={`${styles.calTab} ${calendarView === 'circle' ? styles.calTabActive : ''}`}
-                        onClick={() => setCalendarView('circle')}
-                      >
-                        {t('dashboard.circleCalendar')}
-                      </button>
-                    </div>
-
-                    <div className={styles.calendar}>
+                    <div
+                      className={styles.calendar}
+                      onTouchStart={(e) => { calSwipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }}
+                      onTouchEnd={(e) => {
+                        const st = calSwipe.current;
+                        calSwipe.current = null;
+                        if (!st) return;
+                        const dx = e.changedTouches[0].clientX - st.x;
+                        const dy = e.changedTouches[0].clientY - st.y;
+                        if (Math.abs(dx) > 50 && Math.abs(dx) > 1.6 * Math.abs(dy)) setCalendarView(dx < 0 ? 'circle' : 'mine');
+                      }}
+                    >
                       {weekdays.map(day => (
                         <div key={day} className={styles.calendarHeader}>{day}</div>
                       ))}
@@ -1400,17 +1537,18 @@ export function DashboardPage() {
                           );
                         }
                         const clickable = count > 0;
-                        const intensity = count > 0 ? 0.35 + 0.65 * Math.min(count / 15, 1) : 0;
+                        const sum = circleMinutes.get(cell.date) ?? 0;
+                        const level = sum > 0 ? Math.min(5, Math.max(1, Math.ceil((sum / circleMinutesMax) * 5))) : 0;
                         return (
                           <div
                             key={`c-${cell.date}`}
-                            className={`${styles.calendarDay} ${styles.circleDay} ${count > 0 ? styles.circleDayActive : ''} ${outsideWindow ? styles.outOfRound : ''}`}
-                            style={clickable ? ({ cursor: 'pointer', '--intensity': intensity } as CSSProperties) : undefined}
-                            title={`${cell.date}: ${count}`}
+                            className={`${styles.calendarDay} ${styles.circleDay} ${level ? styles.circleSum : ''} ${outsideWindow ? styles.outOfRound : ''} ${cell.date === todayStr ? styles.circleToday : ''}`}
+                            style={clickable ? ({ cursor: 'pointer', '--k': level / 5 } as CSSProperties) : undefined}
+                            title={`${cell.date}: ${sum} · ${count}`}
                             onClick={clickable ? () => openRosterModal(cell.date) : undefined}
                           >
                             <span className={styles.dayNumber}>{cell.day}</span>
-                            {count > 0 && <span className={styles.circleDayCount}>{count}</span>}
+                            {sum > 0 && <span className={styles.dayMinutes}>{sum >= 10000 ? `${Math.round(sum / 1000)}k` : sum}</span>}
                           </div>
                         );
                       }) : calendarGrid.map((cell, idx) => {
@@ -1558,6 +1696,47 @@ export function DashboardPage() {
       )}
 
       <Footer />
+
+      {/* «Читатели круга» and «что значат цвета», from below (members, 2026-10-13) */}
+      <ReadersSheet
+        open={readersOpen}
+        onClose={() => setReadersOpen(false)}
+        leaderboard={leaderboard}
+        today={roster?.days[todayStr] ?? []}
+        userId={user?.id}
+        onPick={(id, name) => {
+          void selectUser(id, name);
+          window.setTimeout(() => document.querySelector('[data-cal]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+        }}
+      />
+      <Sheet open={legendOpen} onClose={() => setLegendOpen(false)} label={t('cal.legendAsk')}>
+        {calendarView === 'mine' ? (
+          <>
+            <h3 className={rt.sheetTitle}>{t('cal.mineTitle')}</h3>
+            <ul className={styles.legendList}>
+              <li><i className={styles.lgG} />{t('cal.mine30')}</li>
+              <li><i className={styles.lgY} />{t('cal.mine2')}</li>
+              <li><i className={styles.lgR} />{t('cal.mine0')}</li>
+              <li><em>&#9733;</em>{t('cal.mineStar')}</li>
+              <li><u />{t('cal.mineDot')}</li>
+              <li><i className={styles.lgToday} />{t('cal.mineToday')}</li>
+              <li><i className={styles.lgFlag} />{t('cal.mineFlag')}</li>
+            </ul>
+          </>
+        ) : (
+          <>
+            <h3 className={rt.sheetTitle}>{t('cal.circleTitle')}</h3>
+            <p className={rt.sheetLead}>{t('cal.circleText')}</p>
+            <div className={styles.legendScale}>
+              {t('cal.few')}
+              {[1, 2, 3, 4, 5].map((k) => <i key={k} className={styles.lgC} style={{ '--k': k / 5 } as CSSProperties} />)}
+              {t('cal.many')}
+            </div>
+            <p className={rt.sheetLead}>{t('cal.circleScale')}</p>
+          </>
+        )}
+        <button type="button" className={`${rt.sheetClose} ${rt.closeBtn}`} onClick={() => setLegendOpen(false)}>{t('dial.coachOk')}</button>
+      </Sheet>
 
       {/* Log minutes modal */}
       {selectedDate && createPortal(

@@ -1,0 +1,181 @@
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { track, useI18n } from '@/shared/lib';
+import type { CalendarDay, LeaderboardEntry, RosterEntry } from '@/shared/lib';
+import { ReadingReminder, type ReminderState } from '@/widgets/ReadingReminder';
+import { usePulse, type PulsePhase } from './pulse';
+import styles from './RoundToday.module.css';
+
+export const pulseClass = (p: PulsePhase) =>
+  p === 'fast' ? `${styles.pulse} ${styles.pulseFast}` : p === 'slow' ? `${styles.pulse} ${styles.pulseSlow}` : p === 'dot' ? `${styles.pulse} ${styles.pulseDot}` : '';
+
+/** A sheet from the bottom of the screen; a tap beside it or Escape closes it. */
+export function Sheet({ open, onClose, children, label }: { open: boolean; onClose: () => void; children: ReactNode; label: string }) {
+  useEffect(() => {
+    if (!open) return;
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [open, onClose]);
+  if (!open) return null;
+  return createPortal(
+    <div className={styles.sheetBack} onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className={styles.sheet} role="dialog" aria-modal="true" aria-label={label}>
+        <div className={styles.grip} />
+        {children}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+const AlarmIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="13" r="8" />
+    <path d="M12 9v4l2 2" />
+    <path d="M5 3 2 6" />
+    <path d="m22 6-3-3" />
+  </svg>
+);
+
+/**
+ * The reminder beside the book: its time, or «Напомнить?» while there is
+ * none. It pulses for the first visits of a circle until it is found
+ * (never for readers whose reminder is on, nor where pushes cannot work).
+ */
+export function ReminderChip({ roundKey, userId }: { roundKey: string; userId?: string }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [state, setState] = useState<ReminderState | null>(null);
+  const eligible = !!state && state.loaded && !state.on && state.support !== 'unsupported' && !state.denied;
+  const { phase, found } = usePulse({ el: 'reminder_chip', storeKey: `pb.pulse.rem.${roundKey}`, eligible, userId, visits: 3 });
+  if (state?.support === 'unsupported') return null;
+  const on = !!state?.on;
+  return (
+    <>
+      <button
+        type="button"
+        className={`${styles.chip} ${on ? '' : styles.chipOff} ${pulseClass(phase)}`}
+        onClick={() => {
+          found();
+          setOpen(true);
+          track('reminder_sheet_open', { on });
+        }}
+        aria-label={t('reminder.title')}
+      >
+        <AlarmIcon />
+        {on && state?.time ? state.time : t('today.remindAsk')}
+      </button>
+      {open ? (
+        <Sheet open onClose={() => setOpen(false)} label={t('reminder.title')}>
+          <ReadingReminder bare source="chip" onState={setState} />
+          <button type="button" className={`${styles.sheetClose} ${styles.closeBtn}`} onClick={() => setOpen(false)}>
+            {t('today.done')}
+          </button>
+        </Sheet>
+      ) : (
+        /* out of sight, it reads the reminder for the chip */
+        <div hidden>
+          <ReadingReminder onState={setState} />
+        </div>
+      )}
+    </>
+  );
+}
+
+/** «Читатели круга»: everyone of the circle, the most days first, without places; a tap shows their calendar. */
+export function ReadersSheet({
+  open,
+  onClose,
+  leaderboard,
+  today,
+  userId,
+  onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  leaderboard: LeaderboardEntry[];
+  today: RosterEntry[];
+  userId?: string;
+  onPick: (id: string, name: string) => void;
+}) {
+  const { t } = useI18n();
+  const todayBy = useMemo(() => new Map(today.map((e) => [e.user_id, e.minutes])), [today]);
+  return (
+    <Sheet open={open} onClose={onClose} label={t('readers.title')}>
+      <h3 className={styles.sheetTitle}>{t('readers.title')}</h3>
+      <p className={styles.sheetLead}>{t('readers.lead', { n: leaderboard.length, today: today.filter((e) => e.minutes > 0).length })}</p>
+      <ul className={styles.readers}>
+        {leaderboard.map((e) => {
+          const m = todayBy.get(e.user_id) ?? 0;
+          return (
+            <li
+              key={e.user_id}
+              className={e.user_id === userId ? styles.me : ''}
+              onClick={() => {
+                onPick(e.user_id, e.display_name);
+                onClose();
+              }}
+            >
+              <span className={styles.av}>{(e.display_name || '?').trim().charAt(0).toUpperCase()}</span>
+              <span className={styles.rn}>
+                <span className={styles.tg}>
+                  {e.display_name}
+                  {e.user_id === userId ? ` ${t('readers.you')}` : ''}
+                </span>
+                <small>{m >= 30 ? t('readers.todayDone', { n: m }) : m > 0 ? t('readers.todaySome', { n: m }) : t('readers.todayNone')}{e.telegram_id ? ` · @${e.telegram_id}` : ''}</small>
+              </span>
+              <span className={styles.rd}>
+                {e.total_score}
+                <small>{t('readers.days')}</small>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <button type="button" className={`${styles.sheetClose} ${styles.closeBtn}`} onClick={onClose}>
+        {t('today.close')}
+      </button>
+    </Sheet>
+  );
+}
+
+/** Back after a break: a kind word instead of a row of red (the council, 2026-10-13). */
+export function WelcomeBack({ days, todayStr, todayMinutes }: { days: CalendarDay[]; todayStr: string; todayMinutes: number }) {
+  const { t } = useI18n();
+  const key = `pb.welcome.${todayStr}`;
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return localStorage.getItem(key) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const past = days.filter((d) => d.date < todayStr && d.in_round !== false).sort((a, b) => a.date.localeCompare(b.date));
+  const gap = past.slice(-3);
+  const show = !hidden && todayMinutes === 0 && gap.length === 3 && gap.every((d) => d.minutes < 2) && past.some((d) => d.minutes >= 2);
+  useEffect(() => {
+    if (show) track('welcome_back_shown', { missed: gap.length });
+    // once per day shown
+  }, [show]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!show) return null;
+  return (
+    <div className={styles.welcome}>
+      <b>{t('today.welcomeTitle')}</b>
+      <p>{t('today.welcomeText')}</p>
+      <button
+        type="button"
+        onClick={() => {
+          setHidden(true);
+          try {
+            localStorage.setItem(key, '1');
+          } catch {
+            /* fine */
+          }
+        }}
+      >
+        {t('today.close')}
+      </button>
+    </div>
+  );
+}

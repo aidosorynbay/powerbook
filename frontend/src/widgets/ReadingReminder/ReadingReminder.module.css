@@ -164,3 +164,30 @@
 @media (max-width: 420px) {
   .row, .note, .body { padding-left: 0; }
 }
+
+/* inside the round page's sheet: no card of its own */
+.bare {
+  display: grid;
+  gap: var(--spacing-3);
+}
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.preset {
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-primary);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.presetOn {
+  border-color: var(--color-border-accent);
+  color: var(--color-accent-primary);
+  background: var(--color-accent-primary-muted);
+}
