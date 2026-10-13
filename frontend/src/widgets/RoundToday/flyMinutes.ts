@@ -69,10 +69,46 @@ export async function flyMinutes(_from: DOMRect | null, target: () => HTMLElemen
       easing: 'cubic-bezier(.3,0,0,1)',
       fill: 'forwards',
     });
-    el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.045)' }, { transform: 'scale(1)' }], {
-      duration: 520,
+    // made easier to see (the founder: «не прям заметно»): the other days dim for a moment, the day jumps, two
+    // rings spread from it and «+N мин» rises over it
+    el.style.zIndex = '3';
+    el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.24)' }, { transform: 'scale(1)' }], {
+      duration: 640,
       easing: 'cubic-bezier(.34,1.56,.64,1)',
     });
+    const others = [...(el.parentElement?.children ?? [])].filter((c) => c !== el) as HTMLElement[];
+    others.forEach((c) =>
+      c.animate([{ opacity: 1 }, { opacity: 0.32, offset: 0.2 }, { opacity: 0.32, offset: 0.75 }, { opacity: 1 }], {
+        duration: 1300,
+        easing: 'ease-in-out',
+      }),
+    );
+    const box = el.getBoundingClientRect();
+    const tint = done ? 'var(--color-success)' : 'var(--color-warning)';
+    for (const [delay, size] of [[0, 2.3], [140, 3]] as const) {
+      const ring = document.createElement('div');
+      ring.style.cssText = `position:fixed;left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px;border-radius:12px;border:2px solid ${tint};pointer-events:none;z-index:1500`;
+      document.body.appendChild(ring);
+      ring
+        .animate([{ transform: 'scale(1)', opacity: 0.9 }, { transform: `scale(${size})`, opacity: 0 }], { duration: 760, delay, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'both' })
+        .finished.then(() => ring.remove(), () => ring.remove());
+    }
+    const chip = document.createElement('div');
+    chip.textContent = `+${minutes} мин`;
+    chip.style.cssText = `position:fixed;left:${box.left + box.width / 2}px;top:${box.top - 10}px;transform:translate(-50%,0);padding:5px 11px;border-radius:999px;background:${fill};color:var(--color-on-status);font:800 14px/1 Onest,system-ui,sans-serif;font-variant-numeric:tabular-nums;box-shadow:0 8px 20px -8px rgba(0,0,0,.6);pointer-events:none;z-index:1600;white-space:nowrap`;
+    document.body.appendChild(chip);
+    chip
+      .animate(
+        [
+          { transform: 'translate(-50%, 8px) scale(.8)', opacity: 0 },
+          { transform: 'translate(-50%, -26px) scale(1)', opacity: 1, offset: 0.25 },
+          { transform: 'translate(-50%, -30px) scale(1)', opacity: 1, offset: 0.8 },
+          { transform: 'translate(-50%, -40px) scale(.96)', opacity: 0 },
+        ],
+        { duration: 1500, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'both' },
+      )
+      .finished.then(() => chip.remove(), () => chip.remove());
+    window.setTimeout(() => { el.style.zIndex = ''; }, 700);
     await new Promise<void>((resolve) => {
       const count = (now: number) => {
         const k = Math.min(1, (now - t0) / 400);
