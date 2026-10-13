@@ -148,6 +148,49 @@ function openBand(stage: HTMLElement) {
   return { top, above, bottom: bottom - 6 };
 }
 
+/* ?roomdebug=1 on the page: a line over the hall with what moves each second (the scroll, the screen's height, the
+   photo, the layout, the page's elements), so a phone's shaking can be seen in numbers (2026-10-13: it could not be
+   reproduced on a computer or in the iPhone simulator) */
+function roomDebug(engine: { debug: Record<string, number | boolean | null> }, stage: HTMLElement) {
+  const box = document.createElement('div');
+  box.style.cssText = 'position:fixed;left:4px;right:4px;top:calc(env(safe-area-inset-top) + 64px);z-index:99999;font:11px/1.35 ui-monospace,Menlo,monospace;color:#0f0;background:rgba(0,0,0,.78);padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre-wrap';
+  document.body.appendChild(box);
+  let muts = 0, attrs: Record<string, number> = {};
+  const mo = new MutationObserver((list) => {
+    for (const m of list) {
+      muts++;
+      const el = m.target as HTMLElement;
+      const k = (m.type === 'attributes' ? m.attributeName : m.type) + ':' + (el.className && typeof el.className === 'string' ? el.className.split(' ')[0].replace(/^_?/, '').slice(0, 18) : el.nodeName);
+      attrs[k] = (attrs[k] ?? 0) + 1;
+    }
+  });
+  mo.observe(stage, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'data-dock', 'data-live', 'data-off', 'data-free', 'hidden'] });
+  let raf = 0, t0 = performance.now(), frames = 0, sy = scrollY, ih = innerHeight, vv = window.visualViewport?.height ?? 0;
+  let dScroll = 0, dIh = 0, dVv = 0, dFd = 0, dOy = 0, dP = 0, lay0 = Number(engine.debug.layouts);
+  let last = engine.debug;
+  const loop = () => {
+    raf = requestAnimationFrame(loop);
+    frames++;
+    const d = engine.debug;
+    dScroll += Math.abs(scrollY - sy); sy = scrollY;
+    dIh += Math.abs(innerHeight - ih); ih = innerHeight;
+    const v = window.visualViewport?.height ?? 0; dVv += Math.abs(v - vv); vv = v;
+    dFd += Math.abs(Number(d.fd) - Number(last.fd)); dOy += Math.abs(Number(d.oy) - Number(last.oy)); dP += Math.abs(Number(d.P) - Number(last.P));
+    last = d;
+    const now = performance.now();
+    if (now - t0 >= 1000) {
+      const top = Object.entries(attrs).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => `${k}×${n}`).join(' ');
+      box.textContent =
+        `fps ${frames}  scroll ${Math.round(scrollY)} Δ${Math.round(dScroll)}  ih ${innerHeight} Δ${Math.round(dIh)}  vv ${Math.round(vv)} Δ${Math.round(dVv)}\n` +
+        `P ${Number(d.P).toFixed(3)}→${Number(d.tp).toFixed(3)} ΔP ${dP.toFixed(3)}  photo Δy ${dOy.toFixed(1)}  fit d ${Number(d.fd).toFixed(1)} Δ${dFd.toFixed(1)} goal ${d.gd === null ? '-' : Number(d.gd).toFixed(1)}${d.cand ? ' cand' : ''}\n` +
+        `stage ${d.w}×${d.h}  layouts/s ${Number(d.layouts) - lay0}  dom/s ${muts}  ${top}`;
+      t0 = now; frames = 0; dScroll = dIh = dVv = dFd = dOy = dP = 0; muts = 0; attrs = {}; lay0 = Number(d.layouts);
+    }
+  };
+  raf = requestAnimationFrame(loop);
+  return () => { cancelAnimationFrame(raf); mo.disconnect(); box.remove(); };
+}
+
 const BookIcon = () => (
   <svg className={styles.bk} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M2 5.5C4.5 4 8 4 12 6c4-2 7.5-2 10-.5V19c-2.5-1.5-6-1.5-10 .5-4-2-7.5-2-10-.5z" />
@@ -393,7 +436,9 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
       },
     });
     engineRef.current = engine;
+    const stopDebug = /[?&]roomdebug/.test(window.location.search) ? roomDebug(engine, stage) : null;
     return () => {
+      stopDebug?.();
       engine.destroy();
       engineRef.current = null;
     };

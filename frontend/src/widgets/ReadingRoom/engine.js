@@ -544,8 +544,9 @@ export function createRoomEngine(opts){
 
   /* ---------- mapping the photo onto the stage ---------- */
   const view={w:1,h:1,dpr:1,mobile:false,rect:{x:0,y:0,w:1,h:1},panX:0,ox:0,oy:0,W:1,H:1,parX:0,parY:0};
+  let layouts=0;
   function layout(){
-    const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;
+    const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;layouts++;
     // phones have 3× screens and a small canvas: drawn at 1.6× they looked soft
     const dpr=Math.min(devicePixelRatio||1,w<760?2.5:1.6);
     view.w=w;view.h=h;view.dpr=dpr;view.mobile=w<760;
@@ -795,6 +796,8 @@ export function createRoomEngine(opts){
     flip(key){return flipNow(occ.get(key))},
     setReveal(p){fixedP=p},
     get progress(){return P},
+    /* ?roomdebug=1: what the hall is doing, for a phone the shaking could not be reproduced on (2026-10-13) */
+    get debug(){return {P,tp:fixedP!=null?fixedP:targetP(),fs:fit.s,fd:fit.d,gd:fitGoal?fitGoal.d:null,cand:!!fitCand,oy:view.oy,W:view.W,w:view.w,h:view.h,layouts}},
     destroy(){dead=true;cancelAnimationFrame(raf);ro.disconnect();io?.disconnect();stage.removeEventListener('pointermove',onMove);cv.removeEventListener('pointerdown',onDown);cv.removeEventListener('pointermove',onDrag);removeEventListener('pointerup',onUp)},
   };
 }

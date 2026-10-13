@@ -50,6 +50,7 @@ export interface RoomEngine {
   /** A fixed reveal (0..1), or null to follow the page's scroll. */
   setReveal(p: number | null): void;
   readonly progress: number;
+  readonly debug: Record<string, number | boolean | null>;
   destroy(): void;
 }
 
