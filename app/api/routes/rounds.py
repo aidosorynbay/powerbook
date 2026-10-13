@@ -10,8 +10,10 @@ from app.api.deps import get_current_user, require_admin
 from app.db.session import get_db
 from app.models.enums import RoundStatus
 from app.schemas.reading import BookFinishOut, LogMinutesRequest, LogSessionRequest, ReactionOut, ReadingBooksOut
+from app.schemas.my_round import MyRoundStatsOut
 from app.schemas.rounds import ParticipantOut, RoundCreateRequest, RoundOut
 from app.services.groups import GroupService
+from app.services import my_round
 from app.services.reading import ReadingService
 from app.services.rounds import RoundService
 
@@ -224,6 +226,12 @@ def user_calendar(
 def leaderboard(round_id: uuid.UUID, db: Session = Depends(get_db), _user=Depends(get_current_user)) -> list[dict]:
     # "near-real-time" MVP: clients poll this endpoint (e.g., every 5-10 seconds)
     return ReadingService(db).leaderboard(round_id=round_id)
+
+
+@router.get("/{round_id}/my-stats", response_model=MyRoundStatsOut)
+def my_stats(round_id: uuid.UUID, db: Session = Depends(get_db), user=Depends(get_current_user)) -> MyRoundStatsOut:
+    """For «Мой месяц»: when the reader reads and logs, the room's part, kudos, records (2026-10-13)."""
+    return my_round.my_round_stats(db, user=user, round_id=round_id)
 
 
 @router.get("/{round_id}/roster")

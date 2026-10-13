@@ -126,6 +126,7 @@ export type {
   RoundStats,
   RoundInsight,
   RoundReview,
+  MyRoundStats,
   MyResult,
   RoundLetter,
   BookChatMessage,

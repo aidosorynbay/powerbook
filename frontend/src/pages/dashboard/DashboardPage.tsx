@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useLayoutEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import {
@@ -18,6 +18,8 @@ import {
   type RosterResponse,
   type AllTimeProfile,
   track,
+  type MyRoundStats,
+  type RoundReview,
 } from '@/shared/lib';
 import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
@@ -628,6 +630,38 @@ export function DashboardPage() {
   const bookCover = useBookCover(todayBooks[0]?.title);
   // the last circle the reader took part in, for «+N мин к прошлому кругу на 13-е» in «Мой месяц»
   const [prevDays, setPrevDays] = useState<CalendarDay[] | null>(null);
+  // the round review and /my-stats feed «Мой месяц»: the comparison, the records, the sentence; refetched after a save
+  const [review, setReview] = useState<RoundReview | null>(null);
+  const [myStats, setMyStats] = useState<MyRoundStats | null>(null);
+  const fetchMyStats = useCallback(async (roundId: string) => {
+    const [a, b] = await Promise.all([
+      apiGet<RoundReview>(`/reading/round-review?round_id=${roundId}`, { requireAuth: true }),
+      apiGet<MyRoundStats>(`/rounds/${roundId}/my-stats`, { requireAuth: true }),
+    ]);
+    if (a.data) setReview(a.data);
+    if (b.data) setMyStats(b.data);
+  }, []);
+  useEffect(() => {
+    if (isParticipant && roundStatus?.round?.id) void fetchMyStats(roundStatus.round.id);
+  }, [isParticipant, roundStatus?.round?.id, fetchMyStats, calendar?.total_minutes]);
+  // the card is as tall as the page on show: «Мой месяц» is taller than the dial, the dial page stays short
+  useLayoutEffect(() => {
+    const el = topPager.current;
+    if (!el) return;
+    if (wide) {
+      el.style.height = '';
+      return;
+    }
+    const panes = Array.from(el.children) as HTMLElement[];
+    const apply = () => {
+      const pane = panes[topPage];
+      if (pane) el.style.height = `${pane.offsetHeight}px`;
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    panes.forEach((x) => ro.observe(x));
+    return () => ro.disconnect();
+  }, [topPage, wide, calendar, isParticipant]);
   useEffect(() => {
     if (!isParticipant) return;
     let alive = true;
@@ -915,20 +949,34 @@ export function DashboardPage() {
   const modalFinish = finishedBook(modalBooks, modalBookFinished, modalComment, parseInt(minutesInput, 10) || 0);
 
   // «Мой месяц»: a page behind the dial on phones, a block of its own on a computer
-  const monthStats = calendar ? (
+  const monthStats = calendar && roundStatus?.round ? (
     <MonthStats
       days={calendar.days}
       todayStr={todayStr}
-      todayMinutes={todayBooks.length > 1 ? sumMinutes(todayBooks) : parseInt(todayMinutes, 10) || 0}
-      monthLabel={locale === 'en' ? monthName : monthName.toLowerCase()}
-      prevSameDay={prevDays ? prevDays.filter((d) => Number(d.date.slice(8, 10)) <= Number(todayStr.slice(8, 10))).reduce((a, d) => a + d.minutes, 0) : null}
+      scoringEnd={roundWindow.scoringEnd}
+      active={wide || topPage === 1}
+      monthLabel={t(`month.my.${roundStatus.round.month}`)}
       dayOfRound={Math.max(1, roundDaysElapsed)}
       roundDays={roundWindow.total}
+      roundDaysLeft={roundDaysLeft}
+      joinedDay={joinedDay}
+      prevDays={prevDays}
       place={(() => {
         const i = leaderboard.findIndex((e) => e.user_id === user?.id);
         return i >= 0 ? { rank: leaderboardRanks[i], of: leaderboard.length } : null;
       })()}
       onPlace={() => { setReadersOpen(true); track('readers_sheet_open', { from: 'stats' }); }}
+      onWhichBook={() => { goTop(0); setDetailsOpen(true); track('stats_which_book', {}); }}
+      circleToday={roster?.days[todayStr] ?? []}
+      circleMinutes={[...circleMinutes.values()].reduce((a, b) => a + b, 0)}
+      circleSize={leaderboard.length}
+      userId={user?.id}
+      allTime={allTime}
+      review={review}
+      extra={myStats}
+      bookTotals={readingBooks?.minutes ?? {}}
+      roundId={roundStatus.round.id}
+      wide={wide}
     />
   ) : null;
 

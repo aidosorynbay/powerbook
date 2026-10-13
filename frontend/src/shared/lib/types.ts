@@ -902,6 +902,28 @@ export type RoundStats = {
 
 export type RoundInsight = { key: string; params: Record<string, number>; tips: string[] };
 
+/** «Мой месяц»: when the reader reads and logs, the room's part, kudos, records (/rounds/{id}/my-stats). */
+export type MyRoundStats = {
+  /** How many of this round's days were logged in each hour (Asia/Almaty), 0–23. */
+  log_hours: number[];
+  logged_on_the_day: number;
+  logged_later: number;
+  room: { sittings: number; minutes: number; longest_minutes: number; hours: number[]; days: number };
+  reactions_received: number;
+  shares: number;
+  records: {
+    best_day: { date: string; minutes: number } | null;
+    longest_streak: number;
+    best_round_minutes: number | null;
+    best_round_year: number | null;
+    best_round_month: number | null;
+    best_goal_days: number | null;
+    best_goal_of: number | null;
+    rounds: number;
+    new_this_round: ('minutes' | 'goal_days' | 'streak' | 'best_day' | 'books')[];
+  };
+};
+
 export type RoundReview = {
   round: RoundStats;
   previous: RoundStats | null;
