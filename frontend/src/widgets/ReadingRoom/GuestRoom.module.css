@@ -1,0 +1,275 @@
+/* The visitor's panels over the library hall, in the room's own parchment-and-lamplight palette. */
+.wrap {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.intro {
+  text-align: center;
+}
+
+.introTitle {
+  margin: 0;
+  font: 500 italic clamp(1.75rem, 4.4vw, 2.6rem) / 1.1 'Literata', Georgia, serif;
+  color: #fff1de;
+  text-shadow: 0 2px 16px rgba(23, 10, 4, 0.9);
+  text-wrap: balance;
+}
+
+.text {
+  margin: 8px 0 0;
+  color: #efd3b0;
+  line-height: 1.5;
+}
+
+.card {
+  background: rgba(245, 233, 213, 0.96);
+  color: #2b160c;
+  border: 1px solid rgba(110, 55, 25, 0.2);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 20px 60px rgba(20, 8, 2, 0.5);
+}
+
+.card .text {
+  color: #6e4630;
+}
+
+.title {
+  margin: 0;
+  font: 600 1.25rem/1.25 'Literata', Georgia, serif;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 14px;
+  color: #6e4630;
+}
+
+.field input {
+  font: inherit;
+  font-size: 16px;
+  color: #2b160c;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(110, 55, 25, 0.3);
+  background: #fff8ee;
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+  color: #6e4630;
+}
+
+.who button {
+  font: inherit;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(110, 55, 25, 0.3);
+  background: transparent;
+  color: #2b160c;
+  cursor: pointer;
+}
+
+.who button.on {
+  background: #2b160c;
+  color: #fff1de;
+  border-color: #2b160c;
+}
+
+.err {
+  margin: 10px 0 0;
+  color: #a8481f;
+  font-size: 14px;
+}
+
+.actions {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.primary,
+.secondary {
+  font: inherit;
+  font-weight: 600;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.primary {
+  border: 0;
+  background: #f26430;
+  color: #0d1117;
+}
+
+.primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.secondary {
+  border: 1px solid rgba(110, 55, 25, 0.35);
+  background: #fff8ee;
+  color: #2b160c;
+}
+
+.link {
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 8px;
+  color: #6e4630;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.dock {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: rgba(245, 233, 213, 0.96);
+  color: #2b160c;
+  border-radius: 18px;
+  padding: 12px 14px;
+  box-shadow: 0 20px 60px rgba(20, 8, 2, 0.5);
+}
+
+.clock {
+  font: 600 1.6rem/1 'Literata', Georgia, serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.dockBook {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dockBook i {
+  font: italic 500 15px/1.3 'Literata', Georgia, serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dockBook small {
+  color: #6e4630;
+  font-size: 12px;
+}
+
+.dock .primary,
+.dock .secondary {
+  min-height: 44px;
+}
+
+.introCta {
+  margin-top: 14px;
+  min-width: 240px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(20, 12, 6, 0.6);
+  border: 1px solid rgba(255, 196, 120, 0.25);
+  color: #f6e6cf;
+  font-size: 13px;
+}
+
+.pill span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffb35c;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.chips button {
+  font: inherit;
+  font-size: 13px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(110, 55, 25, 0.25);
+  background: #fff8ee;
+  color: #2b160c;
+  cursor: pointer;
+}
+
+.chips button.on {
+  background: #2b160c;
+  color: #fff1de;
+}
+
+/* «Сохранили N мин»: wherever the reader landed after signing up */
+.kept {
+  position: fixed;
+  left: 50%;
+  top: 76px;
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(245, 233, 213, 0.97);
+  color: #2b160c;
+  font-weight: 600;
+  box-shadow: 0 12px 30px rgba(20, 8, 2, 0.4);
+  text-align: center;
+}
+
+/* thirty minutes */
+.goal {
+  position: fixed;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  z-index: 60;
+  padding: 18px 26px;
+  border-radius: 20px;
+  background: rgba(245, 233, 213, 0.97);
+  color: #2b160c;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 20px 60px rgba(20, 8, 2, 0.5);
+  animation: goalIn 0.5s ease both;
+}
+
+.goal b {
+  font: 600 1.6rem/1.1 'Literata', Georgia, serif;
+}
+
+@keyframes goalIn {
+  from { opacity: 0; transform: translate(-50%, -40%); }
+}

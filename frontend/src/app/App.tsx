@@ -3,7 +3,7 @@ import { Suspense, lazy, useEffect } from 'react';
 import * as Sentry from '@sentry/react';
 import { AuthProvider, useAuth, I18nProvider, useI18n, isReaderPath, setAnalyticsUser } from '@/shared/lib';
 import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage, JoinPage, ReaderDayPage, GetPage, AboutPage } from '@/pages';
-import { ArchivePrompt, BottomNav, JoinPrompt, LastCallNotice } from '@/widgets';
+import { ArchivePrompt, BottomNav, GuestKept, JoinPrompt, LastCallNotice } from '@/widgets';
 import '@/app/styles/theme.css';
 
 // Lets Sentry name traces by route pattern (/readers/:userId).
@@ -92,7 +92,7 @@ function AppRoutes() {
         />
         <Route
           path="/library/hall"
-          element={isAuthenticated ? <LibraryHallPage /> : <ToLogin />}
+          element={<LibraryHallPage />}
         />
         <Route
           path="/books"
@@ -162,6 +162,8 @@ function AppRoutes() {
       {isAuthenticated && !reading && <ArchivePrompt />}
       {/* For whoever is not reading in this month's circle: the way into the next one. */}
       {!reading && <JoinPrompt />}
+      {/* minutes read as a visitor become the reader's once they have an account, wherever they signed up */}
+      <GuestKept />
     </>
   );
 }

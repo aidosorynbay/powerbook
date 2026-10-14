@@ -626,8 +626,11 @@ export function createRoomEngine(opts){
 
   /* ---------- scroll reveal, parallax, dragging on phones ---------- */
   let P=opts.scrollEl?0:.0,fixedP=opts.scrollEl?null:1,parTX=0,parTY=0,inView=true;
-  const io=opts.scrollEl?new IntersectionObserver(es=>{inView=es[0].isIntersecting},{rootMargin:'200px 0px'}):null;
-  if(io)io.observe(opts.scrollEl);
+  /* off screen the hall stops drawing: the scrolled section, or (shown whole) the stage itself — the front page's room
+     must not run the GPU while its visitor reads further down */
+  const watched=opts.scrollEl||opts.stage;
+  const io=watched&&typeof IntersectionObserver!=='undefined'?new IntersectionObserver(es=>{inView=es[0].isIntersecting},{rootMargin:'200px 0px'}):null;
+  if(io)io.observe(watched);
   function targetP(){
     if(fixedP!=null)return fixedP;
     const rc=opts.scrollEl.getBoundingClientRect(),total=rc.height-innerHeight;

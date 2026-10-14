@@ -39,8 +39,10 @@
 
 .heroInner {
   position: relative;
-  max-width: 640px;
-  padding: 0 0 var(--spacing-10);
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-6) var(--spacing-8);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-4);
@@ -83,10 +85,14 @@
   100% { box-shadow: 0 0 0 0 rgba(255, 179, 92, 0); }
 }
 
+.heroInner > * {
+  max-width: 600px;
+}
+
 .heroTitle {
   margin: 0;
   text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
-  font-size: clamp(2.25rem, 7.4vw, 4.25rem);
+  font-size: clamp(1.85rem, 6.4vw, 3.4rem);
   line-height: 1.04;
   font-weight: var(--font-weight-bold);
   letter-spacing: -0.025em;
@@ -138,6 +144,41 @@
   min-height: 56px;
 }
 
+.ctaStack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+}
+
+.ctaStack b {
+  font-weight: var(--font-weight-bold);
+}
+
+.ctaStack small {
+  font-size: 0.78em;
+  font-weight: var(--font-weight-medium);
+  opacity: 0.85;
+}
+
+.heroSecond {
+  min-height: 56px;
+  padding: 0 22px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 241, 222, 0.45);
+  background: rgba(20, 12, 6, 0.45);
+  color: #fff1de;
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.heroSecond:hover {
+  border-color: #fff1de;
+}
+
 .heroLogin,
 .finalLogin {
   color: #fff;
@@ -179,8 +220,19 @@
     align-items: stretch;
   }
 
-  .heroCta {
+  .heroCta,
+  .heroSecond {
     width: 100%;
+  }
+
+  .heroInner {
+    padding: 0 var(--spacing-4) var(--spacing-4);
+    gap: var(--spacing-3);
+  }
+
+  /* a visitor's phone: the plain sentence says what it is, the second button says when — the state line can go */
+  .heroWhat + .heroState {
+    display: none;
   }
 
   .heroLogin {
@@ -245,11 +297,44 @@
 }
 
 /* ── Общий итог ── */
+/* the hero's still photo, deep under the shared total: the same room, quiet */
 .total {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   padding: var(--spacing-20) 0 var(--spacing-16);
-  background:
-    radial-gradient(ellipse 70% 60% at 20% 0%, rgba(242, 100, 48, 0.12), transparent 70%),
-    var(--color-bg-primary);
+  background: #0b0906;
+  color-scheme: dark;
+  --color-text-primary: #fff6ea;
+  --color-text-secondary: #cbb79e;
+  --color-bg-elevated: #241a12;
+}
+
+.totalArt,
+.totalArt img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
+.totalArt img {
+  object-fit: cover;
+  object-position: 50% 70%;
+  opacity: 0.32;
+  filter: saturate(0.9) blur(1px);
+}
+
+.totalArt::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #0b0906 0%, rgba(11, 9, 6, 0.55) 30%, rgba(11, 9, 6, 0.75) 70%, #0b0906 100%);
+}
+
+.totalIn {
+  position: relative;
 }
 
 .totalNumber {
@@ -667,6 +752,18 @@ a.perk:hover {
   margin: 0;
   color: #efd3b0;
   font-size: var(--font-size-lg);
+}
+
+.finalSecond {
+  min-height: 52px;
+  padding: 0 22px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 241, 222, 0.45);
+  background: rgba(20, 12, 6, 0.45);
+  color: #fff1de;
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
 }
 
 .finalActions {

@@ -30,6 +30,8 @@ type Reader = {
   /* minutes the reader gave this book before this sitting (their days, other sittings): «всего на книге» */
   book_minutes?: number;
   me: boolean;
+  /* a visitor reading without an account (from the front page): no name, no profile */
+  guest?: boolean;
 };
 type Message = { id: string; user_id: string; display_name: string; text: string; created_at: string; me: boolean };
 /* the hall's day, for the chat: each reader sitting down with a book and getting up with their minutes */
@@ -46,6 +48,8 @@ type RoomState = {
   round: { id: string; year: number; month: number } | null;
   in_round: boolean;
   today_minutes: number;
+  /* the reader's own minutes in the rooms, kept outside the circle too */
+  room_minutes?: { today: number; total: number };
   readers: Reader[];
   my_session: MySession | null;
   messages: Message[];
@@ -782,13 +786,13 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
         data-clamp="1"
         data-stack="1"
         data-coach-tag={r.me ? undefined : '1'}
-        onClick={() => { coachDone('reader'); navigate(`/readers/${r.user_id}`); }}
+        onClick={() => { coachDone('reader'); if (r.user_id) navigate(`/readers/${r.user_id}`); }}
       >
         <BookIcon />
         {/* who, for how long, and under it the book they are reading right now */}
         <span className={styles.tagText}>
           <span className={styles.tagRow}>
-            <span>{r.me ? t('room.you') : r.display_name}</span>
+            <span>{r.me ? t('room.you') : r.guest ? t('room.visitor') : r.display_name}</span>
             <b>{r.status === 'paused' ? t('room.paused') : clock(elapsed(r))}</b>
           </span>
           <i className={styles.tagBook} title={r.book}>{r.book}</i>
@@ -825,11 +829,11 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     <ul className={styles.readers}>
       {[...readers].sort((a, b) => Number(b.me) - Number(a.me) || Number(a.status === 'paused') - Number(b.status === 'paused') || elapsed(b) - elapsed(a)).map((r) => (
         <li key={r.session_id}>
-          <button type="button" className={`${styles.rd} ${r.status === 'paused' ? styles.rdPaused : ''}`} onClick={() => navigate(`/readers/${r.user_id}`)}>
-            <span className={styles.av} style={{ '--c': colorFromSeed(r.user_id) } as CSSProperties}>{(r.display_name || '?')[0]}</span>
+          <button type="button" className={`${styles.rd} ${r.status === 'paused' ? styles.rdPaused : ''}`} onClick={() => { if (r.user_id) navigate(`/readers/${r.user_id}`); }}>
+            <span className={styles.av} style={{ '--c': colorFromSeed(r.user_id || r.session_id) } as CSSProperties}>{(r.guest ? t('room.visitor') : r.display_name || '?')[0]}</span>
             <span className={styles.rdMain}>
               <span className={styles.rdName}>
-                {r.me ? t('room.you') : r.display_name} <small>@{r.username}</small>
+                {r.me ? t('room.you') : r.guest ? t('room.visitor') : r.display_name} {r.username && <small>@{r.username}</small>}
                 {r.status === 'paused' && <span className={styles.chip}>{t('room.paused')}</span>}
                 {!r.in_round && <span className={styles.chip}>{t('room.guest')}</span>}
               </span>
@@ -973,6 +977,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
         <span className={styles.dockBook}>
           <i>{mineHere.book}</i>
           {state?.in_round && <small>{t('room.todayPlus', { today: state.today_minutes, min: Math.floor(elapsed(mineHere) / 60), date: readingDay })}</small>}
+          {!state?.in_round && state?.room_minutes && <small>{t('room.mineOutside', { today: state.room_minutes.today + Math.floor(elapsed(mineHere) / 60), total: state.room_minutes.total + Math.floor(elapsed(mineHere) / 60) })}</small>}
           {state?.in_round && myBookMinutes > 0 && <small>{t('bookTime.onBook', { time: formatSpent(myBookMinutes, t) })}</small>}
         </span>
         {mineHere.status === 'reading'

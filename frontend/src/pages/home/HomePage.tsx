@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiGet, type PublicStats } from '@/shared/lib';
 import { PageTransition } from '@/shared/ui';
 import { Header, Footer, LiveRoom } from '@/widgets';
-import { HomeFinal, HomeHero, HowItWorks, MonthGets, PlatformPerks, RoomWayIn, SharedTotal } from './HomeSections';
+import { HomeFinal, HomeHero, HowItWorks, MonthGets, PlatformPerks, SharedTotal } from './HomeSections';
 import styles from './HomePage.module.css';
 
 export function HomePage() {
@@ -28,11 +28,6 @@ export function HomePage() {
     };
   }, []);
 
-  // «Заглянуть в читальный зал»: down into the live room.
-  const toRoom = () => {
-    document.getElementById('room')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
   // Links elsewhere point at /#powerbook (how a circle goes).
   useEffect(() => {
     if (window.location.hash !== '#powerbook') return;
@@ -49,15 +44,24 @@ export function HomePage() {
         <Header />
 
         <main className={styles.main}>
-          {/* GA4, 1–14 Oct 2026: newcomers give the page ~30 s, so the first
-              screen says it all; the computer's «put it on your phone» landing
-              brought no installs and gave way to the live room. */}
-          <HomeHero stats={stats} onHow={toRoom} />
-          <div id="room">
-            <LiveRoom>
-              <RoomWayIn />
-            </LiveRoom>
-          </div>
+          {/* The live reading room is the first screen (founder, 14 Oct: the room once, as the hero, live): the
+              circle's hall with whoever reads in it now, and the way in. GA4 showed newcomers give the page ~30 s,
+              and the computer's «put it on your phone» landing brought no installs. The still photo shows until
+              the living one is drawn. */}
+          <LiveRoom
+            hall="round"
+            className={styles.hero}
+            uiClassName={styles.heroUi}
+            poster={
+              <picture>
+                <source media="(min-width: 760px)" type="image/webp" srcSet="/home/room-night-wide-1600.webp 1600w, /home/room-night-wide-2560.webp 2560w" sizes="100vw" />
+                <source type="image/webp" srcSet="/home/room-night-tall-750.webp 750w, /home/room-night-tall-1080.webp 1080w" sizes="100vw" />
+                <img src="/home/room-night-tall-750.jpg" alt="" {...{ fetchpriority: 'high' }} />
+              </picture>
+            }
+          >
+            <HomeHero stats={stats} />
+          </LiveRoom>
           <SharedTotal stats={stats} />
           <MonthGets />
           <HowItWorks />

@@ -16,3 +16,31 @@
     padding-bottom: calc(72px + env(safe-area-inset-bottom));
   }
 }
+
+/* The live room as the first screen: below the header, the whole hall. */
+.hero {
+  height: calc(100svh - 64px) !important;
+  min-height: 560px !important;
+}
+
+/* Computers: the words sit on the left over a side shade, so the readers on the right stay in plain view. */
+@media (min-width: 900px) {
+  .heroUi {
+    top: 0;
+    padding-top: 0 !important;
+    display: flex;
+    align-items: flex-end;
+    background:
+      linear-gradient(90deg, rgba(14, 8, 4, 0.96) 0%, rgba(14, 8, 4, 0.9) 36%, rgba(14, 8, 4, 0) 64%),
+      linear-gradient(0deg, rgba(14, 8, 4, 0.7) 0%, rgba(14, 8, 4, 0) 30%) !important;
+  }
+}
+
+/* Phones: the words take the foot of the hall; under them the shade is solid enough that no reader's tag shows
+   through, while the readers above stay clear. */
+@media (max-width: 899px) {
+  .heroUi {
+    padding-top: 90px !important;
+    background: linear-gradient(0deg, rgba(14, 8, 4, 0.985) 0%, rgba(14, 8, 4, 0.975) 80%, rgba(14, 8, 4, 0) 100%) !important;
+  }
+}

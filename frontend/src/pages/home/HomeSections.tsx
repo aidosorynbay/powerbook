@@ -75,7 +75,7 @@ function useNextStep() {
   }, [wait, isAuthenticated, t, join, joinRound, navigate]);
 }
 
-export function HomeHero({ stats, onHow }: { stats: PublicStats | null; onHow: () => void }) {
+export function HomeHero({ stats }: { stats: PublicStats | null }) {
   const { t, locale } = useI18n();
   const { isAuthenticated, isLoading } = useAuth();
   const { state: wait } = useWaitlist();
@@ -114,111 +114,55 @@ export function HomeHero({ stats, onHow }: { stats: PublicStats | null; onHow: (
     live.push(t('home.live.total', { n: new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ru-RU').format(stats.total_minutes_read) }));
   }
 
+  const navigate = useNavigate();
+  const toRoom = () => {
+    track('home_cta', { place: 'hero', action: 'read' });
+    navigate('/library/hall');
+  };
+
   return (
-    <section ref={ref} className={styles.hero}>
-      <picture className={styles.heroArt} aria-hidden="true">
-        <source
-          media="(min-width: 900px)"
-          type="image/webp"
-          srcSet="/home/room-night-wide-1600.webp 1600w, /home/room-night-wide-2560.webp 2560w"
-          sizes="100vw"
-        />
-        <source
-          media="(min-width: 900px)"
-          srcSet="/home/room-night-wide-1600.jpg 1600w, /home/room-night-wide-2560.jpg 2560w"
-          sizes="100vw"
-        />
-        <source
-          type="image/webp"
-          srcSet="/home/room-night-tall-750.webp 750w, /home/room-night-tall-1080.webp 1080w"
-          sizes="100vw"
-        />
-        <img
-          src="/home/room-night-tall-750.jpg"
-          srcSet="/home/room-night-tall-750.jpg 750w, /home/room-night-tall-1080.jpg 1080w"
-          sizes="100vw"
-          alt=""
-          {...{ fetchpriority: 'high' }}
-        />
-      </picture>
-      <div className={styles.heroShade} aria-hidden="true" />
+    <div ref={ref} className={styles.heroInner}>
+      {live.length > 0 && (
+        <p className={styles.live}>
+          <span className={styles.liveDot} aria-hidden="true" />
+          {live.join(' · ')}
+        </p>
+      )}
+      <h1 className={styles.heroTitle}>{t('home.title')}</h1>
+      {!isAuthenticated && <p className={styles.heroWhat}>{t('home.what')}</p>}
+      <p className={styles.heroState}>{state}</p>
 
-      <Container>
-        <div className={styles.heroInner}>
-          {live.length > 0 && (
-            <p className={styles.live}>
-              <span className={styles.liveDot} aria-hidden="true" />
-              {live.join(' · ')}
-            </p>
-          )}
-          <h1 className={styles.heroTitle}>{t('home.title')}</h1>
-          {!isAuthenticated && <p className={styles.heroWhat}>{t('home.what')}</p>}
-          <p className={styles.heroState}>{state}</p>
-
-          <div className={styles.heroActions} aria-busy={isLoading}>
-            {isLoading ? (
-              <span className={styles.ctaSkeleton} aria-hidden="true" />
-            ) : (
-            <Button
-              variant="primary"
-              size="lg"
-              icon={<Icon name="arrow-right" size="sm" />}
-              className={styles.heroCta}
+      <div className={styles.heroActions} aria-busy={isLoading}>
+        {isLoading ? (
+          <span className={styles.ctaSkeleton} aria-hidden="true" />
+        ) : (
+          <>
+            <Button variant="primary" size="lg" icon={<Icon name="arrow-right" size="sm" />} className={styles.heroCta} onClick={toRoom}>
+              {isAuthenticated ? t('home.cta.room') : (
+                <span className={styles.ctaStack}>
+                  <b>{t('home.cta.read')}</b>
+                  <small>{t('home.cta.readNote')}</small>
+                </span>
+              )}
+            </Button>
+            <button
+              type="button"
+              className={styles.heroSecond}
               onClick={() => {
                 track('home_cta', { place: 'hero', action: next.action });
                 next.run();
               }}
             >
               {next.label}
-            </Button>
-            )}
-            {!isAuthenticated && !isLoading && (
-              <Link
-                to="/login"
-                className={styles.heroLogin}
-                onClick={() => track('home_cta', { place: 'hero', action: 'login' })}
-              >
-                {t('home.login')}
-              </Link>
-            )}
-          </div>
-
-          <button
-            type="button"
-            className={styles.heroHow}
-            onClick={() => {
-              track('home_cta', { place: 'hero', action: 'peek' });
-              onHow();
-            }}
-          >
-            {t('home.peek')} <span aria-hidden="true">↓</span>
-          </button>
-        </div>
-      </Container>
-    </section>
-  );
-}
-
-/** The way into the live room, shown once the hall is whole. */
-export function RoomWayIn() {
-  const { t } = useI18n();
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-  const ref = useSectionView<HTMLDivElement>('room');
-  return (
-    <div ref={ref} className={styles.wayIn}>
-      <h2 className={styles.wayInTitle}>{t('home.room.title')}</h2>
-      <p className={styles.wayInText}>{t('home.room.text')}</p>
-      <Button
-        variant="primary"
-        size="lg"
-        onClick={() => {
-          track('home_cta', { place: 'room', action: isAuthenticated ? 'room' : 'room_signup' });
-          navigate(isAuthenticated ? '/library/hall' : `/register?redirect=${encodeURIComponent('/library/hall')}`);
-        }}
-      >
-        {isAuthenticated ? t('home.room.member') : t('home.room.guest')}
-      </Button>
+            </button>
+          </>
+        )}
+      </div>
+      {!isAuthenticated && !isLoading && (
+        <Link to="/login" className={styles.heroLogin} onClick={() => track('home_cta', { place: 'hero', action: 'login' })}>
+          {t('home.login')}
+        </Link>
+      )}
     </div>
   );
 }
@@ -280,7 +224,12 @@ export function SharedTotal({ stats }: { stats: PublicStats | null }) {
 
   return (
     <section ref={ref} className={styles.total} aria-labelledby="total-title">
-      <Container>
+      <picture className={styles.totalArt} aria-hidden="true">
+        <source media="(min-width: 900px)" type="image/webp" srcSet="/home/room-night-wide-1600.webp" />
+        <source type="image/webp" srcSet="/home/room-night-tall-750.webp" />
+        <img src="/home/room-night-tall-750.jpg" alt="" loading="lazy" decoding="async" />
+      </picture>
+      <Container className={styles.totalIn}>
         <p className={styles.kicker}>{t('home.tr.kicker')}</p>
         <h2 id="total-title" className={styles.h2}>{t('home.tr.title')}</h2>
 
@@ -460,20 +409,25 @@ export function PlatformPerks() {
   );
 }
 
-/** The last word: the empty hall, one armchair for you. */
+/** The last word, over the library: start now, or take the circle's next step. */
 export function HomeFinal() {
   const { t } = useI18n();
   const { isAuthenticated, isLoading } = useAuth();
+  const navigate = useNavigate();
   const next = useNextStep();
   const ref = useSectionView<HTMLElement>('final');
 
   return (
     <section ref={ref} className={styles.final}>
       <picture className={styles.finalArt} aria-hidden="true">
-        <source media="(min-width: 760px)" type="image/webp" srcSet="/home/room-empty-wide.webp" />
-        <source media="(min-width: 760px)" srcSet="/home/room-empty-wide.jpg" />
-        <source type="image/webp" srcSet="/home/room-empty-tall.webp" />
-        <img src="/home/room-empty-tall.jpg" alt="" loading="lazy" decoding="async" />
+        <img
+          src="/library-banner-1920.jpg"
+          srcSet="/library-banner-1920.jpg 1920w, /library-banner-3840.jpg 3840w"
+          sizes="100vw"
+          alt=""
+          loading="lazy"
+          decoding="async"
+        />
       </picture>
       <div className={styles.finalShade} aria-hidden="true" />
       <Container>
@@ -486,12 +440,22 @@ export function HomeFinal() {
                 variant="primary"
                 size="lg"
                 onClick={() => {
+                  track('home_cta', { place: 'final', action: 'read' });
+                  navigate('/library/hall');
+                }}
+              >
+                {isAuthenticated ? t('home.cta.room') : t('home.cta.read')}
+              </Button>
+              <button
+                type="button"
+                className={styles.finalSecond}
+                onClick={() => {
                   track('home_cta', { place: 'final', action: next.action });
                   next.run();
                 }}
               >
                 {next.label}
-              </Button>
+              </button>
               {!isAuthenticated && (
                 <Link to="/login" className={styles.finalLogin} onClick={() => track('home_cta', { place: 'final', action: 'login' })}>
                   {t('home.login')}

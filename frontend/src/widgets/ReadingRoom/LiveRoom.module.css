@@ -1,28 +1,44 @@
-/* The front page's room: no tab bar to make room for, and the round page's
-   negative margin does not apply here. */
+/* The live room outside /round: no tab bar to make room for. */
 .room {
   --nav: 0px;
-  margin-bottom: 0 !important;
 }
 
 .tag {
   cursor: default;
 }
 
-/* What appears once the hall is whole: the way in, at the foot of the photo. */
+/* The still photo under the living one, until the engine has drawn. */
+.poster {
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.8s ease;
+}
+
+.poster img,
+.poster picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.posterGone {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* What sits at the foot of the photo: the front page's words, or the visitor's dock. */
 .ui {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 120px 16px calc(28px + env(safe-area-inset-bottom));
-  background: linear-gradient(0deg, rgba(14, 8, 4, 0.94) 0%, rgba(14, 8, 4, 0.78) 45%, rgba(14, 8, 4, 0) 100%);
-  opacity: 0;
+  padding: 140px 0 calc(24px + env(safe-area-inset-bottom));
+  background: linear-gradient(0deg, rgba(14, 8, 4, 0.95) 0%, rgba(14, 8, 4, 0.82) 42%, rgba(14, 8, 4, 0) 100%);
   color: #fff1de;
-  text-align: center;
   pointer-events: none;
 }
 
-.ui[data-live='1'] {
+.ui > * {
   pointer-events: auto;
 }
