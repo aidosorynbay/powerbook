@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { Link, useNavigate } from 'react-router-dom';
 import { apiGet, circleOrdinal, getApiBaseUrl, track, trackSectionView, useAuth, useI18n, useWaitlist, type PublicStats } from '@/shared/lib';
 import { Button, Container, Icon } from '@/shared/ui';
-import { GuestRoom, MotionReel, ReadingRoom } from '@/widgets';
+import { GuestRoom, ReadingRoom } from '@/widgets';
 import { plural } from '@/pages/library/bookcase/plural';
 import { finishFlagIcon } from '@/shared/lib/quietDays';
 import styles from './HomeSections.module.css';
@@ -605,7 +605,7 @@ function StepArt({ n }: { n: number }) {
 
 /**
  * The Round tab at work — the dial turned to 90, «+90» in the calendar, the circle's treasury — cut from the circle's
- * own film («Новый «Круг»» v9, real screens in a phone). Russian and Kazakh have it; English keeps the drawn reel.
+ * own film («Новый «Круг»» v9, real screens in a phone), in Russian, Kazakh and English.
  * Mounted when the section comes near (the poster is 100 KB), plays only while on screen, a still poster under reduced
  * motion.
  */
@@ -616,7 +616,7 @@ function CircleFilm() {
   const box = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const [near, setNear] = useState(false);
-  const lang = locale === 'kk' ? 'kk' : 'ru';
+  const lang = locale === 'kk' ? 'kk' : locale === 'en' ? 'en' : 'ru';
 
   useEffect(() => {
     const el = box.current;
@@ -708,8 +708,8 @@ export function HowItWorks() {
               ))}
             </ol>
           </div>
-          <div className={`${styles.reel} ${locale === 'en' ? '' : styles.reelFilm}`}>
-            {locale === 'en' ? <MotionReel /> : <CircleFilm />}
+          <div className={`${styles.reel} ${styles.reelFilm}`}>
+            <CircleFilm />
           </div>
         </div>
 
