@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import calendar
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from app.core.cache import stats_cache
 from app.core.constants import CACHE_KEY_PUBLIC_STATS, DEFAULT_GROUP_SLUG, ROUND_TZ
 from app.models.enums import RoundStatus
+from app.models.reading_room import ReadingRoomSession
 from app.models.round import ReadingLog
 from app.repositories.groups import GroupRepository
 from app.repositories.rounds import RoundRepository
@@ -64,6 +65,9 @@ class StatsService:
         round_end_day: int | None = None
         round_is_partial = False
         round_registration_open = False
+        round_minutes = 0
+        today_logged = 0
+        today_counted = 0
 
         group = self.groups_repo.get_by_slug(group_slug)
         if group:
@@ -105,6 +109,22 @@ class StatsService:
                 days_remaining = max(0, last_day - now.day)
                 round_progress_percent = int((elapsed / window_len) * 100)
 
+                round_minutes = int(self.db.execute(
+                    select(func.coalesce(func.sum(ReadingLog.minutes), 0))
+                    .where(ReadingLog.round_id == current_round.id)
+                ).scalar() or 0)
+                today = self.db.execute(
+                    select(
+                        func.count(),
+                        func.coalesce(func.sum(ReadingLog.score), 0),
+                    ).where(
+                        ReadingLog.round_id == current_round.id,
+                        ReadingLog.date == now.date(),
+                        ReadingLog.minutes > 0,
+                    )
+                ).one()
+                today_logged, today_counted = int(today[0] or 0), int(today[1] or 0)
+
         result = PublicStatsOut(
             total_participants=total_participants,
             total_hours_read=total_hours_read,
@@ -121,12 +141,29 @@ class StatsService:
             round_end_day=round_end_day,
             round_is_partial=round_is_partial,
             round_registration_open=round_registration_open,
+            round_minutes=round_minutes,
+            today_logged=today_logged,
+            today_counted=today_counted,
+            room_now=self._room_now(),
             yearly=self._yearly_history(),
         )
 
         # Cache the result
         stats_cache.set(cache_key, result.model_dump())
         return result
+
+    def _room_now(self) -> int:
+        """Readers sitting in any reading room now: open sittings seen in the
+        last 3 minutes (the room's own «away» line). Open rows are few."""
+        fresh = datetime.now(tz=timezone.utc) - timedelta(minutes=3)
+        rows = self.db.execute(
+            select(ReadingRoomSession.user_id, ReadingRoomSession.last_seen_at)
+            .where(ReadingRoomSession.ended_at.is_(None))
+        ).all()
+        return len({
+            uid for uid, seen in rows
+            if (seen if seen.tzinfo else seen.replace(tzinfo=timezone.utc)) >= fresh
+        })
 
     def _yearly_history(self) -> list[YearlyStatOut]:
         """Readers/minutes per calendar year, oldest first."""

@@ -25,6 +25,14 @@ class PublicStatsOut(BaseModel):
     round_is_partial: bool = False
     round_registration_open: bool = False
 
+    # The circle right now, for the homepage's «общая казна»: minutes the whole
+    # circle has put in this month, how many read today (logged / made the
+    # day count), and who sits in a reading room this minute. Counts only.
+    round_minutes: int = 0
+    today_logged: int = 0
+    today_counted: int = 0
+    room_now: int = 0
+
     # Year-by-year growth, oldest first — drives the "how we grew" timeline
     yearly: list["YearlyStatOut"] = []
 
