@@ -139,7 +139,7 @@ function CirclePanel({ stats }: { stats: PublicStats }) {
  * sentence, and the two actions in the order that fits the day — a member's circle first; on sign-up days the circle
  * first; otherwise reading right now (no sign-up) first and the waiting list second.
  */
-export function HomeHero({ stats }: { stats: PublicStats | null }) {
+export function HomeHero({ stats, calm = false }: { stats: PublicStats | null; calm?: boolean }) {
   const { t, locale } = useI18n();
   const { isAuthenticated, isLoading } = useAuth();
   const { state: wait } = useWaitlist();
@@ -204,7 +204,7 @@ export function HomeHero({ stats }: { stats: PublicStats | null }) {
   );
 
   return (
-    <div ref={ref} className={styles.heroInner}>
+    <div ref={ref} className={`${styles.heroInner} ${calm ? styles.calm : ''}`}>
       {live && (
         <p className={styles.live}>
           <span className={styles.liveDot} aria-hidden="true" />
@@ -221,12 +221,12 @@ export function HomeHero({ stats }: { stats: PublicStats | null }) {
 
       <div className={styles.heroActions} aria-busy={isLoading}>
         {isLoading ? <span className={styles.ctaSkeleton} aria-hidden="true" /> : circleFirst ? [circle, read] : [read, circle]}
+        {!isAuthenticated && !isLoading && (
+          <Link to="/login" className={styles.heroLogin} onClick={() => track('home_cta', { place: 'hero', action: 'login' })}>
+            {t('home.login')}
+          </Link>
+        )}
       </div>
-      {!isAuthenticated && !isLoading && (
-        <Link to="/login" className={styles.heroLogin} onClick={() => track('home_cta', { place: 'hero', action: 'login' })}>
-          {t('home.login')}
-        </Link>
-      )}
     </div>
   );
 }

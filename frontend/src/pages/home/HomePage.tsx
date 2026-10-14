@@ -7,6 +7,16 @@ import styles from './HomePage.module.css';
 
 export function HomePage() {
   const [stats, setStats] = useState<PublicStats | null>(null);
+  // The first screen eases in once a session; members coming back every day get it at once (the council).
+  const [calm] = useState(() => {
+    try {
+      const seen = sessionStorage.getItem('pb.heroSeen') === '1';
+      sessionStorage.setItem('pb.heroSeen', '1');
+      return seen;
+    } catch {
+      return false;
+    }
+  });
 
   // The room's serif (Literata) for its headings, the same file the shelf loads.
   useEffect(() => {
@@ -51,21 +61,23 @@ export function HomePage() {
           {/* The first screen: the community's own picture (the Telegram group's since 2021), the circle's words,
               and the way in. The council (2026-10-14): the room as the hero promised «reading at the same moment»,
               the competitors' model, while PowerBook is minutes added up — so the room is shown once, below. */}
-          <section className={styles.photoHero}>
+          <section className={`${styles.photoHero} ${calm ? styles.calm : ''}`}>
             <picture className={styles.photoArt} aria-hidden="true">
-              <source media="(max-width: 759px)" type="image/webp" srcSet="/home/library-phone.webp" />
-              <source media="(max-width: 759px)" srcSet="/home/library-phone.jpg" />
-              <img
-                src="/library-banner-1920.jpg"
-                srcSet="/library-banner-1920.jpg 1920w, /library-banner-3840.jpg 3840w"
+              {/* wide landscape screens: a 2:1 cut of the panorama with the book at 72% of the width, so the cover
+                  crop never moves it and the words never touch it; everything else: the phone band */}
+              <source
+                media="(min-width: 1100px) and (orientation: landscape)"
+                type="image/webp"
+                srcSet="/home/library-desk-1600.webp 1600w, /home/library-desk-2000.webp 2000w, /home/library-desk-2632.webp 2632w"
                 sizes="100vw"
-                alt=""
-                {...{ fetchpriority: 'high' }}
               />
+              <source media="(min-width: 1100px) and (orientation: landscape)" srcSet="/home/library-desk-2000.jpg" />
+              <source type="image/webp" srcSet="/home/library-phone.webp" />
+              <img src="/home/library-phone.jpg" alt="" {...{ fetchpriority: 'high' }} />
             </picture>
             <div className={styles.photoShade} aria-hidden="true" />
             <div className={styles.photoWords}>
-              <HomeHero stats={stats} />
+              <HomeHero stats={stats} calm={calm} />
             </div>
           </section>
           <SharedTotal stats={stats} />
