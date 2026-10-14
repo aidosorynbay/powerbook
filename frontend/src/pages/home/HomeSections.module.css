@@ -155,21 +155,93 @@
   background: var(--color-accent-primary);
 }
 
-/* the days gone, in plain light on a quiet track: on the Round tab green means «you read, the day counts» and orange
-   means «act», so the calendar's passing takes neither (the council) */
+/* the days gone, on a quiet track: embers of the accent, warmer towards today, and a light that fills them from the
+   first day to today's end, holds, and dies down again — slowly, all the time (6 s; transform and opacity only, so it
+   costs the phone nothing; paused while the card is off screen) */
 .panelBar {
+  position: relative;
   margin-top: 12px;
   height: 6px;
   border-radius: 999px;
   background: var(--color-border-primary);
-  overflow: hidden;
 }
 
 .panelBar span {
+  position: relative;
   display: block;
+  width: var(--p);
   height: 100%;
   border-radius: inherit;
-  background: rgba(255, 255, 255, 0.72);
+  overflow: hidden;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-accent-primary-hover) 36%, transparent),
+    color-mix(in srgb, var(--color-accent-primary-hover) 70%, transparent)
+  );
+}
+
+.panelBar span::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-accent-primary) 88%, #000) 0%,
+    var(--color-accent-primary) 72%,
+    var(--color-accent-primary-hover) 93%,
+    #ffd3b0 100%
+  );
+  transform: translateX(-100%);
+  animation: barFill 6s cubic-bezier(0.5, 0, 0.25, 1) infinite;
+}
+
+/* the warmth around the lit days, strongest when they are full */
+.panelGlow {
+  position: absolute;
+  left: 0;
+  top: -3px;
+  bottom: -3px;
+  width: var(--p);
+  border-radius: 999px;
+  background: var(--color-accent-primary);
+  filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  animation: barGlow 6s cubic-bezier(0.5, 0, 0.25, 1) infinite;
+}
+
+/* filling 2.5 s, full and warm 1.1 s, dying down 1.2 s, at rest 1.2 s */
+@keyframes barFill {
+  0% { transform: translateX(-100%); opacity: 1; }
+  42% { transform: none; opacity: 1; }
+  60% { transform: none; opacity: 1; }
+  80% { transform: none; opacity: 0; }
+  100% { transform: none; opacity: 0; }
+}
+
+@keyframes barGlow {
+  0%, 25% { opacity: 0; }
+  45% { opacity: 0.55; }
+  60% { opacity: 0.45; }
+  80%, 100% { opacity: 0; }
+}
+
+.panelBarIdle span::before,
+.panelBarIdle .panelGlow {
+  animation-play-state: paused;
+}
+
+/* reduced motion: the days simply lit */
+@media (prefers-reduced-motion: reduce) {
+  .panelBar span::before {
+    animation: none;
+    transform: none;
+  }
+
+  .panelGlow {
+    display: none;
+  }
 }
 
 .panelDay {
@@ -275,6 +347,14 @@
   .heroPanel {
     order: 10;
   }
+
+  /* the live line rides on the photo's dark foot, a caption to the picture: the card under the buttons, its numbers
+     and all, then clears the tab bar (the founder's iPhone XS app in Kazakh: 33px under it before) */
+  .live {
+    position: relative;
+    z-index: 1;
+    margin-top: -44px;
+  }
 }
 
 .heroSecond {
@@ -373,6 +453,135 @@ a.perk:focus-visible,
     text-align: center;
   }
 
+  /* the card a touch tighter, so the iPhone SE and a short Safari window keep its numbers above the tab bar too */
+  .panel {
+    padding: 12px 14px;
+  }
+
+  .panelBar {
+    margin-top: 10px;
+  }
+
+  .panelStats {
+    margin-top: 8px;
+  }
+
+  .heroActions {
+    margin-top: 2px;
+  }
+}
+
+/* ── The common treasury at the foot of a computer's first screen ── */
+/* phones and upright tablets keep it in the section under the hero */
+.heroTotal {
+  display: none;
+}
+
+@media (min-width: 1100px) and (orientation: landscape) {
+  /* the words fill the frame's height, so the treasury can sit at its foot */
+  .heroInner {
+    flex: 1;
+  }
+
+  /* never onto the book: its left page starts at ~52% of the width on every window, which leaves the words ~555px */
+  .heroInner > .heroTotal {
+    max-width: 550px;
+  }
+
+  .heroTotal {
+    display: grid;
+    gap: 10px;
+    margin: auto 0 0;
+    padding-top: 28px;
+  }
+
+  .heroGuest .heroTotalMeta {
+    display: none;
+  }
+}
+
+/* a visitor's first screen on a short window has no room for it under «Войти»: there it stays in the section below */
+@media (min-width: 1100px) and (orientation: landscape) and (max-height: 719px) {
+  .heroGuest .heroTotal {
+    display: none;
+  }
+}
+
+/* the Round tab's small caps, as over the section it came from */
+.heroTotalKicker {
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+/* the unit's two lines stand beside the number, the lower one on its baseline */
+.heroTotalRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 4px 14px;
+}
+
+/* the dial's white 800, tabular so the rolling digits never shift the line; ~1.4× the H1, so the promise stays the
+   headline and the number its proof */
+.heroTotalValue {
+  font-size: clamp(46px, 7.4vh, 62px);
+  line-height: 0.86;
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #fff;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
+}
+
+.heroTotalUnit {
+  display: grid;
+  padding-bottom: 0.1em;
+  font-size: clamp(1rem, 2.1vh, 1.1875rem);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.15;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+}
+
+.heroTotalMeta {
+  font-size: 14px;
+  font-weight: var(--font-weight-medium);
+  color: rgba(255, 255, 255, 0.72);
+  font-variant-numeric: tabular-nums;
+}
+
+/* short windows (≈1536×730 laptops): the number and its unit only, so they stay above the fold */
+@media (min-width: 1100px) and (max-height: 760px) {
+  .heroTotalMeta {
+    display: none;
+  }
+}
+
+/* the number is on the first screen of a computer now — the section under it opens on the treasury's words, tiles
+   and books instead of showing the same figure a second time */
+@media (min-width: 1100px) and (orientation: landscape) {
+  .totalIn .totalNumber {
+    display: none;
+  }
+}
+
+@media (min-width: 1100px) and (orientation: landscape) and (max-height: 719px) {
+  .totalGuest .totalIn .totalNumber {
+    display: flex;
+  }
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 /* ── Shared type ── */
@@ -667,7 +876,7 @@ a.perk:focus-visible,
 .getArt {
   display: flex;
   align-items: flex-end;
-  height: 44px;
+  height: 52px;
   margin-bottom: var(--spacing-3);
 }
 
@@ -685,16 +894,40 @@ a.perk:focus-visible,
   background: #e3a33b;
 }
 
-/* the days that counted, «Мой месяц»'s dots */
+/* the days that counted, «Мой месяц»'s dots: four weeks under a calendar's two rings */
+.artCal {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.calRings,
 .artDots {
   display: grid;
-  grid-template-columns: repeat(7, 10px);
-  gap: 5px;
+  grid-template-columns: repeat(7, 7px);
+  gap: 4px;
+}
+
+.calRings b {
+  grid-row: 1;
+  justify-self: center;
+  width: 3px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-text-secondary);
+}
+
+.calRings b:first-child {
+  grid-column: 2;
+}
+
+.calRings b:last-child {
+  grid-column: 6;
 }
 
 .artDots i {
-  width: 10px;
-  height: 10px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   box-shadow: inset 0 0 0 1.5px var(--color-text-muted);
   opacity: 0.55;
@@ -1411,6 +1644,12 @@ a.perk:focus-visible,
 
   .heroInner > .heroActions {
     max-width: min(820px, 48vw);
+  }
+
+  /* the Kazakh promise in two lines, as the Russian one: «оқыңыз — шеңбермен бірге» is 570px at 44px — three lines
+     pushed a visitor's treasury under the fold at 1470×835 */
+  :global(html[lang='kk']) .heroInner > .heroTitle {
+    max-width: min(580px, 40vw);
   }
 }
 

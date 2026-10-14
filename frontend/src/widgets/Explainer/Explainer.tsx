@@ -7,7 +7,7 @@ import styles from './Explainer.module.css';
 const PERKS = [
   { key: 'calendar', icon: 'calendar', to: '/round' },
   { key: 'leaders', icon: 'trophy', to: '/round' },
-  { key: 'room', icon: 'candle', to: '/library/hall' },
+  { key: 'room', icon: 'armchair', to: '/library/hall' },
   { key: 'shelf', icon: 'book', to: '/library' },
   { key: 'books', icon: 'star', to: '/books' },
   { key: 'market', icon: 'tag', to: '/market' },

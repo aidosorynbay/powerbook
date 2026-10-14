@@ -27,6 +27,7 @@ export type IconName =
   | 'flag'
   | 'alarm'
   | 'candle'
+  | 'armchair'
   | 'tag'
   | 'chat'
   | 'sparkle'
@@ -209,6 +210,14 @@ const icons: Record<IconName, JSX.Element> = {
       <rect x="9" y="10" width="6" height="10.5" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none" />
       <path d="M12 10V8.3M7 20.5h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
       <path d="M12 2.5c1.3 1.5 2 2.6 2 3.5a2 2 0 01-4 0c0-.9.7-2 2-3.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
+    </>
+  ),
+  /* the reading room's own seat: a club armchair seen from the front — back, arms and seat, two legs */
+  'armchair': (
+    <>
+      <path d="M6.75 12.75V7a3 3 0 013-3h4.5a3 3 0 013 3v5.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+      <path d="M2.75 16.5v-3.75a2 2 0 014 0v1.75h10.5v-1.75a2 2 0 014 0v3.75a1.5 1.5 0 01-1.5 1.5H4.25a1.5 1.5 0 01-1.5-1.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
+      <path d="M5 18v2.25M19 18v2.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
     </>
   ),
   'tag': (

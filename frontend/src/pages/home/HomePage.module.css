@@ -116,22 +116,23 @@
   padding-top: 10px;
 }
 
-/* phones: a band of 150px on short screens, up to 196px on tall ones — the fades need the room, the actions stay above
-   the fold (390×664: «Начать читать» ends at ~540px) */
+/* phones: the band gives way on short screens — 124px in Safari with its bars out (664 tall), the full 195px in the
+   installed app on an iPhone XS (812), 196px above — so the circle card's numbers clear the tab bar */
 @media (max-width: 759px) {
   .photoArt,
   .photoShade {
     height: 150px;
-    height: clamp(150px, 24svh, 196px);
+    height: clamp(124px, 48svh - 195px, 196px);
   }
 }
 
-/* wide landscape screens: one frame, the words over the dark left of the photo, the book on the right */
+/* wide landscape screens: one frame, the words over the dark left of the photo, the book on the right, the common
+   treasury at the foot of the words; the frame ends at the window's foot (the header is 70–72px) */
 @media (min-width: 1100px) and (orientation: landscape) {
   .photoHero {
     display: flex;
-    align-items: flex-start;
-    min-height: clamp(560px, min(50vw, calc(100svh - 64px)), 900px);
+    align-items: stretch;
+    min-height: clamp(560px, min(50vw, calc(100svh - 72px)), 900px);
     padding-top: clamp(28px, 6vh, 64px);
   }
 
@@ -191,8 +192,10 @@
 
   .photoWords {
     width: 100%;
+    display: flex;
+    flex-direction: column;
     padding-top: 0;
-    padding-bottom: 96px;
+    padding-bottom: clamp(8px, 2.4vh, 28px);
   }
 }
 

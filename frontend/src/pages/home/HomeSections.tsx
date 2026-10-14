@@ -157,6 +157,16 @@ function dayMonth(t: (k: string, p?: Record<string, string | number>) => string,
 function CirclePanel({ stats }: { stats: PublicStats }) {
   const { t, locale } = useI18n();
   const { state: wait } = useWaitlist();
+  // the bar's light rests while the card is scrolled away (a ref callback: the card mounts when the numbers come)
+  const io = useRef<IntersectionObserver | null>(null);
+  const barRef = useCallback((el: HTMLDivElement | null) => {
+    io.current?.disconnect();
+    io.current = null;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const obs = new IntersectionObserver(([e]) => el.classList.toggle(styles.panelBarIdle, !e.isIntersecting));
+    obs.observe(el);
+    io.current = obs;
+  }, []);
   const day = roundDay(stats);
   if (!stats.is_round_active || !stats.round_month || !day) return null;
   const left = day.left;
@@ -190,8 +200,20 @@ function CirclePanel({ stats }: { stats: PublicStats }) {
           {stats.round_registration_open ? t('home.panel.reg') : t('home.panel.on')}
         </span>
       </div>
-      <div className={styles.panelBar} role="progressbar" aria-valuemin={1} aria-valuemax={day.len} aria-valuenow={day.day} aria-label={t('home.panel.day', { day: day.day, len: day.len })}>
-        <span style={{ width: `${Math.round((day.day / day.len) * 100)}%` }} />
+      {/* the days gone glow like embers, and a light keeps filling them up to today's end (the founder: «медленно
+          зажигался оранжевым, как будто наполняется») — orange is the Round tab's colour for today */}
+      <div
+        ref={barRef}
+        className={styles.panelBar}
+        role="progressbar"
+        aria-valuemin={1}
+        aria-valuemax={day.len}
+        aria-valuenow={day.day}
+        aria-label={t('home.panel.day', { day: day.day, len: day.len })}
+        style={{ '--p': `${((day.day / day.len) * 100).toFixed(2)}%` } as CSSProperties}
+      >
+        <i className={styles.panelGlow} aria-hidden="true" />
+        <span />
       </div>
       <div className={styles.panelDay}>
         <span>{t('home.panel.day', { day: day.day, len: day.len })}</span>
@@ -214,7 +236,7 @@ function CirclePanel({ stats }: { stats: PublicStats }) {
  */
 export function HomeHero({ stats, calm = false }: { stats: PublicStats | null; calm?: boolean }) {
   const { t, locale } = useI18n();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, token } = useAuth();
   const { state: wait } = useWaitlist();
   const next = useNextStep();
   const navigate = useNavigate();
@@ -281,7 +303,8 @@ export function HomeHero({ stats, calm = false }: { stats: PublicStats | null; c
   );
 
   return (
-    <div ref={ref} className={`${styles.heroInner} ${calm ? styles.calm : ''}`}>
+    // a visitor (no saved sign-in) is told apart from the first frame, so a member's layout never flickers
+    <div ref={ref} className={`${styles.heroInner} ${calm ? styles.calm : ''} ${token ? '' : styles.heroGuest}`}>
       {/* until the numbers come, the live line and the card keep their room, so nothing below them jumps (CLS 0.20
           with a slow API) */}
       {live ? (
@@ -310,7 +333,68 @@ export function HomeHero({ stats, calm = false }: { stats: PublicStats | null; c
           </Link>
         )}
       </div>
+
+      {stats?.total_minutes_read ? <HeroTotal stats={stats} calm={calm} /> : null}
     </div>
+  );
+}
+
+/**
+ * The common treasury on a computer's first screen, at the foot of the words (the founder: «сразу видно, снизу
+ * слева»): everything read together since 2021, in minutes — the unit on the number, so seven digits never read as
+ * money. It rolls in this circle's minutes once, 0.6 s after the page shows, so only the last digits move and the width
+ * holds; a calm (returning) session and reduced motion get it at once. Phones keep it in the section under the hero.
+ */
+function HeroTotal({ stats, calm }: { stats: PublicStats; calm: boolean }) {
+  const { t, locale } = useI18n();
+  const total = stats.total_minutes_read;
+  const before = Math.max(0, total - (stats.is_round_active ? stats.round_minutes ?? 0 : 0));
+  const [shown, setShown] = useState(() => (calm ? total : before));
+  useEffect(() => {
+    if (calm || before >= total || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setShown(total);
+      return;
+    }
+    setShown(before);
+    let raf = 0;
+    const start = window.setTimeout(() => {
+      const t0 = performance.now();
+      const step = (now: number) => {
+        const p = Math.min(1, (now - t0) / 1600);
+        setShown(Math.round(before + (total - before) * (1 - Math.pow(1 - p, 3))));
+        if (p < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    }, 600);
+    return () => {
+      window.clearTimeout(start);
+      cancelAnimationFrame(raf);
+    };
+  }, [calm, before, total]);
+
+  const nf = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ru-RU');
+  const since = stats.yearly?.[0]?.year ?? 2021;
+  const minWord = plural(locale, total, { one: t('home.min.one'), few: t('home.min.few'), many: t('home.min.many') });
+  // who and how long, and what it costs: «1 013 читателей · 66 кругов · участие бесплатное» (the founder: «бесплатно» and
+  // «с 2021» give the authority) — the participation is free, not «everything», as the monetization rule allows
+  const readers = `${nf.format(stats.total_participants)} ${plural(locale, stats.total_participants, { one: t('home.reader.one'), few: t('home.reader.few'), many: t('home.reader.many') })}`;
+  const rounds = `${nf.format(stats.total_rounds)} ${plural(locale, stats.total_rounds, { one: t('home.round.one'), few: t('home.round.few'), many: t('home.round.many') })}`;
+  return (
+    <p className={styles.heroTotal} data-hero-total>
+      <span className={styles.heroTotalKicker}>{t('home.hero.kicker', { year: since })}</span>
+      <span className={styles.heroTotalRow}>
+        {/* the final figure for screen readers; the rolling digits are only a picture of it */}
+        <b className={styles.heroTotalValue} aria-hidden="true">{nf.format(shown)}</b>
+        <span className={styles.srOnly}>{nf.format(total)}</span>
+        {/* «минут» over «прочитали вместе», beside the number: one line stays clear of the book */}
+        <span className={styles.heroTotalUnit}>
+          <span>{minWord}</span>
+          <span>{t('home.hero.read')}</span>
+        </span>
+      </span>
+      {/* a visitor's sentence above already says «с 2021 года… Бесплатно» — this line is for those signed in */}
+      <span className={styles.heroTotalMeta}>{readers} · {rounds} · {t('home.hero.free')}</span>
+    </p>
   );
 }
 
@@ -369,6 +453,7 @@ type PublicBook = { title: string; author: string | null; cover_url: string; min
 /** The shared total: everything read together, this month's part, and the books it went into. */
 export function SharedTotal({ stats }: { stats: PublicStats | null }) {
   const { t, locale } = useI18n();
+  const { token } = useAuth();
   const ref = useScene<HTMLElement>('treasury');
   const [books, setBooks] = useState<PublicBook[]>([]);
   const [shown, setShown] = useState<number | null>(null);
@@ -422,8 +507,9 @@ export function SharedTotal({ stats }: { stats: PublicStats | null }) {
   const since = stats?.yearly?.[0]?.year ?? 2021;
   const active = stats?.is_round_active && !!stats.round_month && (stats.round_minutes ?? 0) > 0;
 
+  // on a computer the number is on the first screen (HeroTotal) — except a visitor's short window, where it stays here
   return (
-    <section ref={ref} className={styles.total} aria-labelledby="total-title">
+    <section ref={ref} className={`${styles.total} ${token ? '' : styles.totalGuest}`} aria-labelledby="total-title">
       <Container className={styles.totalIn}>
         {/* the Round tab's word for it («Казна круга») and the film's («Общая казна круга»): one name across the product */}
         <h2 id="total-title" className={`${styles.kicker} ${styles.rv}`}>{t('home.treasury.kicker')}</h2>
@@ -499,15 +585,23 @@ export function SharedTotal({ stats }: { stats: PublicStats | null }) {
 const GETS = [1, 2, 3, 4];
 /* the pieces of the Round tab each promise is drawn with — its own visual words, not pictures drawn for the page */
 const BARS = [42, 68, 55, 90, 63, 78, 100];
-const HABIT = [1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1];
+/* four weeks, the misses thinning out as the habit sets in */
+const HABIT = [1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 const FACES: Record<string, string[]> = { ru: ['А', 'М', 'Д', 'Ж', 'Т'], kk: ['А', 'М', 'Д', 'Ж', 'Т'], en: ['A', 'M', 'D', 'J', 'T'] };
 const FACE_HUES = ['#4ECDC4', '#F783C8', '#7C83FD', '#F2A93B', '#5FD068'];
 
 function GetArt({ n, covers, locale }: { n: number; covers: string[]; locale: string }) {
   // a week of minutes, as the results page draws them
   if (n === 1) return <span className={styles.artBars}>{BARS.map((h, i) => <i key={i} style={{ height: `${h}%` }} />)}</span>;
-  // the days that counted, as «Мой месяц» draws them
-  if (n === 2) return <span className={styles.artDots}>{HABIT.map((on, i) => <i key={i} className={on ? styles.dotOn : ''} />)}</span>;
+  // the days that counted, as «Мой месяц» draws them — a month's page, its two rings on top, so it reads as a calendar
+  if (n === 2) {
+    return (
+      <span className={styles.artCal}>
+        <span className={styles.calRings}><b /><b /></span>
+        <span className={styles.artDots}>{HABIT.map((on, i) => <i key={i} className={on ? styles.dotOn : ''} />)}</span>
+      </span>
+    );
+  }
   // readers, as «Читатели круга» draws them
   if (n === 3) {
     return (
@@ -738,7 +832,7 @@ export function HowItWorks() {
 
 /* each with its own colour from the readers' avatar palette (colorHash.ts), as «Читатели круга» shows people */
 const PERKS = [
-  { key: 'room', icon: 'candle', to: '/library/hall', hue: '#F2A93B' },
+  { key: 'room', icon: 'armchair', to: '/library/hall', hue: '#F2A93B' },
   { key: 'calendar', icon: 'calendar', to: '/round', hue: '#5FD068' },
   { key: 'shelf', icon: 'book', to: '/library', hue: '#7C83FD' },
   { key: 'books', icon: 'star', to: '/books', hue: '#E8C547' },
