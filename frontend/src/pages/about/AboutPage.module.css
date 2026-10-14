@@ -1,0 +1,16 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  padding-top: var(--spacing-8);
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}

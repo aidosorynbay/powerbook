@@ -1,0 +1,28 @@
+/* The front page's room: no tab bar to make room for, and the round page's
+   negative margin does not apply here. */
+.room {
+  --nav: 0px;
+  margin-bottom: 0 !important;
+}
+
+.tag {
+  cursor: default;
+}
+
+/* What appears once the hall is whole: the way in, at the foot of the photo. */
+.ui {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 120px 16px calc(28px + env(safe-area-inset-bottom));
+  background: linear-gradient(0deg, rgba(14, 8, 4, 0.94) 0%, rgba(14, 8, 4, 0.78) 45%, rgba(14, 8, 4, 0) 100%);
+  opacity: 0;
+  color: #fff1de;
+  text-align: center;
+  pointer-events: none;
+}
+
+.ui[data-live='1'] {
+  pointer-events: auto;
+}

@@ -109,6 +109,7 @@ export function Header() {
           </a>
         </>
       )}
+      {!isAuthenticated && <Link to="/about" className={styles.navLink}>{t('nav.about')}</Link>}
     </>
   );
 

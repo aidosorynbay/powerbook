@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { Suspense, lazy, useEffect } from 'react';
 import * as Sentry from '@sentry/react';
 import { AuthProvider, useAuth, I18nProvider, useI18n, isReaderPath, setAnalyticsUser } from '@/shared/lib';
-import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage, JoinPage, ReaderDayPage, GetPage } from '@/pages';
+import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage, JoinPage, ReaderDayPage, GetPage, AboutPage } from '@/pages';
 import { ArchivePrompt, BottomNav, JoinPrompt, LastCallNotice } from '@/widgets';
 import '@/app/styles/theme.css';
 
@@ -118,6 +118,7 @@ function AppRoutes() {
             )
           }
         />
+        <Route path="/about" element={<AboutPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/suggestions" element={<SuggestionsPage />} />

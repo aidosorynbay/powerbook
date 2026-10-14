@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { track, trackSectionView, useAuth, useI18n, useWaitlist, type PublicStats } from '@/shared/lib';
+import { apiGet, getApiBaseUrl, track, trackSectionView, useAuth, useI18n, useWaitlist, type PublicStats } from '@/shared/lib';
 import { Button, Container, Icon } from '@/shared/ui';
 import { MotionReel } from '@/widgets';
 import { plural } from '@/pages/library/bookcase/plural';
@@ -102,12 +102,17 @@ export function HomeHero({ stats, onHow }: { stats: PublicStats | null; onHow: (
     return t('home.state.off');
   })();
 
+  // Live numbers only when they say «people are here»; a quiet hour shows the
+  // shared total instead of «0».
   const live = [
     stats?.room_now ? t('home.live.room', { n: stats.room_now }) : null,
-    stats?.today_logged && stats.current_round_participants
+    stats?.today_logged && stats.today_logged >= 5 && stats.current_round_participants
       ? t('home.live.today', { n: stats.today_logged, total: stats.current_round_participants })
       : null,
   ].filter(Boolean);
+  if (!live.length && stats?.total_minutes_read) {
+    live.push(t('home.live.total', { n: new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ru-RU').format(stats.total_minutes_read) }));
+  }
 
   return (
     <section ref={ref} className={styles.hero}>
@@ -147,7 +152,7 @@ export function HomeHero({ stats, onHow }: { stats: PublicStats | null; onHow: (
             </p>
           )}
           <h1 className={styles.heroTitle}>{t('home.title')}</h1>
-          {!isAuthenticated && <p className={styles.heroFacts}>{t('home.facts')}</p>}
+          {!isAuthenticated && <p className={styles.heroWhat}>{t('home.what')}</p>}
           <p className={styles.heroState}>{state}</p>
 
           <div className={styles.heroActions} aria-busy={isLoading}>
@@ -182,11 +187,11 @@ export function HomeHero({ stats, onHow }: { stats: PublicStats | null; onHow: (
             type="button"
             className={styles.heroHow}
             onClick={() => {
-              track('home_cta', { place: 'hero', action: 'how' });
+              track('home_cta', { place: 'hero', action: 'peek' });
               onHow();
             }}
           >
-            {t('home.how')} <span aria-hidden="true">↓</span>
+            {t('home.peek')} <span aria-hidden="true">↓</span>
           </button>
         </div>
       </Container>
@@ -194,99 +199,166 @@ export function HomeHero({ stats, onHow }: { stats: PublicStats | null; onHow: (
   );
 }
 
-/** «Общая казна»: the circle's minutes as one total, and every member as one dot. */
-export function CircleTreasury({ stats }: { stats: PublicStats | null }) {
+/** The way into the live room, shown once the hall is whole. */
+export function RoomWayIn() {
+  const { t } = useI18n();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const ref = useSectionView<HTMLDivElement>('room');
+  return (
+    <div ref={ref} className={styles.wayIn}>
+      <h2 className={styles.wayInTitle}>{t('home.room.title')}</h2>
+      <p className={styles.wayInText}>{t('home.room.text')}</p>
+      <Button
+        variant="primary"
+        size="lg"
+        onClick={() => {
+          track('home_cta', { place: 'room', action: isAuthenticated ? 'room' : 'room_signup' });
+          navigate(isAuthenticated ? '/library/hall' : `/register?redirect=${encodeURIComponent('/library/hall')}`);
+        }}
+      >
+        {isAuthenticated ? t('home.room.member') : t('home.room.guest')}
+      </Button>
+    </div>
+  );
+}
+
+type PublicBook = { title: string; author: string | null; cover_url: string; minutes: number; readers: number };
+
+/** The shared total: everything read together, this month's part, and the books it went into. */
+export function SharedTotal({ stats }: { stats: PublicStats | null }) {
   const { t, locale } = useI18n();
   const ref = useSectionView<HTMLElement>('treasury');
-  const [lit, setLit] = useState(false);
-  const dotsRef = useRef<HTMLDivElement>(null);
+  const [books, setBooks] = useState<PublicBook[]>([]);
+  const [shown, setShown] = useState(0);
+  const numRef = useRef<HTMLSpanElement>(null);
 
-  // The dots light up once, when they come into view.
   useEffect(() => {
-    const el = dotsRef.current;
-    if (!el || typeof IntersectionObserver === 'undefined') {
-      setLit(true);
+    let alive = true;
+    apiGet<PublicBook[]>('/stats/public/books').then(({ data }) => {
+      if (alive && data) setBooks(data);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // The big number counts up once, when it comes into view.
+  const total = stats?.total_minutes_read ?? 0;
+  useEffect(() => {
+    const el = numRef.current;
+    if (!el || !total) return;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduced || typeof IntersectionObserver === 'undefined') {
+      setShown(total);
       return;
     }
+    let raf = 0;
     const io = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting) {
-        setLit(true);
-        io.disconnect();
-      }
-    }, { threshold: 0.3 });
+      if (!e.isIntersecting) return;
+      io.disconnect();
+      const t0 = performance.now();
+      const step = (now: number) => {
+        const p = Math.min(1, (now - t0) / 1800);
+        setShown(Math.round(total * (1 - Math.pow(1 - p, 4))));
+        if (p < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    }, { threshold: 0.5 });
     io.observe(el);
-    return () => io.disconnect();
-  }, [stats]);
-
-  if (!stats) return <section className={styles.treasury} aria-busy="true" />;
+    return () => {
+      io.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [total]);
 
   const nf = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ru-RU');
-  const compact = new Intl.NumberFormat(locale === 'en' ? 'en-US' : locale === 'kk' ? 'kk-KZ' : 'ru-RU', {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  });
-  const active = stats.is_round_active && stats.current_round_participants > 0;
-  const people = Math.min(stats.current_round_participants, 240);
-  const today = Math.min(stats.today_logged ?? 0, people);
-  const minutes = stats.round_minutes ?? 0;
-  const month = stats.round_month ? t(`month.${stats.round_month}`) : '';
-  const since = stats.yearly?.[0]?.year;
   const minWord = (n: number) => plural(locale, n, { one: t('home.min.one'), few: t('home.min.few'), many: t('home.min.many') });
+  const since = stats?.yearly?.[0]?.year ?? 2021;
+  const month = stats?.round_month ? t(`month.${stats.round_month}`) : '';
+  const active = stats?.is_round_active && (stats.round_minutes ?? 0) > 0;
 
   return (
-    <section ref={ref} className={styles.treasury} aria-labelledby="treasury-title">
+    <section ref={ref} className={styles.total} aria-labelledby="total-title">
       <Container>
-        <p className={styles.kicker}>{t('home.treasury.kicker')}</p>
-        <h2 id="treasury-title" className={styles.h2}>{t('home.treasury.title')}</h2>
+        <p className={styles.kicker}>{t('home.tr.kicker')}</p>
+        <h2 id="total-title" className={styles.h2}>{t('home.tr.title')}</h2>
 
-        {active && (
-          <div className={styles.month}>
-            <div className={styles.bigNumber}>
-              <span className={styles.bigValue}>{nf.format(minutes)}</span>
-              <span className={styles.bigUnit}>{minWord(minutes)}</span>
-            </div>
-            <p className={styles.bigCaption}>{t('home.treasury.caption', { month })}</p>
+        <div className={styles.totalNumber}>
+          <span ref={numRef} className={styles.totalValue}>{nf.format(shown || 0)}</span>
+          <span className={styles.totalUnit}>
+            {minWord(total)} {t('home.tr.caption', { year: since })}
+          </span>
+        </div>
+        <p className={styles.totalLead}>{t('home.tr.lead')}</p>
 
-            <div
-              ref={dotsRef}
-              className={`${styles.dots} ${lit ? styles.dotsLit : ''}`}
-              role="img"
-              aria-label={t('home.live.today', { n: today, total: people })}
-            >
-              {Array.from({ length: people }, (_, i) => (
-                <span
-                  key={i}
-                  className={i < today ? styles.dotOn : styles.dot}
-                  style={{ ['--i' as string]: i }}
-                />
-              ))}
-            </div>
-            <p className={styles.dotsCaption}>
-              <strong>{t('home.live.today', { n: today, total: people })}</strong>
-              <span>{t('home.treasury.dots')}</span>
-            </p>
-          </div>
+        {stats && (
+          <p className={styles.totalFacts}>
+            {active && (
+              <span>
+                {t('home.tr.month', { month, minutes: `${nf.format(stats.round_minutes ?? 0)} ${minWord(stats.round_minutes ?? 0)}` })}
+                {(stats.today_logged ?? 0) >= 5 && <> · {t('home.tr.today', { n: stats.today_logged ?? 0, total: stats.current_round_participants })}</>}
+              </span>
+            )}
+            <span>
+              {nf.format(stats.total_participants)}{' '}
+              {plural(locale, stats.total_participants, { one: t('home.reader.one'), few: t('home.reader.few'), many: t('home.reader.many') })}
+              {' · '}
+              {nf.format(stats.total_rounds)}{' '}
+              {plural(locale, stats.total_rounds, { one: t('home.round.one'), few: t('home.round.few'), many: t('home.round.many') })}
+              {' · '}
+              <Link to="/about" className={styles.storyLink} onClick={() => track('home_cta', { place: 'treasury', action: 'about' })}>
+                {t('home.tr.story')} →
+              </Link>
+            </span>
+          </p>
         )}
 
-        <div className={styles.allTime}>
-          {since && <p className={styles.allTimeHead}>{t('home.treasury.since', { year: since })}</p>}
-          <dl className={styles.allTimeRow}>
-            <div>
-              <dt>{minWord(stats.total_minutes_read)}</dt>
-              <dd>{compact.format(stats.total_minutes_read)}</dd>
-            </div>
-            <div>
-              <dt>{plural(locale, stats.total_participants, { one: t('home.reader.one'), few: t('home.reader.few'), many: t('home.reader.many') })}</dt>
-              <dd>{nf.format(stats.total_participants)}</dd>
-            </div>
-            <div>
-              <dt>{plural(locale, stats.total_rounds, { one: t('home.round.one'), few: t('home.round.few'), many: t('home.round.many') })}</dt>
-              <dd>{nf.format(stats.total_rounds)}</dd>
-            </div>
-          </dl>
-        </div>
+        {books.length >= 3 && (
+          <div className={styles.books}>
+            <h3 className={styles.booksTitle}>{t('home.tr.books')}</h3>
+            <ul className={styles.bookRow}>
+              {books.map((b) => (
+                <li key={b.title} className={styles.book}>
+                  <img
+                    className={styles.cover}
+                    src={`${getApiBaseUrl()}${b.cover_url}`}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <span className={styles.bookTitle}>{b.title}</span>
+                  {b.author && <span className={styles.bookAuthor}>{b.author}</span>}
+                  <span className={styles.bookMeta}>{t('home.tr.bookMeta', { minutes: nf.format(b.minutes), readers: b.readers })}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Container>
+    </section>
+  );
+}
 
-        <p className={styles.note}>{t('home.treasury.note')}</p>
+const GETS = [1, 2, 3, 4];
+
+/** What a month in the circle gives, and the little it asks. */
+export function MonthGets() {
+  const { t } = useI18n();
+  const ref = useSectionView<HTMLElement>('gets');
+  return (
+    <section ref={ref} className={styles.gets} aria-labelledby="gets-title">
+      <Container>
+        <h2 id="gets-title" className={styles.h2}>{t('home.get.title')}</h2>
+        <ul className={styles.getGrid}>
+          {GETS.map((n) => (
+            <li key={n} className={styles.get}>
+              <span className={styles.getBig}>{t(`home.get.${n}.b`)}</span>
+              <span className={styles.getText}>{t(`home.get.${n}.t`)}</span>
+            </li>
+          ))}
+        </ul>
+        <p className={styles.need}>{t('home.need')}</p>
       </Container>
     </section>
   );
@@ -308,7 +380,7 @@ export function HowItWorks() {
             <p className={styles.kicker}>{t('home.how')}</p>
             <h2 id="how-title" className={styles.h2}>{t('home.steps')}</h2>
             <ol className={styles.steps}>
-              {[1, 2, 3, 4].map(n => (
+              {[1, 2, 3, 4].map((n) => (
                 <li key={n} className={styles.step}>
                   <span className={styles.stepNum}>{n}</span>
                   <div>
@@ -326,11 +398,11 @@ export function HowItWorks() {
 
         <div ref={faqRef} className={styles.faq}>
           <h2 className={styles.h3}>{t('home.faq')}</h2>
-          {FAQ.map(n => (
+          {FAQ.map((n) => (
             <details
               key={n}
               className={styles.faqItem}
-              onToggle={e => {
+              onToggle={(e) => {
                 if ((e.target as HTMLDetailsElement).open) track('home_faq', { q: n });
               }}
             >
@@ -344,32 +416,89 @@ export function HowItWorks() {
   );
 }
 
-/** The last word for a visitor; members already have the circle one tap away. */
+const PERKS = [
+  { key: 'room', icon: 'candle', to: '/library/hall' },
+  { key: 'calendar', icon: 'calendar', to: '/round' },
+  { key: 'shelf', icon: 'book', to: '/library' },
+  { key: 'books', icon: 'star', to: '/books' },
+  { key: 'ai', icon: 'sparkle', to: '/reading' },
+  { key: 'market', icon: 'tag', to: '/market' },
+  { key: 'people', icon: 'users', to: '/readers' },
+  { key: 'fame', icon: 'medal', to: '/hall-of-fame' },
+  { key: 'tg', icon: 'telegram', href: 'https://t.me/+ZSmueLtmT8Y1MDBi' },
+] as const;
+
+/** Everything else the platform has: for a member each card opens it, for a visitor it tells what waits. */
+export function PlatformPerks() {
+  const { t } = useI18n();
+  const { isAuthenticated } = useAuth();
+  const ref = useSectionView<HTMLElement>('perks');
+  return (
+    <section ref={ref} className={styles.perks} aria-labelledby="perks-title">
+      <Container>
+        <h2 id="perks-title" className={styles.h2}>{t('ex.perksTitle')}</h2>
+        <div className={styles.perkGrid}>
+          {PERKS.map((p) => {
+            const body = (
+              <>
+                <span className={styles.perkIcon} aria-hidden="true"><Icon name={p.icon} size="md" /></span>
+                <strong className={styles.perkTitle}>{t(`ex.perk.${p.key}.t`)}</strong>
+                <span className={styles.perkText}>{t(`ex.perk.${p.key}.d`)}</span>
+              </>
+            );
+            const onClick = () => track('home_perk', { perk: p.key });
+            if ('href' in p) {
+              return <a key={p.key} className={styles.perk} href={p.href} target="_blank" rel="noopener noreferrer" onClick={onClick}>{body}</a>;
+            }
+            return isAuthenticated
+              ? <Link key={p.key} className={styles.perk} to={p.to} onClick={onClick}>{body}</Link>
+              : <div key={p.key} className={styles.perk}>{body}</div>;
+          })}
+        </div>
+      </Container>
+    </section>
+  );
+}
+
+/** The last word: the empty hall, one armchair for you. */
 export function HomeFinal() {
   const { t } = useI18n();
   const { isAuthenticated, isLoading } = useAuth();
   const next = useNextStep();
   const ref = useSectionView<HTMLElement>('final');
-  if (isAuthenticated || isLoading) return null;
 
   return (
     <section ref={ref} className={styles.final}>
+      <picture className={styles.finalArt} aria-hidden="true">
+        <source media="(min-width: 760px)" type="image/webp" srcSet="/home/room-empty-wide.webp" />
+        <source media="(min-width: 760px)" srcSet="/home/room-empty-wide.jpg" />
+        <source type="image/webp" srcSet="/home/room-empty-tall.webp" />
+        <img src="/home/room-empty-tall.jpg" alt="" loading="lazy" decoding="async" />
+      </picture>
+      <div className={styles.finalShade} aria-hidden="true" />
       <Container>
-        <h2 className={styles.finalTitle}>{t('home.final')}</h2>
-        <div className={styles.finalActions}>
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => {
-              track('home_cta', { place: 'final', action: next.action });
-              next.run();
-            }}
-          >
-            {next.label}
-          </Button>
-          <Link to="/login" className={styles.finalLogin} onClick={() => track('home_cta', { place: 'final', action: 'login' })}>
-            {t('home.login')}
-          </Link>
+        <div className={styles.finalInner}>
+          <h2 className={styles.finalTitle}>{t('home.final.title')}</h2>
+          <p className={styles.finalSub}>{t('home.final.sub')}</p>
+          {!isLoading && (
+            <div className={styles.finalActions}>
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => {
+                  track('home_cta', { place: 'final', action: next.action });
+                  next.run();
+                }}
+              >
+                {next.label}
+              </Button>
+              {!isAuthenticated && (
+                <Link to="/login" className={styles.finalLogin} onClick={() => track('home_cta', { place: 'final', action: 'login' })}>
+                  {t('home.login')}
+                </Link>
+              )}
+            </div>
+          )}
         </div>
       </Container>
     </section>

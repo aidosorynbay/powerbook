@@ -1,26 +1,22 @@
 import { useEffect, useState } from 'react';
-import { apiGet, isStandalone, track, type PublicStats } from '@/shared/lib';
-import { useMediaQuery } from '@/shared/hooks';
+import { apiGet, type PublicStats } from '@/shared/lib';
 import { PageTransition } from '@/shared/ui';
-import { Header, Footer } from '@/widgets';
-import { InstallLanding } from '@/widgets/InstallLanding';
-import { CircleTreasury, HomeFinal, HomeHero, HowItWorks } from './HomeSections';
+import { Header, Footer, LiveRoom } from '@/widgets';
+import { HomeFinal, HomeHero, HowItWorks, MonthGets, PlatformPerks, RoomWayIn, SharedTotal } from './HomeSections';
 import styles from './HomePage.module.css';
-
-// «Продолжить на компьютере» is remembered this long.
-const LANDING_SKIP_KEY = 'pb.landing.skip';
-const LANDING_SKIP_DAYS = 30;
-
-function landingSkipped(): boolean {
-  try {
-    return Number(localStorage.getItem(LANDING_SKIP_KEY) || 0) > Date.now();
-  } catch {
-    return false;
-  }
-}
 
 export function HomePage() {
   const [stats, setStats] = useState<PublicStats | null>(null);
+
+  // The room's serif (Literata) for its headings, the same file the shelf loads.
+  useEffect(() => {
+    if (document.querySelector('link[data-shelf-fonts]')) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Literata:ital,opsz,wght@0,7..72,300..700;1,7..72,300..700&display=swap';
+    link.dataset.shelfFonts = '1';
+    document.head.appendChild(link);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -32,49 +28,40 @@ export function HomePage() {
     };
   }, []);
 
-  // A big screen with a mouse is the computer; the phone's own home page is
-  // untouched. ?desktop=1 skips the landing for a link that must land here.
-  const desktop = useMediaQuery('(min-width: 1024px) and (hover: hover)');
-  const [landing, setLanding] = useState(
-    () => !isStandalone() && !landingSkipped() && !new URLSearchParams(window.location.search).has('desktop'),
-  );
-  const showLanding = desktop && landing;
-
-  // «Узнать больше» / «Толығырақ»: down to what PowerBook is.
-  const handleLearnMore = () => {
-    document.getElementById('powerbook')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // «Заглянуть в читальный зал»: down into the live room.
+  const toRoom = () => {
+    document.getElementById('room')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const continueOnDesktop = () => {
-    track('landing_continue');
-    try {
-      localStorage.setItem(LANDING_SKIP_KEY, String(Date.now() + LANDING_SKIP_DAYS * 86_400_000));
-    } catch {
-      /* storage blocked: the landing comes back next visit */
-    }
-    setLanding(false);
-    window.scrollTo({ top: 0 });
-  };
-
-  // Links elsewhere point at /#powerbook.
+  // Links elsewhere point at /#powerbook (how a circle goes).
   useEffect(() => {
     if (window.location.hash !== '#powerbook') return;
-    const id = window.setTimeout(handleLearnMore, 300);
+    const id = window.setTimeout(
+      () => document.getElementById('powerbook')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      300,
+    );
     return () => window.clearTimeout(id);
   }, []);
 
   return (
     <PageTransition>
       <div className={styles.page}>
-        {showLanding ? <InstallLanding onContinue={continueOnDesktop} /> : <Header />}
+        <Header />
 
         <main className={styles.main}>
-          {/* GA4, 1–14 Oct 2026: newcomers stay ~30 s and only 18% reach the
-              bottom, so the page is the reading room, one shared number, how a
-              circle goes, and one last button — nothing else. */}
-          <HomeHero stats={stats} onHow={handleLearnMore} />
-          <CircleTreasury stats={stats} />
+          {/* GA4, 1–14 Oct 2026: newcomers give the page ~30 s, so the first
+              screen says it all; the computer's «put it on your phone» landing
+              brought no installs and gave way to the live room. */}
+          <HomeHero stats={stats} onHow={toRoom} />
+          <div id="room">
+            <LiveRoom>
+              <RoomWayIn />
+            </LiveRoom>
+          </div>
+          <SharedTotal stats={stats} />
+          <MonthGets />
           <HowItWorks />
+          <PlatformPerks />
           <HomeFinal />
         </main>
 
