@@ -14,6 +14,8 @@ from app.schemas.books import (
     BookChatStateOut,
     BookMatchOut,
     CatalogPageOut,
+    ReplyIn,
+    ReplyOut,
     ReviewIn,
     ShelfReviewOut,
     WatchOut,
@@ -21,7 +23,7 @@ from app.schemas.books import (
     WorkOut,
 )
 from app.schemas.library import CoverOptionOut
-from app.services import book_chat, books, notify, shelf_overrides
+from app.services import book_chat, books, notify, review_replies, shelf_overrides
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -122,6 +124,35 @@ def delete_review(
     user: User = Depends(get_current_user),
 ) -> None:
     books.delete_review(db, user=user, review_id=review_id)
+
+
+@router.get("/reviews/{review_id}/replies", response_model=list[ReplyOut])
+def review_thread(
+    review_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> list[ReplyOut]:
+    """The conversation under a review, oldest first."""
+    return [ReplyOut(**r) for r in review_replies.thread(db, viewer=user, review_id=review_id)]
+
+
+@router.post("/reviews/{review_id}/replies", response_model=ReplyOut, status_code=status.HTTP_201_CREATED)
+def reply_to_review(
+    review_id: uuid.UUID,
+    payload: ReplyIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> ReplyOut:
+    return ReplyOut(**review_replies.add(db, user=user, review_id=review_id, text=payload.text))
+
+
+@router.delete("/replies/{reply_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_reply(
+    reply_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> None:
+    review_replies.delete(db, user=user, reply_id=reply_id)
 
 
 

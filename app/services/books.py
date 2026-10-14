@@ -210,7 +210,7 @@ def catalog_page(
     )
 
 
-def _review_out(review: BookReview, user: User, viewer_id: uuid.UUID) -> ReviewOut:
+def _review_out(review: BookReview, user: User, viewer_id: uuid.UUID, replies: int = 0) -> ReviewOut:
     return ReviewOut(
         id=review.id,
         user_id=str(user.id),
@@ -221,6 +221,7 @@ def _review_out(review: BookReview, user: User, viewer_id: uuid.UUID) -> ReviewO
         created_at=review.created_at,
         updated_at=review.updated_at,
         is_viewer=user.id == viewer_id,
+        replies=replies,
     )
 
 
@@ -235,7 +236,7 @@ def _localized(value: dict | None, locale: str) -> tuple[str, dict] | None:
 
 
 def work_page(db: Session, *, key: str, viewer_id: uuid.UUID, locale: str = "ru") -> WorkOut:
-    from app.services import market, notify
+    from app.services import market, notify, review_replies
 
     idx = catalog.index(db)
     work = idx.find(key)
@@ -252,6 +253,7 @@ def work_page(db: Session, *, key: str, viewer_id: uuid.UUID, locale: str = "ru"
     histogram = [0] * 10
     out_reviews: list[ReviewOut] = []
     my_review: ReviewOut | None = None
+    answers = review_replies.counts(db, [review.id for review, _ in reviews])
     for review, user in reviews:
         marks.total += review.rating
         marks.votes += 1
@@ -259,7 +261,7 @@ def work_page(db: Session, *, key: str, viewer_id: uuid.UUID, locale: str = "ru"
         has_text = bool(review.text and review.text.strip())
         if has_text:
             marks.reviews += 1
-        item = _review_out(review, user, viewer_id)
+        item = _review_out(review, user, viewer_id, answers.get(review.id, 0))
         if user.id == viewer_id:
             my_review = item
         out_reviews.append(item)
@@ -355,7 +357,7 @@ def reviews_for_shelf(db: Session, owner_id: uuid.UUID) -> list[BookReview]:
 
 
 def save_review(db: Session, *, user: User, payload: ReviewIn) -> ShelfReviewOut:
-    from app.services import notify
+    from app.services import notify, review_replies
     from app.services.bookcase import BookcaseService
 
     shelf = BookcaseService(db).bookcase(owner_id=user.id, viewer_id=user.id)
@@ -401,6 +403,7 @@ def save_review(db: Session, *, user: User, payload: ReviewIn) -> ShelfReviewOut
     catalog.invalidate()
     if gone:
         notify.take_back_review(db, gone)
+        review_replies.take_back(db, gone)
     if had_text and not text:
         notify.take_back_review(db, review.id)
     else:
@@ -409,7 +412,7 @@ def save_review(db: Session, *, user: User, payload: ReviewIn) -> ShelfReviewOut
 
 
 def delete_review(db: Session, *, user: User, review_id: uuid.UUID) -> None:
-    from app.services import notify
+    from app.services import notify, review_replies
 
     review = db.get(BookReview, review_id)
     if review is None or review.user_id != user.id:
@@ -418,6 +421,7 @@ def delete_review(db: Session, *, user: User, review_id: uuid.UUID) -> None:
     db.commit()
     catalog.invalidate()
     notify.take_back_review(db, review_id)
+    review_replies.take_back(db, review_id)
 
 
 _TOKENS = re.compile(r"[\s_\-.,:;!?()\[\]«»\"'/]+")

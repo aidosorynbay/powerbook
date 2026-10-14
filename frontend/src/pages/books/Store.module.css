@@ -1342,3 +1342,139 @@
   color: var(--color-text-muted);
   cursor: pointer;
 }
+
+/* ---------- answers under a review: a little chat ---------- */
+
+.thread {
+  margin-top: 8px;
+}
+
+.threadToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.threadToggle:hover {
+  text-decoration: underline;
+}
+
+.threadBody {
+  display: grid;
+  gap: 10px;
+  margin-top: 6px;
+  padding-left: 12px;
+  border-left: 2px solid var(--color-border-secondary);
+}
+
+.threadBody > .formNote {
+  margin: 0;
+}
+
+.replyList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reply {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.reply > div {
+  min-width: 0;
+}
+
+.replyHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.replyHead a {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replyHead time {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.replyDelete {
+  margin-left: auto;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.replyDelete:hover {
+  color: var(--color-danger);
+}
+
+.review .reply p {
+  margin: 2px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.replyForm {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.replyForm textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font: inherit;
+  /* 16px keeps iPhone from zooming into the box */
+  font-size: 16px;
+  line-height: 1.35;
+  resize: none;
+}
+
+.replyForm textarea:focus {
+  border-color: var(--color-border-accent);
+  outline: none;
+}
+
+.replyForm .primary {
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 8px 14px;
+}

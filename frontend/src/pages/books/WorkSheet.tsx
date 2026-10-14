@@ -5,6 +5,7 @@ import { Avatar, Icon } from '@/shared/ui';
 import { BookChat } from '@/widgets/BookChat';
 import { BookFace, PbBadge, Sheet, formatDay, formatPrice, useCount } from './bookUi';
 import { MarkForm } from './MarkForm';
+import { ReviewThread } from './ReviewThread';
 import styles from './Store.module.css';
 
 type Props = {
@@ -207,6 +208,10 @@ export function WorkSheet({ workKey, title, onClose, onChanged, review }: Props)
                     </div>
                     {r.text && <p>{r.text}</p>}
                     <time className={styles.formNote}>{formatDay(r.updated_at, locale)}</time>
+                    {/* a bare mark has nothing to answer; words do */}
+                    {(r.text?.trim() || (r.replies ?? 0) > 0) && (
+                      <ReviewThread reviewId={r.id} count={r.replies ?? 0} startOpen={r.id === review} />
+                    )}
                   </li>
                 ))}
               </ul>

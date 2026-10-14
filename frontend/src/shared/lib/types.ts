@@ -737,6 +737,19 @@ export type BookReview = {
   created_at: string;
   updated_at: string;
   is_viewer: boolean;
+  /** Answers under it: the little thread that opens below the review. */
+  replies?: number;
+};
+
+export type ReviewReply = {
+  id: string;
+  user_id: string;
+  display_name: string;
+  avatar_data: string | null;
+  text: string;
+  created_at: string;
+  is_viewer: boolean;
+  can_delete: boolean;
 };
 
 export type TextWithSource = { text: string; source: string; url: string | null };
@@ -976,7 +989,7 @@ export type BookChatState = {
 // The header bell.
 export type SiteNotification = {
   id: string;
-  kind: 'new_review' | 'watch_listing' | 'watch_finished' | 'wanted_by' | 'guest_read' | string;
+  kind: 'new_review' | 'review_reply' | 'watch_listing' | 'watch_finished' | 'wanted_by' | 'guest_read' | string;
   data: Record<string, unknown>;
   created_at: string | null;
   read: boolean;

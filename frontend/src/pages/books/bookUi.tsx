@@ -74,7 +74,7 @@ export function formatDay(iso: string | null | undefined, locale: Locale): strin
 /** "12 оценок", "1 mark", "5 баға". */
 export function useCount() {
   const { t, locale } = useI18n();
-  return (key: 'votes' | 'reviews' | 'readers' | 'books', n: number) =>
+  return (key: 'votes' | 'reviews' | 'readers' | 'books' | 'replies', n: number) =>
     plural(locale, n, {
       one: t(`cat.${key}.one`, { n }),
       few: t(`cat.${key}.few`, { n }),
