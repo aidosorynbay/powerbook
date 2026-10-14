@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { apiGet, type PublicStats } from '@/shared/lib';
 import { PageTransition } from '@/shared/ui';
-import { Header, Footer, LiveRoom } from '@/widgets';
-import { HomeFinal, HomeHero, HowItWorks, MonthGets, PlatformPerks, SharedTotal } from './HomeSections';
+import { Header, Footer } from '@/widgets';
+import { HomeFinal, HomeHero, HowItWorks, MonthGets, PlatformPerks, RoomSection, SharedTotal } from './HomeSections';
 import styles from './HomePage.module.css';
 
 export function HomePage() {
@@ -48,22 +48,28 @@ export function HomePage() {
               circle's hall with whoever reads in it now, and the way in. GA4 showed newcomers give the page ~30 s,
               and the computer's «put it on your phone» landing brought no installs. The still photo shows until
               the living one is drawn. */}
-          <LiveRoom
-            hall="round"
-            keepChairsClear
-            className={styles.hero}
-            uiClassName={styles.heroUi}
-            poster={
-              <picture>
-                <source media="(min-width: 760px)" type="image/webp" srcSet="/home/room-night-wide-1600.webp 1600w, /home/room-night-wide-2560.webp 2560w" sizes="100vw" />
-                <source type="image/webp" srcSet="/home/room-night-tall-750.webp 750w, /home/room-night-tall-1080.webp 1080w" sizes="100vw" />
-                <img src="/home/room-night-tall-750.jpg" alt="" {...{ fetchpriority: 'high' }} />
-              </picture>
-            }
-          >
-            <HomeHero stats={stats} />
-          </LiveRoom>
+          {/* The first screen: the community's own picture (the Telegram group's since 2021), the circle's words,
+              and the way in. The council (2026-10-14): the room as the hero promised «reading at the same moment»,
+              the competitors' model, while PowerBook is minutes added up — so the room is shown once, below. */}
+          <section className={styles.photoHero}>
+            <picture className={styles.photoArt} aria-hidden="true">
+              <source media="(max-width: 759px)" type="image/webp" srcSet="/home/library-phone.webp" />
+              <source media="(max-width: 759px)" srcSet="/home/library-phone.jpg" />
+              <img
+                src="/library-banner-1920.jpg"
+                srcSet="/library-banner-1920.jpg 1920w, /library-banner-3840.jpg 3840w"
+                sizes="100vw"
+                alt=""
+                {...{ fetchpriority: 'high' }}
+              />
+            </picture>
+            <div className={styles.photoShade} aria-hidden="true" />
+            <div className={styles.photoWords}>
+              <HomeHero stats={stats} />
+            </div>
+          </section>
           <SharedTotal stats={stats} />
+          <RoomSection />
           <MonthGets />
           <HowItWorks />
           <PlatformPerks />

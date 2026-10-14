@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { apiGet, getApiBaseUrl, track, trackSectionView, useAuth, useI18n, useWaitlist, type PublicStats } from '@/shared/lib';
+import { apiGet, circleOrdinal, getApiBaseUrl, track, trackSectionView, useAuth, useI18n, useWaitlist, type PublicStats } from '@/shared/lib';
 import { Button, Container, Icon } from '@/shared/ui';
-import { MotionReel } from '@/widgets';
+import { LiveRoom, MotionReel } from '@/widgets';
 import { plural } from '@/pages/library/bookcase/plural';
 import styles from './HomeSections.module.css';
 
@@ -75,88 +75,152 @@ function useNextStep() {
   }, [wait, isAuthenticated, t, join, joinRound, navigate]);
 }
 
+/** «10 октября»: a date in the reader's language (month in the genitive where the language has one). */
+function dayMonth(t: (k: string, p?: Record<string, string | number>) => string, iso: string): { day: number; month: string } {
+  return { day: Number(iso.slice(8, 10)), month: t(`month.gen.${Number(iso.slice(5, 7))}`) };
+}
+
+/**
+ * The circle at a glance, as the old front page had it (the founder's wish): which one, how far in, and the three
+ * numbers. The bar's right end says what matters to whoever looks: the days left (a member), until when sign-up runs
+ * (days 1–10), or when the next circle starts — never «осталось 17 дней» to someone who can only wait.
+ */
+function CirclePanel({ stats }: { stats: PublicStats }) {
+  const { t, locale } = useI18n();
+  const { state: wait } = useWaitlist();
+  const day = roundDay(stats);
+  if (!stats.is_round_active || !stats.round_month || !day) return null;
+  const month = t(`month.${stats.round_month}`);
+  const left = Math.max(0, day.len - day.day);
+  const dayWord = (n: number) => plural(locale, n, { one: t('home.day.one'), few: t('home.day.few'), many: t('home.day.many') });
+  const people = stats.current_round_participants;
+  const inCircle = !!wait && (wait.in_current_round || wait.in_open_round);
+  const right = (() => {
+    if (wait && !inCircle && wait.phase === 'registration' && wait.open_round) {
+      const d = dayMonth(t, wait.open_round.registration_until);
+      return t('home.panel.regUntil', { day: d.day, month: d.month });
+    }
+    if (wait && !inCircle && wait.phase === 'waitlist' && wait.starts_on) {
+      const d = dayMonth(t, wait.starts_on);
+      return t('home.panel.next', { day: d.day, month: d.month });
+    }
+    return t('home.panel.left', { days: `${left} ${dayWord(left)}` });
+  })();
+  return (
+    <div className={styles.panel}>
+      <div className={styles.panelHead}>
+        <span className={styles.panelTitle}>
+          {t('home.panel.title', { month })}
+          {stats.round_number ? <span className={styles.panelNo}> · {circleOrdinal(locale, stats.round_number, false)}</span> : null}
+        </span>
+        <span className={`${styles.panelBadge} ${stats.round_registration_open ? styles.panelBadgeReg : ''}`}>
+          <i aria-hidden="true" />
+          {stats.round_registration_open ? t('home.panel.reg') : t('home.panel.on')}
+        </span>
+      </div>
+      <div className={styles.panelBar} role="progressbar" aria-valuemin={1} aria-valuemax={day.len} aria-valuenow={day.day} aria-label={t('home.panel.day', { day: day.day, len: day.len })}>
+        <span style={{ width: `${Math.round((day.day / day.len) * 100)}%` }} />
+      </div>
+      <div className={styles.panelDay}>
+        <span>{t('home.panel.day', { day: day.day, len: day.len })}</span>
+        <span>{right}</span>
+      </div>
+      <dl className={styles.panelStats}>
+        <div><dd>30</dd><dt>{t('home.panel.perDay')}</dt></div>
+        <div><dd>{day.len}</dd><dt>{t('home.panel.days')}</dt></div>
+        <div><dd>{people}</dd><dt>{plural(locale, people, { one: t('home.part.one'), few: t('home.part.few'), many: t('home.part.many') })}</dt></div>
+      </dl>
+    </div>
+  );
+}
+
+/**
+ * The first screen's words over the community's own picture: the circle's live line, the promise, one plain
+ * sentence, and the two actions in the order that fits the day — a member's circle first; on sign-up days the circle
+ * first; otherwise reading right now (no sign-up) first and the waiting list second.
+ */
 export function HomeHero({ stats }: { stats: PublicStats | null }) {
   const { t, locale } = useI18n();
   const { isAuthenticated, isLoading } = useAuth();
   const { state: wait } = useWaitlist();
   const next = useNextStep();
+  const navigate = useNavigate();
   const ref = useSectionView<HTMLElement>('hero');
 
   const day = roundDay(stats);
   const month = stats?.round_month ? t(`month.${stats.round_month}`) : wait ? t(`month.${wait.month}`) : '';
   const state = (() => {
     if (wait?.in_current_round && day) return t('home.state.member', { month, day: day.day, len: day.len });
-    if (wait?.phase === 'registration' && wait.open_round) {
-      const m = t(`month.${wait.open_round.month}`);
-      const n = wait.open_round.days_left;
-      // days_left counts the days after today, so «ещё 2 дня» is today and tomorrow.
-      if (n === 0) return t('home.state.regToday', { month: m });
-      if (n < 10) {
-        const d = n + 1;
-        const days = `${d} ${plural(locale, d, { one: t('home.day.one'), few: t('home.day.few'), many: t('home.day.many') })}`;
-        return t('home.state.regDays', { month: m, days });
-      }
-      return t('home.state.reg', { month: m });
-    }
+    if (wait?.phase === 'registration' && wait.open_round) return t('home.state.reg', { month: t(`month.${wait.open_round.month}`) });
     if (day) return t('home.state.running', { month, day: day.day, len: day.len });
     return t('home.state.off');
   })();
 
-  // Live numbers only when they say «people are here»; a quiet hour shows the
-  // shared total instead of «0».
-  const live = [
-    stats?.room_now ? t('home.live.room', { n: stats.room_now }) : null,
-    stats?.today_logged && stats.today_logged >= 5 && stats.current_round_participants
-      ? t('home.live.today', { n: stats.today_logged, total: stats.current_round_participants })
-      : null,
-  ].filter(Boolean);
-  if (!live.length && stats?.total_minutes_read) {
-    live.push(t('home.live.total', { n: new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ru-RU').format(stats.total_minutes_read) }));
-  }
+  // The circle's live line (never «0»): who read today, or everything read together.
+  const live = stats?.today_logged && stats.today_logged >= 5 && stats.current_round_participants
+    ? t('home.live.today', { n: stats.today_logged, total: stats.current_round_participants })
+    : stats?.total_minutes_read
+      ? t('home.live.total', { n: new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ru-RU').format(stats.total_minutes_read) })
+      : null;
 
-  const navigate = useNavigate();
-  const toRoom = () => {
-    track('home_cta', { place: 'hero', action: 'read' });
-    navigate('/library/hall');
-  };
+  const inCircle = !!wait && (wait.in_current_round || wait.in_open_round);
+  const signUpDays = !!wait && wait.phase === 'registration' && !!wait.open_round && !inCircle;
+  const circleFirst = inCircle || signUpDays;
+
+  const read = (
+    <Button
+      key="read"
+      variant={circleFirst ? 'secondary' : 'primary'}
+      size="lg"
+      icon={circleFirst ? undefined : <Icon name="arrow-right" size="sm" />}
+      className={circleFirst ? styles.heroSecondBtn : styles.heroCta}
+      onClick={() => {
+        track('home_cta', { place: 'hero', action: 'read' });
+        navigate('/library/hall');
+      }}
+    >
+      {isAuthenticated ? t('home.cta.room') : (
+        <span className={styles.ctaStack}>
+          <b>{t('home.cta.read')}</b>
+          <small>{t('home.cta.readNote')}</small>
+        </span>
+      )}
+    </Button>
+  );
+  const circle = (
+    <Button
+      key="circle"
+      variant={circleFirst ? 'primary' : 'secondary'}
+      size="lg"
+      icon={circleFirst ? <Icon name="arrow-right" size="sm" /> : undefined}
+      className={circleFirst ? styles.heroCta : styles.heroSecondBtn}
+      onClick={() => {
+        track('home_cta', { place: 'hero', action: next.action });
+        next.run();
+      }}
+    >
+      {next.label}
+    </Button>
+  );
 
   return (
     <div ref={ref} className={styles.heroInner}>
-      {live.length > 0 && (
+      {live && (
         <p className={styles.live}>
           <span className={styles.liveDot} aria-hidden="true" />
-          {live.join(' · ')}
+          {live}
         </p>
       )}
       <h1 className={styles.heroTitle}>{t('home.title')}</h1>
       {!isAuthenticated && <p className={styles.heroWhat}>{t('home.what')}</p>}
-      <p className={styles.heroState}>{state}</p>
+      {stats && day ? (
+        <div className={styles.heroPanel}><CirclePanel stats={stats} /></div>
+      ) : (
+        <p className={styles.heroState}>{state}</p>
+      )}
 
       <div className={styles.heroActions} aria-busy={isLoading}>
-        {isLoading ? (
-          <span className={styles.ctaSkeleton} aria-hidden="true" />
-        ) : (
-          <>
-            <Button variant="primary" size="lg" icon={<Icon name="arrow-right" size="sm" />} className={styles.heroCta} onClick={toRoom}>
-              {isAuthenticated ? t('home.cta.room') : (
-                <span className={styles.ctaStack}>
-                  <b>{t('home.cta.read')}</b>
-                  <small>{t('home.cta.readNote')}</small>
-                </span>
-              )}
-            </Button>
-            <button
-              type="button"
-              className={styles.heroSecond}
-              onClick={() => {
-                track('home_cta', { place: 'hero', action: next.action });
-                next.run();
-              }}
-            >
-              {next.label}
-            </button>
-          </>
-        )}
+        {isLoading ? <span className={styles.ctaSkeleton} aria-hidden="true" /> : circleFirst ? [circle, read] : [read, circle]}
       </div>
       {!isAuthenticated && !isLoading && (
         <Link to="/login" className={styles.heroLogin} onClick={() => track('home_cta', { place: 'hero', action: 'login' })}>
@@ -164,6 +228,83 @@ export function HomeHero({ stats }: { stats: PublicStats | null }) {
         </Link>
       )}
     </div>
+  );
+}
+
+/**
+ * The reading room, once on the page, right under the shared total: the library hall — the one «Начать читать»
+ * opens — live, with whoever reads in it now (a quiet hour says so). Mounted only when the reader scrolls near it:
+ * the textures are heavy and most visitors never come this far.
+ */
+export function RoomSection() {
+  const { t } = useI18n();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const ref = useSectionView<HTMLElement>('room');
+  const box = useRef<HTMLDivElement>(null);
+  const [near, setNear] = useState(false);
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setNear(true);
+      return;
+    }
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) {
+        setNear(true);
+        io.disconnect();
+      }
+    }, { rootMargin: '400px 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  const words = (
+    <div className={styles.roomWords}>
+      <p className={styles.roomKicker}>{t('home.room.kicker')}</p>
+      <h2 className={styles.roomTitle}>
+        {count === null ? t('home.room.title') : count > 0 ? t('home.room.now', { n: count }) : t('home.room.quiet')}
+      </h2>
+      <p className={styles.roomText}>{t('home.room.text')}</p>
+      <Button
+        variant="primary"
+        size="lg"
+        onClick={() => {
+          track('home_cta', { place: 'room', action: 'read' });
+          navigate('/library/hall');
+        }}
+      >
+        {isAuthenticated ? t('home.cta.room') : t('home.cta.read')}
+      </Button>
+    </div>
+  );
+
+  return (
+    <section ref={ref} className={styles.roomSection} aria-label={t('home.room.kicker')}>
+      <div ref={box} className={styles.roomBox}>
+        {near ? (
+          <LiveRoom
+            hall="library"
+            keepChairsClear
+            reads
+            className={styles.roomLive}
+            onRoom={(r) => setCount(r.readers.length)}
+            poster={
+              <picture>
+                <source media="(max-width: 759px)" srcSet="/reading-room/m-night-empty-m.jpg" />
+                <img src="/reading-room/b-night-empty-m.jpg" alt="" loading="lazy" decoding="async" />
+              </picture>
+            }
+          >
+            {words}
+          </LiveRoom>
+        ) : (
+          <div className={styles.roomWait}>{words}</div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -224,11 +365,6 @@ export function SharedTotal({ stats }: { stats: PublicStats | null }) {
 
   return (
     <section ref={ref} className={styles.total} aria-labelledby="total-title">
-      <picture className={styles.totalArt} aria-hidden="true">
-        <source media="(min-width: 900px)" type="image/webp" srcSet="/home/room-night-wide-1600.webp" />
-        <source type="image/webp" srcSet="/home/room-night-tall-750.webp" />
-        <img src="/home/room-night-tall-750.jpg" alt="" loading="lazy" decoding="async" />
-      </picture>
       <Container className={styles.totalIn}>
         <p className={styles.kicker}>{t('home.tr.kicker')}</p>
         <h2 id="total-title" className={styles.h2}>{t('home.tr.title')}</h2>
@@ -409,7 +545,7 @@ export function PlatformPerks() {
   );
 }
 
-/** The last word, over the library: start now, or take the circle's next step. */
+/** The last word, on the night: start now, or take the circle's next step. */
 export function HomeFinal() {
   const { t } = useI18n();
   const { isAuthenticated, isLoading } = useAuth();
@@ -419,20 +555,6 @@ export function HomeFinal() {
 
   return (
     <section ref={ref} className={styles.final}>
-      <picture className={styles.finalArt} aria-hidden="true">
-        {/* phones: the library's own phone crop, whole — the wide panorama cut to a tall screen was all zoom */}
-        <source media="(max-width: 759px)" type="image/webp" srcSet="/home/library-phone.webp" />
-        <source media="(max-width: 759px)" srcSet="/home/library-phone.jpg" />
-        <img
-          src="/library-banner-1920.jpg"
-          srcSet="/library-banner-1920.jpg 1920w, /library-banner-3840.jpg 3840w"
-          sizes="100vw"
-          alt=""
-          loading="lazy"
-          decoding="async"
-        />
-      </picture>
-      <div className={styles.finalShade} aria-hidden="true" />
       <Container>
         <div className={styles.finalInner}>
           <h2 className={styles.finalTitle}>{t('home.final.title')}</h2>

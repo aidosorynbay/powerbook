@@ -137,7 +137,8 @@ export function Header() {
               {showHint && <span className={styles.hintDot} aria-hidden="true" />}
             </button>
 
-            {showHint && !menuOpen && (
+            {/* not over the front page's first screen: there it was the first thing a newcomer read */}
+            {showHint && !menuOpen && location.pathname !== '/' && (
               <span className={styles.hintBubble} aria-hidden="true">
                 {t('header.menuHint')}
               </span>

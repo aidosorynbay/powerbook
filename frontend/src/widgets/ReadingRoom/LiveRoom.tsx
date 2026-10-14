@@ -41,6 +41,9 @@ type Props = {
   /** The still photo shown until the living one is ready. */
   poster?: ReactNode;
   className?: string;
+  /** Tags say «читает · 24 мин» instead of a running clock (the front page: a bare «1:16:28» read like an
+   *  audiobook's length). */
+  reads?: boolean;
   /** Phones: slide the photo so the chairs (and the readers in them) stay in the open between the header and the
    *  words at the photo's foot, instead of showing the ceiling. */
   keepChairsClear?: boolean;
@@ -54,7 +57,7 @@ type Props = {
  * (breathing, blinking readers, lamps), the readers sitting in it right now —
  * each with a timer and the book on their knees, never a name.
  */
-export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0, poster, className, uiClassName, keepChairsClear, style }: Props) {
+export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0, poster, className, uiClassName, keepChairsClear, reads, style }: Props) {
   const { t } = useI18n();
   const phone = useMemo(() => window.matchMedia?.(PHONE).matches ?? false, []);
   const hk: HallKey = phone ? PHONE_HALL[hall] : HALL_KEY[hall];
@@ -174,7 +177,13 @@ export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0,
         <span className={styles.tagText}>
           <span className={styles.tagRow}>
             {mine && <span>{t('room.you')}</span>}
-            <b>{r.status === 'paused' ? t('room.paused') : clock(r.elapsed_seconds + (r.status === 'reading' ? since : 0))}</b>
+            <b>
+              {r.status === 'paused'
+                ? t('room.paused')
+                : reads
+                  ? `${t('home.room.reads')} · ${Math.max(1, Math.floor((r.elapsed_seconds + (r.status === 'reading' ? since : 0)) / 60))} ${t('home.room.min')}`
+                  : clock(r.elapsed_seconds + (r.status === 'reading' ? since : 0))}
+            </b>
           </span>
           <i className={styles.tagBook} title={r.book}>{r.book}</i>
         </span>
