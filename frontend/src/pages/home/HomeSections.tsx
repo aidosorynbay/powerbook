@@ -75,6 +75,8 @@ function useScene<T extends HTMLElement>(section: string) {
   }, [view, reveal]);
 }
 
+const ODO_DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
 const stagger = (i: number) => ({ '--i': Math.min(i, 3) }) as CSSProperties;
 
 /** Today's date in the circle's clock (Astana), not the reader's. */
@@ -334,7 +336,7 @@ export function HomeHero({ stats, calm = false }: { stats: PublicStats | null; c
         )}
       </div>
 
-      {stats?.total_minutes_read ? <HeroTotal stats={stats} calm={calm} /> : null}
+      {stats?.total_minutes_read ? <HeroTotal stats={stats} /> : null}
     </div>
   );
 }
@@ -342,35 +344,25 @@ export function HomeHero({ stats, calm = false }: { stats: PublicStats | null; c
 /**
  * The common treasury on a computer's first screen, at the foot of the words (the founder: «сразу видно, снизу
  * слева»): everything read together since 2021, in minutes — the unit on the number, so seven digits never read as
- * money. It rolls in this circle's minutes once, 0.6 s after the page shows, so only the last digits move and the width
- * holds; a calm (returning) session and reduced motion get it at once. Phones keep it in the section under the hero.
+ * money. On every visit it is dialled in like an odometer (the founder: «красиво динамично набираются при входе»): each
+ * digit's wheel spins up from 0 to its figure, left to right, settling softly — transform only, the width never moves.
+ * Reduced motion: the figure is simply there. Phones keep it in the section under the hero.
  */
-function HeroTotal({ stats, calm }: { stats: PublicStats; calm: boolean }) {
+function HeroTotal({ stats }: { stats: PublicStats }) {
   const { t, locale } = useI18n();
   const total = stats.total_minutes_read;
-  const before = Math.max(0, total - (stats.is_round_active ? stats.round_minutes ?? 0 : 0));
-  const [shown, setShown] = useState(() => (calm ? total : before));
+  const [go, setGo] = useState(false);
   useEffect(() => {
-    if (calm || before >= total || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      setShown(total);
-      return;
-    }
-    setShown(before);
-    let raf = 0;
-    const start = window.setTimeout(() => {
-      const t0 = performance.now();
-      const step = (now: number) => {
-        const p = Math.min(1, (now - t0) / 1600);
-        setShown(Math.round(before + (total - before) * (1 - Math.pow(1 - p, 3))));
-        if (p < 1) raf = requestAnimationFrame(step);
-      };
-      raf = requestAnimationFrame(step);
-    }, 600);
+    // two frames: the wheels are laid out at 0 first, so the turn is seen
+    let b = 0;
+    const a = requestAnimationFrame(() => {
+      b = requestAnimationFrame(() => setGo(true));
+    });
     return () => {
-      window.clearTimeout(start);
-      cancelAnimationFrame(raf);
+      cancelAnimationFrame(a);
+      cancelAnimationFrame(b);
     };
-  }, [calm, before, total]);
+  }, []);
 
   const nf = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ru-RU');
   const since = stats.yearly?.[0]?.year ?? 2021;
@@ -384,7 +376,24 @@ function HeroTotal({ stats, calm }: { stats: PublicStats; calm: boolean }) {
       <span className={styles.heroTotalKicker}>{t('home.hero.kicker', { year: since })}</span>
       <span className={styles.heroTotalRow}>
         {/* the final figure for screen readers; the rolling digits are only a picture of it */}
-        <b className={styles.heroTotalValue} aria-hidden="true">{nf.format(shown)}</b>
+        <b className={`${styles.heroTotalValue} ${go ? styles.odoGo : ''}`} aria-hidden="true">
+          {(() => {
+            let d = 0;
+            return Array.from(nf.format(total)).map((ch, i) => {
+              if (!/\d/.test(ch)) return <span key={i} className={styles.odoSep}>{ch}</span>;
+              const n = Number(ch);
+              const k = d++;
+              // one full turn and on to the figure: the higher wheels travel further, the last ones settle last
+              return (
+                <span key={i} className={styles.odoCol}>
+                  <span className={styles.odoStrip} style={{ '--to': 10 + n, '--k': k } as CSSProperties}>
+                    {ODO_DIGITS.map((x, j) => <span key={j}>{x}</span>)}
+                  </span>
+                </span>
+              );
+            });
+          })()}
+        </b>
         <span className={styles.srOnly}>{nf.format(total)}</span>
         {/* «минут» over «прочитали вместе», beside the number: one line stays clear of the book */}
         <span className={styles.heroTotalUnit}>
