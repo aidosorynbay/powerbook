@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '@/shared/lib';
 import { track } from '@/shared/lib/analytics';
-import { tick, unlockSound } from './haptics';
+import { releaseTap, tick, unlockSound } from './haptics';
 import styles from './RoundToday.module.css';
 
 /**
@@ -73,7 +73,9 @@ export function MinutesDial({
   // the mark the hand just crossed glows a moment (the detent you see)
   const [lit, setLit] = useState<number | null>(null);
   const card = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ a: number; x: number; y: number; moved: boolean; ring: boolean } | null>(null);
+  const drag = useRef<{ a: number; x: number; y: number; moved: boolean; ring: boolean; from: number } | null>(null);
+  // a wind that has just ended, for the tap on the finger's release (touchend comes right after pointerup)
+  const released = useRef<{ strong: boolean } | null>(null);
 
   useEffect(() => {
     if (!dragging) total.current = value;
@@ -109,7 +111,7 @@ export function MinutesDial({
     if (typing) return;
     const { a, d } = angleAt(e);
     const ring = d > 0.55 && !readOnly;
-    drag.current = { a, x: e.clientX, y: e.clientY, moved: false, ring };
+    drag.current = { a, x: e.clientX, y: e.clientY, moved: false, ring, from: value };
     wrap.current?.setPointerCapture(e.pointerId);
     if (ring) {
       unlockSound();
@@ -160,8 +162,24 @@ export function MinutesDial({
       setDraft(value ? String(value) : '');
       setTyping(true);
     }
-    if (g?.ring && g.moved) track('dial_wound', { minutes: value });
+    if (g?.ring && g.moved) {
+      track('dial_wound', { minutes: value });
+      released.current = { strong: g.from < GOAL && total.current >= GOAL };
+    }
   };
+
+  // the finger lifts: the one moment iPhone Safari lets a page tap the Taptic Engine
+  useEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const end = () => {
+      const r = released.current;
+      released.current = null;
+      if (r) releaseTap(r.strong);
+    };
+    el.addEventListener('touchend', end, { passive: true });
+    return () => el.removeEventListener('touchend', end);
+  }, []);
 
   const commitTyped = () => {
     const v = parseInt(draft, 10);

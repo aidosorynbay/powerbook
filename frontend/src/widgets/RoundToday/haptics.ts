@@ -89,6 +89,22 @@ export function tick(strong = false) {
   }
 }
 
+/**
+ * The tap on letting go of the dial. iPhone Safari (iOS 18.4+) taps the Taptic Engine only inside a tap or a
+ * release, never while a finger drags (WebKit checks for a user gesture, and a move is not one), so the wind is
+ * heard as it turns and felt once when the finger lifts: twice when the day has just become counted. Android
+ * vibrates on every tick already and is left alone.
+ */
+export function releaseTap(strong = false) {
+  if (!hapticsOn() || typeof navigator.vibrate === 'function') return;
+  try {
+    iosTap();
+    if (strong) window.setTimeout(iosTap, 90);
+  } catch {
+    /* no tap then */
+  }
+}
+
 /** Pages lifting off: a short paper rustle (band-passed noise in little bursts). Called inside the tap on «Сохранить». */
 export function rustle() {
   unlockSound();
