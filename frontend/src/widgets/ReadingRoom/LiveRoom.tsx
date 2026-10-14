@@ -51,6 +51,10 @@ type Props = {
   keepChairsClear?: boolean;
   /** Extra class for the overlay at the photo's foot (e.g. the front page's left-side shade). */
   uiClassName?: string;
+  /** "scroll": the Round tab's way in — a tall section whose sticky stage shows the hall as a framed window that opens
+   *  to the full screen and draws the camera in as the page scrolls; the words and buttons come up at the end, and
+   *  scrolling on, the hall melts into the page. "block" (default): the hall whole, at once, in its own box. */
+  layout?: 'block' | 'scroll';
   style?: CSSProperties;
 };
 
@@ -59,7 +63,8 @@ type Props = {
  * (breathing, blinking readers, lamps), the readers sitting in it right now —
  * each with a timer and the book on their knees, never a name.
  */
-export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0, poster, className, uiClassName, keepChairsClear, reads, cinematic, style }: Props) {
+export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0, poster, className, uiClassName, keepChairsClear, reads, cinematic, layout = 'block', style }: Props) {
+  const scroll = layout === 'scroll';
   const { t } = useI18n();
   const phone = useMemo(() => window.matchMedia?.(PHONE).matches ?? false, []);
   const hk: HallKey = phone ? PHONE_HALL[hall] : HALL_KEY[hall];
@@ -67,6 +72,9 @@ export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0,
   const reduced = useMemo(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false, []);
 
   const stageRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLElement>(null);
+  const edgeRef = useRef<HTMLDivElement>(null);
+  const teaserRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const cvRef = useRef<HTMLCanvasElement>(null);
   const fxRef = useRef<HTMLCanvasElement>(null);
@@ -115,7 +123,8 @@ export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0,
     const engine = createRoomEngine({
       hall: hk, base: '/reading-room/', canvas, fx, stage,
       frame: frameRef.current, ui: uiRef.current, tags: tagsRef.current,
-      scrollEl: null,
+      edge: scroll ? edgeRef.current : null, teaser: scroll ? teaserRef.current : null,
+      scrollEl: scroll ? scrollRef.current : null,
       // the open band on a phone: below the site's header, above the words at the photo's foot
       band: phone && keepChairsClear ? () => {
         const st = stage.getBoundingClientRect();
@@ -148,7 +157,7 @@ export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0,
       engine.destroy();
       engineRef.current = null;
     };
-  }, [hk, reduced, phone, keepChairsClear, glKey, cinematic]);
+  }, [hk, reduced, phone, keepChairsClear, glKey, cinematic, scroll]);
 
   const readers = useMemo(() => room?.readers ?? [], [room]);
   useEffect(() => {
@@ -235,21 +244,41 @@ export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0,
       })
     : null;
 
-  return (
-    <section className={`${styles.full} ${own.room} ${className ?? ''}`} style={style} aria-label={t('home.room.title')}>
-      <div className={styles.stage} ref={stageRef}>
-        <div className={styles.frame} ref={frameRef}>
-          {poster && <div className={`${own.poster} ${ready ? own.posterGone : ''}`} aria-hidden="true">{poster}</div>}
-          <canvas key={`cv-${glKey}`} className={`${styles.cv} ${poster && !ready ? own.hidden : ''}`} ref={cvRef} aria-hidden="true" />
-          <canvas key={`fx-${glKey}`} className={styles.fx} ref={fxRef} aria-hidden="true" />
-          <div className={styles.tags} ref={tagsRef}>
-            {ghosts}
-            {tags}
-            {rings}
-          </div>
-          <div className={`${own.ui} ${uiClassName ?? ''}`} ref={uiRef}>{children}</div>
+  const stage = (
+    <div className={styles.stage} ref={stageRef}>
+      {scroll && <div className={styles.frameEdge} ref={edgeRef} />}
+      <div className={styles.frame} ref={frameRef}>
+        {poster && <div className={`${own.poster} ${ready ? own.posterGone : ''}`} aria-hidden="true">{poster}</div>}
+        <canvas key={`cv-${glKey}`} className={`${styles.cv} ${poster && !ready ? own.hidden : ''}`} ref={cvRef} aria-hidden="true" />
+        <canvas key={`fx-${glKey}`} className={styles.fx} ref={fxRef} aria-hidden="true" />
+        {/* scrolled open, the hall's ceiling melts into the header's navy instead of meeting it on a line */}
+        {scroll && <div className={own.stageTop} aria-hidden="true" />}
+        <div className={styles.tags} ref={tagsRef}>
+          {ghosts}
+          {tags}
+          {rings}
         </div>
+        {scroll && (
+          <div className={styles.teaser} ref={teaserRef}>
+            <div className={styles.teaserK}>{t('home.room.kicker')}</div>
+            <div className={styles.teaserT}>{readers.length ? t('room.readingNow', { n: readers.length }) : t('room.quietNow')}</div>
+            <div className={styles.teaserH}><span className={styles.chev} aria-hidden="true"><i /><i /><i /></span>{t('room.scrollIn')}</div>
+          </div>
+        )}
+        <div className={`${own.ui} ${uiClassName ?? ''}`} ref={uiRef}>{children}</div>
+        {/* scrolling on, the hall sinks into the page below it */}
+        {scroll && <div className={own.scrollFoot} aria-hidden="true" />}
       </div>
+    </div>
+  );
+
+  return scroll ? (
+    <section className={`${styles.scroll} ${own.room} ${own.scrollRoom} ${className ?? ''}`} ref={scrollRef} style={style} aria-label={t('home.room.title')}>
+      {stage}
+    </section>
+  ) : (
+    <section className={`${styles.full} ${own.room} ${className ?? ''}`} style={style} aria-label={t('home.room.title')}>
+      {stage}
     </section>
   );
 }

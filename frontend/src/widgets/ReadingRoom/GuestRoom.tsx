@@ -119,7 +119,12 @@ function useWakeLock(on: boolean) {
  * optional), the timer runs with the screen kept on, a locked phone is asked about rather than lost, and when they
  * are done they keep the minutes by joining the circle or just signing up — or leave them.
  */
-export function GuestRoom() {
+/**
+ * The visitor's own sitting in the library hall: its own page (/library/hall), or — layout "scroll", the front page —
+ * the hall coming up as the page scrolls into it, the Round tab's way, with the chair, the book and the timer right
+ * there (the founder, 2026-10-14).
+ */
+export function GuestRoom({ layout = 'full', cinematic = false }: { layout?: 'full' | 'scroll'; cinematic?: boolean } = {}) {
   const { t } = useI18n();
   const navigate = useNavigate();
   const { state: wait } = useWaitlist();
@@ -404,6 +409,9 @@ export function GuestRoom() {
     <>
       <LiveRoom
         hall="library"
+        layout={layout === 'scroll' ? 'scroll' : 'block'}
+        cinematic={cinematic}
+        reads={cinematic}
         keepChairsClear
         mineKey={mine?.key ?? null}
         onSeat={open || mine?.ended || seatsLeft === 0 ? undefined : (seat) => { setPick(seat); setErr(''); }}

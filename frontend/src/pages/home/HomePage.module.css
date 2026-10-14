@@ -24,8 +24,22 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background: #0b0906;
+  /* the Round tab's ground: one navy for the whole page, the photo a warm window in it */
+  background: #0d1117;
   color: #fff;
+  /* the words sit on the photo in both themes, so the hero keeps the dark tokens even in the light theme */
+  color-scheme: dark;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #8b949e;
+  --color-text-muted: #6e7681;
+  --color-bg-card: rgba(22, 27, 34, 0.6);
+  --color-bg-secondary: #161b22;
+  --color-bg-elevated: #1c2128;
+  --color-border-primary: rgba(255, 255, 255, 0.1);
+  --color-success: #39d98a;
+  --color-success-fill: #39d98a;
+  --color-page-rgb: 13, 17, 23;
+  --color-surface-rgb: 22, 27, 34;
 }
 
 .photoArt,
@@ -55,8 +69,7 @@
   animation: none;
 }
 
-/* the band melts away at both ends: the ceiling into the header (its exact colour, #0D1117), the floor into the night
-   under the words. Eased fades (the «scrim» curve): dark at the edge, then a long tail that never shows where it ends —
+/* the band melts away at both ends into the page's one navy (#0D1117, the header's and the Round tab's colour). Eased fades (the «scrim» curve): dark at the edge, then a long tail that never shows where it ends —
    a straight fade left a visible line inside the photo. */
 .photoShade {
   position: absolute;
@@ -83,18 +96,18 @@
     ),
     linear-gradient(
       0deg,
-      rgb(11, 9, 6) 0%,
-      rgba(11, 9, 6, 0.738) 11.8%,
-      rgba(11, 9, 6, 0.541) 21.1%,
-      rgba(11, 9, 6, 0.382) 29.1%,
-      rgba(11, 9, 6, 0.278) 35%,
-      rgba(11, 9, 6, 0.194) 40.3%,
-      rgba(11, 9, 6, 0.126) 45.3%,
-      rgba(11, 9, 6, 0.075) 49.7%,
-      rgba(11, 9, 6, 0.042) 53.4%,
-      rgba(11, 9, 6, 0.021) 56.4%,
-      rgba(11, 9, 6, 0.008) 59%,
-      rgba(11, 9, 6, 0) 62%
+      rgb(13, 17, 23) 0%,
+      rgba(13, 17, 23, 0.738) 11.8%,
+      rgba(13, 17, 23, 0.541) 21.1%,
+      rgba(13, 17, 23, 0.382) 29.1%,
+      rgba(13, 17, 23, 0.278) 35%,
+      rgba(13, 17, 23, 0.194) 40.3%,
+      rgba(13, 17, 23, 0.126) 45.3%,
+      rgba(13, 17, 23, 0.075) 49.7%,
+      rgba(13, 17, 23, 0.042) 53.4%,
+      rgba(13, 17, 23, 0.021) 56.4%,
+      rgba(13, 17, 23, 0.008) 59%,
+      rgba(13, 17, 23, 0) 62%
     );
 }
 
@@ -158,26 +171,52 @@
       ),
       linear-gradient(
         0deg,
-        rgb(11, 9, 6) 0%,
-        rgba(11, 9, 6, 0.738) 8.7%,
-        rgba(11, 9, 6, 0.541) 15.6%,
-        rgba(11, 9, 6, 0.382) 21.6%,
-        rgba(11, 9, 6, 0.278) 26%,
-        rgba(11, 9, 6, 0.194) 29.9%,
-        rgba(11, 9, 6, 0.126) 33.6%,
-        rgba(11, 9, 6, 0.075) 36.9%,
-        rgba(11, 9, 6, 0.042) 39.6%,
-        rgba(11, 9, 6, 0.021) 41.9%,
-        rgba(11, 9, 6, 0.008) 43.8%,
-        rgba(11, 9, 6, 0) 46%
+        rgb(13, 17, 23) 0%,
+        rgba(13, 17, 23, 0.738) 8.7%,
+        rgba(13, 17, 23, 0.541) 15.6%,
+        rgba(13, 17, 23, 0.382) 21.6%,
+        rgba(13, 17, 23, 0.278) 26%,
+        rgba(13, 17, 23, 0.194) 29.9%,
+        rgba(13, 17, 23, 0.126) 33.6%,
+        rgba(13, 17, 23, 0.075) 36.9%,
+        rgba(13, 17, 23, 0.042) 39.6%,
+        rgba(13, 17, 23, 0.021) 41.9%,
+        rgba(13, 17, 23, 0.008) 43.8%,
+        rgba(13, 17, 23, 0) 46%
       ),
-      linear-gradient(90deg, rgba(10, 7, 4, 0.9) 0%, rgba(10, 7, 4, 0.72) 32%, rgba(10, 7, 4, 0.2) 50%, rgba(10, 7, 4, 0) 60%);
+      linear-gradient(90deg, rgba(13, 17, 23, 0.9) 0%, rgba(13, 17, 23, 0.72) 32%, rgba(13, 17, 23, 0.2) 50%, rgba(13, 17, 23, 0) 60%),
+      /* light on the book, not on the fire at the frame's edge */
+      radial-gradient(ellipse 46% 70% at 68% 46%, rgba(13, 17, 23, 0) 55%, rgba(13, 17, 23, 0.55));
   }
 
   .photoWords {
     width: 100%;
     padding-top: 0;
     padding-bottom: 96px;
+  }
+}
+
+/* the light theme: the photo is a dark window on paper, as the Round tab's room is — its edges stay crisp. No navy
+   ceiling under the paper header (it read as a hard beige→navy line); on phones the band still melts into the navy the
+   words sit on; on wide screens only the dark left the words need is kept. */
+:global(html[data-theme='light']) .photoShade {
+  background: linear-gradient(
+    0deg,
+    rgb(13, 17, 23) 0%,
+    rgba(13, 17, 23, 0.738) 11.8%,
+    rgba(13, 17, 23, 0.541) 21.1%,
+    rgba(13, 17, 23, 0.382) 29.1%,
+    rgba(13, 17, 23, 0.194) 40.3%,
+    rgba(13, 17, 23, 0.075) 49.7%,
+    rgba(13, 17, 23, 0) 62%
+  );
+}
+
+@media (min-width: 1100px) and (orientation: landscape) {
+  :global(html[data-theme='light']) .photoShade {
+    background:
+      linear-gradient(90deg, rgba(13, 17, 23, 0.9) 0%, rgba(13, 17, 23, 0.72) 32%, rgba(13, 17, 23, 0.2) 50%, rgba(13, 17, 23, 0) 60%),
+      radial-gradient(ellipse 46% 70% at 68% 46%, rgba(13, 17, 23, 0) 55%, rgba(13, 17, 23, 0.55));
   }
 }
 

@@ -5,6 +5,18 @@ import { Header, Footer } from '@/widgets';
 import { HomeFinal, HomeHero, HowItWorks, MonthGets, PlatformPerks, RoomSection, SharedTotal } from './HomeSections';
 import styles from './HomePage.module.css';
 
+/* Only the room's serif (Literata italic) for the titles over the library's pictures — the rest of the page is in the
+   face the Round tab renders (the system one: Inter is declared but never loaded there), so both pages look the same
+   and weight-800 numbers are a true 800. Its own marker: the bookcase loads Inter + Literata under `data-shelf-fonts`
+   and must not mistake this file for its own. Added at import, not after the first paint. */
+if (typeof document !== 'undefined' && !document.querySelector('link[data-serif]')) {
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = 'https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@1,7..72,400..600&display=swap';
+  link.dataset.serif = '1';
+  document.head.appendChild(link);
+}
+
 export function HomePage() {
   const [stats, setStats] = useState<PublicStats | null>(null);
   // The first screen eases in once a session; members coming back every day get it at once (the council).
@@ -17,16 +29,6 @@ export function HomePage() {
       return false;
     }
   });
-
-  // The room's serif (Literata) for its headings, the same file the shelf loads.
-  useEffect(() => {
-    if (document.querySelector('link[data-shelf-fonts]')) return;
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Literata:ital,opsz,wght@0,7..72,300..700;1,7..72,300..700&display=swap';
-    link.dataset.shelfFonts = '1';
-    document.head.appendChild(link);
-  }, []);
 
   useEffect(() => {
     let alive = true;

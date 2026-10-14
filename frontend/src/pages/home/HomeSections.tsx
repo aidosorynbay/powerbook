@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiGet, circleOrdinal, getApiBaseUrl, track, trackSectionView, useAuth, useI18n, useWaitlist, type PublicStats } from '@/shared/lib';
 import { Button, Container, Icon } from '@/shared/ui';
-import { LiveRoom, MotionReel } from '@/widgets';
+import { GuestRoom, MotionReel, ReadingRoom } from '@/widgets';
 import { plural } from '@/pages/library/bookcase/plural';
 import styles from './HomeSections.module.css';
 
@@ -20,6 +20,62 @@ function useSectionView<T extends Element>(section: string) {
   );
 }
 
+/**
+ * Russian and Kazakh line breaks (U+00A0): a one- or two-letter word or a number never hangs at a line's end, and no
+ * line starts with a dash («30 / минут» split on 7 of the 9 GA4 windows).
+ */
+function tie(text: string): string {
+  const w = text.split(' ');
+  let out = w[0];
+  for (let i = 1; i < w.length; i++) {
+    const prev = w[i - 1];
+    out += (/^[«(]?\p{L}{1,2}$/u.test(prev) || /^\d+[+%]?$/.test(prev) || w[i].startsWith('—') ? '\u00a0' : ' ') + w[i];
+  }
+  return out;
+}
+
+/**
+ * The Round tab's reveal: a marked block (`styles.rv`, present when the section mounts) rises 30 px — 20 on phones —
+ * and fades in over 600 ms on cubic-bezier(.16,1,.3,1) the first time it comes into view; `--i` steps a row 100 ms
+ * apart. Reduced motion: everything is simply there.
+ */
+function useReveal() {
+  // set up and torn down by the ref alone (called with null on unmount): an effect's cleanup would also run in the
+  // strict-mode rehearsal and leave the observer disconnected, every block hidden
+  const io = useRef<IntersectionObserver | null>(null);
+  return useCallback((root: HTMLElement | null) => {
+    io.current?.disconnect();
+    io.current = null;
+    if (!root) return;
+    const items = Array.from(root.querySelectorAll<HTMLElement>(`.${styles.rv}`));
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || typeof IntersectionObserver === 'undefined') {
+      items.forEach((el) => el.classList.add(styles.rvIn));
+      return;
+    }
+    const obs = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        e.target.classList.add(styles.rvIn);
+        obs.unobserve(e.target);
+      }
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.1 });
+    items.forEach((el) => obs.observe(el));
+    io.current = obs;
+  }, []);
+}
+
+/** One ref for a section: its analytics view and its reveal. */
+function useScene<T extends HTMLElement>(section: string) {
+  const view = useSectionView<T>(section);
+  const reveal = useReveal();
+  return useCallback((el: T | null) => {
+    view(el);
+    reveal(el);
+  }, [view, reveal]);
+}
+
+const stagger = (i: number) => ({ '--i': Math.min(i, 3) }) as CSSProperties;
+
 /** Today's date in the circle's clock (Astana), not the reader's. */
 function circleToday(): number {
   try {
@@ -29,12 +85,18 @@ function circleToday(): number {
   }
 }
 
-/** Today's day of the round window, or null outside it. */
-function roundDay(stats: PublicStats | null): { day: number; len: number } | null {
+/**
+ * Today's day of the round window, or null outside it — counted as the round page counts it: the month's last day is
+ * for corrections only and scores nothing, so October is 30 reading days («день 14 из 30»), and on the last day it
+ * still says «30 из 30». `left` is the reading days after today.
+ */
+function roundDay(stats: PublicStats | null): { day: number; len: number; left: number } | null {
   if (!stats?.is_round_active || !stats.round_start_day || !stats.round_end_day) return null;
-  const len = stats.round_end_day - stats.round_start_day + 1;
-  const day = circleToday() - stats.round_start_day + 1;
-  return day >= 1 && day <= len ? { day, len } : null;
+  const start = stats.round_start_day;
+  const scoringEnd = Math.max(start, stats.round_end_day - 1);
+  const today = circleToday();
+  if (today < start || today > stats.round_end_day) return null;
+  return { day: Math.min(today, scoringEnd) - start + 1, len: scoringEnd - start + 1, left: Math.max(0, scoringEnd - today) };
 }
 
 /**
@@ -43,36 +105,42 @@ function roundDay(stats: PublicStats | null): { day: number; len: number } | nul
  * through /join — there the sign-up also takes the place in the circle.
  */
 function useNextStep() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { isAuthenticated } = useAuth();
   const { state: wait, join, joinRound } = useWaitlist();
   const navigate = useNavigate();
 
   return useMemo(() => {
-    const month = wait ? t(`month.${wait.month}`) : '';
+    // the home's own words: the circle as the Round tab names it («Записаться в ноябрьский круг»), the waiting list
+    // without quote marks («Ноябрь» in «» read as a book's title) — and never «записаться» for the list: a place on it is
+    // only offered when sign-up opens (waitlist.py)
+    const m = wait?.month;
+    const title = m ? t(`roundTitle.${m}`) : '';
+    const titleIn = locale === 'ru' ? title.toLowerCase() : locale === 'en' ? title.replace(/^The /, 'the ') : title;
+    const monthIn = m ? (locale === 'ru' ? t(`month.${m}`).toLowerCase() : t(`month.${m}`)) : '';
     if (wait?.in_current_round || (isAuthenticated && wait?.in_open_round) || (isAuthenticated && !wait)) {
       return { label: t('home.cta.round'), action: 'round', run: () => navigate('/round') };
     }
     if (!wait || wait.phase === 'registration') {
       if (isAuthenticated) {
         return {
-          label: t('wl.heroJoin', { month }),
+          label: t('home.cta.join', { title: titleIn }),
           action: 'join',
           run: async () => navigate((await joinRound()) ? '/join' : '/round'),
         };
       }
-      return { label: wait ? t('wl.heroJoin', { month }) : t('hero.joinBtn'), action: 'join', run: () => navigate('/join') };
+      return { label: wait ? t('home.cta.join', { title: titleIn }) : t('hero.joinBtn'), action: 'join', run: () => navigate('/join') };
     }
     if (wait.on_waitlist) return { label: t('wl.heroOnList'), action: 'waitlist', run: () => navigate('/join') };
     return {
-      label: t('wl.heroWait', { month }),
+      label: t('home.cta.wait', { month: monthIn }),
       action: 'waitlist',
       run: async () => {
         if (isAuthenticated) await join();
         navigate('/join');
       },
     };
-  }, [wait, isAuthenticated, t, join, joinRound, navigate]);
+  }, [wait, isAuthenticated, t, locale, join, joinRound, navigate]);
 }
 
 /** «10 октября»: a date in the reader's language (month in the genitive where the language has one). */
@@ -90,11 +158,11 @@ function CirclePanel({ stats }: { stats: PublicStats }) {
   const { state: wait } = useWaitlist();
   const day = roundDay(stats);
   if (!stats.is_round_active || !stats.round_month || !day) return null;
-  const month = t(`month.${stats.round_month}`);
-  const left = Math.max(0, day.len - day.day);
+  const left = day.left;
   const dayWord = (n: number) => plural(locale, n, { one: t('home.day.one'), few: t('home.day.few'), many: t('home.day.many') });
   const people = stats.current_round_participants;
   const inCircle = !!wait && (wait.in_current_round || wait.in_open_round);
+  const lastDay = stats.round_end_day != null && circleToday() >= stats.round_end_day;
   const right = (() => {
     if (wait && !inCircle && wait.phase === 'registration' && wait.open_round) {
       const d = dayMonth(t, wait.open_round.registration_until);
@@ -104,14 +172,17 @@ function CirclePanel({ stats }: { stats: PublicStats }) {
       const d = dayMonth(t, wait.starts_on);
       return t('home.panel.next', { day: d.day, month: d.month });
     }
+    // the month's last day scores nothing — it is for fixing entries (the Round tab's rule)
+    if (lastDay) return t('home.panel.lastDay');
     return t('home.panel.left', { days: `${left} ${dayWord(left)}` });
   })();
   return (
     <div className={styles.panel}>
       <div className={styles.panelHead}>
+        {/* named as the Round tab names it: «Октябрьский круг · 66-й» */}
         <span className={styles.panelTitle}>
-          {t('home.panel.title', { month })}
-          {stats.round_number ? <span className={styles.panelNo}> · {circleOrdinal(locale, stats.round_number, false)}</span> : null}
+          {t(`roundTitle.${stats.round_month}`)}
+          {stats.round_number ? <span className={styles.panelNo}>{'\u00a0· '}{circleOrdinal(locale, stats.round_number, false)}</span> : null}
         </span>
         <span className={`${styles.panelBadge} ${stats.round_registration_open ? styles.panelBadgeReg : ''}`}>
           <i aria-hidden="true" />
@@ -126,9 +197,10 @@ function CirclePanel({ stats }: { stats: PublicStats }) {
         <span>{right}</span>
       </div>
       <dl className={styles.panelStats}>
-        <div><dd>30</dd><dt>{t('home.panel.perDay')}</dt></div>
-        <div><dd>{day.len}</dd><dt>{t('home.panel.days')}</dt></div>
-        <div><dd>{people}</dd><dt>{plural(locale, people, { one: t('home.part.one'), few: t('home.part.few'), many: t('home.part.many') })}</dt></div>
+        <div><dt>{t('home.panel.perDay')}</dt><dd>30</dd></div>
+        <div><dt>{t('home.panel.days')}</dt><dd>{day.len}</dd></div>
+        {/* a label above its number is a fixed word, as on the Round tab («читателей: 61»), never «участник 61» */}
+        <div><dt>{t('home.panel.readers')}</dt><dd>{people}</dd></div>
       </dl>
     </div>
   );
@@ -157,8 +229,12 @@ export function HomeHero({ stats, calm = false }: { stats: PublicStats | null; c
   })();
 
   // The circle's live line (never «0»): who read today, or everything read together.
+  // how many have read today, never «из 61»: logged «до сна», a midday count read as «most skipped» (the council)
   const live = stats?.today_logged && stats.today_logged >= 5 && stats.current_round_participants
-    ? t('home.live.today', { n: stats.today_logged, total: stats.current_round_participants })
+    ? t('home.live.today', {
+      n: stats.today_logged,
+      people: plural(locale, stats.today_logged, { one: t('home.people.one'), few: t('home.people.few'), many: t('home.people.many') }),
+    })
     : stats?.total_minutes_read
       ? t('home.live.total', { n: new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ru-RU').format(stats.total_minutes_read) })
       : null;
@@ -205,18 +281,24 @@ export function HomeHero({ stats, calm = false }: { stats: PublicStats | null; c
 
   return (
     <div ref={ref} className={`${styles.heroInner} ${calm ? styles.calm : ''}`}>
-      {live && (
+      {/* until the numbers come, the live line and the card keep their room, so nothing below them jumps (CLS 0.20
+          with a slow API) */}
+      {live ? (
         <p className={styles.live}>
           <span className={styles.liveDot} aria-hidden="true" />
-          {live}
+          {tie(live)}
         </p>
-      )}
-      <h1 className={styles.heroTitle}>{t('home.title')}</h1>
-      {!isAuthenticated && <p className={styles.heroWhat}>{t('home.what')}</p>}
+      ) : !stats ? (
+        <p className={`${styles.live} ${styles.ghost}`} aria-hidden="true">{'\u00a0'}</p>
+      ) : null}
+      <h1 className={styles.heroTitle}>{tie(t('home.title'))}</h1>
+      {!isAuthenticated && <p className={styles.heroWhat}>{tie(t('home.what'))}</p>}
       {stats && day ? (
         <div className={styles.heroPanel}><CirclePanel stats={stats} /></div>
+      ) : !stats ? (
+        <div className={`${styles.heroPanel} ${styles.panelGhost}`} aria-hidden="true" />
       ) : (
-        <p className={styles.heroState}>{state}</p>
+        <p className={styles.heroState}>{tie(state)}</p>
       )}
 
       <div className={styles.heroActions} aria-busy={isLoading}>
@@ -232,18 +314,19 @@ export function HomeHero({ stats, calm = false }: { stats: PublicStats | null; c
 }
 
 /**
- * The reading room, once on the page, right under the shared total: the library hall — the one «Начать читать»
- * opens — live, with whoever reads in it now (a quiet hour says so). Mounted only when the reader scrolls near it:
- * the textures are heavy and most visitors never come this far.
+ * The reading room, once on the page, right under the shared treasury — entered the Round tab's way (the founder,
+ * 2026-10-14): as the page scrolls, the hall shows as a framed window, opens to the full screen and draws the camera in,
+ * smoothly, its top and foot melting into the page; at the end of the way in one can sit down and start the timer right
+ * here — a visitor in the library hall (GuestRoom), a member in their circle's hall or the library's (ReadingRoom, as on
+ * /round) — or scroll on, and the hall sinks into the page. Mounted only when the reader comes near: the textures are
+ * heavy and most visitors never come this far.
  */
 export function RoomSection() {
-  const { t } = useI18n();
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-  const ref = useSectionView<HTMLElement>('room');
+  const { isAuthenticated, isLoading } = useAuth();
+  const { state, ready: settled } = useWaitlist();
+  const ref = useSectionView<HTMLDivElement>('room');
   const box = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(false);
-  const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {
     const el = box.current;
@@ -261,51 +344,22 @@ export function RoomSection() {
     return () => io.disconnect();
   }, []);
 
-  const words = (
-    <div className={styles.roomWords}>
-      <p className={styles.roomKicker}>{t('home.room.kicker')}</p>
-      <h2 className={styles.roomTitle}>
-        {count === null ? t('home.room.title') : count > 0 ? t('home.room.now', { n: count }) : t('home.room.quiet')}
-      </h2>
-      <p className={styles.roomText}>{t('home.room.text')}</p>
-      <Button
-        variant="primary"
-        size="lg"
-        onClick={() => {
-          track('home_cta', { place: 'room', action: 'read' });
-          navigate('/library/hall');
-        }}
-      >
-        {isAuthenticated ? t('home.cta.room') : t('home.cta.read')}
-      </Button>
-    </div>
-  );
+  // a member's hall is the one /library/hall would give them: their circle's, or the library's
+  const ready = !isLoading && (!isAuthenticated || settled);
+  const inCircle = !!state && (state.in_current_round || state.in_open_round);
 
   return (
-    <section ref={ref} className={styles.roomSection} aria-label={t('home.room.kicker')}>
-      <div ref={box} className={styles.roomBox}>
-        {near ? (
-          <LiveRoom
-            hall="library"
-            keepChairsClear
-            reads
-            cinematic
-            className={styles.roomLive}
-            onRoom={(r) => setCount(r.readers.length)}
-            poster={
-              <picture>
-                <source media="(max-width: 759px)" srcSet="/reading-room/m-night-empty-m.jpg" />
-                <img src="/reading-room/b-night-empty-m.jpg" alt="" loading="lazy" decoding="async" />
-              </picture>
-            }
-          >
-            {words}
-          </LiveRoom>
+    <div ref={ref} className={styles.roomSection}>
+      <div ref={box} className={`${styles.roomScroll} ${isAuthenticated ? styles.roomScrollMember : ''}`}>
+        {near && ready ? (
+          isAuthenticated
+            ? <ReadingRoom key={inCircle ? 'round' : 'library'} hall={inCircle ? 'round' : 'library'} layout="scroll" />
+            : <GuestRoom layout="scroll" cinematic />
         ) : (
-          <div className={styles.roomWait}>{words}</div>
+          <div className={styles.roomWait} aria-hidden="true" />
         )}
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -314,9 +368,9 @@ type PublicBook = { title: string; author: string | null; cover_url: string; min
 /** The shared total: everything read together, this month's part, and the books it went into. */
 export function SharedTotal({ stats }: { stats: PublicStats | null }) {
   const { t, locale } = useI18n();
-  const ref = useSectionView<HTMLElement>('treasury');
+  const ref = useScene<HTMLElement>('treasury');
   const [books, setBooks] = useState<PublicBook[]>([]);
-  const [shown, setShown] = useState(0);
+  const [shown, setShown] = useState<number | null>(null);
   const numRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
@@ -329,24 +383,27 @@ export function SharedTotal({ stats }: { stats: PublicStats | null }) {
     };
   }, []);
 
-  // The big number counts up once, when it comes into view.
+  // The big number counts this circle's minutes up into the total, once, when it comes into view: it starts from what
+  // the total was before the circle (never «0»), so only the last digits roll and its width holds.
   const total = stats?.total_minutes_read ?? 0;
+  const before = Math.max(0, total - (stats?.is_round_active ? stats.round_minutes ?? 0 : 0));
   useEffect(() => {
     const el = numRef.current;
     if (!el || !total) return;
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (reduced || typeof IntersectionObserver === 'undefined') {
+    if (reduced || typeof IntersectionObserver === 'undefined' || before >= total) {
       setShown(total);
       return;
     }
+    setShown(before);
     let raf = 0;
     const io = new IntersectionObserver(([e]) => {
       if (!e.isIntersecting) return;
       io.disconnect();
       const t0 = performance.now();
       const step = (now: number) => {
-        const p = Math.min(1, (now - t0) / 1800);
-        setShown(Math.round(total * (1 - Math.pow(1 - p, 4))));
+        const p = Math.min(1, (now - t0) / 1600);
+        setShown(Math.round(before + (total - before) * (1 - Math.pow(1 - p, 3))));
         if (p < 1) raf = requestAnimationFrame(step);
       };
       raf = requestAnimationFrame(step);
@@ -356,47 +413,51 @@ export function SharedTotal({ stats }: { stats: PublicStats | null }) {
       io.disconnect();
       cancelAnimationFrame(raf);
     };
-  }, [total]);
+  }, [total, before]);
 
   const nf = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ru-RU');
   const minWord = (n: number) => plural(locale, n, { one: t('home.min.one'), few: t('home.min.few'), many: t('home.min.many') });
+  const readerWord = (n: number) => plural(locale, n, { one: t('home.reader.one'), few: t('home.reader.few'), many: t('home.reader.many') });
   const since = stats?.yearly?.[0]?.year ?? 2021;
-  const month = stats?.round_month ? t(`month.${stats.round_month}`) : '';
-  const active = stats?.is_round_active && (stats.round_minutes ?? 0) > 0;
+  const active = stats?.is_round_active && !!stats.round_month && (stats.round_minutes ?? 0) > 0;
 
   return (
     <section ref={ref} className={styles.total} aria-labelledby="total-title">
       <Container className={styles.totalIn}>
-        <p className={styles.kicker}>{t('home.tr.kicker')}</p>
-        <h2 id="total-title" className={styles.h2}>{t('home.tr.title')}</h2>
+        {/* the Round tab's word for it («Казна круга») and the film's («Общая казна круга»): one name across the product */}
+        <h2 id="total-title" className={`${styles.kicker} ${styles.rv}`}>{t('home.treasury.kicker')}</h2>
 
-        <div className={styles.totalNumber}>
-          <span ref={numRef} className={styles.totalValue}>{nf.format(shown || 0)}</span>
+        {/* the shot: one number, white like the Round dial's 76 */}
+        <div className={`${styles.totalNumber} ${styles.rv}`}>
+          <span ref={numRef} className={styles.totalValue}>{shown != null ? nf.format(shown) : '\u00a0'}</span>
           <span className={styles.totalUnit}>
-            {minWord(total)} {t('home.tr.caption', { year: since })}
+            {tie(`${minWord(total)} ${t('home.tr.caption', { year: since })}`)}
           </span>
         </div>
-        <p className={styles.totalLead}>{t('home.tr.lead')}</p>
+        <p className={`${styles.totalLead} ${styles.rv}`}>{tie(t('home.tr.lead'))}</p>
 
         {stats && (
           <p className={styles.totalFacts}>
             {active && (
-              <span>
-                {t('home.tr.month', { month, minutes: `${nf.format(stats.round_minutes ?? 0)} ${minWord(stats.round_minutes ?? 0)}` })}
-                {(stats.today_logged ?? 0) >= 5 && <> · {t('home.tr.today', { n: stats.today_logged ?? 0, total: stats.current_round_participants })}</>}
-              </span>
+              <>
+                {/* the circle's own treasury as the Round tab writes it: whole hours («433 ч») */}
+                {t('home.tr.month', {
+                  title: t(`roundTitle.${stats.round_month}`),
+                  minutes: (stats.round_minutes ?? 0) >= 60
+                    ? t('ms.h', { h: nf.format(Math.floor((stats.round_minutes ?? 0) / 60)) }).replace(' ', '\u00a0')
+                    : `${stats.round_minutes ?? 0}\u00a0${t('home.room.min')}`,
+                })}
+                {' · '}
+              </>
             )}
-            <span>
-              {nf.format(stats.total_participants)}{' '}
-              {plural(locale, stats.total_participants, { one: t('home.reader.one'), few: t('home.reader.few'), many: t('home.reader.many') })}
-              {' · '}
-              {nf.format(stats.total_rounds)}{' '}
-              {plural(locale, stats.total_rounds, { one: t('home.round.one'), few: t('home.round.few'), many: t('home.round.many') })}
-              {' · '}
-              <Link to="/about" className={styles.storyLink} onClick={() => track('home_cta', { place: 'treasury', action: 'about' })}>
-                {t('home.tr.story')} →
-              </Link>
-            </span>
+            {nf.format(stats.total_participants)}{'\u00a0'}{readerWord(stats.total_participants)}
+            {' · '}
+            {nf.format(stats.total_rounds)}{'\u00a0'}
+            {plural(locale, stats.total_rounds, { one: t('home.round.one'), few: t('home.round.few'), many: t('home.round.many') })}
+            {' · '}
+            <Link to="/about" className={styles.storyLink} onClick={() => track('home_cta', { place: 'treasury', action: 'about' })}>
+              {t('home.tr.story')}{'\u00a0'}›
+            </Link>
           </p>
         )}
 
@@ -415,7 +476,9 @@ export function SharedTotal({ stats }: { stats: PublicStats | null }) {
                   />
                   <span className={styles.bookTitle}>{b.title}</span>
                   {b.author && <span className={styles.bookAuthor}>{b.author}</span>}
-                  <span className={styles.bookMeta}>{t('home.tr.bookMeta', { minutes: nf.format(b.minutes), readers: b.readers })}</span>
+                  {/* as the Round tab's book tiles: the time, then who read it */}
+                  <span className={styles.bookMeta}>{nf.format(b.minutes)}{'\u00a0'}{t('home.room.min')}</span>
+                  <span className={styles.bookReaders}>{b.readers}{'\u00a0'}{readerWord(b.readers)}</span>
                 </li>
               ))}
             </ul>
@@ -431,20 +494,20 @@ const GETS = [1, 2, 3, 4];
 /** What a month in the circle gives, and the little it asks. */
 export function MonthGets() {
   const { t } = useI18n();
-  const ref = useSectionView<HTMLElement>('gets');
+  const ref = useScene<HTMLElement>('gets');
   return (
     <section ref={ref} className={styles.gets} aria-labelledby="gets-title">
       <Container>
-        <h2 id="gets-title" className={styles.h2}>{t('home.get.title')}</h2>
+        <h2 id="gets-title" className={`${styles.h2} ${styles.rv}`}>{tie(t('home.get.title'))}</h2>
         <ul className={styles.getGrid}>
-          {GETS.map((n) => (
-            <li key={n} className={styles.get}>
-              <span className={styles.getBig}>{t(`home.get.${n}.b`)}</span>
-              <span className={styles.getText}>{t(`home.get.${n}.t`)}</span>
+          {GETS.map((n, i) => (
+            <li key={n} className={`${styles.get} ${styles.rv}`} style={stagger(i)}>
+              <span className={styles.getBig}>{tie(t(`home.get.${n}.b`))}</span>
+              <span className={styles.getText}>{tie(t(`home.get.${n}.t`))}</span>
             </li>
           ))}
         </ul>
-        <p className={styles.need}>{t('home.need')}</p>
+        <p className={`${styles.need} ${styles.rv}`}>{tie(t('home.need'))}</p>
       </Container>
     </section>
   );
@@ -452,33 +515,112 @@ export function MonthGets() {
 
 const FAQ = [1, 2, 3, 4, 5];
 
+/**
+ * The Round tab at work — the dial turned to 90, «+90» in the calendar, the circle's treasury — cut from the circle's
+ * own film («Новый «Круг»» v9, real screens in a phone). Russian and Kazakh have it; English keeps the drawn reel.
+ * Mounted when the section comes near (the poster is 100 KB), plays only while on screen, a still poster under reduced
+ * motion.
+ */
+const POSTER_AT = 100 / 30;
+
+function CircleFilm() {
+  const { t, locale } = useI18n();
+  const box = useRef<HTMLDivElement>(null);
+  const video = useRef<HTMLVideoElement>(null);
+  const [near, setNear] = useState(false);
+  const lang = locale === 'kk' ? 'kk' : 'ru';
+
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setNear(true);
+      return;
+    }
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) {
+        setNear(true);
+        io.disconnect();
+      }
+    }, { rootMargin: '600px 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const v = video.current;
+    if (!near || !v) return;
+    v.muted = true;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || typeof IntersectionObserver === 'undefined') return;
+    // the poster is frame 100 (the dial at 90, its caption on): the first play starts there, so the picture never
+    // jumps back to an empty dial; the loop then runs from the top
+    let first = true;
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) {
+        v.pause();
+        return;
+      }
+      if (first) {
+        first = false;
+        try {
+          v.currentTime = POSTER_AT;
+        } catch {
+          // not seekable yet: it starts from the top
+        }
+        // counted from the first day (GA4 cannot backfill): did the film get a play, in which language
+        v.play().then(() => track('home_film', { action: 'play', lang }), () => track('home_film', { action: 'blocked', lang }));
+        return;
+      }
+      v.play().catch(() => {});
+    }, { threshold: 0.35 });
+    io.observe(v);
+    return () => io.disconnect();
+  }, [near, lang]);
+
+  return (
+    <div ref={box} className={styles.filmBox}>
+      {near && (
+        <video
+          ref={video}
+          className={styles.film}
+          src={`/home/reel-${lang}.mp4?v=20261014`}
+          poster={`/home/reel-${lang}.jpg?v=20261014`}
+          muted
+          playsInline
+          loop
+          preload="none"
+          aria-label={t('reel.label')}
+        />
+      )}
+    </div>
+  );
+}
+
 /** How a circle goes: the four steps, the film, and the questions people ask. */
 export function HowItWorks() {
-  const { t } = useI18n();
-  const ref = useSectionView<HTMLElement>('how');
+  const { t, locale } = useI18n();
+  const ref = useScene<HTMLElement>('how');
   const faqRef = useSectionView<HTMLDivElement>('faq');
 
   return (
     <section ref={ref} id="powerbook" className={styles.how} aria-labelledby="how-title">
       <Container>
+        <h2 id="how-title" className={`${styles.h2} ${styles.rv}`}>{t('home.steps')}</h2>
         <div className={styles.howGrid}>
           <div>
-            <p className={styles.kicker}>{t('home.how')}</p>
-            <h2 id="how-title" className={styles.h2}>{t('home.steps')}</h2>
             <ol className={styles.steps}>
-              {[1, 2, 3, 4].map((n) => (
-                <li key={n} className={styles.step}>
+              {[1, 2, 3, 4].map((n, i) => (
+                <li key={n} className={`${styles.step} ${styles.rv}`} style={stagger(i)}>
                   <span className={styles.stepNum}>{n}</span>
                   <div>
-                    <h3 className={styles.stepTitle}>{t(`ex.step${n}.t`)}</h3>
-                    <p className={styles.stepText}>{t(`ex.step${n}.d`)}</p>
+                    <h3 className={styles.stepTitle}>{tie(t(`ex.step${n}.t`))}</h3>
+                    <p className={styles.stepText}>{tie(t(`ex.step${n}.d`))}</p>
                   </div>
                 </li>
               ))}
             </ol>
           </div>
-          <div className={styles.reel}>
-            <MotionReel />
+          <div className={`${styles.reel} ${locale === 'en' ? '' : styles.reelFilm}`}>
+            {locale === 'en' ? <MotionReel /> : <CircleFilm />}
           </div>
         </div>
 
@@ -492,8 +634,11 @@ export function HowItWorks() {
                 if ((e.target as HTMLDetailsElement).open) track('home_faq', { q: n });
               }}
             >
-              <summary>{t(`ex.q${n}`)}</summary>
-              <p>{t(`ex.a${n}`)}</p>
+              <summary>
+                <span>{tie(t(`ex.q${n}`))}</span>
+                <span className={styles.faqMark} aria-hidden="true">›</span>
+              </summary>
+              <p>{tie(t(`ex.a${n}`))}</p>
             </details>
           ))}
         </div>
@@ -518,18 +663,18 @@ const PERKS = [
 export function PlatformPerks() {
   const { t } = useI18n();
   const { isAuthenticated } = useAuth();
-  const ref = useSectionView<HTMLElement>('perks');
+  const ref = useScene<HTMLElement>('perks');
   return (
     <section ref={ref} className={styles.perks} aria-labelledby="perks-title">
       <Container>
-        <h2 id="perks-title" className={styles.h2}>{t('ex.perksTitle')}</h2>
+        <h2 id="perks-title" className={`${styles.h2} ${styles.rv}`}>{tie(t('ex.perksTitle'))}</h2>
         <div className={styles.perkGrid}>
           {PERKS.map((p) => {
             const body = (
               <>
                 <span className={styles.perkIcon} aria-hidden="true"><Icon name={p.icon} size="md" /></span>
-                <strong className={styles.perkTitle}>{t(`ex.perk.${p.key}.t`)}</strong>
-                <span className={styles.perkText}>{t(`ex.perk.${p.key}.d`)}</span>
+                <strong className={styles.perkTitle}>{tie(t(`ex.perk.${p.key}.t`))}</strong>
+                <span className={styles.perkText}>{tie(t(`ex.perk.${p.key}.d`))}</span>
               </>
             );
             const onClick = () => track('home_perk', { perk: p.key });
@@ -566,13 +711,14 @@ export function HomeFinal() {
       <div className={styles.finalShade} aria-hidden="true" />
       <Container>
         <div className={styles.finalInner}>
-          <h2 className={styles.finalTitle}>{t('home.final.title')}</h2>
-          <p className={styles.finalSub}>{t('home.final.sub')}</p>
+          <h2 className={styles.finalTitle}>{tie(t('home.final.title'))}</h2>
+          <p className={styles.finalSub}>{tie(t('home.final.sub'))}</p>
           {!isLoading && (
             <div className={styles.finalActions}>
               <Button
                 variant="primary"
                 size="lg"
+                className={styles.ctaBig}
                 onClick={() => {
                   track('home_cta', { place: 'final', action: 'read' });
                   navigate('/library/hall');
@@ -580,16 +726,17 @@ export function HomeFinal() {
               >
                 {isAuthenticated ? t('home.cta.room') : t('home.cta.read')}
               </Button>
-              <button
-                type="button"
-                className={styles.finalSecond}
+              <Button
+                variant="secondary"
+                size="lg"
+                className={styles.heroSecondBtn}
                 onClick={() => {
                   track('home_cta', { place: 'final', action: next.action });
                   next.run();
                 }}
               >
                 {next.label}
-              </button>
+              </Button>
               {!isAuthenticated && (
                 <Link to="/login" className={styles.finalLogin} onClick={() => track('home_cta', { place: 'final', action: 'login' })}>
                   {t('home.login')}

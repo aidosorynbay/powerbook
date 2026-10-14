@@ -78,3 +78,75 @@
 .hidden {
   opacity: 0;
 }
+
+/* ── the scroll layout (the front page): the Round tab's way into the hall ── */
+.room.scrollRoom {
+  position: relative;
+  /* not the last thing on its page, unlike the round's hall: no taking back the tab bar's 72px */
+  margin-bottom: 0;
+  /* the section's own way through the screen: its exit drives the foot's fade (below) */
+  view-timeline-name: --pb-room;
+  view-timeline-axis: block;
+}
+
+/* opened full, the hall's ceiling melts into the header's navy */
+.stageTop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 160px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgb(13, 17, 23) 0%,
+    rgba(13, 17, 23, 0.738) 12%,
+    rgba(13, 17, 23, 0.382) 31%,
+    rgba(13, 17, 23, 0.126) 50%,
+    rgba(13, 17, 23, 0) 72%
+  );
+}
+
+/* leaving, the hall sinks into the page: the foot of the stage fades to navy only once the stage stops holding and
+   scrolls away (the section's exit) — while it holds, the visitor's chair and timer stay clear */
+.scrollFoot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 46%;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    0deg,
+    rgb(13, 17, 23) 0%,
+    rgba(13, 17, 23, 0.738) 14%,
+    rgba(13, 17, 23, 0.382) 33%,
+    rgba(13, 17, 23, 0.126) 54%,
+    rgba(13, 17, 23, 0) 78%
+  );
+}
+
+@keyframes footIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .scrollFoot {
+    animation: footIn linear both;
+    animation-timeline: --pb-room;
+    animation-range: exit 0% exit 38%;
+  }
+}
+
+/* the light theme: the hall is a dark window on paper — its edges stay crisp */
+:global(html[data-theme='light']) .stageTop,
+:global(html[data-theme='light']) .scrollFoot {
+  display: none;
+}

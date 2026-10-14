@@ -39,7 +39,8 @@ function Intro() {
       <div className={styles.counters}>
         {[
           ['1000+', t('reel.readers')],
-          ['64', t('reel.circles')],
+          // never a stale exact count (it said 64 while the site said 66): a floor that stays true, as «1000+»
+          ['60+', t('reel.circles')],
           ['30', t('reel.perDay')],
         ].map(([n, label], i) => (
           <div key={label} className={`${styles.counter} ${styles.rise}`} style={d(0.9 + i * 0.3)}>

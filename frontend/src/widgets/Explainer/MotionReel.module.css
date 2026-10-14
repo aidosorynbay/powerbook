@@ -198,11 +198,11 @@
 }
 
 .pop {
-  animation: pop 0.7s var(--d, 0s) cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+  animation: pop 0.7s var(--d, 0s) cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 
 .popIn {
-  animation: pop 0.45s var(--d, 0s) cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+  animation: pop 0.45s var(--d, 0s) cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 
 @keyframes sceneIn {
