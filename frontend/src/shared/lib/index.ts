@@ -110,6 +110,7 @@ export type {
   CatalogItem,
   CatalogPage,
   BookReview,
+  ReviewReply,
   TextWithSource,
   Seller,
   Listing,

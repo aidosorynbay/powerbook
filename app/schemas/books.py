@@ -52,6 +52,23 @@ class ReviewOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     is_viewer: bool
+    # Answers under it (the thread opens under the review).
+    replies: int = 0
+
+
+class ReplyIn(BaseModel):
+    text: str = Field(min_length=1, max_length=1000)
+
+
+class ReplyOut(BaseModel):
+    id: str
+    user_id: str
+    display_name: str
+    avatar_data: str | None
+    text: str
+    created_at: datetime
+    is_viewer: bool
+    can_delete: bool
 
 
 class WorkReaderOut(BaseModel):

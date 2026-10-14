@@ -10,9 +10,9 @@ import styles from './Bell.module.css';
 const POLL_MS = 60_000;
 
 // The switches, in the order the server lists them.
-const KINDS = ['new_review', 'watch_listing', 'watch_finished', 'wanted_by', 'guest_read'] as const;
+const KINDS = ['new_review', 'review_reply', 'watch_listing', 'watch_finished', 'wanted_by', 'guest_read'] as const;
 
-const ICONS: Record<string, IconName> = { new_review: 'chat', watch_listing: 'tag', wanted_by: 'users', guest_read: 'gift' };
+const ICONS: Record<string, IconName> = { new_review: 'chat', review_reply: 'chat', watch_listing: 'tag', wanted_by: 'users', guest_read: 'gift' };
 
 /** Where a notification leads, and what it says. */
 function useWords() {
@@ -23,6 +23,16 @@ function useWords() {
     if (n.kind === 'new_review') {
       return {
         text: t(d.gender === 'male' ? 'notif.reviewM' : 'notif.reviewF', { reader: String(d.reader ?? ''), title, rating: Number(d.rating ?? 0) }),
+        quote: d.quote ? String(d.quote) : undefined,
+        to: `/books?book=${encodeURIComponent(String(d.work_key ?? ''))}&review=${encodeURIComponent(String(d.review_id ?? ''))}`,
+      };
+    }
+    if (n.kind === 'review_reply') {
+      const many = Number(d.n ?? 1) > 1;
+      const where = d.mine ? 'Mine' : 'Thread';
+      const key = many ? `notif.reply${where}Many` : `notif.reply${where}${d.gender === 'male' ? 'M' : 'F'}`;
+      return {
+        text: t(key, { reader: String(d.reader ?? ''), title, n: Number(d.n ?? 1) }),
         quote: d.quote ? String(d.quote) : undefined,
         to: `/books?book=${encodeURIComponent(String(d.work_key ?? ''))}&review=${encodeURIComponent(String(d.review_id ?? ''))}`,
       };

@@ -5,6 +5,7 @@ from app.models.book_fact import BookFact
 from app.models.book_link import BookLink
 from app.models.book_listing import BookListing
 from app.models.book_review import BookReview
+from app.models.book_review_reply import BookReviewReply
 from app.models.buddy import ReadingBuddy
 from app.models.claim import UsernameClaim
 from app.models.group import Group, GroupMember
@@ -26,6 +27,7 @@ from app.models.user import User
 from app.models.waitlist import WaitlistEntry
 
 __all__ = [
+    "BookReviewReply",
     "BookWatch",
     "Notification",
     "NotificationPref",

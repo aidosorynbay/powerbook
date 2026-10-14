@@ -31,7 +31,8 @@ class Notification(TimestampMixin, Base):
     kind: "watch_listing" (a watched book is on the bazaar), "watch_finished"
     (someone in the circle finished it), "wanted_by" (readers are looking
     for a book the reader just finished), "new_review" (someone wrote a
-    review of a book). `data` holds what the text and the link need; the
+    review of a book), "review_reply" (someone answered under a review the
+reader wrote or talks under). `data` holds what the text and the link need; the
     page words it in the reader's language.
     """
 

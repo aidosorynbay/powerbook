@@ -159,7 +159,7 @@ def test_a_review_is_news_for_every_reader_who_wants_it(env):
 
     # Dana would rather not hear about reviews.
     assert c.get("/api/notifications/settings", headers=env.h(env.dana)).json() == {
-        "new_review": True, "watch_listing": True, "watch_finished": True, "wanted_by": True, "guest_read": True,
+        "new_review": True, "review_reply": True, "watch_listing": True, "watch_finished": True, "wanted_by": True, "guest_read": True,
     }
     r = c.put("/api/notifications/settings", json={"settings": {"new_review": False}}, headers=env.h(env.dana))
     assert r.status_code == 200 and r.json()["new_review"] is False and r.json()["watch_listing"] is True
@@ -205,3 +205,44 @@ def test_a_kind_switched_off_stays_quiet(env):
     assert _kinds(env, env.dana) == ["new_review"]
     c.put("/api/books/reviews", json={"volume_key": f"m:{book.id}", "rating": 9, "text": " "}, headers=env.h(env.erlan))
     assert _kinds(env, env.dana) == []
+
+
+def test_answers_under_a_review_are_a_little_chat(env):
+    c = env.client
+    book = env.db.query(ManualBook).filter_by(user_id=env.erlan.id).one()
+    c.put("/api/books/reviews", json={"volume_key": f"m:{book.id}", "rating": 9, "text": "Сильно"}, headers=env.h(env.erlan))
+    review_id = env.db.query(Notification).filter_by(kind="new_review").first().data["review_id"]
+    c.post("/api/notifications/read", json={}, headers=env.h(env.erlan))
+
+    # Dana answers: Erlan, who wrote the review, hears it.
+    r = c.post(f"/api/books/reviews/{review_id}/replies", json={"text": "  Согласна, особенно про Бомбей  "}, headers=env.h(env.dana))
+    assert r.status_code == 201, r.text
+    assert r.json()["text"] == "Согласна, особенно про Бомбей" and r.json()["can_delete"] is True
+    assert c.post(f"/api/books/reviews/{review_id}/replies", json={"text": "   "}, headers=env.h(env.dana)).status_code == 422
+    notes = [n for n in c.get("/api/notifications", headers=env.h(env.erlan)).json() if n["kind"] == "review_reply"]
+    assert len(notes) == 1 and notes[0]["data"]["mine"] is True and notes[0]["data"]["reader"] == "Dana"
+    assert "review_reply" not in _kinds(env, env.dana)
+
+    # Aigerim joins: Erlan's unread line gathers both, Dana (in the thread) hears too.
+    c.post(f"/api/books/reviews/{review_id}/replies", json={"text": "А мне длинно показалось"}, headers=env.h(env.aigerim))
+    notes = [n for n in c.get("/api/notifications", headers=env.h(env.erlan)).json() if n["kind"] == "review_reply"]
+    assert len(notes) == 1 and notes[0]["data"]["n"] == 2 and notes[0]["data"]["reader"] == "Aigerim"
+    dana = [n for n in c.get("/api/notifications", headers=env.h(env.dana)).json() if n["kind"] == "review_reply"]
+    assert len(dana) == 1 and dana[0]["data"]["mine"] is False and dana[0]["data"]["review_author"] == "Erlan"
+
+    # The thread, oldest first; the book's page counts it.
+    thread = c.get(f"/api/books/reviews/{review_id}/replies", headers=env.h(env.erlan)).json()
+    assert [t["display_name"] for t in thread] == ["Dana", "Aigerim"]
+    assert [t["can_delete"] for t in thread] == [False, False]
+    work = c.get("/api/books/work/shantaram", headers=env.h(env.erlan)).json()
+    assert [r["replies"] for r in work["reviews"]] == [2]
+
+    # Only one's own answer can be taken back.
+    assert c.delete(f"/api/books/replies/{thread[0]['id']}", headers=env.h(env.aigerim)).status_code == 404
+    assert c.delete(f"/api/books/replies/{thread[0]['id']}", headers=env.h(env.dana)).status_code == 204
+    assert len(c.get(f"/api/books/reviews/{review_id}/replies", headers=env.h(env.erlan)).json()) == 1
+
+    # The review gone: the thread and its news go with it.
+    assert c.delete(f"/api/books/reviews/{review_id}", headers=env.h(env.erlan)).status_code == 204
+    assert c.get(f"/api/books/reviews/{review_id}/replies", headers=env.h(env.erlan)).status_code == 404
+    assert env.db.query(Notification).filter_by(kind="review_reply").count() == 0

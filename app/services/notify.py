@@ -11,7 +11,8 @@ and whoever finishes a book that readers are watching hears that, with
 the way to sell it, unless they already have it on the bazaar.
 
 Everyone hears when someone writes a review of any book (a mark with no
-words is not a review). A reader hears when a friend who signed up by their
+words is not a review), and whoever wrote it hears the answers under it
+(app/services/review_replies.py). A reader hears when a friend who signed up by their
 link reads for the first time («Приведи друга», app/services/invites.py). Each kind can be switched off; no switch means on.
 
 Nothing here may break what triggered it: logging the day's minutes or
@@ -38,7 +39,7 @@ logger = logging.getLogger(__name__)
 KEEP_DAYS = 90
 
 # Everything the bell says, in the order the settings list them.
-KINDS = ("new_review", "watch_listing", "watch_finished", "wanted_by", "guest_read")
+KINDS = ("new_review", "review_reply", "watch_listing", "watch_finished", "wanted_by", "guest_read")
 
 # How much of a review the bell quotes.
 QUOTE_CHARS = 140
