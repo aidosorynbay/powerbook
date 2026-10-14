@@ -39,6 +39,42 @@
   pointer-events: none;
 }
 
-.ui > * {
+
+/* an invisible mark on each chair: the photo engine keeps them in the open on a phone (see keepChairsClear) */
+.ghost {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* phones: the still photo, until the living one is drawn, shows the readers' end of the room, not the ceiling */
+@media (max-width: 759px) {
+  .poster img {
+    object-position: 50% 82%;
+  }
+}
+
+/* only what can be tapped takes taps: the chairs' rings under the words stay reachable */
+.ui,
+.ui * {
+  pointer-events: none;
+}
+
+.ui button,
+.ui a,
+.ui input,
+.ui label,
+.ui form,
+.ui [role='dialog'],
+.ui [role='radiogroup'] {
   pointer-events: auto;
+}
+
+.hidden {
+  opacity: 0;
 }

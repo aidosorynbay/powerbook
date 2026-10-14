@@ -59,11 +59,13 @@ async function claimOnce(): Promise<Claimed | null> {
 export function GuestKept() {
   const { t } = useI18n();
   const { user } = useAuth();
+  // after «Сохранить и записаться в круг» the join comes first, so the minutes land in the circle's day
+  const { ready } = useWaitlist();
   const [kept, setKept] = useState<Claimed | null>(null);
   useEffect(() => {
-    if (!user || !readGuestSitting()) return;
+    if (!user || !ready || !readGuestSitting()) return;
     claimGuestSitting().then((r) => r && r.minutes > 0 && setKept(r));
-  }, [user]);
+  }, [user, ready]);
   useEffect(() => {
     if (!kept) return;
     const id = window.setTimeout(() => setKept(null), 7000);
@@ -133,6 +135,8 @@ export function GuestRoom() {
   const [stats, setStats] = useState<PublicStats | null>(null);
   const [titles, setTitles] = useState<string[]>([]);
   const [goal, setGoal] = useState(false);
+  // the free chairs this screen draws («Сесть в любое кресло» never seats a visitor where they can't see themselves)
+  const [drawable, setDrawable] = useState<number[]>([]);
   const stamp = useRef(performance.now());
   const goalRang = useRef(false);
   const [, setTick] = useState(0);
@@ -294,7 +298,7 @@ export function GuestRoom() {
         <h2 id="guest-short" className={styles.title}>{t('guestRoom.shortTitle')}</h2>
         <p className={styles.text}>{t('guestRoom.shortText')}</p>
         <div className={styles.actions}>
-          <button type="button" className={styles.primary} onClick={leave}>{t('guestRoom.again')}</button>
+          <button type="button" className={styles.primary} autoFocus onClick={leave}>{t('guestRoom.again')}</button>
           <button type="button" className={styles.link} onClick={() => save('join')}>
             {joinOpen ? t('wl.heroJoin', { month }) : t('wl.heroWait', { month })}
           </button>
@@ -307,7 +311,7 @@ export function GuestRoom() {
         <h2 id="guest-done" className={styles.title}>{t('guestRoom.doneTitle', { min: mine.minutes ?? 0 })}</h2>
         <p className={styles.text}>{joinOpen ? t('guestRoom.doneText') : t('guestRoom.doneTextWait', { month })}</p>
         <div className={styles.actions}>
-          <button type="button" className={styles.primary} onClick={() => save('join')}>
+          <button type="button" className={styles.primary} autoFocus onClick={() => save('join')}>
             {joinOpen ? t('guestRoom.saveJoin', { month }) : t('guestRoom.saveWait', { month })}
           </button>
           <button type="button" className={styles.secondary} onClick={() => save('register')}>{t('guestRoom.saveSite')}</button>
@@ -321,7 +325,7 @@ export function GuestRoom() {
       <div className={styles.card} role="dialog" aria-labelledby="guest-away">
         <h2 id="guest-away" className={styles.title}>{t('room.awayAsk', { min: Math.max(1, Math.round(sitting.away_seconds / 60)) })}</h2>
         <div className={styles.actions}>
-          <button type="button" className={styles.primary} disabled={busy} onClick={() => answerAway(true)}>{t('room.awayYes')}</button>
+          <button type="button" className={styles.primary} autoFocus disabled={busy} onClick={() => answerAway(true)}>{t('room.awayYes')}</button>
           <button type="button" className={styles.secondary} disabled={busy} onClick={() => answerAway(false)}>{t('room.awayNo')}</button>
         </div>
       </div>
@@ -385,7 +389,7 @@ export function GuestRoom() {
           type="button"
           className={`${styles.primary} ${styles.introCta}`}
           onClick={() => {
-            const free = freeSeats(room);
+            const free = drawable.length ? drawable : freeSeats(room);
             if (free.length) setPick(free[Math.floor(Math.random() * free.length)]);
             track('guest_any_chair');
           }}
@@ -400,11 +404,13 @@ export function GuestRoom() {
     <>
       <LiveRoom
         hall="library"
+        keepChairsClear
         mineKey={mine?.key ?? null}
         onSeat={open || mine?.ended || seatsLeft === 0 ? undefined : (seat) => { setPick(seat); setErr(''); }}
         refresh={refresh}
-        onRoom={(r: PublicRoom) => {
+        onRoom={(r: PublicRoom, drawable: number[]) => {
           setRoom(r);
+          setDrawable(drawable);
           // our own chair closed elsewhere: show it as finished on the next heartbeat
           if (open && !r.readers.some((x) => x.key === mine?.key)) call('heartbeat');
         }}

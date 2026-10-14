@@ -8,8 +8,9 @@ import { GuestRoom, Header, ReadingRoom } from '@/widgets';
  */
 export function LibraryHallPage() {
   const { isAuthenticated, isLoading } = useAuth();
-  const { state } = useWaitlist();
-  const ready = !isLoading && (!isAuthenticated || state !== null);
+  const { state, ready: settled } = useWaitlist();
+  // a reader just logged in from the guest room: wait for their own state, not the visitor's still in memory
+  const ready = !isLoading && (!isAuthenticated || settled);
   const inCircle = !!state && (state.in_current_round || state.in_open_round);
 
   return (

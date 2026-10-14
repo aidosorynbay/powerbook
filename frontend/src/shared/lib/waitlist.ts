@@ -35,8 +35,16 @@ const INTENT_TTL = 24 * 60 * 60 * 1000;
 // all show the same state and change together.
 let current: WaitlistState | null = null;
 let loadedFor: string | null | undefined;
+// whose state `current` is (a visitor's, until a fresh load after logging in), and whether a sign-up's promised join
+// is still on its way: pages that pick by it (the reading room's hall, keeping a visitor's minutes) wait for both
+let currentFor: string | null | undefined;
+let settling = false;
+let version = 0;
 const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((l) => l());
+const emit = () => {
+  version += 1;
+  listeners.forEach((l) => l());
+};
 const subscribe = (l: () => void) => {
   listeners.add(l);
   return () => listeners.delete(l);
@@ -71,10 +79,11 @@ function freshIntent(): boolean {
   return at > Date.now() - INTENT_TTL;
 }
 
-async function load(): Promise<WaitlistState | null> {
+async function load(who: string | null | undefined = currentFor): Promise<WaitlistState | null> {
   const { data } = await apiGet<WaitlistState>('/waitlist', { requireAuth: true });
   if (data) {
     current = data;
+    currentFor = who;
     emit();
   }
   return data;
@@ -82,34 +91,43 @@ async function load(): Promise<WaitlistState | null> {
 
 export function useWaitlist() {
   const { isAuthenticated, user } = useAuth();
-  const state = useSyncExternalStore(subscribe, () => current);
+  useSyncExternalStore(subscribe, () => version);
+  const state = current;
+  const who = isAuthenticated ? user?.id ?? null : null;
 
   useEffect(() => {
-    const who = isAuthenticated ? user?.id ?? null : null;
     if (loadedFor === who && current) return;
     loadedFor = who;
-    load().then(async (s) => {
-      if (!s || !isAuthenticated || storage(INTENT_KEY) === null) return;
-      const fresh = freshIntent();
-      storage(INTENT_KEY, null);
-      if (!fresh) return;
-      // Came from an invitation and has just signed up: put them on the list.
-      if (s.phase === 'waitlist' && !s.on_waitlist && !s.in_current_round) {
-        const { data } = await apiPost<WaitlistState>('/waitlist', { ref: storage(REF_KEY) }, { requireAuth: true });
-        if (data) {
-          current = data;
+    settling = isAuthenticated && storage(INTENT_KEY) !== null;
+    load(who).then(async (s) => {
+      try {
+        if (!s || !isAuthenticated || storage(INTENT_KEY) === null) return;
+        const fresh = freshIntent();
+        storage(INTENT_KEY, null);
+        if (!fresh) return;
+        // Came from an invitation and has just signed up: put them on the list.
+        if (s.phase === 'waitlist' && !s.on_waitlist && !s.in_current_round) {
+          const { data } = await apiPost<WaitlistState>('/waitlist', { ref: storage(REF_KEY) }, { requireAuth: true });
+          if (data) {
+            current = data;
+            emit();
+          }
+        } else if (s.phase === 'registration' && s.open_round && !s.in_open_round && !s.in_current_round) {
+          // «Зарегистрироваться и записаться» promised both. Before, the account
+          // was made and the reader was sent back to press a second button —
+          // and whoever closed the tab in between had quietly missed the month.
+          const { error } = await apiPost(`/rounds/${s.open_round.id}/join`, {}, { requireAuth: true });
+          if (!error) track('round_join', { invited: !!storage(REF_KEY), via: 'signup' });
+          await load(who);
+        }
+      } finally {
+        if (settling) {
+          settling = false;
           emit();
         }
-      } else if (s.phase === 'registration' && s.open_round && !s.in_open_round && !s.in_current_round) {
-        // «Зарегистрироваться и записаться» promised both. Before, the account
-        // was made and the reader was sent back to press a second button —
-        // and whoever closed the tab in between had quietly missed the month.
-        const { error } = await apiPost(`/rounds/${s.open_round.id}/join`, {}, { requireAuth: true });
-        if (!error) track('round_join', { invited: !!storage(REF_KEY), via: 'signup' });
-        await load();
       }
     });
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const join = useCallback(async () => {
     const { data, error } = await apiPost<WaitlistState>('/waitlist', { ref: storage(REF_KEY) }, { requireAuth: true });
@@ -138,7 +156,9 @@ export function useWaitlist() {
     return error;
   }, []);
 
-  return { state, join, leave, joinRound, refresh: load };
+  /** The state is this reader's own and nothing promised at sign-up is still on its way. */
+  const ready = state !== null && currentFor === who && !settling;
+  return { state, ready, join, leave, joinRound, refresh: load };
 }
 
 /** The reader's own invitation link. */

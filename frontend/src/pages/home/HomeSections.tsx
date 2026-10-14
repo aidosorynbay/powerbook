@@ -266,7 +266,7 @@ export function SharedTotal({ stats }: { stats: PublicStats | null }) {
         {books.length >= 3 && (
           <div className={styles.books}>
             <h3 className={styles.booksTitle}>{t('home.tr.books')}</h3>
-            <ul className={styles.bookRow}>
+            <ul className={styles.bookRow} tabIndex={0} aria-label={t('home.tr.books')}>
               {books.map((b) => (
                 <li key={b.title} className={styles.book}>
                   <img
@@ -420,6 +420,9 @@ export function HomeFinal() {
   return (
     <section ref={ref} className={styles.final}>
       <picture className={styles.finalArt} aria-hidden="true">
+        {/* phones: the library's own phone crop, whole — the wide panorama cut to a tall screen was all zoom */}
+        <source media="(max-width: 759px)" type="image/webp" srcSet="/home/library-phone.webp" />
+        <source media="(max-width: 759px)" srcSet="/home/library-phone.jpg" />
         <img
           src="/library-banner-1920.jpg"
           srcSet="/library-banner-1920.jpg 1920w, /library-banner-3840.jpg 3840w"

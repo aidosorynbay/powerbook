@@ -34,13 +34,16 @@ type Props = {
   onSeat?: (seat: number) => void;
   /** The visitor's own sitting, shown as «Вы». */
   mineKey?: string | null;
-  /** Called with each fresh look at the room. */
-  onRoom?: (room: PublicRoom) => void;
+  /** Called with each fresh look at the room, and the free chairs this screen actually draws. */
+  onRoom?: (room: PublicRoom, drawableFree: number[]) => void;
   /** A bump re-reads the room now (after sitting down or getting up). */
   refresh?: number;
   /** The still photo shown until the living one is ready. */
   poster?: ReactNode;
   className?: string;
+  /** Phones: slide the photo so the chairs (and the readers in them) stay in the open between the header and the
+   *  words at the photo's foot, instead of showing the ceiling. */
+  keepChairsClear?: boolean;
   /** Extra class for the overlay at the photo's foot (e.g. the front page's left-side shade). */
   uiClassName?: string;
   style?: CSSProperties;
@@ -51,7 +54,7 @@ type Props = {
  * (breathing, blinking readers, lamps), the readers sitting in it right now —
  * each with a timer and the book on their knees, never a name.
  */
-export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0, poster, className, uiClassName, style }: Props) {
+export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0, poster, className, uiClassName, keepChairsClear, style }: Props) {
   const { t } = useI18n();
   const phone = useMemo(() => window.matchMedia?.(PHONE).matches ?? false, []);
   const hk: HallKey = phone ? PHONE_HALL[hall] : HALL_KEY[hall];
@@ -67,9 +70,13 @@ export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0,
   const engineRef = useRef<RoomEngine | null>(null);
   const onRoomRef = useRef(onRoom);
   onRoomRef.current = onRoom;
+  const hkRef = useRef(hk);
+  hkRef.current = hk;
 
   const [room, setRoom] = useState<PublicRoom | null>(null);
   const [ready, setReady] = useState(false);
+  // bumped when the browser takes the GPU context away (a phone under memory pressure): a fresh canvas and engine
+  const [glKey, setGlKey] = useState(0);
   const stamp = useRef(performance.now());
   const [, setTick] = useState(0);
 
@@ -80,7 +87,11 @@ export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0,
       if (!alive || !data) return;
       stamp.current = performance.now();
       setRoom(data);
-      onRoomRef.current?.(data);
+      const taken = new Set(data.readers.map((r) => r.seat));
+      const drawable = HALLS[hkRef.current].seats
+        .map((s, i) => (s[0] >= 0 && seatChar(hkRef.current, i) && !taken.has(i) ? i : -1))
+        .filter((i) => i >= 0);
+      onRoomRef.current?.(data, drawable);
     };
     load();
     const id = window.setInterval(load, 15_000);
@@ -100,20 +111,35 @@ export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0,
       hall: hk, base: '/reading-room/', canvas, fx, stage,
       frame: frameRef.current, ui: uiRef.current, tags: tagsRef.current,
       scrollEl: null,
+      // the open band on a phone: below the site's header, above the words at the photo's foot
+      band: phone && keepChairsClear ? () => {
+        const st = stage.getBoundingClientRect();
+        if (!st.height) return null;
+        const header = document.querySelector('header')?.getBoundingClientRect();
+        const top = Math.max(0, (header?.bottom ?? st.top) - st.top) + 6;
+        const words = uiRef.current?.firstElementChild?.getBoundingClientRect();
+        const bottom = words && words.height ? words.top - st.top - 6 : st.height;
+        return { top, bottom };
+      } : null,
       // the evening room: lamps lit, the window dark
       variant: 'night',
       small, reduced,
       onReady: () => setReady(true),
     });
     engineRef.current = engine;
-    // the engine draws its first frame without telling on some builds: show it anyway soon
-    const fallback = window.setTimeout(() => setReady(true), 2500);
+    // until the photo has arrived the canvas is hidden and the still poster shows (an undrawn canvas is black)
+    const lost = (e: Event) => {
+      e.preventDefault();
+      setReady(false);
+      setGlKey((k) => k + 1);
+    };
+    canvas.addEventListener('webglcontextlost', lost);
     return () => {
-      window.clearTimeout(fallback);
+      canvas.removeEventListener('webglcontextlost', lost);
       engine.destroy();
       engineRef.current = null;
     };
-  }, [hk, reduced]);
+  }, [hk, reduced, phone, keepChairsClear, glKey]);
 
   const readers = useMemo(() => room?.readers ?? [], [room]);
   useEffect(() => {
@@ -171,11 +197,25 @@ export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0,
             data-v={at[1]}
             data-label="1"
             data-clamp="1"
-            aria-label={t('room.sitSeen')}
+            aria-label={`${t('room.sitSeen')} · ${i + 1}`}
             onClick={() => onSeat(i)}
           >
             <span>{t('room.sitSeen')}</span>
           </button>
+        );
+      })
+    : null;
+
+  const ghosts = keepChairsClear && phone
+    ? H.seats.map((s, i) => {
+        if ((onSeat && !taken.has(i)) || s[0] < 0) return null;
+        const sc = seatChar(hk, i);
+        if (!sc) return null;
+        const at = sc.ring ?? sc.head ?? ([s[0], s[1]] as [number, number]);
+        return (
+          <span key={`ghost-${i}`} className={own.ghost} data-u={at[0]} data-v={at[1]} data-label="1" aria-hidden="true">
+            <span />
+          </span>
         );
       })
     : null;
@@ -185,9 +225,10 @@ export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0,
       <div className={styles.stage} ref={stageRef}>
         <div className={styles.frame} ref={frameRef}>
           {poster && <div className={`${own.poster} ${ready ? own.posterGone : ''}`} aria-hidden="true">{poster}</div>}
-          <canvas className={styles.cv} ref={cvRef} aria-hidden="true" />
-          <canvas className={styles.fx} ref={fxRef} aria-hidden="true" />
+          <canvas key={`cv-${glKey}`} className={`${styles.cv} ${poster && !ready ? own.hidden : ''}`} ref={cvRef} aria-hidden="true" />
+          <canvas key={`fx-${glKey}`} className={styles.fx} ref={fxRef} aria-hidden="true" />
           <div className={styles.tags} ref={tagsRef}>
+            {ghosts}
             {tags}
             {rings}
           </div>

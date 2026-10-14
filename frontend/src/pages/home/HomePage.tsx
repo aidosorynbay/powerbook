@@ -50,6 +50,7 @@ export function HomePage() {
               the living one is drawn. */}
           <LiveRoom
             hall="round"
+            keepChairsClear
             className={styles.hero}
             uiClassName={styles.heroUi}
             poster={
