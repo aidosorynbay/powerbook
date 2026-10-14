@@ -585,20 +585,22 @@ export function SharedTotal({ stats }: { stats: PublicStats | null }) {
 const GETS = [1, 2, 3, 4];
 /* the pieces of the Round tab each promise is drawn with — its own visual words, not pictures drawn for the page */
 const BARS = [42, 68, 55, 90, 63, 78, 100];
-/* four weeks, the misses thinning out as the habit sets in */
-const HABIT = [1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+/* a month as the Round tab's calendar lays it out: it starts late in the first week (four empty cells), the misses
+   thinning out as the habit sets in */
+const MONTH_START = 4;
+const HABIT = [1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 const FACES: Record<string, string[]> = { ru: ['А', 'М', 'Д', 'Ж', 'Т'], kk: ['А', 'М', 'Д', 'Ж', 'Т'], en: ['A', 'M', 'D', 'J', 'T'] };
 const FACE_HUES = ['#4ECDC4', '#F783C8', '#7C83FD', '#F2A93B', '#5FD068'];
 
 function GetArt({ n, covers, locale }: { n: number; covers: string[]; locale: string }) {
   // a week of minutes, as the results page draws them
   if (n === 1) return <span className={styles.artBars}>{BARS.map((h, i) => <i key={i} style={{ height: `${h}%` }} />)}</span>;
-  // the days that counted, as «Мой месяц» draws them — a month's page, its two rings on top, so it reads as a calendar
+  // the days that counted, as «Мой месяц» draws them — laid out as a month, its first days at the end of the top row
   if (n === 2) {
     return (
-      <span className={styles.artCal}>
-        <span className={styles.calRings}><b /><b /></span>
-        <span className={styles.artDots}>{HABIT.map((on, i) => <i key={i} className={on ? styles.dotOn : ''} />)}</span>
+      <span className={styles.artDots}>
+        {Array.from({ length: MONTH_START }, (_, i) => <i key={`e${i}`} className={styles.dotEmpty} />)}
+        {HABIT.map((on, i) => <i key={i} className={on ? styles.dotOn : ''} />)}
       </span>
     );
   }

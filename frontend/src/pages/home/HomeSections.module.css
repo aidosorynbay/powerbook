@@ -894,35 +894,11 @@ a.perk:focus-visible,
   background: #e3a33b;
 }
 
-/* the days that counted, «Мой месяц»'s dots: four weeks under a calendar's two rings */
-.artCal {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.calRings,
+/* the days that counted, «Мой месяц»'s dots, laid out as a month (31 days from a Thursday: 5 rows of 7) */
 .artDots {
   display: grid;
   grid-template-columns: repeat(7, 7px);
   gap: 4px;
-}
-
-.calRings b {
-  grid-row: 1;
-  justify-self: center;
-  width: 3px;
-  height: 7px;
-  border-radius: 999px;
-  background: var(--color-text-secondary);
-}
-
-.calRings b:first-child {
-  grid-column: 2;
-}
-
-.calRings b:last-child {
-  grid-column: 6;
 }
 
 .artDots i {
@@ -931,6 +907,10 @@ a.perk:focus-visible,
   border-radius: 50%;
   box-shadow: inset 0 0 0 1.5px var(--color-text-muted);
   opacity: 0.55;
+}
+
+.artDots i.dotEmpty {
+  visibility: hidden;
 }
 
 .artDots i.dotOn {
