@@ -74,17 +74,35 @@
   .photoArt {
     position: relative;
     display: block;
-    height: 128px;
+    height: 150px;
   }
 
   .photoArt img {
-    object-position: 50% 42%;
+    object-position: 50% 44%;
   }
 
+  /* the band melts away at both ends: the ceiling into the header above, the floor into the night under the
+     words — eased stops, so no edge shows (the founder, 2026-10-14) */
   .photoShade {
-    height: 128px;
+    height: 150px;
     bottom: auto;
-    background: linear-gradient(180deg, rgba(10, 7, 4, 0) 55%, #0b0906 100%);
+    background:
+      linear-gradient(
+        180deg,
+        rgb(13, 15, 19) 0%,
+        rgba(13, 15, 19, 0.82) 9%,
+        rgba(13, 15, 19, 0.5) 19%,
+        rgba(13, 15, 19, 0.2) 30%,
+        rgba(13, 15, 19, 0) 42%
+      ),
+      linear-gradient(
+        0deg,
+        #0b0906 0%,
+        rgba(11, 9, 6, 0.86) 11%,
+        rgba(11, 9, 6, 0.55) 24%,
+        rgba(11, 9, 6, 0.22) 38%,
+        rgba(11, 9, 6, 0) 52%
+      );
   }
 
   .photoWords {
