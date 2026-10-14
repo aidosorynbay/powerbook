@@ -32,6 +32,12 @@ class FinishRequest(BaseModel):
     day: date | None = None
 
 
+@router.get("/{hall}/public")
+def room_public(hall: str, db: Session = Depends(get_db)) -> dict:
+    """The room through the front page's window, for anyone: taken chairs, books and timers, no names."""
+    return ReadingRoomService(db).public_state(hall=hall)
+
+
 @router.get("/{hall}/state")
 def room_state(
     hall: str, since: datetime | None = None, db: Session = Depends(get_db), user=Depends(get_current_user)

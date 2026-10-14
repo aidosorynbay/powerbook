@@ -152,6 +152,49 @@ class StatsService:
         stats_cache.set(cache_key, result.model_dump())
         return result
 
+    def get_public_books(self, group_slug: str = DEFAULT_GROUP_SLUG, limit: int = 12) -> list[dict]:
+        """The books this month's circle is reading, by minutes put into them: the shared total made visible.
+        Titles, covers and counts only — no readers' names."""
+        cache_key = f"{CACHE_KEY_PUBLIC_STATS}:books:{group_slug}"
+        cached = stats_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        from app.models.round import ReadingLogBook
+        from app.services import book_time, catalog
+
+        now = datetime.now(tz=ROUND_TZ)
+        group = self.groups_repo.get_by_slug(group_slug)
+        rnd = self.rounds_repo.get_by_group_year_month(group_id=group.id, year=now.year, month=now.month) if group else None
+        out: list[dict] = []
+        if rnd is not None:
+            rows = self.db.execute(
+                select(ReadingLogBook.title, ReadingLogBook.minutes, ReadingLogBook.user_id)
+                .join(ReadingLog, ReadingLog.id == ReadingLogBook.reading_log_id)
+                .where(ReadingLog.round_id == rnd.id, ReadingLogBook.minutes > 0)
+            ).all()
+            idx = catalog.index(self.db)
+            books: dict[str, dict] = {}
+            for title, minutes, user_id in rows:
+                key = book_time.book_of(idx, title)
+                b = books.setdefault(key, {"key": key, "title": title, "minutes": 0, "readers": set()})
+                b["minutes"] += int(minutes)
+                b["readers"].add(user_id)
+            for b in sorted(books.values(), key=lambda x: -x["minutes"]):
+                work = idx.works.get(b["key"])
+                if work is None or not work.image:
+                    continue  # a wall of real covers: a title without one stays out
+                out.append({
+                    "title": work.title or b["title"],
+                    "author": work.author,
+                    "cover_url": f"/library/covers/{work.image}.jpg",
+                    "minutes": b["minutes"],
+                    "readers": len(b["readers"]),
+                })
+                if len(out) >= limit:
+                    break
+        stats_cache.set(cache_key, out)
+        return out
+
     def _room_now(self) -> int:
         """Readers sitting in any reading room now: open sittings seen in the
         last 3 minutes (the room's own «away» line). Open rows are few."""

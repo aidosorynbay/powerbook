@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
 
@@ -203,6 +204,41 @@ class ReadingRoomService:
         why = self._credit(s, seconds // 60, day or reading_day(at))
         self.db.commit()
         return seconds // 60, why
+
+    # ---------- the room through the window (no login) ----------
+
+    def public_state(self, *, hall: str) -> dict:
+        """What a visitor sees through the window of the front page: which chairs are taken, by a woman or a man,
+        reading or paused, for how long, and the book on the knees. No names, no ids, nothing written."""
+        hall = self._hall(hall)
+        rnd = self.current_round()
+        scope = self._scope(hall, rnd)
+        now = _now()
+        sessions = self._open_sessions(hall, scope) if hall == "library" or rnd is not None else []
+        sessions = [s for s in sessions if not self._gone(s, now)]
+        genders = {
+            u.id: (u.gender.value if u.gender else "unknown")
+            for u in self.db.execute(select(User).where(User.id.in_([s.user_id for s in sessions]))).scalars()
+        } if sessions else {}
+        readers = []
+        for s in sorted(sessions, key=lambda x: x.created_at or now):
+            away = self._away(s, now)
+            readers.append({
+                "key": hashlib.sha1(str(s.id).encode()).hexdigest()[:12],
+                "seat": s.seat,
+                "gender": genders.get(s.user_id, "unknown"),
+                "status": "paused" if away else s.status,
+                "elapsed_seconds": self.elapsed_seconds(s, _aware(s.last_seen_at) if away else now),
+                "book": s.book_title,
+            })
+        day = self.day(hall=hall, scope=scope, now=now) if hall == "library" or rnd is not None else None
+        return {
+            "hall": hall,
+            "seats": SEATS[hall],
+            "readers": readers,
+            "today": {"readers": day["readers"], "minutes": day["minutes"]} if day else {"readers": 0, "minutes": 0},
+            "server_time": now.isoformat(),
+        }
 
     # ---------- the room ----------
 

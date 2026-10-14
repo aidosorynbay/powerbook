@@ -451,3 +451,21 @@ def test_a_comment_taken_off_the_shelf(env):
 
     assert c.delete(f"/api/library/overrides/{key}/hidden", headers=me).status_code == 200
     assert [b["hidden"] for b in shelf(me)] == [False]
+
+
+def test_the_front_page_window_shows_chairs_and_books_without_names(env):
+    c = env.client
+    r = c.post("/api/reading-room/round/sit", json={"seat": 5, "book": "Дюна"}, headers=env.h(env.reader))
+    assert r.status_code == 200, r.text
+    _age(env, r.json()["id"], 10 * 60)
+
+    pub = c.get("/api/reading-room/round/public")  # no login
+    assert pub.status_code == 200, pub.text
+    body = pub.json()
+    assert body["seats"] == 12
+    (one,) = body["readers"]
+    assert one["seat"] == 5 and one["book"] == "Дюна" and one["gender"] == "male"
+    assert one["elapsed_seconds"] >= 10 * 60
+    assert set(one) == {"key", "seat", "gender", "status", "elapsed_seconds", "book"}
+    assert env.reader.display_name not in pub.text and str(env.reader.id) not in pub.text
+    assert c.get("/api/reading-room/nowhere/public").status_code == 404

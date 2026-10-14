@@ -19,6 +19,12 @@ def get_public_stats(db: Session = Depends(get_db)) -> PublicStatsOut:
     return StatsService(db).get_public_stats()
 
 
+@router.get("/public/books")
+def get_public_books(db: Session = Depends(get_db)) -> list[dict]:
+    """The books this month's circle is reading, with covers and minutes. No names."""
+    return StatsService(db).get_public_books()
+
+
 @router.get("/public/calendar", response_model=PublicCalendarOut)
 def get_public_calendar(year: int, db: Session = Depends(get_db)) -> PublicCalendarOut:
     """
