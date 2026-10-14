@@ -488,13 +488,43 @@ a.perk:focus-visible,
   text-wrap: pretty;
 }
 
-/* one line of facts, the Round status line's voice */
-.totalFacts {
-  margin: var(--spacing-5) 0 0;
-  font-size: var(--font-size-sm);
-  line-height: 1.6;
+/* the facts as «Читатели круга»'s tiles (RoundToday .readersStats): one number green — this circle, counted and alive */
+.tiles {
+  margin-top: var(--spacing-6);
+  max-width: 640px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tile {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+  font-size: 12px;
+  line-height: 1.25;
   color: var(--color-text-secondary);
-  font-weight: var(--font-weight-medium);
+}
+
+.tile b {
+  font-size: clamp(1.25rem, 2.2vw, 1.5rem);
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.tileHot b {
+  color: var(--color-success);
+}
+
+.storyLine {
+  margin: var(--spacing-4) 0 0;
+  font-size: var(--font-size-sm);
 }
 
 /* a door: the accent and «›», as on the Round tab; a full finger's height without moving the line */
@@ -634,6 +664,120 @@ a.perk:focus-visible,
   gap: var(--spacing-2);
 }
 
+.getArt {
+  display: flex;
+  align-items: flex-end;
+  height: 44px;
+  margin-bottom: var(--spacing-3);
+}
+
+/* a week of minutes, the results page's bars */
+.artBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 40px;
+}
+
+.artBars i {
+  width: 9px;
+  border-radius: 3px 3px 1px 1px;
+  background: #e3a33b;
+}
+
+/* the days that counted, «Мой месяц»'s dots */
+.artDots {
+  display: grid;
+  grid-template-columns: repeat(7, 10px);
+  gap: 5px;
+}
+
+.artDots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--color-text-muted);
+  opacity: 0.55;
+}
+
+.artDots i.dotOn {
+  background: var(--color-success);
+  box-shadow: none;
+  opacity: 1;
+}
+
+/* readers, «Читатели круга»'s colour avatars */
+.artFaces {
+  display: flex;
+  align-items: center;
+}
+
+.artFaces i {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  margin-left: -9px;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: var(--font-weight-bold);
+  color: var(--hue);
+  background: color-mix(in srgb, var(--hue) 22%, var(--color-bg-primary));
+  box-shadow: 0 0 0 2px var(--color-bg-primary);
+}
+
+.artFaces i:first-child {
+  margin-left: 0;
+}
+
+.artFaces b {
+  margin-left: 10px;
+  font-size: 13px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* the circle's own covers, fanned, and the gift */
+.artCovers {
+  display: flex;
+  align-items: flex-end;
+}
+
+.artCovers img {
+  width: 27px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 2px 4px 4px 2px;
+  margin-left: -7px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 6px 12px -4px rgba(0, 0, 0, 0.6);
+  transform: rotate(-7deg);
+}
+
+.artCovers img:first-child {
+  margin-left: 0;
+}
+
+.artCovers img:nth-child(2) {
+  transform: translateY(-3px);
+}
+
+.artCovers img:nth-child(3) {
+  transform: rotate(7deg);
+}
+
+.artGift {
+  width: 32px;
+  height: 32px;
+  margin-left: 10px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #f783c8;
+  background: color-mix(in srgb, #f783c8 20%, transparent);
+}
+
 .getBig {
   font-size: clamp(1.5rem, 2.6vw, 2rem);
   line-height: 1;
@@ -649,9 +793,50 @@ a.perk:focus-visible,
 }
 
 .need {
-  margin: var(--spacing-6) 0 0;
+  margin: var(--spacing-8) 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.needHead {
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
+}
+
+.needChips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.needChips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-secondary);
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.needChips li::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hue);
 }
 
 @media (max-width: 900px) {
@@ -697,8 +882,110 @@ a.perk:focus-visible,
 
 .step {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-columns: 40px minmax(0, 1fr) auto;
   gap: var(--spacing-4);
+}
+
+.stepArt {
+  align-self: center;
+  justify-self: end;
+}
+
+/* the sign-up days, in the outline the Round's calendar gives today */
+.artRange {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 2px solid var(--color-accent-primary);
+  font-size: 14px;
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.artRange svg {
+  color: var(--color-accent-primary);
+}
+
+/* the dial at its goal */
+.artDial {
+  display: block;
+  width: 52px;
+  height: 52px;
+}
+
+.dialTrack {
+  fill: none;
+  stroke: var(--color-bg-secondary);
+  stroke-width: 6;
+}
+
+.dialArc {
+  fill: none;
+  stroke: var(--color-success);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 100 100;
+  transform: rotate(-90deg);
+  transform-origin: 24px 24px;
+  filter: drop-shadow(0 0 3px rgba(57, 217, 138, 0.55));
+}
+
+.artDial text {
+  font-size: 14px;
+  font-weight: 800;
+  fill: var(--color-text-primary);
+  font-family: inherit;
+}
+
+/* the calendar's colours: 30+ green, 2–29 yellow, a day before signing up dashed */
+.artCells {
+  display: flex;
+  gap: 4px;
+}
+
+.artCells i {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-on-status);
+}
+
+.artCells .cellDone {
+  background: var(--color-success-fill);
+}
+
+.artCells .cellSome {
+  background: var(--color-warning-fill);
+}
+
+.artCells .cellNone {
+  border: 1.5px dashed var(--color-border-primary);
+}
+
+/* the last day: the Round calendar's striped finish cell with its flag */
+.artFlag {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  color: var(--color-text-secondary);
+  background: repeating-linear-gradient(45deg, rgba(128, 128, 128, 0.16) 0 5px, rgba(128, 128, 128, 0.04) 5px 10px);
+}
+
+.artFlag svg {
+  width: 16px;
+  height: 16px;
 }
 
 .stepNum {
@@ -833,6 +1120,19 @@ a.perk:focus-visible,
   }
 }
 
+/* phones: the step's piece of the Round tab under its words */
+@media (max-width: 640px) {
+  .step {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .stepArt {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: -4px;
+  }
+}
+
 /* ── Что ещё есть на платформе ── */
 .perks {
   padding-block: clamp(64px, 7vw, 112px);
@@ -866,9 +1166,6 @@ a.perk:focus-visible,
     transform: translateY(-2px);
   }
 
-  a.perk:hover .perkIcon {
-    color: var(--color-text-accent);
-  }
 }
 
 .perkIcon {
@@ -878,9 +1175,10 @@ a.perk:focus-visible,
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: var(--color-bg-elevated);
-  color: var(--color-text-secondary);
-  transition: color 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  /* the readers' avatar palette: each part of the platform its own colour */
+  border-radius: 50%;
+  color: var(--hue, var(--color-text-secondary));
+  background: color-mix(in srgb, var(--hue, #8b949e) 18%, transparent);
 }
 
 .perkTitle {
@@ -895,30 +1193,20 @@ a.perk:focus-visible,
 }
 
 @media (max-width: 900px) {
-  /* phones: one swipeable row instead of nine cards down the page */
+  /* phones: all nine, as on the computer (a sideways rail hid eight), each a row like «Читатели круга» */
   .perkGrid {
-    margin: var(--spacing-6) calc(-1 * var(--spacing-4)) 0;
-    padding: 0 var(--spacing-4) var(--spacing-2);
-    grid-template-columns: none;
-    grid-auto-flow: column;
-    grid-auto-columns: 78%;
-    gap: var(--spacing-3);
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scroll-padding-inline: var(--spacing-4);
-    scrollbar-width: none;
-  }
-  .perkGrid::-webkit-scrollbar {
-    display: none;
+    margin-top: var(--spacing-6);
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
   }
   .perk {
-    scroll-snap-align: start;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto 1fr;
+    grid-template-columns: 40px minmax(0, 1fr);
+    padding: 12px 14px;
+    column-gap: var(--spacing-3);
   }
   .perkIcon {
-    grid-row: auto;
-    margin-bottom: var(--spacing-2);
+    width: 40px;
+    height: 40px;
   }
 }
 

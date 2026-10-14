@@ -4,6 +4,7 @@ import { apiGet, circleOrdinal, getApiBaseUrl, track, trackSectionView, useAuth,
 import { Button, Container, Icon } from '@/shared/ui';
 import { GuestRoom, MotionReel, ReadingRoom } from '@/widgets';
 import { plural } from '@/pages/library/bookcase/plural';
+import { finishFlagIcon } from '@/shared/lib/quietDays';
 import styles from './HomeSections.module.css';
 
 /** Sends section_view once the block has been on screen for 2+ seconds. */
@@ -436,25 +437,31 @@ export function SharedTotal({ stats }: { stats: PublicStats | null }) {
         </div>
         <p className={`${styles.totalLead} ${styles.rv}`}>{tie(t('home.tr.lead'))}</p>
 
+        {/* the facts as the Round tab's «Читатели круга» tiles: this circle's figure green (counted, alive), the rest white */}
         {stats && (
-          <p className={styles.totalFacts}>
+          <div className={styles.tiles}>
             {active && (
-              <>
-                {/* the circle's own treasury as the Round tab writes it: whole hours («433 ч») */}
-                {t('home.tr.month', {
-                  title: t(`roundTitle.${stats.round_month}`),
-                  minutes: (stats.round_minutes ?? 0) >= 60
+              <div className={`${styles.tile} ${styles.tileHot}`}>
+                <b>
+                  {(stats.round_minutes ?? 0) >= 60
                     ? t('ms.h', { h: nf.format(Math.floor((stats.round_minutes ?? 0) / 60)) }).replace(' ', '\u00a0')
-                    : `${stats.round_minutes ?? 0}\u00a0${t('home.room.min')}`,
-                })}
-                {' · '}
-              </>
+                    : `${stats.round_minutes ?? 0}\u00a0${t('home.room.min')}`}
+                </b>
+                <span>{t('home.tile.circle')}</span>
+              </div>
             )}
-            {nf.format(stats.total_participants)}{'\u00a0'}{readerWord(stats.total_participants)}
-            {' · '}
-            {nf.format(stats.total_rounds)}{'\u00a0'}
-            {plural(locale, stats.total_rounds, { one: t('home.round.one'), few: t('home.round.few'), many: t('home.round.many') })}
-            {' · '}
+            <div className={styles.tile}>
+              <b>{nf.format(stats.total_participants)}</b>
+              <span>{t('home.tile.readers', { year: since })}</span>
+            </div>
+            <div className={styles.tile}>
+              <b>{nf.format(stats.total_rounds)}</b>
+              <span>{plural(locale, stats.total_rounds, { one: t('home.round.one'), few: t('home.round.few'), many: t('home.round.many') })}</span>
+            </div>
+          </div>
+        )}
+        {stats && (
+          <p className={styles.storyLine}>
             <Link to="/about" className={styles.storyLink} onClick={() => track('home_cta', { place: 'treasury', action: 'about' })}>
               {t('home.tr.story')}{'\u00a0'}›
             </Link>
@@ -490,11 +497,54 @@ export function SharedTotal({ stats }: { stats: PublicStats | null }) {
 }
 
 const GETS = [1, 2, 3, 4];
+/* the pieces of the Round tab each promise is drawn with — its own visual words, not pictures drawn for the page */
+const BARS = [42, 68, 55, 90, 63, 78, 100];
+const HABIT = [1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1];
+const FACES: Record<string, string[]> = { ru: ['А', 'М', 'Д', 'Ж', 'Т'], kk: ['А', 'М', 'Д', 'Ж', 'Т'], en: ['A', 'M', 'D', 'J', 'T'] };
+const FACE_HUES = ['#4ECDC4', '#F783C8', '#7C83FD', '#F2A93B', '#5FD068'];
 
-/** What a month in the circle gives, and the little it asks. */
+function GetArt({ n, covers, locale }: { n: number; covers: string[]; locale: string }) {
+  // a week of minutes, as the results page draws them
+  if (n === 1) return <span className={styles.artBars}>{BARS.map((h, i) => <i key={i} style={{ height: `${h}%` }} />)}</span>;
+  // the days that counted, as «Мой месяц» draws them
+  if (n === 2) return <span className={styles.artDots}>{HABIT.map((on, i) => <i key={i} className={on ? styles.dotOn : ''} />)}</span>;
+  // readers, as «Читатели круга» draws them
+  if (n === 3) {
+    return (
+      <span className={styles.artFaces}>
+        {(FACES[locale] ?? FACES.ru).map((l, i) => <i key={i} style={{ '--hue': FACE_HUES[i] } as CSSProperties}>{l}</i>)}
+        <b>1 000+</b>
+      </span>
+    );
+  }
+  // the circle's own books, and the gift
+  return (
+    <span className={styles.artCovers}>
+      {covers.slice(0, 3).map((u) => <img key={u} src={u} alt="" loading="lazy" decoding="async" />)}
+      <i className={styles.artGift}><Icon name="gift" size="sm" /></i>
+    </span>
+  );
+}
+
+/** What a month in the circle gives (the old front page's block, kept by the founder's wish). */
 export function MonthGets() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const ref = useScene<HTMLElement>('gets');
+  const [covers, setCovers] = useState<string[]>([]);
+  useEffect(() => {
+    let alive = true;
+    apiGet<PublicBook[]>('/stats/public/books').then(({ data }) => {
+      if (alive && data) setCovers(data.slice(0, 3).map((b) => `${getApiBaseUrl()}${b.cover_url}`));
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  // «От вас: a · b · c» as chips, each with its dot of colour
+  const need = t('home.need');
+  const cut = need.indexOf(': ');
+  const needHead = cut > 0 ? need.slice(0, cut) : '';
+  const needItems = (cut > 0 ? need.slice(cut + 2) : need).split(' · ');
   return (
     <section ref={ref} className={styles.gets} aria-labelledby="gets-title">
       <Container>
@@ -502,18 +552,56 @@ export function MonthGets() {
         <ul className={styles.getGrid}>
           {GETS.map((n, i) => (
             <li key={n} className={`${styles.get} ${styles.rv}`} style={stagger(i)}>
+              <span className={styles.getArt} aria-hidden="true"><GetArt n={n} covers={covers} locale={locale} /></span>
               <span className={styles.getBig}>{tie(t(`home.get.${n}.b`))}</span>
               <span className={styles.getText}>{tie(t(`home.get.${n}.t`))}</span>
             </li>
           ))}
         </ul>
-        <p className={`${styles.need} ${styles.rv}`}>{tie(t('home.need'))}</p>
+        <div className={`${styles.need} ${styles.rv}`}>
+          {needHead && <span className={styles.needHead}>{needHead}</span>}
+          <ul className={styles.needChips}>
+            {needItems.map((x, i) => <li key={i} style={{ '--hue': ['#5FD068', '#45AAF2', '#F2A93B', '#F783C8'][i % 4] } as CSSProperties}>{tie(x)}</li>)}
+          </ul>
+        </div>
       </Container>
     </section>
   );
 }
 
 const FAQ = [1, 2, 3, 4, 5];
+
+/* each step with the piece of the Round tab it is about: the sign-up days, the dial at 30, the calendar's colours, the
+   last day's flag */
+function StepArt({ n }: { n: number }) {
+  if (n === 1) return <span className={styles.artRange}><Icon name="calendar" size="sm" />1–10</span>;
+  if (n === 2) {
+    return (
+      <svg className={styles.artDial} viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="19" className={styles.dialTrack} />
+        <circle cx="24" cy="24" r="19" className={styles.dialArc} pathLength={100} />
+        <text x="24" y="28.5" textAnchor="middle">30</text>
+      </svg>
+    );
+  }
+  if (n === 3) {
+    return (
+      <span className={styles.artCells}>
+        <i className={styles.cellDone}>35</i>
+        <i className={styles.cellDone}>60</i>
+        <i className={styles.cellSome}>20</i>
+        <i className={styles.cellNone} />
+      </span>
+    );
+  }
+  return (
+    <span className={styles.artFlag}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {finishFlagIcon()}
+      </svg>
+    </span>
+  );
+}
 
 /**
  * The Round tab at work — the dial turned to 90, «+90» in the calendar, the circle's treasury — cut from the circle's
@@ -615,6 +703,7 @@ export function HowItWorks() {
                     <h3 className={styles.stepTitle}>{tie(t(`ex.step${n}.t`))}</h3>
                     <p className={styles.stepText}>{tie(t(`ex.step${n}.d`))}</p>
                   </div>
+                  <span className={styles.stepArt} aria-hidden="true"><StepArt n={n} /></span>
                 </li>
               ))}
             </ol>
@@ -647,16 +736,17 @@ export function HowItWorks() {
   );
 }
 
+/* each with its own colour from the readers' avatar palette (colorHash.ts), as «Читатели круга» shows people */
 const PERKS = [
-  { key: 'room', icon: 'candle', to: '/library/hall' },
-  { key: 'calendar', icon: 'calendar', to: '/round' },
-  { key: 'shelf', icon: 'book', to: '/library' },
-  { key: 'books', icon: 'star', to: '/books' },
-  { key: 'ai', icon: 'sparkle', to: '/reading' },
-  { key: 'market', icon: 'tag', to: '/market' },
-  { key: 'people', icon: 'users', to: '/readers' },
-  { key: 'fame', icon: 'medal', to: '/hall-of-fame' },
-  { key: 'tg', icon: 'telegram', href: 'https://t.me/+ZSmueLtmT8Y1MDBi' },
+  { key: 'room', icon: 'candle', to: '/library/hall', hue: '#F2A93B' },
+  { key: 'calendar', icon: 'calendar', to: '/round', hue: '#5FD068' },
+  { key: 'shelf', icon: 'book', to: '/library', hue: '#7C83FD' },
+  { key: 'books', icon: 'star', to: '/books', hue: '#E8C547' },
+  { key: 'ai', icon: 'sparkle', to: '/reading', hue: '#B980F0' },
+  { key: 'market', icon: 'tag', to: '/market', hue: '#F783C8' },
+  { key: 'people', icon: 'users', to: '/readers', hue: '#4ECDC4' },
+  { key: 'fame', icon: 'medal', to: '/hall-of-fame', hue: '#E8574B' },
+  { key: 'tg', icon: 'telegram', href: 'https://t.me/+ZSmueLtmT8Y1MDBi', hue: '#45AAF2' },
 ] as const;
 
 /** Everything else the platform has: for a member each card opens it, for a visitor it tells what waits. */
@@ -672,7 +762,7 @@ export function PlatformPerks() {
           {PERKS.map((p) => {
             const body = (
               <>
-                <span className={styles.perkIcon} aria-hidden="true"><Icon name={p.icon} size="md" /></span>
+                <span className={styles.perkIcon} style={{ '--hue': p.hue } as CSSProperties} aria-hidden="true"><Icon name={p.icon} size="md" /></span>
                 <strong className={styles.perkTitle}>{tie(t(`ex.perk.${p.key}.t`))}</strong>
                 <span className={styles.perkText}>{tie(t(`ex.perk.${p.key}.d`))}</span>
               </>
@@ -681,7 +771,8 @@ export function PlatformPerks() {
             if ('href' in p) {
               return <a key={p.key} className={styles.perk} href={p.href} target="_blank" rel="noopener noreferrer" onClick={onClick}>{body}</a>;
             }
-            return isAuthenticated
+            // the reading room opens to anyone (a visitor reads without an account); the rest wait for a member
+            return isAuthenticated || p.key === 'room'
               ? <Link key={p.key} className={styles.perk} to={p.to} onClick={onClick}>{body}</Link>
               : <div key={p.key} className={styles.perk}>{body}</div>;
           })}

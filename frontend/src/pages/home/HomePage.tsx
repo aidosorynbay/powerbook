@@ -86,7 +86,7 @@ export function HomePage() {
           <HomeFinal />
         </main>
 
-        <Footer />
+        <Footer onPhone />
       </div>
     </PageTransition>
   );

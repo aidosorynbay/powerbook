@@ -101,5 +101,32 @@
   .footer {
     display: none;
   }
+
+  /* a page that keeps its foot on phones (the front page): compact, two columns, the legal line under them */
+  .footer.onPhone {
+    display: block;
+    padding: var(--spacing-10) 0 var(--spacing-6);
+  }
+
+  .onPhone .content {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-6) var(--spacing-4);
+    padding-bottom: var(--spacing-6);
+  }
+
+  .onPhone .brand {
+    grid-column: 1 / -1;
+  }
+
+  .onPhone .bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-3);
+  }
+
+  .onPhone .link,
+  .onPhone .legalLink {
+    padding: 6px 0;
+  }
 }
 

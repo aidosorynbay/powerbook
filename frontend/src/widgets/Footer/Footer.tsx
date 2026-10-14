@@ -3,12 +3,14 @@ import { useI18n } from '@/shared/lib';
 import { Container, Logo, Icon } from '@/shared/ui';
 import styles from './Footer.module.css';
 
-export function Footer() {
+/** The site's foot. Phones hide it (the tab bar is the way around there) — except where a page asks for it with
+ *  `onPhone`: the front page keeps its contacts and the legal links at the very bottom for a visitor without the bar. */
+export function Footer({ onPhone = false }: { onPhone?: boolean } = {}) {
   const { t } = useI18n();
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className={styles.footer}>
+    <footer className={`${styles.footer} ${onPhone ? styles.onPhone : ''}`}>
       <Container>
         <div className={styles.content}>
           <div className={styles.brand}>
@@ -39,7 +41,8 @@ export function Footer() {
                 <Icon name="telegram" size="sm" />
                 <span>Telegram</span>
               </a>
-              <a href="mailto:hello@powerbook.ru" className={styles.link}>
+              {/* the address the privacy and terms pages give (LegalPage), not a made-up domain mailbox */}
+              <a href="mailto:madik.orynbay@gmail.com" className={styles.link}>
                 <Icon name="email" size="sm" />
                 <span>Email</span>
               </a>
