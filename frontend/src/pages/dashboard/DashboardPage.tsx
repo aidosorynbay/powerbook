@@ -655,11 +655,15 @@ export function DashboardPage() {
     }
     const panes = Array.from(el.children) as HTMLElement[];
     const apply = () => {
+      // «Мой месяц» is never shorter than the dial's page (the founder: the same size as the dial); with thin
+      // data its blocks spread out in the same height instead of leaving the card half empty
+      if (panes[1] && panes[0]) panes[1].style.minHeight = `${panes[0].offsetHeight}px`;
       const pane = panes[topPage];
       if (pane) el.style.height = `${pane.offsetHeight}px`;
     };
     apply();
-    const ro = new ResizeObserver(apply);
+    // the observer writes a pane's min-height, so it applies on the next frame, never inside its own callback
+    const ro = new ResizeObserver(() => requestAnimationFrame(apply));
     panes.forEach((x) => ro.observe(x));
     return () => ro.disconnect();
   }, [topPage, wide, calendar, isParticipant]);
@@ -770,6 +774,12 @@ export function DashboardPage() {
   const todayStr = useMemo(() => {
     const now = dayNow;
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }, [dayNow]);
+  // yesterday, for «Мой месяц»: the circle's last full day when the morning is still empty
+  const yesterdayStr = useMemo(() => {
+    const d = new Date(dayNow);
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, [dayNow]);
 
   // Sync Today panel from calendar data when calendar loads/changes
@@ -957,18 +967,16 @@ export function DashboardPage() {
       scoringEnd={roundWindow.scoringEnd}
       active={wide || topPage === 1}
       monthLabel={t(`month.my.${roundStatus.round.month}`)}
+      monthNum={roundStatus.round.month}
       dayOfRound={Math.max(1, roundDaysElapsed)}
       roundDays={roundWindow.total}
-      roundDaysLeft={roundDaysLeft}
       joinedDay={joinedDay}
       prevDays={prevDays}
-      place={(() => {
-        const i = leaderboard.findIndex((e) => e.user_id === user?.id);
-        return i >= 0 ? { rank: leaderboardRanks[i], of: leaderboard.length } : null;
-      })()}
+      prevMonthNum={prevDays?.[0] ? Number(prevDays[0].date.slice(5, 7)) : (review?.previous?.month ?? null)}
       onPlace={() => { setReadersOpen(true); track('readers_sheet_open', { from: 'stats' }); }}
       onWhichBook={() => { goTop(0); setDetailsOpen(true); track('stats_which_book', {}); }}
       circleToday={roster?.days[todayStr] ?? []}
+      circleYesterday={roster?.days[yesterdayStr] ?? []}
       circleMinutes={[...circleMinutes.values()].reduce((a, b) => a + b, 0)}
       circleSize={leaderboard.length}
       userId={user?.id}

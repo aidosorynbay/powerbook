@@ -282,8 +282,10 @@
   z-index: 3;
   padding: 4px 9px;
   border-radius: var(--radius-full);
-  background: var(--color-accent-primary-muted);
+  /* opaque: it hangs below the bar over the page, and a see-through tag let the text under it show */
+  background: linear-gradient(var(--color-accent-primary-muted), var(--color-accent-primary-muted)), var(--color-bg-primary);
   border: 1px solid var(--color-border-accent);
+  box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.5);
   color: var(--color-accent-primary);
   font-size: 11px;
   font-weight: var(--font-weight-semibold);
@@ -336,6 +338,9 @@
 @media (prefers-reduced-motion: reduce) {
   .hintDot, .hintBubble, .menuPanel { animation: none; }
 }
+
+/* light theme: the orange at 11 px needs a darker shade to read (2.9:1 → 5:1) */
+:global([data-theme='light']) .hintBubble { color: #A63D15; }
 
 @media (max-width: 900px) {
   .logoDesktop { display: none; }
