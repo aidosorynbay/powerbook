@@ -592,3 +592,80 @@ def test_visitor_titles_are_titles_and_one_address_cannot_fill_the_hall(env):
     pub = c.get("/api/reading-room/library/public").json()
     assert pub["guest_seats_left"] == 3  # 11 chairs - 3 kept for readers - 5 visitors
     gr._sits.clear()
+
+
+def _last_day_evening(env, monkeypatch):
+    """Today is the circle's last day, past the correction deadline: the circle takes no more minutes."""
+    import app.services.reading as reading_mod
+
+    env.rnd.end_day = env.today.day
+    env.db.commit()
+    monkeypatch.setattr(reading_mod, "CORRECTION_DEADLINE_HOUR", 0)
+
+
+def test_a_refused_day_keeps_the_claim_and_the_minutes(env, monkeypatch):
+    _last_day_evening(env, monkeypatch)
+    c = env.client
+    g = c.post("/api/reading-room/guest-sit", json={"seat": 1, "book": "Дюна"}).json()
+    _age_guest(env, g["id"], 20 * 60)
+    c.post(f"/api/reading-room/guest/{g['id']}/finish", json={"token": g["token"]})
+    r = c.post(f"/api/reading-room/guest/{g['id']}/claim", json={"token": g["token"]}, headers=env.h(env.reader))
+    assert r.status_code == 200 and r.json()["minutes"] == 20 and not r.json()["credited"]
+    env.db.expire_all()
+    # kept as the reader's own room minutes, and a second claim finds it
+    (s,) = env.db.query(ReadingRoomSession).filter_by(user_id=env.reader.id).all()
+    assert int(s.accumulated_seconds) // 60 == 20
+    again = c.post(f"/api/reading-room/guest/{g['id']}/claim", json={"token": g["token"]}, headers=env.h(env.reader))
+    assert again.status_code == 200 and again.json()["minutes"] == 20
+
+
+def test_a_members_sitting_closes_even_when_the_day_is_refused(env, monkeypatch):
+    _last_day_evening(env, monkeypatch)
+    c, h = env.client, env.h(env.reader)
+    sid = c.post("/api/reading-room/round/sit", json={"seat": 3, "book": "Дюна"}, headers=h).json()["id"]
+    _age(env, sid, 25 * 60)
+    fin = c.post(f"/api/reading-room/sessions/{sid}/finish", headers=h).json()
+    assert fin["minutes"] == 25 and not fin["credited"]
+    env.db.expire_all()
+    s = env.db.get(ReadingRoomSession, uuid.UUID(sid))
+    assert s.ended_at is not None and s.status == "ended"
+
+
+def test_a_claim_waiting_on_the_lock_does_not_credit_the_day_twice(env, monkeypatch):
+    """Crediting commits on its own: a second claim woken right then must find the first one recorded."""
+    from app.repositories.reading_logs import ReadingLogRepository
+
+    if _last_day_of_round(env):
+        pytest.skip("the round's last day only takes corrections")
+    c = env.client
+    g = c.post("/api/reading-room/guest-sit", json={"seat": 1, "book": "Дюна"}).json()
+    _age_guest(env, g["id"], 20 * 60)
+    c.post(f"/api/reading-room/guest/{g['id']}/finish", json={"token": g["token"]})
+    orig, box = ReadingLogRepository.upsert_minutes, {}
+
+    def second_claim_meanwhile(self, **kw):
+        row = orig(self, **kw)
+        if "b" not in box:
+            box["b"] = c.post(f"/api/reading-room/guest/{g['id']}/claim", json={"token": g["token"]}, headers=env.h(env.reader)).json()
+        return row
+
+    monkeypatch.setattr(ReadingLogRepository, "upsert_minutes", second_claim_meanwhile)
+    a = c.post(f"/api/reading-room/guest/{g['id']}/claim", json={"token": g["token"]}, headers=env.h(env.reader)).json()
+    env.db.expire_all()
+    assert a["minutes"] == 20 and box["b"]["minutes"] == 20
+    assert env.db.query(ReadingLog).filter_by(user_id=env.reader.id, date=env.today).one().minutes == 20
+    assert env.db.query(ReadingRoomSession).filter_by(user_id=env.reader.id).count() == 1
+
+
+def test_a_forged_first_hop_does_not_lift_the_limit(env):
+    import app.services.guest_room as gr
+
+    gr._sits.clear()
+    c = env.client
+    ok = sum(
+        c.post("/api/reading-room/guest-sit", json={"seat": i, "book": "Дюна"},
+               headers={"X-Forwarded-For": f"10.9.8.{i}, 203.0.113.7"}).status_code == 200
+        for i in range(6)
+    )
+    assert ok == 4  # the proxy's own hop (last) is the address
+    gr._sits.clear()

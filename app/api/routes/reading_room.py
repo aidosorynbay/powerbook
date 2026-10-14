@@ -109,9 +109,14 @@ class GuestToken(BaseModel):
 
 
 def _address(request: Request) -> str | None:
-    """The visitor's address as the proxy saw it; None when the proxy doesn't say (then only the hall's cap holds)."""
-    forwarded = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
-    return forwarded or request.headers.get("x-real-ip") or None
+    """The visitor's address as our own proxy saw it: X-Real-IP, or the last X-Forwarded-For hop (the one the proxy
+    appended — earlier hops are whatever the client sent, so they prove nothing). None when the proxy doesn't say;
+    then only the hall's cap holds."""
+    real = request.headers.get("x-real-ip", "").strip()
+    if real:
+        return real
+    hops = [h.strip() for h in request.headers.get("x-forwarded-for", "").split(",") if h.strip()]
+    return hops[-1] if hops else None
 
 
 @router.post("/guest-sit")

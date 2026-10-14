@@ -199,7 +199,9 @@ class ReadingRoomService:
             # on the book the reader sat down with: its minutes are the same book's on the shelf and in «Что читаю»
             reading.log_session(round_id=rnd.id, user_id=s.user_id, day=day, minutes=minutes, title=s.book_title)
         except HTTPException as e:
-            self.db.rollback()
+            # every refusal (closed circle, the last day's evening, not a participant) comes before log_minutes writes
+            # anything, so there is nothing to undo — and a rollback here threw away the caller's own pending close
+            # (a member's sitting stayed open after «Закончить») or claim
             return str(e.detail)
         s.credited_minutes, s.credited_round_id, s.credited_date = minutes, rnd.id, day
         return None

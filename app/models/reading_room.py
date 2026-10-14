@@ -13,6 +13,7 @@ from sqlalchemy import (
     String,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -85,7 +86,14 @@ class GuestRoomSitting(TimestampMixin, Base):
     """
 
     __tablename__ = "guest_room_sittings"
-    __table_args__ = (Index("ix_guest_room_sittings_open", "hall", "ended_at"),)
+    __table_args__ = (
+        Index("ix_guest_room_sittings_open", "hall", "ended_at"),
+        # one visitor per chair at a time: two taps on the same free chair can't both sit down
+        Index(
+            "uq_guest_room_sittings_open_seat", "hall", "seat", unique=True,
+            postgresql_where=text("ended_at IS NULL"), sqlite_where=text("ended_at IS NULL"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

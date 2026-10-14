@@ -40,9 +40,14 @@ def upgrade() -> None:
     )
     op.create_index("ix_guest_room_sittings_token_hash", "guest_room_sittings", ["token_hash"])
     op.create_index("ix_guest_room_sittings_open", "guest_room_sittings", ["hall", "ended_at"])
+    op.create_index(
+        "uq_guest_room_sittings_open_seat", "guest_room_sittings", ["hall", "seat"], unique=True,
+        postgresql_where=sa.text("ended_at IS NULL"),
+    )
 
 
 def downgrade() -> None:
+    op.drop_index("uq_guest_room_sittings_open_seat", table_name="guest_room_sittings")
     op.drop_index("ix_guest_room_sittings_open", table_name="guest_room_sittings")
     op.drop_index("ix_guest_room_sittings_token_hash", table_name="guest_room_sittings")
     op.drop_table("guest_room_sittings")

@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -43,18 +44,30 @@ _sits: dict[str, deque[float]] = defaultdict(deque)
 _sits_lock = threading.Lock()
 
 
+def _recent_sits(address: str, now: float) -> deque[float]:
+    q = _sits[address]
+    while q and now - q[0] > SITS_WINDOW_SECONDS:
+        q.popleft()
+    return q
+
+
 def _allow_sit(address: str | None) -> bool:
+    """Whether this address may start one more sitting now (only sittings actually started count, see _count_sit)."""
     if not address:
         return True
     now = time.monotonic()
     with _sits_lock:
-        q = _sits[address]
-        while q and now - q[0] > SITS_WINDOW_SECONDS:
-            q.popleft()
-        if len(q) >= SITS_PER_ADDRESS:
-            return False
-        q.append(now)
-        return True
+        ok = len(_recent_sits(address, now)) < SITS_PER_ADDRESS
+        # addresses with nothing recent are dropped, so the table never grows past the last ten minutes
+        for key in [k for k, q in _sits.items() if not q or now - q[-1] > SITS_WINDOW_SECONDS]:
+            del _sits[key]
+        return ok
+
+
+def _count_sit(address: str | None) -> None:
+    if address:
+        with _sits_lock:
+            _recent_sits(address, time.monotonic()).append(time.monotonic())
 
 
 def _now() -> datetime:
@@ -183,8 +196,14 @@ class GuestRoomService:
             status="reading", accumulated_seconds=0, run_started_at=now, last_seen_at=now,
         )
         self.db.add(g)
-        self.db.commit()
+        try:
+            self.db.commit()
+        except IntegrityError:
+            # two visitors tapped the same free chair at once: the open-seat index lets one in
+            self.db.rollback()
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Chair is taken")
         self.db.refresh(g)
+        _count_sit(address)
         return {**self.out(g), "token": token}
 
     def heartbeat(self, *, sitting_id: uuid.UUID, token: str) -> dict:
@@ -254,8 +273,11 @@ class GuestRoomService:
         self.db.add(s)
         self.db.flush()
         s.created_at = g.created_at
+        # the claim is recorded (and the row lock let go) before the minutes are credited: crediting commits on its
+        # own, and a second claim waiting on the lock must find this one already made, not credit the day again
+        g.claimed_session_id = s.id
+        self.db.commit()
         minutes = int(g.accumulated_seconds) // 60
         why = rooms.credit(s, minutes, reading_day(_aware(g.ended_at)))
-        g.claimed_session_id = s.id
         self.db.commit()
         return {"minutes": minutes, "credited": int(s.credited_minutes) > 0, "reason": why}
