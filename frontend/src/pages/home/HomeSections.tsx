@@ -289,6 +289,7 @@ export function RoomSection() {
             hall="library"
             keepChairsClear
             reads
+            cinematic
             className={styles.roomLive}
             onRoom={(r) => setCount(r.readers.length)}
             poster={
@@ -545,7 +546,7 @@ export function PlatformPerks() {
   );
 }
 
-/** The last word, on the night: start now, or take the circle's next step. */
+/** The last word, over the Library's shelves: start now, or take the circle's next step. */
 export function HomeFinal() {
   const { t } = useI18n();
   const { isAuthenticated, isLoading } = useAuth();
@@ -555,6 +556,14 @@ export function HomeFinal() {
 
   return (
     <section ref={ref} className={styles.final}>
+      {/* the Library's own bookcase, darkened and out of focus (the founder, 2026-10-14) */}
+      <picture className={styles.finalArt} aria-hidden="true">
+        <source media="(max-width: 759px)" type="image/webp" srcSet="/home/shelves-tall.webp" />
+        <source media="(max-width: 759px)" srcSet="/home/shelves-tall.jpg" />
+        <source type="image/webp" srcSet="/home/shelves-wide.webp" />
+        <img src="/home/shelves-wide.jpg" alt="" loading="lazy" decoding="async" />
+      </picture>
+      <div className={styles.finalShade} aria-hidden="true" />
       <Container>
         <div className={styles.finalInner}>
           <h2 className={styles.finalTitle}>{t('home.final.title')}</h2>

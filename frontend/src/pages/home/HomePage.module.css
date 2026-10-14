@@ -55,7 +55,9 @@
   animation: none;
 }
 
-/* the band melts away at both ends: the ceiling into the header, the floor into the night under the words */
+/* the band melts away at both ends: the ceiling into the header (its exact colour, #0D1117), the floor into the night
+   under the words. Eased fades (the «scrim» curve): dark at the edge, then a long tail that never shows where it ends —
+   a straight fade left a visible line inside the photo. */
 .photoShade {
   position: absolute;
   left: 0;
@@ -66,19 +68,33 @@
   background:
     linear-gradient(
       180deg,
-      rgb(13, 15, 19) 0%,
-      rgba(13, 15, 19, 0.82) 9%,
-      rgba(13, 15, 19, 0.5) 19%,
-      rgba(13, 15, 19, 0.2) 30%,
-      rgba(13, 15, 19, 0) 42%
+      rgb(13, 17, 23) 0%,
+      rgba(13, 17, 23, 0.738) 9.9%,
+      rgba(13, 17, 23, 0.541) 17.7%,
+      rgba(13, 17, 23, 0.382) 24.4%,
+      rgba(13, 17, 23, 0.278) 29.4%,
+      rgba(13, 17, 23, 0.194) 33.8%,
+      rgba(13, 17, 23, 0.126) 38%,
+      rgba(13, 17, 23, 0.075) 41.7%,
+      rgba(13, 17, 23, 0.042) 44.8%,
+      rgba(13, 17, 23, 0.021) 47.3%,
+      rgba(13, 17, 23, 0.008) 49.5%,
+      rgba(13, 17, 23, 0) 52%
     ),
     linear-gradient(
       0deg,
-      #0b0906 0%,
-      rgba(11, 9, 6, 0.86) 11%,
-      rgba(11, 9, 6, 0.55) 24%,
-      rgba(11, 9, 6, 0.22) 38%,
-      rgba(11, 9, 6, 0) 52%
+      rgb(11, 9, 6) 0%,
+      rgba(11, 9, 6, 0.738) 11.8%,
+      rgba(11, 9, 6, 0.541) 21.1%,
+      rgba(11, 9, 6, 0.382) 29.1%,
+      rgba(11, 9, 6, 0.278) 35%,
+      rgba(11, 9, 6, 0.194) 40.3%,
+      rgba(11, 9, 6, 0.126) 45.3%,
+      rgba(11, 9, 6, 0.075) 49.7%,
+      rgba(11, 9, 6, 0.042) 53.4%,
+      rgba(11, 9, 6, 0.021) 56.4%,
+      rgba(11, 9, 6, 0.008) 59%,
+      rgba(11, 9, 6, 0) 62%
     );
 }
 
@@ -87,10 +103,13 @@
   padding-top: 10px;
 }
 
+/* phones: a band of 150px on short screens, up to 196px on tall ones — the fades need the room, the actions stay above
+   the fold (390×664: «Начать читать» ends at ~540px) */
 @media (max-width: 759px) {
   .photoArt,
   .photoShade {
     height: 150px;
+    height: clamp(150px, 24svh, 196px);
   }
 }
 
@@ -116,13 +135,43 @@
     object-position: 72% 45%;
   }
 
+  /* the ceiling and the floor first (on top), so the photo meets the header in the header's own colour across the whole
+     width; then the dark left the words sit on */
   .photoShade {
     inset: 0;
     height: auto;
     background:
-      linear-gradient(90deg, rgba(10, 7, 4, 0.9) 0%, rgba(10, 7, 4, 0.72) 32%, rgba(10, 7, 4, 0.2) 50%, rgba(10, 7, 4, 0) 60%),
-      linear-gradient(180deg, rgba(13, 15, 19, 0.7) 0%, rgba(13, 15, 19, 0) 14%),
-      linear-gradient(0deg, #0b0906 0%, rgba(11, 9, 6, 0.75) 7%, rgba(11, 9, 6, 0.25) 14%, rgba(11, 9, 6, 0) 20%);
+      linear-gradient(
+        180deg,
+        rgb(13, 17, 23) 0%,
+        rgba(13, 17, 23, 0.738) 7.2%,
+        rgba(13, 17, 23, 0.541) 12.9%,
+        rgba(13, 17, 23, 0.382) 17.9%,
+        rgba(13, 17, 23, 0.278) 21.5%,
+        rgba(13, 17, 23, 0.194) 24.7%,
+        rgba(13, 17, 23, 0.126) 27.7%,
+        rgba(13, 17, 23, 0.075) 30.5%,
+        rgba(13, 17, 23, 0.042) 32.7%,
+        rgba(13, 17, 23, 0.021) 34.6%,
+        rgba(13, 17, 23, 0.008) 36.2%,
+        rgba(13, 17, 23, 0) 38%
+      ),
+      linear-gradient(
+        0deg,
+        rgb(11, 9, 6) 0%,
+        rgba(11, 9, 6, 0.738) 8.7%,
+        rgba(11, 9, 6, 0.541) 15.6%,
+        rgba(11, 9, 6, 0.382) 21.6%,
+        rgba(11, 9, 6, 0.278) 26%,
+        rgba(11, 9, 6, 0.194) 29.9%,
+        rgba(11, 9, 6, 0.126) 33.6%,
+        rgba(11, 9, 6, 0.075) 36.9%,
+        rgba(11, 9, 6, 0.042) 39.6%,
+        rgba(11, 9, 6, 0.021) 41.9%,
+        rgba(11, 9, 6, 0.008) 43.8%,
+        rgba(11, 9, 6, 0) 46%
+      ),
+      linear-gradient(90deg, rgba(10, 7, 4, 0.9) 0%, rgba(10, 7, 4, 0.72) 32%, rgba(10, 7, 4, 0.2) 50%, rgba(10, 7, 4, 0) 60%);
   }
 
   .photoWords {

@@ -78,6 +78,12 @@ export interface RoomEngineOptions {
   band?: (() => { top: number; above?: number[][]; bottom: number } | null) | null;
   onFlip?: (key: string) => void;
   onReady?: () => void;
+  /** Readers sit still exactly as rendered: no breathing, eye or blink warps, no page turns (the front page's preview). */
+  still?: boolean;
+  /** The canvas at the screen's density (up to 2.5× on phones, 2× on computers) instead of the lighter defaults. */
+  crisp?: boolean;
+  /** Name tags that would land behind the words at the photo's foot (`ui`'s first child) are hidden. */
+  clearOfWords?: boolean;
 }
 
 export function createRoomEngine(opts: RoomEngineOptions): RoomEngine;

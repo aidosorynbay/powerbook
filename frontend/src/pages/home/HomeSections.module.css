@@ -360,7 +360,9 @@
   isolation: isolate;
   overflow: hidden;
   padding: var(--spacing-20) 0 var(--spacing-16);
+  /* the warm glow rises out of the hero's floor instead of starting on a line where the photo ends */
   background:
+    linear-gradient(180deg, #0b0906 0%, rgba(11, 9, 6, 0.75) 40px, rgba(11, 9, 6, 0.4) 90px, rgba(11, 9, 6, 0.15) 140px, rgba(11, 9, 6, 0) 190px),
     radial-gradient(ellipse 70% 55% at 15% 0%, rgba(242, 100, 48, 0.12), transparent 70%),
     #0b0906;
   color-scheme: dark;
@@ -736,13 +738,37 @@ a.perk:hover {
   }
 }
 
-/* ── Финал: на ночном фоне, без картинки (книга — один раз, наверху) ── */
+/* ── Финал: полки раздела «Библиотека», затемнённые и размытые ── */
 .final {
   position: relative;
+  isolation: isolate;
+  overflow: hidden;
   padding: var(--spacing-20) 0;
+  background: #0b0906;
+}
+
+.finalArt,
+.finalArt img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
+.finalArt img {
+  object-fit: cover;
+  object-position: 50% 40%;
+}
+
+/* the shelves sink into the page above and below, and stay darkest behind the words */
+.finalShade {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background:
-    radial-gradient(ellipse 60% 70% at 50% 100%, rgba(242, 100, 48, 0.14), transparent 70%),
-    #0b0906;
+    radial-gradient(ellipse 55% 65% at 50% 50%, rgba(8, 6, 4, 0.72), rgba(8, 6, 4, 0.35) 70%, rgba(8, 6, 4, 0.2)),
+    linear-gradient(180deg, #0b0906 0%, rgba(11, 9, 6, 0.6) 14%, rgba(11, 9, 6, 0) 30%, rgba(11, 9, 6, 0) 70%, rgba(11, 9, 6, 0.6) 86%, #0b0906 100%);
 }
 
 .finalInner {

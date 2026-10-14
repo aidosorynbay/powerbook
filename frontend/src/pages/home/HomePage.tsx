@@ -54,10 +54,6 @@ export function HomePage() {
         <Header />
 
         <main className={styles.main}>
-          {/* The live reading room is the first screen (founder, 14 Oct: the room once, as the hero, live): the
-              circle's hall with whoever reads in it now, and the way in. GA4 showed newcomers give the page ~30 s,
-              and the computer's «put it on your phone» landing brought no installs. The still photo shows until
-              the living one is drawn. */}
           {/* The first screen: the community's own picture (the Telegram group's since 2021), the circle's words,
               and the way in. The council (2026-10-14): the room as the hero promised «reading at the same moment»,
               the competitors' model, while PowerBook is minutes added up — so the room is shown once, below. */}

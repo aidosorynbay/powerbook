@@ -362,9 +362,12 @@ function motion(id,p,now,vis){
   const male=!!(CASTS&&p&&p.gender==='m'),EY=CASTS?CASTS.eyes[CAST_V]?.[male?'m':'f']?.[id]||null:R.eyes||null;
   const m=MOT[id]||(MOT[id]={seed:Math.random()*100,period:3.6+Math.random()*.9,line:3.2+Math.random()*.9,cur:{...POSE0},from:{...POSE0},to:{...POSE0},pt0:-99,pdur:3,pnext:now+8+Math.random()*14,blinkT:-9,blinkNext:now+1+Math.random()*3,blinkK:1,paused:false,flipSeen:null});
   const paused=!!(p&&p.status==='paused'),e=p&&p.flipAt!=null?now-p.flipAt:-99,turning=e>-FLIP.reach&&e<FLIP.dur+FLIP.back;
+  /* a still (opts.still, the front page): the reader exactly as rendered — no breath, no wandering eyes, no blinks; a face
+     warped at a few pixels per feature reads as eyes swimming, while a still frame reads as cinema */
+  const still=!!(p&&p.still);
   /* a new way of sitting every 15–40 s, never in the middle of a page turn, and soon after a pause or a return to the book */
   if(paused!==m.paused){m.paused=paused;m.pnext=Math.min(m.pnext,now+.6+Math.random())}
-  if(now>m.pnext&&!turning){m.from={...m.cur};m.to=newPose(id,m.cur,paused);m.pt0=now;m.pdur=2.4+Math.random()*1.2;m.pnext=now+15+Math.random()*25;if(EY&&Math.random()<.7)m.blinkNext=Math.min(m.blinkNext,now+.12)}
+  if(!still&&now>m.pnext&&!turning){m.from={...m.cur};m.to=newPose(id,m.cur,paused);m.pt0=now;m.pdur=2.4+Math.random()*1.2;m.pnext=now+15+Math.random()*25;if(EY&&Math.random()<.7)m.blinkNext=Math.min(m.blinkNext,now+.12)}
   /* the torso moves first, the book a beat later, the head last */
   const kt=smooth((now-m.pt0)/m.pdur),kb=smooth((now-m.pt0-.12)/m.pdur),kh=smooth((now-m.pt0-.22)/m.pdur);
   for(const k in POSE0)m.cur[k]=lerp(m.from[k],m.to[k],k[0]==='t'?kt:k[0]==='h'?kh:kb);
@@ -376,6 +379,7 @@ function motion(id,p,now,vis){
   let tA=c.tA+.0012*br,tX=c.tX,tY=c.tY-.45*br,
       hA=c.hA+(rx-.5)*.006+.004*Math.sin(.37*now+s),hX=c.hX+(rx-.5)*.7,hY=c.hY+rx*.3+.2*Math.sin(.29*now+s*5),
       bA=c.bA+.003*Math.sin(.63*now+s)+.002*Math.sin(1.71*now+s*2),bX=c.bX+.35*Math.sin(.8*now+s*3),bY=c.bY+.4*Math.sin(.55*now+s*4),bS=c.bS;
+  if(still){tA=tX=tY=hA=hX=hY=bA=bX=bY=0;bS=1}
   let hand=[0,0,0,1],ph=-1;
   if(G&&turning){
     ph=e>=0&&e<FLIP.dur?e/FLIP.dur:-1;
@@ -387,13 +391,13 @@ function motion(id,p,now,vis){
     if(EY&&e>FLIP.dur*.45&&m.flipSeen!==p.flipAt){m.flipSeen=p.flipAt;m.blinkNext=now}
   }
   /* blinks, now and then twice */
-  if(EY&&now>m.blinkNext){m.blinkT=now;m.blinkK=.88+Math.random()*.12;m.blinkNext=now+(Math.random()<.14?.34:2.8+Math.random()*4.5)}
+  if(!still&&EY&&now>m.blinkNext){m.blinkT=now;m.blinkK=.88+Math.random()*.12;m.blinkNext=now+(Math.random()<.14?.34:2.8+Math.random()*4.5)}
   /* parts, parent first: the head rides on the torso, the book on most of the torso's lean, the hand on the book */
   const T0=aRot(R.hip,tA,1,tX,tY),Th=aMul(T0,aRot(R.neck,hA,1,hX,hY)),Tb=aMul(aRot(R.hip,tA*.6,1,tX*.6,tY*.6),aRot(R.book,bA,bS,bX,bY));
   const Tw=R.wrist?aMul(Tb,aRot(R.wrist,hand[2],hand[3],hand[0],hand[1])):Tb;
   /* the site's masks run a soft seam past each reader's outline, so the box they may be drawn in is padded */
   const B=CASTS&&CASTS.box[id]||R.box;slotBuf.set([B[0]-PAD[0],B[1]-PAD[1],B[2]+PAD[0],B[3]+PAD[1]],o);slotBuf.set(R.torso,o+4);putInv(T0,slotBuf,o+8);putInv(Th,slotBuf,o+14);putInv(Tb,slotBuf,o+20);
-  const blink=EY?blinkAmt(now-m.blinkT)*m.blinkK:0;
+  const blink=EY&&!still?blinkAmt(now-m.blinkT)*m.blinkK:0;
   slotBuf[o+26]=id+(male?32:0);slotBuf[o+27]=vis;slotBuf[o+28]=blink;
   /* a page slot only while the page turns, and eye slots only while the eyes blink: with every reader able to do both,
      the shader's few slots go to whoever is doing it right now */
@@ -553,7 +557,10 @@ export function createRoomEngine(opts){
   function layout(){
     const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;layouts++;
     // phones have 3× screens and a small canvas: drawn at 1.6× they looked soft
-    const dpr=Math.min(devicePixelRatio||1,w<760?quality.dpr:1.6);
+    /* opts.crisp (the front page): drawn at up to 2.5× on phones and 2× on computers, not the room's lighter 2× / 1.6× —
+       a canvas drawn below the screen's density and stretched by the browser is what made faces soft; a slow frame rate
+       still steps it down (quality.dpr) */
+    const dpr=Math.min(devicePixelRatio||1,w<760?(opts.crisp?quality.dpr*1.25:quality.dpr):(opts.crisp?Math.min(2,quality.dpr):1.6));
     view.w=w;view.h=h;view.dpr=dpr;view.mobile=w<760;
     cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);fx.width=cv.width;fx.height=cv.height;
     view.rect=view.mobile&&opts.phoneShare?{x:0,y:0,w,h:h*opts.phoneShare}:{x:0,y:0,w,h};
@@ -681,7 +688,7 @@ export function createRoomEngine(opts){
 
   /* ---------- page turns now and then, somewhere in the room ---------- */
   let T=0,nextFlip=6+Math.random()*6;
-  function flipNow(o){if(!o||o.status!=='reading')return false;if(o.flipAt!=null&&T-o.flipAt<FLIP.dur+FLIP.back)return false;o.flipAt=T+FLIP.reach;setTimeout(()=>{if(!dead)opts.onFlip?.(o.key)},FLIP.reach*1000);return true}
+  function flipNow(o){if(!o||o.status!=='reading'||opts.still)return false;if(o.flipAt!=null&&T-o.flipAt<FLIP.dur+FLIP.back)return false;o.flipAt=T+FLIP.reach;setTimeout(()=>{if(!dead)opts.onFlip?.(o.key)},FLIP.reach*1000);return true}
 
   /* ---------- frame loop ---------- */
   const lampBuf=new Float32Array(24*4),swayBuf=new Float32Array(6*4);
@@ -792,6 +799,13 @@ export function createRoomEngine(opts){
         for(let k=0;k<5;k++){const hit=placed.find(r=>p.x-w/2<r.r+3&&p.x+w/2>r.l-3&&bot-h<r.b+3&&bot>r.t-3);if(!hit)break;bot=hit.t-4}
         p.y=bot+8;placed.push({l:p.x-w/2,r:p.x+w/2,t:bot-h,b:bot});
       }
+      /* opts.clearOfWords (the front page): a name tag that would land behind the words at the photo's foot is hidden,
+         not left showing through the heading and its button */
+      const words=opts.clearOfWords&&opts.ui&&opts.ui.firstElementChild;
+      if(words){
+        const o=opts.tags.getBoundingClientRect(),r=words.getBoundingClientRect(),L=r.left-o.left-6,R=r.right-o.left+6,Tp=r.top-o.top-6;
+        els.forEach((_,i)=>{const p=pos[i];if(hs[i]&&!p.off&&p.x+ws[i]/2>L&&p.x-ws[i]/2<R&&p.y-8>Tp)p.off=true});
+      }
       els.forEach((el,i)=>{
         const {off,x,y}=pos[i];
         if(ls[i])el.style.setProperty('--lx',(clamp(x,ls[i]/2+8,view.w-ls[i]/2-8)-x).toFixed(1)+'px');
@@ -806,7 +820,7 @@ export function createRoomEngine(opts){
     setVariant(v){variant=v;loadVariant(v)},
     setOccupants(list){
       const next=new Map();
-      for(const o of list){const prev=occ.get(o.key);next.set(o.key,prev?Object.assign(prev,{seat:o.seat,char:o.char,status:o.status,gender:o.gender}):{...o,flipAt:null})}
+      for(const o of list){const prev=occ.get(o.key);next.set(o.key,prev?Object.assign(prev,{seat:o.seat,char:o.char,status:o.status,gender:o.gender,still:!!opts.still}):{...o,flipAt:null,still:!!opts.still})}
       occ=next;seats.forEach(s=>{s.occ=null});
       for(const o of occ.values())if(seats[o.seat])seats[o.seat].occ=o;
     },

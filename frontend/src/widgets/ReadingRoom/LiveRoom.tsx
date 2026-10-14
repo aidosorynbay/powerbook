@@ -41,6 +41,8 @@ type Props = {
   /** The still photo shown until the living one is ready. */
   poster?: ReactNode;
   className?: string;
+  /** A cinematic still: readers as rendered (no breathing or blinking warps), the canvas at full screen density. */
+  cinematic?: boolean;
   /** Tags say «читает · 24 мин» instead of a running clock (the front page: a bare «1:16:28» read like an
    *  audiobook's length). */
   reads?: boolean;
@@ -57,7 +59,7 @@ type Props = {
  * (breathing, blinking readers, lamps), the readers sitting in it right now —
  * each with a timer and the book on their knees, never a name.
  */
-export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0, poster, className, uiClassName, keepChairsClear, reads, style }: Props) {
+export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0, poster, className, uiClassName, keepChairsClear, reads, cinematic, style }: Props) {
   const { t } = useI18n();
   const phone = useMemo(() => window.matchMedia?.(PHONE).matches ?? false, []);
   const hk: HallKey = phone ? PHONE_HALL[hall] : HALL_KEY[hall];
@@ -127,6 +129,10 @@ export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0,
       // the evening room: lamps lit, the window dark
       variant: 'night',
       small, reduced,
+      // sharp everywhere outside /round; still only where asked (the front page), and there no tag behind the words
+      crisp: true,
+      still: !!cinematic,
+      clearOfWords: !!cinematic,
       onReady: () => setReady(true),
     });
     engineRef.current = engine;
@@ -142,7 +148,7 @@ export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0,
       engine.destroy();
       engineRef.current = null;
     };
-  }, [hk, reduced, phone, keepChairsClear, glKey]);
+  }, [hk, reduced, phone, keepChairsClear, glKey, cinematic]);
 
   const readers = useMemo(() => room?.readers ?? [], [room]);
   useEffect(() => {
