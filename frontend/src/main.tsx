@@ -2,9 +2,10 @@ import './instrument';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from '@/app';
-import { getDisplayMode, initAnalytics, initInstall } from '@/shared/lib';
+import { getDisplayMode, initAnalytics, initClarity, initInstall } from '@/shared/lib';
 
 initAnalytics({ display_mode: getDisplayMode() });
+initClarity();
 // After analytics, so the first thing the app on the home screen reports is
 // that it is the app; before React, so Chrome's install offer is not missed.
 initInstall();

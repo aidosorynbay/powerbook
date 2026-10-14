@@ -295,7 +295,7 @@ const translations = {
     'suggestionsAdmin.anonymous': 'Аноним',
 
     // Bottom nav
-    'nav.round': 'Раунд',
+    'nav.round': 'Круг',
     'nav.archive': 'Архив',
     'nav.results': 'Результаты',
     'nav.insights': 'Профиль',
@@ -764,7 +764,7 @@ const translations = {
     'archive.peakShort': 'пик',
 
     // Footer
-    'footer.description': 'Ежемесячный челлендж по чтению с реальными результатами. Читайте каждый день, соревнуйтесь и выигрывайте книги.',
+    'footer.description': 'Каждый месяц — новый круг чтения: по 30 минут в день вместе с сообществом. Бесплатно.',
     'footer.navigation': 'Навигация',
     'footer.contact': 'Связь',
     'legal.contact': 'Вопросы по этим условиям —',
@@ -1443,6 +1443,43 @@ const translations = {
     'dashboard.youAreIn': 'Вы участвуете в этом круге',
     'dashboard.myRound': 'Мой круг',
     'hero.goToRound': 'Перейти к кругу',
+    // New homepage (2026-10-14)
+    'home.title': "Читайте по 30 минут в день — вместе с кругом",
+    'home.state.reg': "Круг «{month}»: запись открыта. Участие бесплатное.",
+    'home.state.regDays': "Круг «{month}»: запись открыта ещё {days}. Участие бесплатное.",
+    'home.state.regToday': "Круг «{month}»: сегодня последний день записи. Участие бесплатное.",
+    'home.state.running': "Круг «{month}» идёт: день {day} из {len}. Следующий — с 1-го числа, можно встать в лист ожидания.",
+    'home.state.member': "Вы в круге «{month}»: день {day} из {len}.",
+    'home.state.off': "Каждый месяц — новый круг. Участие бесплатное.",
+    'home.cta.round': "Открыть круг",
+    'home.login': "Уже участвуете? Войти",
+    'home.how': "Как это устроено",
+    'home.live.room': "В зале сейчас: {n}",
+    'home.live.today': "Сегодня читали {n} из {total}",
+    'home.day.one': "день",
+    'home.day.few': "дня",
+    'home.day.many': "дней",
+    'home.min.one': "минута",
+    'home.min.few': "минуты",
+    'home.min.many': "минут",
+    'home.treasury.kicker': "Общая казна",
+    'home.treasury.title': "Минуты каждого идут в общую казну",
+    'home.treasury.caption': "прочитали вместе в круге «{month}»",
+    'home.treasury.dots': "Каждая точка — участник круга. Светятся те, кто уже читал сегодня.",
+    'home.treasury.since': "Вместе с {year} года",
+    'home.treasury.readers': "читателей",
+    'home.reader.one': "читатель",
+    'home.reader.few': "читателя",
+    'home.reader.many': "читателей",
+    'home.round.one': "круг",
+    'home.round.few': "круга",
+    'home.round.many': "кругов",
+    'home.facts': "Бесплатно · онлайн · любая книга",
+    'home.treasury.rounds': "кругов",
+    'home.treasury.note': "Здесь не соревнуются в скорости. Каждый засчитывается целиком — общий итог принадлежит всем.",
+    'home.steps': "Как проходит круг",
+    'home.faq': "Частые вопросы",
+    'home.final': "Следующий круг начинается с одной страницы",
     'quiet.modalTitle': 'Этот день вне круга',
     'about.timeline2021': 'Первый круг. Три читателя, одна таблица, обещание не бросать.',
     'about.timeline2026': '1000+ читателей, 64 круга и вся история — теперь на одной платформе.',
@@ -1522,7 +1559,7 @@ const translations = {
     'reel.auto': 'Авто',
     'reel.autoHint': 'Снова листать само',
     'reel.scene': 'Сцена {n}',
-    'reel.s1.t': 'PowerBook — марафон чтения',
+    'reel.s1.t': 'PowerBook — круг чтения',
     'reel.s1.d': 'Каждый месяц — новый круг. С 2021 года.',
     'reel.readers': 'читателей',
     'reel.circles': 'кругов',
@@ -2804,7 +2841,7 @@ const translations = {
     'archive.peakShort': 'шыңы',
 
     // Footer
-    'footer.description': 'Нақты нәтижелері бар айлық оқу челленджі. Күн сайын оқыңыз, жарысыңыз және кітаптар ұтыңыз.',
+    'footer.description': 'Әр ай — жаңа оқу раунды: қауымдастықпен бірге күніне 30 минуттан. Тегін.',
     'footer.navigation': 'Шарлау',
     'footer.contact': 'Байланыс',
     'legal.contact': 'Осы шарттар бойынша сұрақтар —',
@@ -3483,6 +3520,43 @@ const translations = {
     'dashboard.youAreIn': 'Сіз бұл раундқа қатысып жатырсыз',
     'dashboard.myRound': 'Менің раундым',
     'hero.goToRound': 'Раундқа өту',
+    // New homepage (2026-10-14)
+    'home.title': "Күніне 30 минуттан оқыңыз — раундпен бірге",
+    'home.state.reg': "«{month}» раунды: тіркеу ашық. Қатысу тегін.",
+    'home.state.regDays': "«{month}» раунды: тіркеу тағы {days} ашық. Қатысу тегін.",
+    'home.state.regToday': "«{month}» раунды: бүгін — тіркеудің соңғы күні. Қатысу тегін.",
+    'home.state.running': "«{month}» раунды жүріп жатыр: {len} күннің {day}-і. Келесісі айдың 1-інде — күту тізіміне тұруға болады.",
+    'home.state.member': "Сіз «{month}» раундындасыз: {len} күннің {day}-і.",
+    'home.state.off': "Әр ай — жаңа раунд. Қатысу тегін.",
+    'home.cta.round': "Раундты ашу",
+    'home.login': "Қатысып жүрсіз бе? Кіру",
+    'home.how': "Бұл қалай жұмыс істейді",
+    'home.live.room': "Залда қазір: {n}",
+    'home.live.today': "Бүгін {total} адамның {n}-і оқыды",
+    'home.day.one': "күн",
+    'home.day.few': "күн",
+    'home.day.many': "күн",
+    'home.min.one': "минут",
+    'home.min.few': "минут",
+    'home.min.many': "минут",
+    'home.treasury.kicker': "Ортақ қазына",
+    'home.treasury.title': "Әркімнің минуттары ортақ қазынаға түседі",
+    'home.treasury.caption': "«{month}» раундында бірге оқылды",
+    'home.treasury.dots': "Әр нүкте — раунд қатысушысы. Бүгін оқығандары жанып тұр.",
+    'home.treasury.since': "{year} жылдан бері бірге",
+    'home.treasury.readers': "оқырман",
+    'home.reader.one': "оқырман",
+    'home.reader.few': "оқырман",
+    'home.reader.many': "оқырман",
+    'home.round.one': "раунд",
+    'home.round.few': "раунд",
+    'home.round.many': "раунд",
+    'home.facts': "Тегін · онлайн · кез келген кітап",
+    'home.treasury.rounds': "раунд",
+    'home.treasury.note': "Мұнда жылдамдықпен жарыспайды. Әркім толық есептеледі — ортақ нәтиже бәріне тиесілі.",
+    'home.steps': "Раунд қалай өтеді",
+    'home.faq': "Жиі сұрақтар",
+    'home.final': "Келесі раунд бір беттен басталады",
     'quiet.modalTitle': 'Бұл күн раундтан тыс',
     'about.timeline2021': 'Алғашқы раунд. Үш оқырман, бір кесте, тастамау туралы уәде.',
     'about.timeline2026': '1000+ оқырман, 64 раунд және бүкіл тарих — енді бір платформада.',
@@ -3562,7 +3636,7 @@ const translations = {
     'reel.auto': 'Авто',
     'reel.autoHint': 'Қайтадан өзі ауыссын',
     'reel.scene': '{n}-сахна',
-    'reel.s1.t': 'PowerBook — оқу марафоны',
+    'reel.s1.t': 'PowerBook — оқу раунды',
     'reel.s1.d': 'Әр ай — жаңа раунд. 2021 жылдан бері.',
     'reel.readers': 'оқырман',
     'reel.circles': 'раунд',
@@ -4375,7 +4449,7 @@ const translations = {
     'suggestionsAdmin.anonymous': 'Anonymous',
 
     // Bottom nav
-    'nav.round': 'Round',
+    'nav.round': 'Circle',
     'nav.archive': 'Archive',
     'nav.results': 'Results',
     'nav.insights': 'Profile',
@@ -4844,7 +4918,7 @@ const translations = {
     'archive.peakShort': 'peak',
 
     // Footer
-    'footer.description': 'Monthly reading challenge with real results. Read every day, compete and win books.',
+    'footer.description': 'A new reading circle every month: 30 minutes a day, together with the community. Free.',
     'footer.navigation': 'Navigation',
     'footer.contact': 'Contact',
     'legal.contact': 'Questions about these terms —',
@@ -5523,6 +5597,43 @@ const translations = {
     'dashboard.youAreIn': 'You are in this round',
     'dashboard.myRound': 'My round',
     'hero.goToRound': 'Go to the round',
+    // New homepage (2026-10-14)
+    'home.title': "Read 30 minutes a day — together with the circle",
+    'home.state.reg': "The {month} circle: sign-up is open. It’s free.",
+    'home.state.regDays': "The {month} circle: sign-up is open for {days} more. It’s free.",
+    'home.state.regToday': "The {month} circle: today is the last day to sign up. It’s free.",
+    'home.state.running': "The {month} circle is on: day {day} of {len}. The next one starts on the 1st — join the waiting list.",
+    'home.state.member': "You’re in the {month} circle: day {day} of {len}.",
+    'home.state.off': "A new circle every month. It’s free.",
+    'home.cta.round': "Open the circle",
+    'home.login': "Already a member? Log in",
+    'home.how': "How it works",
+    'home.live.room': "In the room now: {n}",
+    'home.live.today': "{n} of {total} have read today",
+    'home.day.one': "day",
+    'home.day.few': "days",
+    'home.day.many': "days",
+    'home.min.one': "minute",
+    'home.min.few': "minutes",
+    'home.min.many': "minutes",
+    'home.treasury.kicker': "The common treasury",
+    'home.treasury.title': "Everyone’s minutes go into one treasury",
+    'home.treasury.caption': "read together in the {month} circle",
+    'home.treasury.dots': "Each dot is a member of the circle. The lit ones have read today.",
+    'home.treasury.since': "Together since {year}",
+    'home.treasury.readers': "readers",
+    'home.reader.one': "reader",
+    'home.reader.few': "readers",
+    'home.reader.many': "readers",
+    'home.round.one': "circle",
+    'home.round.few': "circles",
+    'home.round.many': "circles",
+    'home.facts': "Free · online · any book",
+    'home.treasury.rounds': "circles",
+    'home.treasury.note': "Nobody races here. Everyone is credited in full — the total belongs to all.",
+    'home.steps': "How a circle goes",
+    'home.faq': "Questions",
+    'home.final': "The next circle starts with one page",
     'quiet.modalTitle': 'This day is outside the round',
     'about.timeline2021': 'The first circle. Three readers, one spreadsheet, a promise not to quit.',
     'about.timeline2026': '1,000+ readers, 64 circles, and the whole history — now on one platform.',
@@ -5602,7 +5713,7 @@ const translations = {
     'reel.auto': 'Auto',
     'reel.autoHint': 'Play on its own again',
     'reel.scene': 'Scene {n}',
-    'reel.s1.t': 'PowerBook — a reading marathon',
+    'reel.s1.t': 'PowerBook — a reading circle',
     'reel.s1.d': 'Every month, a new circle. Since 2021.',
     'reel.readers': 'readers',
     'reel.circles': 'circles',
@@ -6135,13 +6246,25 @@ type I18nContextValue = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
+function inKazakhstan(): boolean {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    return /^Asia\/(Almaty|Qostanay|Aqtobe|Aqtau|Atyrau|Oral|Qyzylorda)$/.test(tz);
+  } catch {
+    return false;
+  }
+}
+
 function getInitialLocale(): Locale {
   const saved = localStorage.getItem(STORAGE_KEY_LOCALE);
   if (saved === 'ru' || saved === 'kk' || saved === 'en') return saved;
   // Detect from browser
   const browserLang = navigator.language.slice(0, 2);
   if (browserLang === 'kk') return 'kk';
-  if (browserLang === 'en') return 'en';
+  // Many phones in Kazakhstan run in English while their owners read the
+  // circle in Russian (GA4, Oct 2026: 40 of 104 home visitors). English is
+  // for readers abroad; a Kazakhstan clock means Russian. The switch stays.
+  if (browserLang === 'en') return inKazakhstan() ? 'ru' : 'en';
   return 'ru';
 }
 

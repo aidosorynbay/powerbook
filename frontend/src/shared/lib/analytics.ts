@@ -21,6 +21,9 @@ declare global {
   }
 }
 
+// Microsoft Clarity project id (public, like GA's). Empty = Clarity off.
+const CLARITY_ID = '';
+
 let ready = false;
 
 export function initAnalytics(userProperties: Record<string, string | number | boolean> = {}): void {
@@ -72,4 +75,58 @@ export function track(event: string, params: Params = {}): void {
   } catch {
     /* analytics must never break the page */
   }
+}
+
+/**
+ * A homepage block that stayed on screen for at least two seconds — the
+ * stand-in for «what do people actually read», which GA can't see by itself.
+ * Sent once per block per page view, with the seconds it stayed in view
+ * (rounded; capped at 10 minutes) when the block leaves the screen.
+ */
+export function trackSectionView(el: Element, section: string): () => void {
+  if (typeof IntersectionObserver === 'undefined') return () => {};
+  let since = 0;
+  let seen = 0;
+  let sent = false;
+  const flush = () => {
+    if (since) seen += Date.now() - since;
+    since = 0;
+    if (!sent && seen >= 2000) {
+      sent = true;
+      track('section_view', { section, seconds: Math.min(600, Math.round(seen / 1000)) });
+    }
+  };
+  const io = new IntersectionObserver(
+    ([e]) => {
+      if (e.isIntersecting) since = since || Date.now();
+      else flush();
+    },
+    { threshold: 0.4 },
+  );
+  io.observe(el);
+  const onHide = () => { if (document.visibilityState === 'hidden') flush(); };
+  document.addEventListener('visibilitychange', onHide);
+  return () => {
+    flush();
+    io.disconnect();
+    document.removeEventListener('visibilitychange', onHide);
+  };
+}
+
+/**
+ * Microsoft Clarity: heatmaps and session replays, to see where people
+ * click and how far they read. Free; only in the production build and only
+ * once VITE_CLARITY_ID is set. Clarity masks what people type by default.
+ */
+export function initClarity(): void {
+  const id = import.meta.env.VITE_CLARITY_ID || CLARITY_ID;
+  if (!id || !import.meta.env.PROD || typeof window === 'undefined') return;
+  const w = window as unknown as { clarity?: ((...a: unknown[]) => void) & { q?: unknown[] } };
+  if (w.clarity) return;
+  const c = function clarity(...args: unknown[]) { (c.q = c.q || []).push(args); } as ((...a: unknown[]) => void) & { q?: unknown[] };
+  w.clarity = c;
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = `https://www.clarity.ms/tag/${encodeURIComponent(id)}`;
+  document.head.appendChild(script);
 }

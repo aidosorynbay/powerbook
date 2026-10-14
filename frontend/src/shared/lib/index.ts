@@ -30,7 +30,7 @@ export {
 export { isReaderPath } from './routes';
 
 // Analytics (Google Analytics 4)
-export { initAnalytics, setAnalyticsUser, track } from './analytics';
+export { initAnalytics, initClarity, setAnalyticsUser, track, trackSectionView } from './analytics';
 
 // Image utilities
 export { resizeImageToDataUrl } from './imageResize';

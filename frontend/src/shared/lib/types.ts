@@ -281,6 +281,12 @@ export type PublicStats = {
   round_end_day?: number | null;
   round_is_partial?: boolean;
   round_registration_open?: boolean;
+  // The circle right now (counts only): the month's shared minutes, how many
+  // logged today / made today count, who sits in a reading room this minute.
+  round_minutes?: number;
+  today_logged?: number;
+  today_counted?: number;
+  room_now?: number;
   yearly?: YearlyStat[];
 };
 

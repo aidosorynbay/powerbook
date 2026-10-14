@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth, useI18n, useTheme, LOCALES, type ThemeChoice } from '@/shared/lib';
+import { track, useAuth, useI18n, useTheme, LOCALES, type ThemeChoice } from '@/shared/lib';
 import { Logo, Button, Icon, Container } from '@/shared/ui';
 import { Bell } from '@/widgets/Notifications';
 import styles from './Header.module.css';
@@ -97,18 +97,18 @@ export function Header() {
           <Link to="/insights" className={styles.navLink}>{t('nav.profile')}</Link>
           <Link to="/library" className={styles.navLink}>{t('nav.library')}</Link>
           <Link to="/readers" className={styles.navLink}>{t('header.directory')}</Link>
+          <Link to="/hall-of-fame" className={styles.navLink}>{t('nav.hallOfFame')}</Link>
+          <a
+            href="https://t.me/+ZSmueLtmT8Y1MDBi"
+            className={`${styles.navLink} ${styles.navTelegram}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Icon name="telegram" size="sm" />
+            <span>{t('header.telegram')}</span>
+          </a>
         </>
       )}
-      <Link to="/hall-of-fame" className={styles.navLink}>{t('nav.hallOfFame')}</Link>
-      <a
-        href="https://t.me/+ZSmueLtmT8Y1MDBi"
-        className={`${styles.navLink} ${styles.navTelegram}`}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <Icon name="telegram" size="sm" />
-        <span>{t('header.telegram')}</span>
-      </a>
     </>
   );
 
@@ -154,13 +154,15 @@ export function Header() {
                       here on phones — the row simply has no room for it. */}
                   <div className={styles.menuDivider} />
 
-                  <Link
-                    to={isAdmin ? '/suggestions/admin' : '/suggestions'}
-                    className={styles.navLink}
-                  >
-                    <Icon name="bulb" size="sm" />{' '}
-                    {isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCtaShort')}
-                  </Link>
+                  {isAuthenticated && (
+                    <Link
+                      to={isAdmin ? '/suggestions/admin' : '/suggestions'}
+                      className={styles.navLink}
+                    >
+                      <Icon name="bulb" size="sm" />{' '}
+                      {isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCtaShort')}
+                    </Link>
+                  )}
 
                   {isAuthenticated ? (
                     <Link to="/profile" className={styles.navLink}>{t('nav.settings')}</Link>
@@ -217,7 +219,7 @@ export function Header() {
                 <span className={styles.mobileAccountText}>{t('nav.settings')}</span>
               </Link>
             ) : (
-              <Link to="/login" className={styles.mobileAccount}>
+              <Link to="/login" className={styles.mobileAccount} onClick={() => track('auth_entry', { from: 'header', to: 'login', page: location.pathname })}>
                 {t('header.login')}
               </Link>
             )}
@@ -225,16 +227,18 @@ export function Header() {
 
           <div className={`${styles.actions} ${styles.actionsDesktop}`}>
             <Link to="/get" className={styles.phoneLink}>{t('install.headerLink')}</Link>
-            <Link
-              to={isAdmin ? '/suggestions/admin' : '/suggestions'}
-              className={styles.suggestionsBtn}
-              aria-label={isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCta')}
-            >
-              <Icon name="bulb" size="sm" />
-              <span className={styles.suggestionsBtnText}>
-                {isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCtaShort')}
-              </span>
-            </Link>
+            {isAuthenticated && (
+              <Link
+                to={isAdmin ? '/suggestions/admin' : '/suggestions'}
+                className={styles.suggestionsBtn}
+                aria-label={isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCta')}
+              >
+                <Icon name="bulb" size="sm" />
+                <span className={styles.suggestionsBtnText}>
+                  {isAdmin ? t('suggestionsAdmin.navLink') : t('suggestions.navCtaShort')}
+                </span>
+              </Link>
+            )}
 
             <Bell />
 
@@ -259,10 +263,10 @@ export function Header() {
               </Link>
             ) : (
               <>
-                <Link to="/login" className={styles.loginBtn}>
+                <Link to="/login" className={styles.loginBtn} onClick={() => track('auth_entry', { from: 'header', to: 'login', page: location.pathname })}>
                   {t('header.login')}
                 </Link>
-                <Button variant="primary" size="sm" onClick={() => navigate('/register')}>
+                <Button variant="primary" size="sm" onClick={() => { track('auth_entry', { from: 'header', to: 'register', page: location.pathname }); navigate('/register'); }}>
                   {t('header.register')}
                 </Button>
               </>

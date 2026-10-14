@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { isReaderPath, useI18n } from '@/shared/lib';
+import { isReaderPath, useAuth, useI18n } from '@/shared/lib';
 import { Icon } from '@/shared/ui';
 import styles from './BottomNav.module.css';
 
@@ -16,6 +16,9 @@ const tabs = [
 export function BottomNav() {
   const { t } = useI18n();
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
+  // A visitor has none of these yet — every tab would only ask to log in.
+  if (!isAuthenticated) return null;
   // An open book has its own bar at the bottom: page turns, the timer, Lock in.
   if (isReaderPath(location.pathname)) return null;
   return (

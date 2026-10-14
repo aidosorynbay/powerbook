@@ -21,7 +21,7 @@ export function Footer() {
           <div className={styles.column}>
             <h4 className={styles.columnTitle}>{t('footer.navigation')}</h4>
             <nav className={styles.nav}>
-              <a href="#about" className={styles.link}>
+              <a href="/#powerbook" className={styles.link}>
                 {t('header.about')}
               </a>
             </nav>

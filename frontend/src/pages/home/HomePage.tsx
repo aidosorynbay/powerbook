@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { isStandalone, track, useAuth } from '@/shared/lib';
+import { apiGet, isStandalone, track, type PublicStats } from '@/shared/lib';
 import { useMediaQuery } from '@/shared/hooks';
 import { PageTransition } from '@/shared/ui';
-import { Header, Hero, Stats, CallToAction, Footer, About, RoundsShowcase, HeroBanner, Explainer } from '@/widgets';
+import { Header, Footer } from '@/widgets';
 import { InstallLanding } from '@/widgets/InstallLanding';
+import { CircleTreasury, HomeFinal, HomeHero, HowItWorks } from './HomeSections';
 import styles from './HomePage.module.css';
 
 // «Продолжить на компьютере» is remembered this long.
@@ -20,8 +20,17 @@ function landingSkipped(): boolean {
 }
 
 export function HomePage() {
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const [stats, setStats] = useState<PublicStats | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    apiGet<PublicStats>('/stats/public').then(({ data }) => {
+      if (alive && data) setStats(data);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // A big screen with a mouse is the computer; the phone's own home page is
   // untouched. ?desktop=1 skips the landing for a link that must land here.
@@ -30,10 +39,6 @@ export function HomePage() {
     () => !isStandalone() && !landingSkipped() && !new URLSearchParams(window.location.search).has('desktop'),
   );
   const showLanding = desktop && landing;
-
-  const handleJoin = () => {
-    navigate(isAuthenticated ? '/round' : '/join');
-  };
 
   // «Узнать больше» / «Толығырақ»: down to what PowerBook is.
   const handleLearnMore = () => {
@@ -64,13 +69,13 @@ export function HomePage() {
         {showLanding ? <InstallLanding onContinue={continueOnDesktop} /> : <Header />}
 
         <main className={styles.main}>
-          {!showLanding && <HeroBanner />}
-          <Hero onJoinClick={handleJoin} onLearnMoreClick={handleLearnMore} />
-          <Explainer />
-          <Stats />
-          <RoundsShowcase />
-          <About />
-          <CallToAction onJoinClick={handleJoin} />
+          {/* GA4, 1–14 Oct 2026: newcomers stay ~30 s and only 18% reach the
+              bottom, so the page is the reading room, one shared number, how a
+              circle goes, and one last button — nothing else. */}
+          <HomeHero stats={stats} onHow={handleLearnMore} />
+          <CircleTreasury stats={stats} />
+          <HowItWorks />
+          <HomeFinal />
         </main>
 
         <Footer />
