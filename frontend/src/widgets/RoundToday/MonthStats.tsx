@@ -86,7 +86,7 @@ function CoverCard({ book, sub, done, showTime, onClick }: { book: Book; sub: st
   return (
     <button type="button" className={styles.m3Book} onClick={onClick} aria-label={`${book.title} · ${time}`}>
       <span className={styles.m3Cover} aria-hidden="true">
-        {look.cover ? <img src={look.cover} alt="" loading="lazy" /> : <em>{book.title.trim()}</em>}
+        {look.cover ? <img src={look.cover} alt="" loading="lazy" /> : <em lang={/[а-яёәіңғүұқөһ]/i.test(book.title) ? 'ru' : 'en'}>{book.title.trim()}</em>}
       </span>
       {showTime && <b>{time}</b>}
       <small className={done ? styles.m3Done : ''}>{sub}</small>
@@ -94,30 +94,23 @@ function CoverCard({ book, sub, done, showTime, onClick }: { book: Book; sub: st
   );
 }
 
-/** A book in the sheet: its cover, the title, the time, a line of meta. */
-function BookRow({ book, tags, meta, right }: { book: Book; tags: string[]; meta?: string; right: string }) {
+/** A book in the sheet: a real cover (or its title set plainly), the title, its status, the time on the right. */
+function SheetBook({ book, status, done, tag, meta, time }: { book: Book; status: string; done: boolean; tag?: string; meta: string; time: string }) {
   const look = useBookCover(book.title);
   return (
-    <div className={styles.msBook}>
-      <span className={styles.msCover} aria-hidden="true">
-        {look.cover ? <img src={look.cover} alt="" loading="lazy" /> : <b>{book.title.trim().charAt(0).toUpperCase()}</b>}
+    <div className={styles.s3Book}>
+      <span className={styles.s3Cover} aria-hidden="true">
+        {/* the title is printed beside it, so a cover-less book shows its first letter only */}
+        {look.cover ? <img src={look.cover} alt="" loading="lazy" /> : <em>{book.title.trim().charAt(0).toUpperCase()}</em>}
       </span>
-      <span className={styles.msBookBody}>
-        <span className={styles.msBookTop}>
-          <span className={styles.msBt}>{book.title}</span>
-          <span className={styles.msBr}>{right}</span>
-        </span>
-        {(meta || tags.length > 0) && (
-          <span className={styles.msBm}>
-            {meta}
-            {tags.map((x, i) => (
-              <em key={x}>
-                {meta || i > 0 ? ' · ' : ''}
-                {x}
-              </em>
-            ))}
-          </span>
-        )}
+      <span className={styles.s3BookBody}>
+        <b>
+          {book.title}
+          {tag && <em className={styles.s3Tag}>{tag}</em>}
+        </b>
+        <span className={styles.s3BookTime}>{time}</span>
+        <small className={done ? styles.m3Done : ''}>{status}</small>
+        <small>{meta}</small>
       </span>
     </div>
   );
@@ -142,6 +135,7 @@ export function MonthStats(p: MonthStatsProps) {
     if (locale === 'kk') return `${d} ${t(`month.${mo}`).toLowerCase()}`;
     return `${d} ${t(`month.gen.${mo}`)}`;
   };
+  const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
   const monthName = (mo: number) => (locale === 'en' ? t(`month.${mo}`) : t(`month.${mo}`).toLowerCase());
 
   const s = useMemo(() => {
@@ -161,6 +155,12 @@ export function MonthStats(p: MonthStatsProps) {
     const N = decided.filter((d) => mins(d) >= GOAL).length;
     const elapsedIncl = mine.length;
     const total = upto.reduce((a, d) => a + mins(d), 0);
+    let longest = 0;
+    let run = 0;
+    for (const d of upto) {
+      run = mins(d) >= GOAL ? run + 1 : 0;
+      longest = Math.max(longest, run);
+    }
     // days read, as saved (today only once it is saved): the same days /results averages over
     const readingDays = upto.filter((d) => d.minutes >= TOUCHED);
     // minutes by book: the saved days' books
@@ -224,7 +224,7 @@ export function MonthStats(p: MonthStatsProps) {
       prev: prevRow.length ? sum(prevRow.filter((d) => dayNum(d.date) <= cmpDom)) : null,
     };
     const slotsN = Math.max(inRound.length, prevRow.length, 1);
-    return { inRound, mins, start, late, M, N, elapsedIncl, total, readingDays, books, untitled, weekJustFull, todayCounted, cmp, prevRow, slotsN };
+    return { inRound, mins, start, late, M, N, elapsedIncl, total, longest, readingDays, books, untitled, weekJustFull, todayCounted, cmp, prevRow, slotsN };
   }, [days, todayStr, joinedDay, prevDays, p.scoringEnd]);
 
   const { M, N } = s;
@@ -343,18 +343,15 @@ export function MonthStats(p: MonthStatsProps) {
   const share = slice && p.circleMinutes > 0 ? Math.max(2.5, Math.min(100, (slice.minutes / p.circleMinutes) * 100)) : 0;
   const treasuryText = p.circleMinutes >= 60 ? t('ms.h', { h: Math.floor(p.circleMinutes / 60) }) : fmtT(p.circleMinutes);
 
-  const bookTags = (b: Book, i: number) => {
-    const tags: string[] = [];
-    if (i === 0 && s.books.length >= 2 && dayOfRound >= 15) tags.push(t('ms.bookOfMonth'));
-    if (b.finished) tags.push(t('ms.finished'));
-    return tags;
-  };
 
   return (
     <div className={`${styles.pane} ${styles.ms3}`}>
       <div className={styles.msHead}>
         <b>{t('stats.myMonth', { month: p.monthLabel })}</b>
-        <span>{s.late ? t('ms.dayFrom', { n: s.elapsedIncl, date: fmtDate(s.start) }) : t('stats.dayOf', { n: dayOfRound, total: roundDays })}</span>
+        <button type="button" className={styles.m3More} onClick={() => openSheet('header')}>
+          {t('ms.sheet.title')}
+          {'\u00a0›'}
+        </button>
       </div>
 
       {/* the hero: days counted */}
@@ -428,14 +425,16 @@ export function MonthStats(p: MonthStatsProps) {
               ))}
             </div>
           </div>
-        ) : !s.late && allTime && allTime.rounds_participated <= 1 ? (
-          <span className={styles.m3Muted}>{t('ms.firstCircle')}</span>
         ) : null}
         <div className={styles.m3Axis} style={cols}>
           <span>1</span>
           {showDom && prevShown && <span style={{ gridColumn: dom }}>{dom}</span>}
           <span style={{ gridColumn: s.inRound.length || s.slotsN }}>{lastDay}</span>
         </div>
+        {/* a first circle: the line under the axis says when the second row comes */}
+        {!(prevShown && prevFig) && !s.late && allTime && allTime.rounds_participated <= 1 && (
+          <span className={styles.m3Muted}>{t('ms.firstCircle', { when: cap(t(`month.in.${(p.monthNum % 12) + 1}`)), whenLow: t(`month.in.${(p.monthNum % 12) + 1}`), monthWith: t(`month.with.${p.monthNum}`) })}</span>
+        )}
         {showDom && prevShown && <i className={styles.m3Line} style={{ left: `calc((100% + 2px) * ${dom} / ${s.slotsN} - 1px)` }} aria-hidden="true" />}
       </div>
       {dayOfRound <= 2 && review?.previous && (
@@ -489,108 +488,140 @@ export function MonthStats(p: MonthStatsProps) {
       </div>
 
       <Sheet open={open} onClose={() => setOpen(false)} label={t('ms.sheet.title')}>
-        <h3 className={styles.sheetTitle}>{t('stats.myMonth', { month: p.monthLabel })}</h3>
-        <p className={styles.sheetLead}>{t('ms.sheet.title')}</p>
+        {/* built only while open: nothing of the sheet is computed under the card */}
+        {open && (<>
+        <div className={styles.s3Head}>
+          <div>
+            <h3 className={styles.sheetTitle}>{t('stats.myMonth', { month: p.monthLabel })}</h3>
+            <p className={styles.sheetLead}>{s.late ? t('ms.dayFrom', { n: s.elapsedIncl, date: fmtDate(s.start) }) : t('stats.dayOf', { n: dayOfRound, total: roundDays })}</p>
+          </div>
+          <button type="button" className={styles.s3Close} onClick={() => setOpen(false)} aria-label={t('today.close')}>
+            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+              <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        {/* the books of the circle */}
         {s.books.length > 0 && (
-          <section className={styles.msSec}>
-            <h4>{t('ms.sheet.books')}</h4>
-            <div className={styles.msBooks}>
+          <section className={styles.s3Sec}>
+            <h4>{t('ms.sheet.books', { when: t(`month.in.${p.monthNum}`) })}</h4>
+            <div className={styles.s3Panel}>
               {s.books.map((b, i) => {
                 const all = Object.entries(p.bookTotals).find(([k]) => norm(k) === norm(b.title))?.[1] ?? 0;
                 const pct = s.total ? Math.round((b.minutes / s.total) * 100) : 0;
-                const meta = `${t('ms.daysOn', { n: b.days, days: pl(b.days, 'ms.plural.days') })} · ${t('ms.pctOfCircle', { p: pct })}${all > b.minutes ? ` · ${t('ms.onBook', { t: fmtT(all) })}` : ''}`;
-                return <BookRow key={b.title} book={b} tags={bookTags(b, i)} meta={meta} right={fmtT(b.minutes)} />;
+                const meta = `${t('ms.daysOn', { n: b.days, days: pl(b.days, 'ms.plural.days') })}${s.books.length > 1 ? ` · ${t('ms.pctOfCircle', { p: pct })}` : ''}${all > b.minutes ? ` · ${t('ms.onBook', { t: fmtT(all) })}` : ''}`;
+                const status = b.finished ? (b.finishedOn ? t('ms.doneOn', { date: fmtDate(b.finishedOn) }) : t('ms.finished')) : t('ms.reading');
+                const tag = i === 0 && s.books.length >= 2 && dayOfRound >= 15 ? t('ms.bookOfMonth') : undefined;
+                return <SheetBook key={b.title} book={b} status={status} done={b.finished} tag={tag} meta={meta} time={fmtT(b.minutes)} />;
               })}
               {s.untitled > 0 && (
-                <div className={styles.msRow}>
-                  <span className={styles.msMuted}>{t('ms.noTitle')}</span>
-                  <span>{fmtT(s.untitled)}</span>
-                </div>
+                <p className={styles.s3Untitled}>
+                  {t('ms.noTitle')} · {fmtT(s.untitled)}
+                </p>
               )}
             </div>
           </section>
         )}
 
-        {extra && extra.records.rounds >= 2 && (extra.records.best_day || extra.records.longest_streak > 0) && (
-          <section className={styles.msSec}>
-            <h4>{t('ms.sheet.records')}</h4>
-            {extra.records.best_day && (
-              <div className={styles.msRow}>
-                <span>{t('ms.sheet.recBestDay')}</span>
-                <span>
-                  <b>{t('ms.m', { m: extra.records.best_day.minutes })}</b> · {fmtDate(extra.records.best_day.date)} {extra.records.best_day.date.slice(0, 4)}
-                </span>
+        {/* this month and the last one by the same day, as pairs of bars from zero */}
+        {s.cmp.prev && s.cmp.prev.minutes > 0 && s.cmp.own.minutes > 0 && !early && !s.late && dom >= 3 && (() => {
+          const prevName = p.prevMonthNum ? monthName(p.prevMonthNum) : t('ms.lastCircle');
+          const curName = monthName(p.monthNum);
+          const rows = [
+            { key: 'min', label: t('ms.sheet.prevMinutes'), prev: s.cmp.prev.minutes, cur: s.cmp.own.minutes, fmt: fmtT },
+            { key: 'best', label: t('ms.sheet.prevBest'), prev: s.cmp.prev.best, cur: s.cmp.own.best, fmt: (m: number) => t('ms.m', { m }) },
+          ];
+          return (
+            <section className={styles.s3Sec}>
+              <h4>{cap(t('ms.sheet.prev', { prev: prevName, cur: curName, d: dom }))}</h4>
+              <div className={styles.s3Panel}>
+                {rows.map((r) => {
+                  const max = Math.max(r.prev, r.cur, 1);
+                  return (
+                    <div key={r.key} className={styles.s3Metric}>
+                      <b>{r.label}</b>
+                      <div className={styles.s3PairRow}>
+                        <span>{cap(prevName)}</span>
+                        <span className={styles.s3Track}>
+                          <i style={{ width: `${Math.max(r.prev ? 3 : 0, (r.prev / max) * 100)}%` }} />
+                        </span>
+                        <span className={styles.s3Val}>{r.fmt(r.prev)}</span>
+                      </div>
+                      <div className={styles.s3PairRow}>
+                        <span>{cap(curName)}</span>
+                        <span className={styles.s3Track}>
+                          <i className={styles.s3Cur} style={{ width: `${Math.max(r.cur ? 3 : 0, (r.cur / max) * 100)}%` }} />
+                        </span>
+                        <span className={styles.s3Val}>{r.fmt(r.cur)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {review?.previous && (
+                  <p className={styles.s3Untitled}>{cap(t('ms.sheet.prevWhole', { month: monthName(review.previous.month), n: review.previous.goal_days, days: pl(review.previous.goal_days, 'ms.plural.days'), t: fmtT(review.previous.minutes) }))}</p>
+                )}
               </div>
-            )}
-            {extra.records.longest_streak > 0 && (
-              <div className={styles.msRow}>
-                <span>{t('ms.sheet.recStreak')}</span>
-                <span>
-                  <b>
-                    {extra.records.longest_streak} {pl(extra.records.longest_streak, 'ms.plural.days')}
-                  </b>
-                </span>
-              </div>
-            )}
-            {extra.records.best_round_minutes != null && extra.records.best_round_month != null && (
-              <div className={styles.msRow}>
-                <span>{t('ms.sheet.recRound')}</span>
-                <span>
-                  <b>{fmtT(extra.records.best_round_minutes)}</b> · {monthName(extra.records.best_round_month)} {extra.records.best_round_year}
-                </span>
-              </div>
-            )}
-            {extra.records.best_goal_days != null && extra.records.best_goal_of != null && (
-              <div className={styles.msRow}>
-                <span>{t('ms.sheet.recGoal')}</span>
-                <span>
-                  <b>{t('ms.ofTotal', { n: extra.records.best_goal_days, of: extra.records.best_goal_of })}</b>
-                </span>
-              </div>
-            )}
-            {allTime && (
-              <div className={styles.msRow}>
-                <span>{t('ms.sheet.total')}</span>
-                <span>
-                  <b>{t('ms.sheet.totalLine', { t: t('ms.h', { h: allTime.total_hours }), n: allTime.rounds_participated, rounds: pl(allTime.rounds_participated, 'ms.plural.rounds') })}</b>
-                </span>
-              </div>
-            )}
-          </section>
-        )}
+            </section>
+          );
+        })()}
 
-        {s.cmp.prev && s.cmp.prev.minutes > 0 && !early && !s.late && dom >= 3 && (
-          <section className={styles.msSec}>
-            <h4>{t('ms.sheet.prev', { d: dom })}</h4>
-            <div className={styles.msRow}>
-              <span>{t('ms.sheet.prevDays')}</span>
-              <span>
-                {s.cmp.prev.goalDays} → <b>{s.cmp.own.goalDays}</b>
-              </span>
-            </div>
-            <div className={styles.msRow}>
-              <span>{t('ms.sheet.prevMinutes')}</span>
-              <span>
-                {fmtT(s.cmp.prev.minutes)} → <b>{fmtT(s.cmp.own.minutes)}</b>
-              </span>
-            </div>
-            <div className={styles.msRow}>
-              <span>{t('ms.sheet.prevBest')}</span>
-              <span>
-                {t('ms.m', { m: s.cmp.prev.best })} → <b>{t('ms.m', { m: s.cmp.own.best })}</b>
-              </span>
-            </div>
-            {review?.previous && (
-              <p className={styles.msNote}>{t('ms.sheet.prevWhole', { n: review.previous.goal_days, days: pl(review.previous.goal_days, 'ms.plural.days'), t: fmtT(review.previous.minutes) })}</p>
-            )}
-          </section>
-        )}
+        {/* records over every circle: big numbers, a «новый» mark on the ones beaten this circle */}
+        {extra && extra.records.rounds >= 2 && (extra.records.best_day || extra.records.longest_streak > 0) && (() => {
+          const rec = extra.records;
+          const fresh = new Set<string>(rec.new_this_round);
+          const thisMonth = `${monthName(p.monthNum)} ${todayStr.slice(0, 4)}`;
+          const tiles = [
+            rec.best_day && { key: 'best_day', fresh: fresh.has('best_day'), big: t('ms.m', { m: rec.best_day.minutes }), cap: t('ms.sheet.recBestDay'), sub: `${fmtDate(rec.best_day.date)} ${rec.best_day.date.slice(0, 4)}` },
+            rec.longest_streak > 0 && { key: 'streak', fresh: fresh.has('streak') && s.longest >= rec.longest_streak, big: `${rec.longest_streak} ${pl(rec.longest_streak, 'ms.plural.days')}`, cap: t('ms.sheet.recStreak'), sub: '' },
+            fresh.has('minutes')
+              ? { key: 'minutes', fresh: true, big: fmtT(s.total), cap: t('ms.sheet.recRound'), sub: thisMonth }
+              : rec.best_round_minutes != null && rec.best_round_month != null && { key: 'minutes', fresh: false, big: fmtT(rec.best_round_minutes), cap: t('ms.sheet.recRound'), sub: `${monthName(rec.best_round_month)} ${rec.best_round_year ?? ''}` },
+            fresh.has('goal_days')
+              ? { key: 'goal_days', fresh: true, big: `${N} ${pl(N, 'ms.plural.days')}`, cap: t('ms.sheet.recGoal'), sub: thisMonth }
+              : rec.best_goal_days != null && rec.best_goal_of != null && { key: 'goal_days', fresh: false, big: t('ms.ofTotal', { n: rec.best_goal_days, of: rec.best_goal_of }), cap: t('ms.sheet.recGoal'), sub: '' },
+          ].filter(Boolean) as { key: string; fresh: boolean; big: string; cap: string; sub: string }[];
+          return (
+            <section className={styles.s3Sec}>
+              <h4>{t('ms.sheet.recordsN')}</h4>
+              <div className={styles.s3Tiles}>
+                {tiles.map((x) => (
+                  <div key={x.key} className={styles.s3Tile}>
+                    <b>{x.big}</b>
+                    <span>
+                      {x.cap}
+                      {x.fresh && <em className={styles.msChip}>{t('ms.sheet.new')}</em>}
+                    </span>
+                    {x.sub && <small>{x.sub}</small>}
+                  </div>
+                ))}
+              </div>
+              {allTime && (
+                <p className={styles.s3Total}>
+                  {t('ms.sheet.total')} · <b>{t('ms.h', { h: allTime.total_hours })}</b> · {allTime.rounds_participated} {pl(allTime.rounds_participated, 'ms.plural.rounds')}
+                </p>
+              )}
+            </section>
+          );
+        })()}
 
-        <p className={styles.msFoot}>
-          <Link to="/results" className={styles.msLink} onClick={() => track('stats_review_open', {})}>
-            {t('ms.sheet.review')}
-          </Link>
-        </p>
+        {/* what the dots on the card mean */}
+        <section className={styles.s3Sec}>
+          <h4>{t('ms.legend.title')}</h4>
+          <ul className={styles.s3Legend}>
+            {(['c', 'p', 'z', 'f', 't'] as DayState[]).map((k) => (
+              <li key={k}>
+                <i className={dotClass[k]} aria-hidden="true" />
+                {t(`ms.legend.${k}`)}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <Link to="/results" className={styles.s3Review} onClick={() => track('stats_review_open', {})}>
+          {t('ms.sheet.review')}
+        </Link>
+        </>)}
       </Sheet>
     </div>
   );

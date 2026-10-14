@@ -61,6 +61,16 @@ export function Header() {
     }
   }, []);
 
+  // the hint points at the logo, so it lives only at the top of the page: scrolled, it would hang over the text
+  const [atTop, setAtTop] = useState(true);
+  useEffect(() => {
+    if (!showHint) return;
+    const onScroll = () => setAtTop(window.scrollY < 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [showHint]);
+
   const dismissHint = useCallback(() => {
     setShowHint(false);
     try {
@@ -136,7 +146,7 @@ export function Header() {
               {showHint && <span className={styles.hintDot} aria-hidden="true" />}
             </button>
 
-            {showHint && !menuOpen && (
+            {showHint && !menuOpen && atTop && (
               <span className={styles.hintBubble} aria-hidden="true">
                 {t('header.menuHint')}
               </span>
