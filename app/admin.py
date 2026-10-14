@@ -66,11 +66,11 @@ def _astana(model: object, attr: object) -> str:
 
 
 class UserAdmin(ModelView, model=User):
-    column_list = [User.id, User.username, User.display_name, User.telegram_id, User.gender, User.system_role, User.is_claimable, User.is_active, User.created_at]
+    column_list = [User.id, User.username, User.display_name, User.telegram_id, User.archive_nick, User.gender, User.system_role, User.is_claimable, User.is_active, User.created_at]
     column_labels = {User.created_at: "registered (Astana)"}
     column_formatters = {User.created_at: _astana}
     column_default_sort = [(User.created_at, True)]
-    column_searchable_list = [User.username, User.display_name, User.telegram_id]
+    column_searchable_list = [User.username, User.display_name, User.telegram_id, User.archive_nick]
     column_sortable_list = [User.username, User.display_name, User.created_at]
     form_excluded_columns = [
         User.password_hash,

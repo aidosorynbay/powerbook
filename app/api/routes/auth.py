@@ -112,6 +112,14 @@ def reset_password(payload: TelegramResetRequest, db: Session = Depends(get_db))
         # Also try by username if provided
         if payload.username:
             user = repo.get_by_telegram_id(payload.username)
+    if user is None and payload.username:
+        # A reader who never signed up but read in the circles: Telegram has
+        # just shown the archive's nickname is theirs, so the archive account
+        # becomes their own (signing in clears its archive flag).
+        archive = repo.archive_by_nick(payload.username)
+        if len(archive) == 1:
+            user = archive[0]
+            user.telegram_id = payload.username
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No account linked to this Telegram")
 

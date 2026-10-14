@@ -235,7 +235,7 @@ class InsightsRepository(BaseRepository[None]):
         ]
 
     def display_name_and_telegram(self, *, user_id: uuid.UUID) -> tuple[str, str | None] | None:
-        stmt = select(User.display_name, User.telegram_id).where(User.id == user_id)
+        stmt = select(User.display_name, User.telegram_handle).where(User.id == user_id)
         row = self.db.execute(stmt).first()
         return (row[0], row[1]) if row else None
 
@@ -285,7 +285,7 @@ class InsightsRepository(BaseRepository[None]):
 
     def all_users_with_flags(self) -> dict[uuid.UUID, tuple[str, str | None, bool]]:
         """id -> (display_name, telegram_id, is_claimable)"""
-        stmt = select(User.id, User.display_name, User.telegram_id, User.is_claimable)
+        stmt = select(User.id, User.display_name, User.telegram_handle, User.is_claimable)
         return {row[0]: (row[1], row[2], row[3]) for row in self.db.execute(stmt).all()}
 
     def minutes_by_all_users(self) -> dict[uuid.UUID, int]:

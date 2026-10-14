@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useI18n, apiGet, apiPost, apiDelete, track, type ClaimCandidate, type ClaimSuggestions, type MyClaim } from '@/shared/lib';
 import { Button } from '@/shared/ui';
 import { circlesLine } from './circles';
+import { TelegramClaim } from './TelegramClaim';
 import styles from './ClaimPicker.module.css';
 
 /** How many round labels a collapsed list shows before the toggle. */
@@ -134,6 +135,15 @@ export function ClaimPicker({ onChange }: ClaimPickerProps) {
             ))}
           </ul>
         </div>
+      )}
+
+      {(suggested.length > 0 || pendingClaims.length > 0) && (
+        <TelegramClaim
+          onDone={() => {
+            loadMyClaims();
+            onChange?.();
+          }}
+        />
       )}
 
       <input

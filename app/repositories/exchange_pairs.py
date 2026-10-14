@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.round import BookExchangePair
@@ -38,9 +38,9 @@ class BookExchangePairRepository(BaseRepository[BookExchangePair]):
             select(
                 BookExchangePair,
                 giver.c.display_name.label("giver_name"),
-                giver.c.telegram_id.label("giver_telegram_id"),
+                func.coalesce(giver.c.telegram_id, giver.c.archive_nick).label("giver_telegram_id"),
                 receiver.c.display_name.label("receiver_name"),
-                receiver.c.telegram_id.label("receiver_telegram_id"),
+                func.coalesce(receiver.c.telegram_id, receiver.c.archive_nick).label("receiver_telegram_id"),
             )
             .join(giver, BookExchangePair.giver_user_id == giver.c.id)
             .join(receiver, BookExchangePair.receiver_user_id == receiver.c.id)
@@ -60,7 +60,7 @@ class BookExchangePairRepository(BaseRepository[BookExchangePair]):
             select(
                 BookExchangePair,
                 receiver.c.display_name.label("partner_name"),
-                receiver.c.telegram_id.label("partner_telegram_id"),
+                func.coalesce(receiver.c.telegram_id, receiver.c.archive_nick).label("partner_telegram_id"),
             )
             .join(receiver, BookExchangePair.receiver_user_id == receiver.c.id)
             .join(giver, BookExchangePair.giver_user_id == giver.c.id)
@@ -75,7 +75,7 @@ class BookExchangePairRepository(BaseRepository[BookExchangePair]):
             select(
                 BookExchangePair,
                 giver.c.display_name.label("partner_name"),
-                giver.c.telegram_id.label("partner_telegram_id"),
+                func.coalesce(giver.c.telegram_id, giver.c.archive_nick).label("partner_telegram_id"),
             )
             .join(giver, BookExchangePair.giver_user_id == giver.c.id)
             .join(receiver, BookExchangePair.receiver_user_id == receiver.c.id)

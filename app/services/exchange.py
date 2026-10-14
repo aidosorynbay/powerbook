@@ -5,7 +5,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.photos import check_photo, decode_photo
@@ -107,7 +107,8 @@ class ExchangeService:
             select(
                 ExchangePhoto.id, ExchangePhoto.pair_id, ExchangePhoto.user_id, ExchangePhoto.role,
                 ExchangePhoto.caption, ExchangePhoto.updated_at,
-                giver.c.display_name, giver.c.telegram_id, receiver.c.display_name, receiver.c.telegram_id,
+                giver.c.display_name, func.coalesce(giver.c.telegram_id, giver.c.archive_nick),
+                receiver.c.display_name, func.coalesce(receiver.c.telegram_id, receiver.c.archive_nick),
             )
             .join(BookExchangePair, BookExchangePair.id == ExchangePhoto.pair_id)
             .join(giver, BookExchangePair.giver_user_id == giver.c.id)

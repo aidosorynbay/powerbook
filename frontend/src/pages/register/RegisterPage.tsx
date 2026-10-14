@@ -13,6 +13,16 @@ type Gender = 'male' | 'female' | 'unknown';
 // remount lands on it rather than past it — before, nobody ever saw it.
 const CLAIM_STEP_KEY = 'pb.signupClaim';
 
+const TELEGRAM_TAKEN = 'Telegram ID already linked to another account';
+// What the API says, in the reader's language.
+const REGISTER_ERRORS: Record<string, string> = {
+  'error.network': 'error.network',
+  'error.validation': 'error.validation',
+  [TELEGRAM_TAKEN]: 'register.telegramTaken',
+  'Username already taken': 'register.usernameTaken',
+  'Username belongs to the archive': 'register.usernameArchive',
+};
+
 function claimStepPending(): boolean {
   try {
     return Number(sessionStorage.getItem(CLAIM_STEP_KEY)) > Date.now() - 30 * 60 * 1000;
@@ -36,6 +46,7 @@ export function RegisterPage() {
   const [telegramId, setTelegramId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [takenTelegram, setTakenTelegram] = useState<string | null>(null);
   const [step, setStep] = useState<'form' | 'claim'>(() => (claimStepPending() ? 'claim' : 'form'));
 
   // Already signed in, there is no form to fill. Someone who has just signed
@@ -58,7 +69,8 @@ export function RegisterPage() {
     });
 
     if (apiError) {
-      setError(apiError === 'error.network' || apiError === 'error.validation' ? t(apiError) : apiError);
+      setError(REGISTER_ERRORS[apiError] ? t(REGISTER_ERRORS[apiError]) : apiError);
+      setTakenTelegram(apiError === TELEGRAM_TAKEN ? telegramId.replace(/^@/, '').trim() : null);
       setIsSubmitting(false);
       return;
     }
@@ -127,7 +139,19 @@ export function RegisterPage() {
             </Link>
           </div>
 
-          {error && <div className={styles.error}>{error}</div>}
+          {error && (
+            <div className={styles.error}>
+              {error}
+              {takenTelegram && (
+                <>
+                  {' '}
+                  <Link className={styles.link} to={`/login?login=${encodeURIComponent('@' + takenTelegram)}${redirect ? `&redirect=${encodeURIComponent(next)}` : ''}`}>
+                    {t('register.goLogin')} →
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
 
           <form className={styles.form} onSubmit={onSubmit}>
             <div className={styles.field}>

@@ -110,7 +110,7 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
             select(
                 RoundParticipant.user_id,
                 User.display_name,
-                User.telegram_id,
+                User.telegram_handle.label("telegram_id"),
                 # not the picture itself (tens of KB each): its length, as the version of /social/avatar/<id>
                 func.length(User.avatar_data).label("avatar_len"),
             )
@@ -236,7 +236,7 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
                 ReadingLog.date,
                 ReadingLog.user_id,
                 User.display_name,
-                User.telegram_id,
+                User.telegram_handle.label("telegram_id"),
                 ReadingLog.minutes,
                 ReadingLog.score,
                 ReadingLog.book_finished,
