@@ -162,6 +162,28 @@ class ReadingRoomService:
         row = ReadingService(self.db).logs.get_for_user_date(round_id=rnd.id, user_id=user_id, day=self._today())
         return int(row.minutes) if row else 0
 
+    def taken_seats(self, hall: str, rnd: Round | None = None) -> set[int]:
+        """Chairs taken now: by readers and by visitors reading without an account."""
+        from app.services.guest_room import GuestRoomService
+
+        rnd = rnd if rnd is not None else self.current_round()
+        seats = {s.seat for s in self._sweep(self._open_sessions(hall, self._scope(hall, rnd)))}
+        return seats | {g.seat for g in GuestRoomService(self.db).open_sittings(hall)}
+
+    def room_minutes(self, user_id: uuid.UUID) -> dict:
+        """A reader's own minutes in the reading rooms, kept whether or not they are in the circle: today's and all."""
+        now, today = _now(), self._today()
+        total = today_total = 0
+        for s in self.db.execute(select(ReadingRoomSession).where(ReadingRoomSession.user_id == user_id)).scalars():
+            minutes = (int(s.accumulated_seconds) if s.ended_at is not None else self.elapsed_seconds(s, now)) // 60
+            total += minutes
+            if reading_day(_aware(s.ended_at) or now) == today:
+                today_total += minutes
+        return {"today": today_total, "total": total}
+
+    def credit(self, s: ReadingRoomSession, minutes: int, day: date) -> str | None:
+        return self._credit(s, minutes, day)
+
     def _credit(self, s: ReadingRoomSession, minutes: int, day: date) -> str | None:
         """Adds the sitting's minutes to the reader's day in their current circle.
         Returns why nothing was written, or None when it was."""
@@ -231,10 +253,24 @@ class ReadingRoomService:
                 "elapsed_seconds": self.elapsed_seconds(s, _aware(s.last_seen_at) if away else now),
                 "book": s.book_title,
             })
+        from app.services.guest_room import GuestRoomService, elapsed as guest_elapsed, is_away as guest_away, public_key
+
+        for g in GuestRoomService(self.db).open_sittings(hall):
+            away = guest_away(g, now)
+            readers.append({
+                "key": public_key(g.id), "seat": g.seat, "gender": g.gender,
+                "status": "paused" if away else g.status,
+                "elapsed_seconds": guest_elapsed(g, _aware(g.last_seen_at) if away else now),
+                "book": g.book_title,
+            })
         day = self.day(hall=hall, scope=scope, now=now) if hall == "library" or rnd is not None else None
+        from app.services.guest_room import GUEST_HALL
+
         return {
             "hall": hall,
             "seats": SEATS[hall],
+            # how many chairs a visitor without an account may still take here (0: none, or guest reading is off)
+            "guest_seats_left": GuestRoomService(self.db).seats_left() if hall == GUEST_HALL else 0,
             "readers": readers,
             "today": {"readers": day["readers"], "minutes": day["minutes"]} if day else {"readers": 0, "minutes": 0},
             "server_time": now.isoformat(),
@@ -286,10 +322,22 @@ class ReadingRoomService:
                 "today_minutes": logs.get(s.user_id, 0), "in_round": self.in_circle(rnd, u.id),
                 "book_minutes": before.get(s.id, 0), "me": me,
             })
+        from app.services.guest_room import GuestRoomService, elapsed as guest_elapsed, is_away as guest_away
+
+        for g in GuestRoomService(self.db).open_sittings(hall) if can_sit else []:
+            away = guest_away(g, now)
+            readers.append({
+                "session_id": f"g-{g.id}", "user_id": "", "display_name": "", "username": "", "guest": True,
+                "gender": g.gender, "seat": g.seat, "book": g.book_title,
+                "status": "paused" if away else g.status,
+                "elapsed_seconds": guest_elapsed(g, _aware(g.last_seen_at) if away else now),
+                "today_minutes": 0, "in_round": False, "book_minutes": 0, "me": False,
+            })
         return {
             "hall": hall,
             "seats": SEATS[hall],
             "can_sit": can_sit,
+            "room_minutes": self.room_minutes(user.id),
             "round": {"id": str(rnd.id), "year": rnd.year, "month": rnd.month} if rnd else None,
             "in_round": self.in_circle(rnd, user.id),
             "today_minutes": self.today_minutes(rnd, user.id),
@@ -328,9 +376,9 @@ class ReadingRoomService:
             self._back(old, _now())
             if old.ended_at is None:
                 self._close(old)
-        scope = self._scope(hall, rnd)
-        if any(s.seat == seat for s in self._sweep(self._open_sessions(hall, scope))):
+        if seat in self.taken_seats(hall, rnd):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Chair is taken")
+        scope = self._scope(hall, rnd)
         now = _now()
         s = ReadingRoomSession(
             user_id=user.id, hall=hall, round_id=scope, seat=seat, book_title=book,

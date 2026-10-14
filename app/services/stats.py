@@ -203,10 +203,13 @@ class StatsService:
             select(ReadingRoomSession.user_id, ReadingRoomSession.last_seen_at)
             .where(ReadingRoomSession.ended_at.is_(None))
         ).all()
-        return len({
-            uid for uid, seen in rows
-            if (seen if seen.tzinfo else seen.replace(tzinfo=timezone.utc)) >= fresh
-        })
+        from app.models.reading_room import GuestRoomSitting
+
+        guests = self.db.execute(
+            select(GuestRoomSitting.last_seen_at).where(GuestRoomSitting.ended_at.is_(None))
+        ).scalars().all()
+        fresh_of = lambda seen: (seen if seen.tzinfo else seen.replace(tzinfo=timezone.utc)) >= fresh  # noqa: E731
+        return len({uid for uid, seen in rows if fresh_of(seen)}) + sum(1 for seen in guests if fresh_of(seen))
 
     def _yearly_history(self) -> list[YearlyStatOut]:
         """Readers/minutes per calendar year, oldest first."""

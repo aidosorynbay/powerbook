@@ -469,3 +469,126 @@ def test_the_front_page_window_shows_chairs_and_books_without_names(env):
     assert set(one) == {"key", "seat", "gender", "status", "elapsed_seconds", "book"}
     assert env.reader.display_name not in pub.text and str(env.reader.id) not in pub.text
     assert c.get("/api/reading-room/nowhere/public").status_code == 404
+
+
+def _age_guest(env, sitting_id, seconds):
+    from app.models.reading_room import GuestRoomSitting
+
+    g = env.db.get(GuestRoomSitting, uuid.UUID(sitting_id))
+    now = datetime.now(timezone.utc)
+    g.run_started_at = now - timedelta(seconds=seconds)
+    g.created_at = now - timedelta(seconds=seconds)
+    g.last_seen_at = now
+    env.db.commit()
+
+
+def test_a_visitor_reads_without_an_account_and_keeps_the_minutes(env):
+    if _last_day_of_round(env):
+        pytest.skip("the round's last day only takes corrections")
+    c = env.client
+    r = c.post("/api/reading-room/guest-sit", json={"seat": 4, "book": "Маленький принц", "gender": "female"})
+    assert r.status_code == 200, r.text
+    g = r.json()
+    gid, token = g["id"], g["token"]
+
+    # the room shows the visitor like anyone, without a name; the chair is taken for readers too
+    pub = c.get("/api/reading-room/library/public").json()
+    assert [(x["seat"], x["book"], x["key"]) for x in pub["readers"]] == [(4, "Маленький принц", g["key"])]
+    st = c.get("/api/reading-room/library/state", headers=env.h(env.other)).json()
+    (seen,) = [x for x in st["readers"] if x.get("guest")]
+    assert seen["seat"] == 4 and seen["display_name"] == "" and seen["user_id"] == ""
+    assert c.post("/api/reading-room/library/sit", json={"seat": 4, "book": "Дюна"}, headers=env.h(env.other)).status_code == 409
+    assert c.post("/api/reading-room/guest-sit", json={"seat": 4, "book": "Дюна"}).status_code == 409
+
+    # a wrong token is nobody's sitting
+    assert c.post(f"/api/reading-room/guest/{gid}/finish", json={"token": "x" * 20}).status_code == 404
+
+    _age_guest(env, gid, 31 * 60)
+    fin = c.post(f"/api/reading-room/guest/{gid}/finish", json={"token": token}).json()
+    assert fin["minutes"] == 31 and fin["ended"]
+    assert c.get("/api/reading-room/library/public").json()["readers"] == []
+
+    # they log in as a reader of the circle: the minutes go into today
+    kept = c.post(f"/api/reading-room/guest/{gid}/claim", json={"token": token}, headers=env.h(env.reader)).json()
+    assert kept["minutes"] == 31 and kept["credited"]
+    env.db.expire_all()
+    log = env.db.query(ReadingLog).filter_by(user_id=env.reader.id, date=env.today).one()
+    assert log.minutes == 31
+    # claiming twice changes nothing; someone else cannot take it
+    assert c.post(f"/api/reading-room/guest/{gid}/claim", json={"token": token}, headers=env.h(env.reader)).json()["minutes"] == 31
+    assert c.post(f"/api/reading-room/guest/{gid}/claim", json={"token": token}, headers=env.h(env.other)).status_code == 409
+
+
+def test_minutes_outside_the_circle_are_kept_in_the_room(env):
+    c, h = env.client, env.h(env.guest)  # a reader not in the circle
+    r = c.post("/api/reading-room/library/sit", json={"seat": 2, "book": "Алхимик"}, headers=h)
+    assert r.status_code == 200, r.text
+    _age(env, r.json()["id"], 20 * 60)
+    fin = c.post(f"/api/reading-room/sessions/{r.json()['id']}/finish", headers=h).json()
+    assert fin["minutes"] == 20 and not fin["credited"] and fin["reason"] == "not_in_round"
+    st = c.get("/api/reading-room/library/state", headers=h).json()
+    assert st["room_minutes"] == {"today": 20, "total": 20}
+
+
+def test_keeping_a_visitors_sitting_twice_credits_it_once(env):
+    if _last_day_of_round(env):
+        pytest.skip("the round's last day only takes corrections")
+    c = env.client
+    g = c.post("/api/reading-room/guest-sit", json={"seat": 1, "book": "Дюна"}).json()
+    _age_guest(env, g["id"], 20 * 60)
+    c.post(f"/api/reading-room/guest/{g['id']}/finish", json={"token": g["token"]})
+    for _ in range(3):
+        r = c.post(f"/api/reading-room/guest/{g['id']}/claim", json={"token": g["token"]}, headers=env.h(env.reader))
+        assert r.status_code == 200 and r.json()["minutes"] == 20
+    env.db.expire_all()
+    assert env.db.query(ReadingLog).filter_by(user_id=env.reader.id, date=env.today).one().minutes == 20
+    assert env.db.query(ReadingRoomSession).filter_by(user_id=env.reader.id).count() == 1
+
+
+def test_visitors_never_fill_the_whole_hall(env):
+    c = env.client
+    for seat in range(8):
+        assert c.post("/api/reading-room/guest-sit", json={"seat": seat, "book": "Дюна"}).status_code == 200
+    r = c.post("/api/reading-room/guest-sit", json={"seat": 8, "book": "Дюна"})
+    assert r.status_code == 409 and r.json()["detail"] == "Hall is full for guests"
+    # a reader with an account still finds a chair
+    assert c.post("/api/reading-room/library/sit", json={"seat": 9, "book": "Дюна"}, headers=env.h(env.other)).status_code == 200
+
+
+def test_a_visitors_locked_phone_is_asked_about_not_lost(env):
+    from app.models.reading_room import GuestRoomSitting
+
+    c = env.client
+    g = c.post("/api/reading-room/guest-sit", json={"seat": 3, "book": "Дюна"}).json()
+    # read 5 minutes with the page open, then the phone locked for 25 minutes beside the paper book
+    row = env.db.get(GuestRoomSitting, uuid.UUID(g["id"]))
+    now = datetime.now(timezone.utc)
+    row.run_started_at = now - timedelta(minutes=30)
+    row.created_at = now - timedelta(minutes=30)
+    row.last_seen_at = now - timedelta(minutes=25)
+    env.db.commit()
+    back = c.post(f"/api/reading-room/guest/{g['id']}/heartbeat", json={"token": g["token"]}).json()
+    assert back["elapsed_seconds"] // 60 == 5 and back["away_seconds"] // 60 == 25
+    yes = c.post(f"/api/reading-room/guest/{g['id']}/away", json={"token": g["token"], "count": True}).json()
+    assert yes["elapsed_seconds"] // 60 == 30 and yes["away_seconds"] == 0
+    assert c.post(f"/api/reading-room/guest/{g['id']}/finish", json={"token": g["token"]}).json()["minutes"] == 30
+
+
+def test_visitor_titles_are_titles_and_one_address_cannot_fill_the_hall(env):
+    import app.services.guest_room as gr
+
+    gr._sits.clear()
+    c = env.client
+    # no title: «Книга»; a link is not a title
+    r = c.post("/api/reading-room/guest-sit", json={"seat": 0, "book": ""}, headers={"X-Forwarded-For": "1.2.3.4"})
+    assert r.status_code == 200 and r.json()["book"] == "Книга"
+    assert c.post("/api/reading-room/guest-sit", json={"seat": 1, "book": "читай t.me/spam"}).status_code == 422
+    for seat in (2, 3, 4):
+        assert c.post("/api/reading-room/guest-sit", json={"seat": seat, "book": "Дюна"}, headers={"X-Forwarded-For": "1.2.3.4"}).status_code == 200
+    r = c.post("/api/reading-room/guest-sit", json={"seat": 5, "book": "Дюна"}, headers={"X-Forwarded-For": "1.2.3.4"})
+    assert r.status_code == 429
+    # another address is fine
+    assert c.post("/api/reading-room/guest-sit", json={"seat": 5, "book": "Дюна"}, headers={"X-Forwarded-For": "5.6.7.8"}).status_code == 200
+    pub = c.get("/api/reading-room/library/public").json()
+    assert pub["guest_seats_left"] == 3  # 11 chairs - 3 kept for readers - 5 visitors
+    gr._sits.clear()

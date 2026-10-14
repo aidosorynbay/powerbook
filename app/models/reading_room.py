@@ -75,3 +75,32 @@ class ReadingRoomMessage(Base):
     )
     text: Mapped[str] = mapped_column(String(300), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class GuestRoomSitting(TimestampMixin, Base):
+    """A visitor reading in the library hall without an account, from the front page's «Начать читать».
+
+    Held by a secret the visitor's browser keeps (only its hash is stored). When they sign up or log in they may
+    keep it: claiming turns it into one of their own ReadingRoomSession rows, credited like any other sitting.
+    """
+
+    __tablename__ = "guest_room_sittings"
+    __table_args__ = (Index("ix_guest_room_sittings_open", "hall", "ended_at"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    hall: Mapped[str] = mapped_column(String(16), nullable=False)
+    seat: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    book_title: Mapped[str] = mapped_column(String(200), nullable=False)
+    # which figure sits in the chair: "female", "male" or "unknown" (a lamp and a tag only)
+    gender: Mapped[str] = mapped_column(String(8), nullable=False, default="unknown")
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="reading")
+    accumulated_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    run_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # a silence while the clock ran (a locked phone beside a paper book), set aside until the visitor says whether
+    # they read through it — the same question the members' room asks
+    away_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    # the reader's own sitting it became, once claimed
+    claimed_session_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)

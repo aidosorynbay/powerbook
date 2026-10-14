@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_token_exp_minutes: int = 60 * 24 * 7  # 7 days
 
+    # Reading without an account in the library hall (the front page's «Начать читать»). False turns it off at once.
+    guest_room_enabled: bool = True
+
     # Library (uploaded PDF/EPUB files)
     # Bind-mounted from the host so books survive container rebuilds.
     library_storage_dir: str = "/app/storage/library"

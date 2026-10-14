@@ -3,12 +3,13 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
+from app.services.guest_room import GuestRoomService
 from app.services.reading_room import ReadingRoomService
 
 router = APIRouter(prefix="/reading-room", tags=["reading-room"])
@@ -92,3 +93,66 @@ def finish(
 @router.post("/sessions/{session_id}/undo")
 def undo(session_id: uuid.UUID, db: Session = Depends(get_db), user=Depends(get_current_user)) -> dict:
     return ReadingRoomService(db).undo(session_id=session_id, user=user)
+
+
+# ---------- reading without an account (the front page's «Начать читать») ----------
+
+
+class GuestSitRequest(BaseModel):
+    seat: int = Field(ge=0, le=63)
+    book: str = Field(default="", max_length=200)
+    gender: str = Field(default="unknown", max_length=8)
+
+
+class GuestToken(BaseModel):
+    token: str = Field(min_length=8, max_length=80)
+
+
+def _address(request: Request) -> str | None:
+    """The visitor's address as the proxy saw it; None when the proxy doesn't say (then only the hall's cap holds)."""
+    forwarded = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    return forwarded or request.headers.get("x-real-ip") or None
+
+
+@router.post("/guest-sit")
+def guest_sit(payload: GuestSitRequest, request: Request, db: Session = Depends(get_db)) -> dict:
+    """A visitor takes a free chair in the library hall. The answer carries the token their browser keeps."""
+    return GuestRoomService(db).sit(seat=payload.seat, book=payload.book, gender=payload.gender, address=_address(request))
+
+
+@router.post("/guest/{sitting_id}/heartbeat")
+def guest_heartbeat(sitting_id: uuid.UUID, payload: GuestToken, db: Session = Depends(get_db)) -> dict:
+    return GuestRoomService(db).heartbeat(sitting_id=sitting_id, token=payload.token)
+
+
+class GuestAway(GuestToken):
+    count: bool
+
+
+@router.post("/guest/{sitting_id}/away")
+def guest_away(sitting_id: uuid.UUID, payload: GuestAway, db: Session = Depends(get_db)) -> dict:
+    """«Экран был выключен N мин. Вы читали?» — the visitor's answer."""
+    return GuestRoomService(db).answer_away(sitting_id=sitting_id, token=payload.token, count=payload.count)
+
+
+@router.post("/guest/{sitting_id}/pause")
+def guest_pause(sitting_id: uuid.UUID, payload: GuestToken, db: Session = Depends(get_db)) -> dict:
+    return GuestRoomService(db).pause(sitting_id=sitting_id, token=payload.token)
+
+
+@router.post("/guest/{sitting_id}/resume")
+def guest_resume(sitting_id: uuid.UUID, payload: GuestToken, db: Session = Depends(get_db)) -> dict:
+    return GuestRoomService(db).resume(sitting_id=sitting_id, token=payload.token)
+
+
+@router.post("/guest/{sitting_id}/finish")
+def guest_finish(sitting_id: uuid.UUID, payload: GuestToken, db: Session = Depends(get_db)) -> dict:
+    return GuestRoomService(db).finish(sitting_id=sitting_id, token=payload.token)
+
+
+@router.post("/guest/{sitting_id}/claim")
+def guest_claim(
+    sitting_id: uuid.UUID, payload: GuestToken, db: Session = Depends(get_db), user=Depends(get_current_user)
+) -> dict:
+    """The visitor signed up or logged in: their minutes become theirs."""
+    return GuestRoomService(db).claim(sitting_id=sitting_id, token=payload.token, user=user)
