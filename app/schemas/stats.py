@@ -28,6 +28,8 @@ class PublicStatsOut(BaseModel):
     # The circle right now, for the homepage's «общая казна»: minutes the whole
     # circle has put in this month, how many read today (logged / made the
     # day count), and who sits in a reading room this minute. Counts only.
+    # which circle the current one is since February 2021
+    round_number: int | None = None
     round_minutes: int = 0
     today_logged: int = 0
     today_counted: int = 0

@@ -15,6 +15,7 @@ from app.repositories.group_members import GroupMemberRepository
 from app.repositories.groups import GroupRepository
 from app.repositories.participants import RoundParticipantRepository
 from app.repositories.rounds import RoundRepository
+from app.repositories.stats import circle_number
 from app.schemas.groups import CurrentRoundStatusOut, ParticipationInfo, RoundInfo
 
 
@@ -67,6 +68,7 @@ class GroupService:
 
         if rnd is not None:
             round_info = RoundInfo.model_validate(rnd)
+            round_info.number = circle_number(self.db, rnd)
             participant = self.participants.get_for_user(round_id=rnd.id, user_id=user_id)
             if participant is not None:
                 participation = ParticipationInfo(
@@ -111,6 +113,7 @@ class GroupService:
             )
             if next_rnd is not None:
                 next_round_info = RoundInfo.model_validate(next_rnd)
+                next_round_info.number = circle_number(self.db, next_rnd)
                 next_participant = self.participants.get_for_user(round_id=next_rnd.id, user_id=user_id)
                 if next_participant is not None:
                     next_round_participation = ParticipationInfo(

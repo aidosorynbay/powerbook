@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import {
   useAuth,
   useI18n,
+  circleOrdinal,
   apiGet,
   apiPost,
   useWaitlist,
@@ -1042,6 +1043,10 @@ export function DashboardPage() {
                 <div className={`${styles.roundHeader} ${isParticipant && !inRegistrationWindow ? styles.roundHeaderMember : ''}`}>
                   <div className={styles.roundTitle}>
                     {isParticipant && !inRegistrationWindow ? t(`roundTitle.${roundStatus.round.month}`) : `${monthName} ${roundStatus.round.year}`}
+                    {roundStatus.round.number ? (
+                      /* which circle this is since February 2021 (the founder, 2026-10-14) */
+                      <span className={styles.roundNumber}> · {circleOrdinal(locale, roundStatus.round.number, !(isParticipant && !inRegistrationWindow))}</span>
+                    ) : null}
                     {isParticipant && !inRegistrationWindow && (
                       /* one line, one tap: you are in, which day it is, how many read with you (the council, 2026-10-13) */
                       <button

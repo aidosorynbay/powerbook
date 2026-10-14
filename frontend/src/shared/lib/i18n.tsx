@@ -6468,6 +6468,23 @@ type I18nContextValue = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
+/** «67-й круг», «67-ші раунд», «67th circle»: which circle this is, in the reader's language. */
+export function circleOrdinal(locale: Locale, n: number, noun = true): string {
+  if (locale === 'kk') {
+    // the suffix follows the last spoken word of the number: жеті → -ші, алты → -шы, он → -шы
+    const units: Record<number, string> = { 1: 'ші', 2: 'ші', 3: 'ші', 4: 'ші', 5: 'ші', 6: 'шы', 7: 'ші', 8: 'ші', 9: 'шы' };
+    const tens: Record<number, string> = { 1: 'шы', 2: 'шы', 3: 'шы', 4: 'шы', 5: 'ші', 6: 'шы', 7: 'ші', 8: 'ші', 9: 'шы' };
+    const sfx = n % 10 ? units[n % 10] : n % 100 ? tens[Math.floor((n % 100) / 10)] : 'ші';
+    return noun ? `${n}-${sfx} раунд` : `${n}-${sfx}`;
+  }
+  if (locale === 'en') {
+    const k = n % 100;
+    const sfx = k >= 11 && k <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th';
+    return noun ? `${n}${sfx} circle` : `${n}${sfx}`;
+  }
+  return noun ? `${n}-й круг` : `${n}-й`;
+}
+
 function inKazakhstan(): boolean {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';

@@ -39,6 +39,8 @@ export type RoundInfo = {
   /** Day window inside the month; a mini-round is a slice of it. */
   start_day?: number;
   end_day?: number | null;
+  /** Which circle this is since February 2021. */
+  number?: number | null;
 };
 
 export type ParticipationInfo = {
@@ -283,6 +285,7 @@ export type PublicStats = {
   round_registration_open?: boolean;
   // The circle right now (counts only): the month's shared minutes, how many
   // logged today / made today count, who sits in a reading room this minute.
+  round_number?: number | null;
   round_minutes?: number;
   today_logged?: number;
   today_counted?: number;

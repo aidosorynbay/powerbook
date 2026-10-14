@@ -51,6 +51,12 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.roundNumber {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
 .roundHeaderActions {
   display: flex;
   align-items: center;

@@ -15,7 +15,7 @@ from app.models.reading_room import ReadingRoomSession
 from app.models.round import ReadingLog
 from app.repositories.groups import GroupRepository
 from app.repositories.rounds import RoundRepository
-from app.repositories.stats import StatsRepository
+from app.repositories.stats import StatsRepository, circle_number
 from app.schemas.stats import PublicCalendarOut, PublicStatsOut, YearlyStatOut
 
 
@@ -66,6 +66,7 @@ class StatsService:
         round_is_partial = False
         round_registration_open = False
         round_minutes = 0
+        round_number: int | None = None
         today_logged = 0
         today_counted = 0
 
@@ -109,6 +110,7 @@ class StatsService:
                 days_remaining = max(0, last_day - now.day)
                 round_progress_percent = int((elapsed / window_len) * 100)
 
+                round_number = circle_number(self.db, current_round)
                 round_minutes = int(self.db.execute(
                     select(func.coalesce(func.sum(ReadingLog.minutes), 0))
                     .where(ReadingLog.round_id == current_round.id)
@@ -141,6 +143,7 @@ class StatsService:
             round_end_day=round_end_day,
             round_is_partial=round_is_partial,
             round_registration_open=round_registration_open,
+            round_number=round_number,
             round_minutes=round_minutes,
             today_logged=today_logged,
             today_counted=today_counted,

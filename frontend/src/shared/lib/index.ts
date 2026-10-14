@@ -4,7 +4,7 @@
 export { AuthProvider, useAuth } from './auth';
 
 // i18n
-export { I18nProvider, useI18n, LOCALES } from './i18n';
+export { I18nProvider, useI18n, LOCALES, circleOrdinal } from './i18n';
 export type { Locale, TranslationKey } from './i18n';
 
 // API

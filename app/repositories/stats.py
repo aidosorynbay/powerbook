@@ -2,13 +2,30 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
 from app.models.claim import UsernameClaim
 from app.models.enums import ClaimStatus, RoundParticipantStatus
 from app.models.round import ReadingLog, Round, RoundParticipant
 from app.repositories.base import BaseRepository
+
+
+def _ran(round_id):
+    return exists().where(ReadingLog.round_id == round_id, ReadingLog.minutes > 0)
+
+
+def circle_number(db: Session, rnd: Round) -> int:
+    """Which circle this is, counted from the first in February 2021: the circles that ran before it, plus one (the
+    current circle counts itself even before anyone has logged a minute)."""
+    before = db.execute(
+        select(func.count(Round.id)).where(
+            Round.group_id == rnd.group_id,
+            Round.year * 12 + Round.month < rnd.year * 12 + rnd.month,
+            _ran(Round.id),
+        )
+    ).scalar() or 0
+    return int(before) + 1
 
 
 class StatsRepository(BaseRepository[None]):
@@ -46,9 +63,11 @@ class StatsRepository(BaseRepository[None]):
         return self.db.execute(stmt).scalar() or 0
 
     def count_rounds_for_group(self, group_id: uuid.UUID) -> int:
-        """Count total rounds for a specific group."""
-        stmt = select(func.count(Round.id)).where(Round.group_id == group_id)
-        return self.db.execute(stmt).scalar() or 0
+        """Circles that actually ran: a round anyone logged minutes in. Rows made ahead of time (next month's sign-up)
+        or left empty are not circles yet — the same rule as circle_number, so «66 кругов» and «66-й круг» agree."""
+        return self.db.execute(
+            select(func.count(Round.id)).where(Round.group_id == group_id, _ran(Round.id))
+        ).scalar() or 0
 
     def count_active_participants_in_round(self, round_id: uuid.UUID) -> int:
         """Count active participants in a specific round."""

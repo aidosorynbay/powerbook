@@ -35,6 +35,8 @@ class RoundInfo(BaseModel):
     start_day: int = 1
     end_day: int | None = None
     timezone: str
+    # which circle this is since February 2021 («Октябрьский круг · 67-й»)
+    number: int | None = None
 
     model_config = {"from_attributes": True}
 

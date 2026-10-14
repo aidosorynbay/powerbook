@@ -82,3 +82,36 @@ def test_circle_today_counts(db):
     assert out.today_logged == 2
     assert out.today_counted == 1
     assert out.room_now == 1
+
+
+def test_circles_count_only_those_that_ran_and_each_knows_its_number(db):
+    from app.repositories.stats import circle_number
+
+    u = User(username="u", display_name="U", password_hash="x", gender=Gender.female)
+    db.add(u)
+    db.flush()
+    group = Group(name="PowerBook", slug="powerbook", owner_user_id=u.id)
+    db.add(group)
+    db.flush()
+
+    def circle(year, month, read=True, status=RoundStatus.results_published):
+        r = Round(group_id=group.id, year=year, month=month, status=status, timezone="Asia/Almaty")
+        db.add(r)
+        db.flush()
+        if read:
+            db.add(ReadingLog(round_id=r.id, user_id=u.id, date=date(year, month, 5), minutes=30, score=1))
+        return r
+
+    first = circle(2021, 2)
+    circle(2021, 3)
+    empty = circle(2022, 1, read=False)  # made but never ran
+    october = circle(2026, 10, status=RoundStatus.locked)
+    november = circle(2026, 11, read=False, status=RoundStatus.registration_open)  # sign-up ahead of time
+    db.commit()
+
+    assert circle_number(db, first) == 1
+    assert circle_number(db, october) == 3  # the empty January does not count
+    assert circle_number(db, november) == 4  # the next one counts itself
+    out = StatsService(db).get_public_stats()
+    assert out.total_rounds == 3 and out.round_number == 3
+    assert empty  # (kept for readability)
