@@ -306,111 +306,7 @@
   }
 
   /* a visitor's phone: the plain sentence says what it is, the second button says when — the state line can go */
-  .heroWhat + /* the circle at a glance (the old front page's card, kept by the founder's wish) */
-.panel {
-  width: 100%;
-  max-width: 520px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(16, 11, 7, 0.62);
-  border: 1px solid rgba(255, 210, 160, 0.16);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  color: #f6e6cf;
-}
-
-.panelHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.panelTitle {
-  font-weight: var(--font-weight-semibold);
-  color: #fff6ea;
-}
-
-.panelNo {
-  font-weight: var(--font-weight-medium);
-  color: #cbb79e;
-}
-
-.panelBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: var(--font-weight-semibold);
-  color: #ffd4a8;
-  white-space: nowrap;
-}
-
-.panelBadge i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #39d98a;
-}
-
-.panelBadgeReg i {
-  background: #ffb35c;
-  box-shadow: 0 0 0 0 rgba(255, 179, 92, 0.6);
-  animation: pulse 2.4s ease-out infinite;
-}
-
-.panelBar {
-  margin-top: 10px;
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  overflow: hidden;
-}
-
-.panelBar span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #f26430, #ffb35c);
-}
-
-.panelDay {
-  margin-top: 6px;
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 13px;
-  color: #cbb79e;
-}
-
-.panelStats {
-  margin: 10px 0 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.panelStats div {
-  display: flex;
-  flex-direction: column-reverse;
-}
-
-.panelStats dd {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: var(--font-weight-bold);
-  color: #fff6ea;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-}
-
-.panelStats dt {
-  font-size: 12px;
-  color: #cbb79e;
-  line-height: 1.25;
-}
-
-.heroState {
+  .heroWhat + .heroState {
     display: none;
   }
 
@@ -947,4 +843,34 @@ a.perk:hover {
   margin: 0 0 6px;
   color: #efd3b0;
   line-height: 1.5;
+}
+
+/* «Полоса» (?hero=strip, computers): the photo as a band above, the words below in two columns — the old page's
+   layout in the new look, for comparison with the photo behind the words */
+@media (min-width: 760px) {
+  .heroStrip {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 440px);
+    column-gap: 64px;
+    row-gap: 14px;
+    align-items: start;
+    padding-top: var(--spacing-6);
+    padding-bottom: var(--spacing-16);
+  }
+
+  .heroStrip > * {
+    grid-column: 1;
+    max-width: 600px;
+  }
+
+  .heroStrip > .heroPanel {
+    grid-column: 2;
+    grid-row: 1 / span 6;
+    align-self: center;
+    max-width: none;
+  }
+
+  .heroStrip .panel {
+    max-width: none;
+  }
 }
