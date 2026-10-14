@@ -189,13 +189,15 @@ class ClaimsService:
             claim.reviewed_at = datetime.now(timezone.utc)
             self.db.commit()
 
-    def link_by_admin(self, *, user_id: uuid.UUID, ghost_user_id: uuid.UUID, admin_id: uuid.UUID | None) -> MyClaimOut:
+    def link_by_admin(
+        self, *, user_id: uuid.UUID, ghost_user_id: uuid.UUID, admin_id: uuid.UUID | None, note: str = "linked by admin"
+    ) -> MyClaimOut:
         """The founder recognising a reader in the archive: the same checks as
         a reader's own request, granted at once."""
-        out = self.submit_claim(user_id=user_id, ghost_user_id=ghost_user_id, note="linked by admin")
+        out = self.submit_claim(user_id=user_id, ghost_user_id=ghost_user_id, note=note)
         now = datetime.now(timezone.utc)
         for claim in self.repo.list_for_claimant(claimant_user_id=user_id):
-            if claim.status == ClaimStatus.pending and claim.note == "linked by admin":
+            if claim.status == ClaimStatus.pending and claim.note == note:
                 taken = self.repo.active_claim_for_ghost(ghost_user_id=claim.ghost_user_id)
                 if taken is not None and taken.id != claim.id:
                     continue
@@ -203,6 +205,27 @@ class ClaimsService:
                 claim.reviewed_by_user_id = admin_id
                 claim.reviewed_at = now
         self.db.commit()
+        granted = self.repo.get(uuid.UUID(out.id))
+        return self._to_out(granted) if granted is not None else out
+
+    def link_by_telegram(self, *, user_id: uuid.UUID, nick: str) -> list[MyClaimOut]:
+        """The reader proved through Telegram's own login that this nickname is
+        theirs: its archive is granted at once, with nobody to wait for. A
+        nickname someone else already holds a claim on is left to the founder."""
+        ghosts = [g for g in self.users.archive_by_nick(nick) if g.id != user_id]
+        if not ghosts:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No archive under this Telegram")
+        out: list[MyClaimOut] = []
+        for ghost in ghosts:
+            taken = self.repo.active_claim_for_ghost(ghost_user_id=ghost.id)
+            if taken is not None:
+                if taken.claimant_user_id == user_id:
+                    out.append(self._to_out(taken))
+                continue
+            # A request of theirs still waiting is reopened and granted here.
+            out.append(self.link_by_admin(user_id=user_id, ghost_user_id=ghost.id, admin_id=None, note="telegram verified"))
+        if not out:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This username was already claimed by someone else")
         return out
 
     def _to_out(self, claim) -> MyClaimOut:

@@ -117,6 +117,13 @@ def claim_waiting(*, claim_id: str, claimant, ghost, rounds: list[str]) -> None:
     ]])
 
 
+def claim_by_telegram(*, claimant, nick: str, rounds: int) -> None:
+    """A reader proved their old nickname through Telegram and took its
+    history at once: nothing to approve, only to know."""
+    who = claimant.display_name or claimant.username
+    tell_admins(f"✅ Через Telegram: {who} (@{claimant.username}) забрал(а) историю ника @{nick} — кругов: {rounds}")
+
+
 def _together(db: Session, claim: UsernameClaim) -> list[UsernameClaim]:
     """The request and the ones it brought along: a reader asking for one
     nickname asks for every archive account recorded as the same person."""

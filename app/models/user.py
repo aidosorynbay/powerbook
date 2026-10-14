@@ -3,7 +3,8 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Boolean, Enum, ForeignKey, String, Text, Uuid
+from sqlalchemy import JSON, Boolean, Enum, ForeignKey, String, Text, Uuid, func
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -55,6 +56,22 @@ class User(TimestampMixin, Base):
 
     is_claimable: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
 
+    # An archive account's old Telegram nickname. Not telegram_id: nobody has
+    # shown it is theirs, and holding the unique column locked the real owner
+    # out of registering. Only a label to match claims by; never unique.
+    archive_nick: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True, default=None)
+
+    @hybrid_property
+    def telegram_handle(self) -> str | None:
+        """The @handle to show next to a name: the account's Telegram, or the
+        archive's old nickname for a reader who has not signed up."""
+        return self.telegram_id or self.archive_nick
+
+    @telegram_handle.inplace.expression
+    @classmethod
+    def _telegram_handle_expression(cls):
+        return func.coalesce(cls.telegram_id, cls.archive_nick)
+
     # Social profile extras
     avatar_data: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     recommendation_text: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
@@ -105,5 +122,6 @@ class User(TimestampMixin, Base):
 
     def __str__(self) -> str:
         # How the admin names a reader: the username, and the Telegram handle when it differs.
-        tg = f" · tg @{self.telegram_id}" if self.telegram_id and self.telegram_id != self.username else ""
+        handle = self.telegram_handle
+        tg = f" · tg @{handle}" if handle and handle != self.username else ""
         return f"@{self.username}{tg}"

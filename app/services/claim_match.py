@@ -112,10 +112,12 @@ def claimable_ghosts(db: Session) -> list[Ghost]:
         if cached is not None and time.monotonic() - float(_cache["at"]) < _TTL_SECONDS:
             return cached  # type: ignore[return-value]
         rows = db.execute(
-            select(User.id, User.username, User.display_name, User.person_id).where(User.is_claimable.is_(True))
+            select(User.id, User.username, User.display_name, User.person_id, User.archive_nick).where(
+                User.is_claimable.is_(True)
+            )
         ).all()
         ghosts = [
-            Ghost(id=r[0], username=r[1], display_name=r[2] or r[1], person_id=r[3], keys=keys(r[1], r[2]))
+            Ghost(id=r[0], username=r[1], display_name=r[2] or r[1], person_id=r[3], keys=keys(r[1], r[2], r[4]))
             for r in rows
         ]
         _cache["ghosts"], _cache["at"] = ghosts, time.monotonic()

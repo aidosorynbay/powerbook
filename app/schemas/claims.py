@@ -31,3 +31,15 @@ class ClaimSuggestionsOut(BaseModel):
     has_archive: bool
     # Archive nicknames that look like this reader, best first.
     suggestions: list[ClaimCandidateOut]
+
+
+class TelegramClaimRequest(BaseModel):
+    """What Telegram's login widget hands back, signed with the bot's token."""
+
+    id: int
+    first_name: str | None = None
+    last_name: str | None = None
+    username: str | None = None
+    photo_url: str | None = None
+    auth_date: int
+    hash: str

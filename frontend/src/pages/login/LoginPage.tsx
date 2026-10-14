@@ -10,7 +10,8 @@ export function LoginPage() {
   const { login } = useAuth();
   const { t } = useI18n();
 
-  const [username, setUsername] = useState('');
+  // «Этот Telegram уже зарегистрирован — войдите» brings the handle along.
+  const [username, setUsername] = useState(() => searchParams.get('login') ?? '');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.enums import Gender
@@ -28,6 +28,14 @@ class UserRepository(BaseRepository[User]):
     def get_by_telegram_id(self, telegram_id: str) -> User | None:
         stmt = select(User).where(User.telegram_id == telegram_id)
         return self.db.execute(stmt).scalar_one_or_none()
+
+    def archive_by_nick(self, nick: str) -> list[User]:
+        """Archive accounts recorded under this old Telegram nickname, in any case."""
+        nick = nick.strip().lstrip("@").lower()
+        if not nick:
+            return []
+        stmt = select(User).where(User.is_claimable.is_(True), func.lower(User.archive_nick) == nick)
+        return list(self.db.execute(stmt).scalars().all())
 
     def get_by_login(self, login: str) -> User | None:
         """Look up by username first, then telegram_id, then email.

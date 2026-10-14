@@ -19,8 +19,14 @@ class AuthService:
     ) -> tuple[User, str]:
         existing = self.users.get_by_username(username)
         if existing is not None:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
+            # An old circle nickname from the archive: most likely their own,
+            # and the history is theirs to take on the next step, not by name.
+            detail = "Username belongs to the archive" if existing.is_claimable else "Username already taken"
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
 
+        # Archive accounts keep their old nicknames in archive_nick, so only a
+        # reader who really signed up with this Telegram is found here.
+        telegram_id = telegram_id.strip().lstrip("@")
         existing_tg = self.users.get_by_telegram_id(telegram_id)
         if existing_tg is not None:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Telegram ID already linked to another account")
