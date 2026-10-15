@@ -240,6 +240,13 @@ def plan(db: Session, now: datetime | None = None) -> list[Checkin]:
                 Checkin.user_id == p.user_id, Checkin.round_id == rnd.id, Checkin.last_read == last_read, Checkin.step == 1
             )
         ).scalar_one_or_none()
+        if first is not None and first.status == "expired":
+            # a list nobody said yes to (the ✅ days) does not end the pause: it goes again, now on its own
+            first.status = "approved" if settings.checkin_auto else "planned"
+            first.day = today
+            db.commit()
+            created.append(first)
+            continue
         if first is None:
             step = 1
         elif (

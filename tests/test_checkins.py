@@ -186,6 +186,16 @@ def test_english_readers_and_the_founders_own_voice(env, monkeypatch):
     assert checkins.card(db, db.get(User, u["quiet"].id))["from"] == "Founder"
 
 
+def test_a_list_nobody_approved_goes_again_on_its_own(env, monkeypatch):
+    db, u, october, told, pushed = env
+    monkeypatch.setattr(settings, "checkin_auto", False)
+    checkins.plan(db, at(15, 10))  # the ✅ days: planned, and nobody tapped
+    monkeypatch.setattr(settings, "checkin_auto", True)
+    again = checkins.plan(db, at(16, 10))
+    assert {c.user_id for c in again} >= {u["quiet"].id} and all(c.status == "approved" for c in again)
+    assert checkins.deliver(db, at(16, 20)) >= 1
+
+
 def test_never_in_the_circles_first_days(env):
     db, u, october, told, pushed = env
     assert checkins.plan(db, at(3, 10)) == []
