@@ -28,7 +28,7 @@ import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type Rin
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
 import { useMediaQuery } from '@/shared/hooks';
-import { MinutesDial, MonthStats, ReminderChip, ReadersSheet, WelcomeBack, Sheet, usePulse, pulseClass, useBookCover, flyMinutes, dropToTreasury, unlockSound } from '@/widgets/RoundToday';
+import { MinutesDial, MonthStats, ReminderChip, ReadersSheet, WelcomeBack, Sheet, usePulse, pulseClass, useBookCover, flyMinutes, dropToTreasury, unlockSound, ReminderOffer, reminderOfferDue, NewCircleCard } from '@/widgets/RoundToday';
 import rt from '@/widgets/RoundToday/RoundToday.module.css';
 import { ShareDay } from '@/widgets/ShareDay';
 import anim from '@/shared/styles/animations.module.css';
@@ -197,6 +197,7 @@ export function DashboardPage() {
   // «Поделиться днём»: the sheet, and whether this save is the one that reached 30 minutes.
   // The day the share sheet is open on: today, or a day picked on the calendar.
   const [sharing, setSharing] = useState<string | null>(null);
+  const [reminderOffer, setReminderOffer] = useState(false);
   // the new «Сегодня» (2026-10-13): the card's two pages, the readers and the legend as sheets, the day's details
   const [readersOpen, setReadersOpen] = useState(false);
   // «Сохранить» turns into a ✓ that draws itself for a moment after a save
@@ -404,6 +405,7 @@ export function DashboardPage() {
     setIsJoining(true);
     const { data } = await apiPost(`/rounds/${roundStatus.round.id}/join`, {}, { requireAuth: true });
     if (data) {
+      track('round_join', { via: 'circle_page' });
       await fetchRoundStatus();
       refreshWait();
     }
@@ -415,6 +417,7 @@ export function DashboardPage() {
     setIsJoiningNextRound(true);
     const { data } = await apiPost(`/rounds/${roundStatus.next_round.id}/join`, {}, { requireAuth: true });
     if (data) {
+      track('round_join', { via: 'circle_page_next' });
       await fetchRoundStatus();
       refreshWait();
     }
@@ -962,6 +965,21 @@ export function DashboardPage() {
         void Promise.race([dropDone.catch(() => {}), new Promise((r) => window.setTimeout(r, 8000))]).then(() =>
           window.setTimeout(() => setSharing(todayStr), 300),
         );
+      } else if (minutes > 0) {
+        // no milestone today: offer the reminder for this same time tomorrow, once the drop has settled — and only
+        // while the page is still in front of the reader: on an iPhone a timer of a locked phone fires the next time
+        // the app opens, maybe the next morning, which is the wrong moment for «напомнить в это же время»
+        const savedAt = Date.now();
+        void reminderOfferDue().then((due) => {
+          if (!due) return;
+          void Promise.race([dropDone.catch(() => {}), new Promise((r) => window.setTimeout(r, 8000))]).then(() =>
+            window.setTimeout(() => {
+              if (document.visibilityState !== 'visible' || Date.now() - savedAt > 30_000) return;
+              track('reminder_offer', { action: 'shown' });
+              setReminderOffer(true);
+            }, 700),
+          );
+        });
       }
       await fetchCalendar(roundStatus.round.id);
       await fetchLeaderboard(roundStatus.round.id);
@@ -1215,6 +1233,13 @@ export function DashboardPage() {
               {/* Say it outright. Without this a non-participant just finds
                   a page with no calendar on it and no reason given. */}
               {!isParticipant && (
+                <NewCircleCard
+                  enabled={canJoin}
+                  month={roundStatus.round.month}
+                  untilDay={roundStatus.round.registration_open_until_day}
+                  joining={isJoining}
+                  onJoin={handleJoin}
+                >
                 <div className={styles.notInRound}>
                   {/* The month is already the heading directly above, and
                       Russian has no genitive month form here to borrow. */}
@@ -1247,6 +1272,7 @@ export function DashboardPage() {
                     <p className={styles.notInRoundOk}>{t('dashboard.registeredNextRound')}</p>
                   ) : null}
                 </div>
+                </NewCircleCard>
               )}
 
               {isParticipant && user && !isNewAccount && <ArchiveNews userId={user.id} />}
@@ -1413,6 +1439,17 @@ export function DashboardPage() {
                                 ) : isSavingToday ? t('dashboard.saving') : t('dashboard.save')}
                               </Button>
                               {roundDaysLeft > 0 && roundDaysLeft <= 5 && <p className={rt.daysLeft}>{t('member.daysLeft', { n: roundDaysLeft })}</p>}
+                              {/* 31 of 69 members read in the room (GA4, 1–14 Oct), and it sat two screens below: one tap down to its door */}
+                              <button
+                                type="button"
+                                className={styles.toRoom}
+                                onClick={() => {
+                                  track('room_door_tap', { from: 'dial' });
+                                  document.querySelector('[data-room-door]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }}
+                              >
+                                {t('nav2.toRoom')} <span aria-hidden="true">↓</span>
+                              </button>
                             </div>
                           </div>
                           {!wide && monthStats}
@@ -1877,6 +1914,7 @@ export function DashboardPage() {
 
       {/* The circle's reading room unfolds under the round. Minutes from its timer land in «Сегодня», so the page
           reloads its own numbers when the reader gets up. */}
+      {roundStatus?.round && !inRegistrationWindow && <div data-room-door aria-hidden="true" />}
       {roundStatus?.round && !inRegistrationWindow && (
         <ReadingRoom hall="round" layout="scroll" onToday={() => {
           if (!roundStatus?.round) return;
@@ -1889,6 +1927,7 @@ export function DashboardPage() {
       <Footer />
 
       {/* «Читатели круга» and «что значат цвета», from below (members, 2026-10-13) */}
+      <ReminderOffer open={reminderOffer} onClose={() => setReminderOffer(false)} />
       <ReadersSheet
         open={readersOpen}
         onClose={() => setReadersOpen(false)}

@@ -274,3 +274,16 @@
     padding-bottom: calc(72px + env(safe-area-inset-bottom));
   }
 }
+
+/* inside «Итоги»: the title where «Прошлый круг» and «История» put theirs */
+.hero.heroInTabs {
+  text-align: left;
+  align-items: flex-start;
+  padding-top: 0;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.heroInTabs .subtitle {
+  margin-left: 0;
+}

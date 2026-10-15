@@ -47,11 +47,9 @@
 }
 
 .tabLabel {
-  /* Five tabs on a 360px screen leave ~70px each, and the same label is
-     "Архив" in Russian but "Мұрағат" in Kazakh. A fixed size clipped the
-     longer language to an ellipsis; sizing from the viewport lets every
-     language fit on the one line the bar's height depends on. */
-  font-size: clamp(9px, 2.6vw, 12px);
+  /* Four tabs on a 360px screen leave ~90px each; the size still follows the
+     viewport, so the longest language («Кітапхана») keeps to one line. */
+  font-size: clamp(10px, 2.9vw, 12.5px);
   letter-spacing: -0.01em;
   font-weight: var(--font-weight-medium);
   line-height: 1;
@@ -66,4 +64,26 @@
   min-width: 0;
   padding-left: 2px;
   padding-right: 2px;
+}
+
+/* «Профиль» wears the reader's own picture, at the size of the icons beside it. */
+.face {
+  display: inline-grid;
+  place-items: center;
+  /* the icons beside it are 16 px: the picture is a touch larger but takes no more height in the row */
+  width: 20px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.face > * {
+  width: 20px;
+  height: 20px;
+  font-size: 10px;
+  box-shadow: 0 0 0 1.5px transparent;
+  transition: box-shadow var(--transition-fast);
+}
+
+.faceActive > * {
+  box-shadow: 0 0 0 1.5px var(--color-accent-primary);
 }

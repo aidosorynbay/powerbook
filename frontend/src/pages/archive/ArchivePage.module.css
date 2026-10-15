@@ -122,8 +122,26 @@
 }
 
 @media (max-width: 480px) {
+  /* twelve small months, two to a row: a year is two screens, not eight */
   .monthsGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-3);
+  }
+
+  .monthBlock {
+    padding: var(--spacing-3) 10px;
+  }
+
+  .monthName {
+    margin-bottom: var(--spacing-2);
+  }
+
+  .weekdayHeader {
+    font-size: 8px;
+  }
+
+  .dayNum {
+    font-size: 8px;
   }
 }
 
@@ -570,4 +588,18 @@
   .summaryRow {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+.together {
+  margin: 0 0 var(--spacing-4);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.together b {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: -0.01em;
 }

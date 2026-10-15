@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { useI18n, apiGet, type HallOfFame, type HallOfFameCategory, type HallOfFameEntry } from '@/shared/lib';
+import { useI18n, useAuth, apiGet, type HallOfFame, type HallOfFameCategory, type HallOfFameEntry } from '@/shared/lib';
 import { Container, PageTransition, Icon, type IconName } from '@/shared/ui';
-import { Header, Footer } from '@/widgets';
+import { Header, Footer, HistoryTabs } from '@/widgets';
+import { plural } from '@/pages/library/bookcase/plural';
 import styles from './HallOfFamePage.module.css';
 
 // The site's own line icons, not emoji: emoji are drawn differently on every phone.
@@ -24,12 +25,17 @@ function Rank({ place }: { place: number }) {
 }
 
 export function HallOfFamePage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const { isAuthenticated } = useAuth();
   const [data, setData] = useState<HallOfFame | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [openCategory, setOpenCategory] = useState<HallOfFameCategory | null>(null);
 
-  const formatUnit = (unit: string) => t(`hallOfFame.unit.${unit}`);
+  // «4 круга», not «4 кругов»: counted units agree with their number
+  const formatUnit = (unit: string, value?: number) =>
+    value != null && ['days', 'circles', 'books'].includes(unit)
+      ? plural(locale, value, { one: t(`hallOfFame.unit.${unit}.one`), few: t(`hallOfFame.unit.${unit}.few`), many: t(`hallOfFame.unit.${unit}.many`) })
+      : t(`hallOfFame.unit.${unit}`);
   const formatBadge = (categoryKey: string, entry: HallOfFameEntry) =>
     entry.badge_milestone != null
       ? t(`hallOfFame.badge.${categoryKey}`, { value: entry.badge_milestone })
@@ -54,10 +60,13 @@ export function HallOfFamePage() {
         <Header />
         <main className={styles.main}>
           <Container>
-            <div className={styles.hero}>
-              <div className={styles.heroIcon}>
-                <Icon name="trophy" size="lg" />
-              </div>
+            {isAuthenticated && <HistoryTabs />}
+            <div className={`${styles.hero} ${isAuthenticated ? styles.heroInTabs : ''}`}>
+              {!isAuthenticated && (
+                <div className={styles.heroIcon}>
+                  <Icon name="trophy" size="lg" />
+                </div>
+              )}
               <h1 className={styles.title}>{t('hallOfFame.title')}</h1>
               <p className={styles.subtitle}>{t('hallOfFame.subtitle')}</p>
             </div>
@@ -79,7 +88,7 @@ export function HallOfFamePage() {
                       <span className={styles.badgeTitle}>{t(`hallOfFame.category.${cat.key}`)}</span>
                       {leader ? (
                         <span className={styles.badgeLeader}>
-                          {leader.display_name} · {leader.value} {formatUnit(cat.unit)}
+                          {leader.display_name} · {leader.value} {formatUnit(cat.unit, leader.value)}
                         </span>
                       ) : (
                         <span className={styles.badgeLeader}>{t('hallOfFame.empty')}</span>
@@ -113,7 +122,7 @@ export function HallOfFamePage() {
                       {badgeText && <span className={styles.entryBadge}>{badgeText}</span>}
                     </span>
                     <span className={styles.entryValue}>
-                      {e.value} {formatUnit(openCategory.unit)}
+                      {e.value} {formatUnit(openCategory.unit, e.value)}
                     </span>
                   </li>
                 );

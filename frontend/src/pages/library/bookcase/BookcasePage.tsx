@@ -32,7 +32,7 @@ import { BookDays } from '@/widgets/BookDays';
 import { MarkForm } from '../../books/MarkForm';
 import { ExtBadge, PbBadge, Sheet } from '../../books/bookUi';
 import { BookTime, shelfMinutes } from '@/widgets/BookTime';
-import { LibrarySwitch } from '../../books/LibrarySwitch';
+import { LibraryTabs } from '@/widgets/SectionTabs';
 import { BookcaseSections, ShelvesSheet } from './BookcaseSections';
 import { loadShelfFonts, type VolumeArt } from './bookArt';
 import { bookCount, plural } from './plural';
@@ -962,9 +962,9 @@ export function BookcasePage({ ownerId }: Props) {
               <span>{t('shelf.backToProfile')}</span>
             </Link>
           )}
-          {/* The reader's own library: its title is also the way to the other sections. */}
+          {/* The reader's own library: the shelf and all books side by side, as pills (they used to hide behind its title). */}
           {ownLibrary ? (
-            <LibrarySwitch current="shelf" labelClass={styles.wordmark} />
+            <LibraryTabs room={false} />
           ) : (
             <span className={styles.wordmark}>
               {ownerId && !isSelf ? t('shelf.wordmarkOf', { name: ownerName }) : t('shelf.wordmarkSelf')}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toBlob, toPng } from 'html-to-image';
 import {
   useI18n,
@@ -16,13 +16,14 @@ import {
   type BadgeData,
   type BadgeStats,
   type LeagueTier,
+  isStandalone,
 } from '@/shared/lib';
-import { Card, Container, PageTransition, Badge, ProgressBar, Button, BookCard, Icon } from '@/shared/ui';
+import { Avatar, Card, Container, PageTransition, ProgressBar, Button, BookCard, Icon } from '@/shared/ui';
 import { Header, Footer, ClaimPicker, WrappedCard, BookTime, InviteFriends } from '@/widgets';
 import { paletteFor, dimensionsFor } from '@/pages/library/bookcase/bookArt';
 import { bookCount } from '@/pages/library/bookcase/plural';
 import styles from './InsightsPage.module.css';
-import { ProfileListings, RecapLink } from '../books/ProfileBits';
+import { ProfileListings } from '../books/ProfileBits';
 
 function StatTile({
   value,
@@ -49,7 +50,7 @@ function StatTile({
 
 export function InsightsPage() {
   const { t, locale } = useI18n();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const [profile, setProfile] = useState<AllTimeProfile | null>(null);
   // Arrived from «Вы раньше участвовали в кругах? — Да»: down to the archive section, lit for a moment.
@@ -77,6 +78,15 @@ export function InsightsPage() {
     return () => window.clearTimeout(timer);
   }, []);
   const [archetype, setArchetype] = useState<Archetype | null>(null);
+  // «Пригласить друга» and the old-nickname box open in place; a #invite / #claim link opens them too
+  const [inviteOpen, setInviteOpen] = useState(() => window.location.hash === '#invite');
+  const [claimOpen, setClaimOpen] = useState(() => window.location.hash === '#claim');
+  const isAdmin = user?.system_role === 'admin' || user?.system_role === 'superadmin';
+  const [hasClaims, setHasClaims] = useState(false);
+  useEffect(() => {
+    apiGet<unknown[]>('/claims/mine', { requireAuth: true }).then(({ data }) => setHasClaims(Array.isArray(data) && data.length > 0));
+  }, []);
+  const navigate = useNavigate();
   const [bookshelf, setBookshelf] = useState<BookshelfEntry[]>([]);
   // the shelf of the library, for «Время на книгах»: the time each book has had (it does not hold up the page)
   const [shelfBooks, setShelfBooks] = useState<BookcaseBook[]>([]);
@@ -253,6 +263,13 @@ export function InsightsPage() {
     return () => { cancelled = true; };
   }, [openBadge]);
 
+  const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const firstCircle = (() => {
+    const [abbr, year] = (profile?.first_round_label ?? '').split(' ');
+    const m = MONTH_ABBR.indexOf(abbr) + 1;
+    return m > 0 && year ? { month: t(`month.${m}`).toLowerCase(), year } : null;
+  })();
+
   const archetypeTitle = archetype
     ? t(
         `archetype.${archetype.key}.title`,
@@ -283,59 +300,93 @@ export function InsightsPage() {
         <Header />
         <main className={styles.main}>
           <Container>
-            <div className={styles.titleRow}>
-              <div>
-                <h1 className={styles.title}>{t('insights.title')}</h1>
+            <div className={styles.col}>
+            {/* who you are, and the gear: settings are one tap from here instead of a header icon and a menu item */}
+            <div className={styles.idRow}>
+              {user && <Avatar src={user.avatar_data} name={user.display_name || user.username} size="lg" />}
+              <div className={styles.idText}>
+                <h1 className={styles.title}>{user?.display_name || user?.username}</h1>
                 <p className={styles.subtitle}>
-                  {t('insights.subtitle')}
-                  {' · '}
-                  <Link to="/profile" className={styles.settingsLink}>{t('nav.settings')}</Link>
+                  {user?.username && <span>@{user.username}</span>}
+                  {firstCircle && <span>{t('prof2.firstCircle', firstCircle)}</span>}
                 </p>
               </div>
-              <Button variant="primary" size="sm" onClick={openWrapped}>
-                {t('wrapped.button')}
-              </Button>
+              <Button variant="secondary" size="sm" onClick={openWrapped}>{t('wrapped.button')}</Button>
             </div>
 
             {isLoading ? (
               <div className={styles.loading}>{t('dashboard.loading')}</div>
             ) : (
               <>
+                {/* one block of numbers, from one place; the tiles no longer double as hidden links to other pages */}
                 {profile && (
                   <div className={styles.statGrid}>
-                    <StatTile value={profile.total_hours} label={t('insights.totalHours')} accent to="/archive" />
-                    <StatTile value={profile.longest_streak_days} label={t('insights.longestStreak')} to="/hall-of-fame" />
-                    <StatTile value={`${profile.consistency_percent}%`} label={t('insights.consistency')} to="/archive" />
-                    <StatTile value={profile.rounds_participated} label={t('insights.circles')} to="/results" />
-                    <StatTile value={profile.books_finished} label={t('insights.booksFinished')} to="/library" />
-                    <StatTile
-                      value={profile.current_streak_days > 0 ? <><Icon name="flame" size="em" className={styles.streakFlame} /> {profile.current_streak_days}</> : '—'}
-                      label={t('insights.currentStreak')}
-                      to="/round"
-                    />
+                    <StatTile value={profile.total_hours} label={t('insights.totalHours')} accent />
+                    <StatTile value={profile.longest_streak_days} label={t('insights.longestStreak')} />
+                    <StatTile value={profile.rounds_participated} label={t('insights.circles')} />
+                    <StatTile value={profile.books_finished} label={t('insights.booksFinished')} />
                   </div>
                 )}
 
-                <section id="claim" className={`${styles.section} ${claimLit ? styles.sectionLit : ''}`}>
-                  <h2 className={styles.sectionTitle}>{t('claims.title')}</h2>
-                  <p className={styles.sectionHint}>{t('claims.subtitle')}</p>
-                  <ClaimPicker onChange={load} />
-                </section>
+                <nav className={styles.rows} aria-label={t('nav.profile')}>
+                  <Link to="/reading" className={styles.row}>
+                    <span className={styles.rowText}><b>{t('prof2.myReading')}</b><small>{t('prof2.myReadingHint')}</small></span>
+                    <span className={styles.rowChev} aria-hidden="true">›</span>
+                  </Link>
+                  <Link to="/readers" className={styles.row}>
+                    <span className={styles.rowText}><b>{t('prof2.friends')}</b><small>{t('prof2.friendsHint')}</small></span>
+                    <span className={styles.rowChev} aria-hidden="true">›</span>
+                  </Link>
+                  <button type="button" className={styles.row} aria-expanded={inviteOpen} onClick={() => setInviteOpen((o) => !o)}>
+                    <span className={styles.rowText}><b>{t('prof2.invite')}</b><small>{t('prof2.inviteHint')}</small></span>
+                    <span className={`${styles.rowChev} ${inviteOpen ? styles.rowChevOpen : ''}`} aria-hidden="true">›</span>
+                  </button>
+                  {inviteOpen && (
+                    <section id="invite" className={styles.rowBody}>
+                      <InviteFriends />
+                    </section>
+                  )}
+                  {(!hasClaims || claimOpen) && <button type="button" className={styles.row} aria-expanded={claimOpen} onClick={() => setClaimOpen((o) => !o)}>
+                    <span className={styles.rowText}><b>{t('prof2.claim')}</b><small>{t('prof2.claimHint')}</small></span>
+                    <span className={`${styles.rowChev} ${claimOpen ? styles.rowChevOpen : ''}`} aria-hidden="true">›</span>
+                  </button>}
+                  {claimOpen && (
+                    <section id="claim" className={`${styles.rowBody} ${claimLit ? styles.sectionLit : ''}`}>
+                      <p className={styles.sectionHint}>{t('claims.subtitle')}</p>
+                      <ClaimPicker onChange={load} />
+                    </section>
+                  )}
+                  <Link to="/welcome#powerbook" className={styles.row}>
+                    <span className={styles.rowText}><b>{t('prof2.howItWorks')}</b><small>{t('prof2.howItWorksHint')}</small></span>
+                    <span className={styles.rowChev} aria-hidden="true">›</span>
+                  </Link>
+                  <a href="https://t.me/+ZSmueLtmT8Y1MDBi" target="_blank" rel="noopener noreferrer" className={styles.row}>
+                    <span className={styles.rowText}><b>{t('prof2.telegram')}</b></span>
+                    <span className={styles.rowChev} aria-hidden="true">↗</span>
+                  </a>
+                  <Link to="/profile" className={styles.row}>
+                    <span className={styles.rowText}><b>{t('nav.settings')}</b></span>
+                    <span className={styles.rowChev} aria-hidden="true">›</span>
+                  </Link>
+                </nav>
 
-                {profile?.first_round_label && (
-                  <div className={styles.sinceLine}>
-                    {t('insights.readingSince')} <b>{profile.first_round_label}</b>
-                  </div>
+                {/* the rarely needed, quietly: the app only while it isn't installed yet; the ideas box for whoever has one */}
+                <p className={styles.quiet}>
+                  {!isStandalone() && <Link to="/get">{t('prof2.app')}</Link>}
+                  <Link to={isAdmin ? '/suggestions/admin' : '/suggestions'}>
+                    {isAdmin ? t('suggestionsAdmin.navLink') : t('prof2.idea')}
+                  </Link>
+                  <button type="button" className={styles.quietBtn} onClick={() => { logout(); navigate('/'); }}>{t('header.logout')}</button>
+                </p>
+
+                {(archetype || shelfBooks.some((b) => (b.minutes_read ?? 0) > 0)) && (
+                  <h2 className={styles.aboutTitle}>{t('prof2.aboutYou')}</h2>
                 )}
-
                 {archetype && (
                   <Card variant="glass" padding="lg" className={styles.archetypeCard}>
                     <div className={styles.archetypeKicker}>{t('insights.yourType')}</div>
                     <div className={styles.archetypeTitle}>{archetypeTitle}</div>
                     <div className={styles.archetypeDesc}>{archetypeDesc}</div>
-                    {/* The figure is tied to the archetype, not to the books
-                        read — it names the habit the reader shares, which is
-                        what the type is about in the first place. */}
                     <div className={styles.kindred}>
                       <div className={styles.kindredLabel}>{t('insights.kindred')}</div>
                       <div className={styles.kindredName}>{t(`archetype.${archetype.key}.kindred`)}</div>
@@ -345,123 +396,12 @@ export function InsightsPage() {
                   </Card>
                 )}
 
-                {league && (
-                  <section className={styles.section}>
-                    <h2 className={styles.sectionTitle}>{t('insights.league')} · {league.round_label}</h2>
-                    <Card variant="default" padding="md">
-                      <div className={styles.leagueHeader}>
-                        <Badge variant={league.tier === 'Gold' ? 'accent' : league.tier === 'Silver' ? 'default' : 'outline'}>
-                          {t(`league.${league.tier.toLowerCase()}`)}
-                        </Badge>
-                        <span className={styles.leagueScore}>{t('insights.yourScore')}: {league.your_score}</span>
-                      </div>
-                      <ol className={styles.leagueList}>
-                        {league.members.slice(0, 8).map((m) => (
-                          <li key={m.user_id} className={styles.leagueRow}>
-                            <Link to={`/readers/${m.user_id}`} className={styles.leagueRowName}>
-                              {m.display_name}
-                            </Link>
-                            <span className={styles.leagueRowScore}>{m.score}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    </Card>
-                  </section>
-                )}
-
-                <section className={styles.section}>
-                  <h2 className={styles.sectionTitle}>{t('insights.badges')}</h2>
-                  <div className={styles.badgeGrid}>
-                    {earnedBadges.slice(0, 6).map((b) => (
-                      <button
-                        key={b.key}
-                        className={`${styles.badgeCard} ${styles.badgeEarned} ${styles.badgeClickable}`}
-                        onClick={() => setOpenBadge(b)}
-                      >
-                        <div className={styles.badgeIcon}>✓</div>
-                        <div className={styles.badgeTitle}>{b.title}</div>
-                      </button>
-                    ))}
-                  </div>
-                  {nextBadges.length > 0 && (
-                    <div className={styles.nextBadges}>
-                      <div className={styles.nextBadgesLabel}>{t('insights.nextUp')}</div>
-                      {nextBadges.map((b) => (
-                        <div
-                          key={b.key}
-                          className={`${styles.nextBadgeRow} ${styles.nextBadgeClickable}`}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => setOpenBadge(b)}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpenBadge(b); }}
-                        >
-                          <div className={styles.nextBadgeText}>
-                            <span>{b.title}</span>
-                            <span className={styles.nextBadgeProgress}>
-                              {b.progress_current}/{b.progress_target}
-                            </span>
-                          </div>
-                          <ProgressBar value={b.progress_current} max={b.progress_target} size="sm" />
-                        </div>
-                      ))}
-                      {!showAllBadges && badges.some((b) => !b.earned) && (
-                        <button className={styles.showMoreBtn} onClick={() => setShowAllBadges(true)}>
-                          {t('insights.showMore')}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </section>
-
-                <RecapLink />
-
-                <section className={styles.section}>
-                  <h2 className={styles.sectionTitle}>{t('insights.bookshelf')}</h2>
-                  {/* A small window onto the library: a few spines in the colours those books wear on the 3D
-                      shelf; the whole of it opens the library */}
-                  <Link to="/library" className={styles.shelfPeek}>
-                    <span className={styles.shelfPeekText}>
-                      <span className={styles.shelfPeekKicker}>{t('nav.library')}</span>
-                      <span className={styles.shelfPeekTitle}>{t('insights.openLibrary')}</span>
-                      <span className={styles.shelfPeekHint}>
-                        {bookshelf.length
-                          ? t('shelf.profileCtaHint', { count: bookCount(locale, bookshelf.length, t) })
-                          : t('insights.libraryEmptyHint')}
-                      </span>
-                    </span>
-                    <span className={`${styles.shelfPeekSpines} ${bookshelf.length ? '' : styles.shelfPeekGhost}`} aria-hidden="true">
-                      {(bookshelf.length ? bookshelf.map((b) => b.title) : ['a', 'bb', 'ccc', 'dddd', 'eeeee']).slice(0, 9).map((title, i) => {
-                        const seed = title.trim().toLowerCase();
-                        const p = paletteFor(seed);
-                        const d = dimensionsFor(seed);
-                        return (
-                          <span
-                            key={i}
-                            style={{
-                              background: p.cover,
-                              borderTopColor: p.accent,
-                              height: `${Math.round(d.height * 30)}px`,
-                              width: `${Math.round(d.thickness * 48)}px`,
-                            }}
-                          />
-                        );
-                      })}
-                    </span>
-                    <span className={styles.shelfPeekArrow} aria-hidden="true">→</span>
-                  </Link>
-                </section>
-
                 {shelfBooks.some((b) => (b.minutes_read ?? 0) > 0) && (
                   <section className={styles.section}>
                     <h2 className={styles.sectionTitle}>{t('bookTime.title')}</h2>
                     <BookTime books={shelfBooks} isSelf />
                   </section>
                 )}
-
-                <section id="invite" className={styles.section}>
-                  <h2 className={styles.sectionTitle}>{t('invite.title')}</h2>
-                  <InviteFriends />
-                </section>
 
                 {user && <ProfileListings userId={user.id} isSelf titleClass={styles.sectionTitle} />}
 
@@ -521,6 +461,7 @@ export function InsightsPage() {
                 )}
               </>
             )}
+            </div>
           </Container>
         </main>
         <Footer />

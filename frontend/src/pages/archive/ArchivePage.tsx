@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { useI18n, apiGet, type YearlyArchiveResponse, type YearlyRosterResponse } from '@/shared/lib';
+import { useI18n, apiGet, type PublicStats, type YearlyArchiveResponse, type YearlyRosterResponse } from '@/shared/lib';
 import { Container, PageTransition } from '@/shared/ui';
-import { Header, Footer } from '@/widgets';
+import { Header, Footer, HistoryTabs } from '@/widgets';
 import styles from './ArchivePage.module.css';
 
 const INTENSITY_CAP_MINUTES = 120;
@@ -58,6 +58,11 @@ export function ArchivePage() {
   const [roster, setRoster] = useState<YearlyRosterResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<DayCell | null>(null);
+  // «вместе с 2021»: the community's whole total, the one number that belongs to everyone (it used to live only on the front page)
+  const [together, setTogether] = useState<number | null>(null);
+  useEffect(() => {
+    apiGet<PublicStats>('/stats/public').then(({ data }) => data && setTogether(data.total_minutes_read));
+  }, []);
   const [rosterModalDate, setRosterModalDate] = useState<string | null>(null);
 
   const fetchArchive = useCallback(async (y: number) => {
@@ -130,7 +135,10 @@ export function ArchivePage() {
       result.push({ month: m, participated: participatedMonths.has(m), grid });
     }
 
-    return result;
+    // the year opens on the reader's first circle, not on months they were not here yet (a July joiner saw
+    // January–June empty first); a year with nothing read keeps all twelve
+    const first = result.findIndex((r) => r.participated || r.grid.some((c) => c && c.minutes > 0));
+    return first > 0 ? result.slice(first) : result;
   }, [archive, year, participatedMonths]);
 
   // Shared/group view: same 12-month grid shape, but each cell just needs
@@ -219,6 +227,15 @@ export function ArchivePage() {
 
       <main className={styles.main}>
         <Container>
+          <HistoryTabs />
+          {together !== null && together > 0 && (
+            <p className={styles.together}>
+              {(() => {
+                const [before, after] = t('hist2.together', { minutes: '\u0000' }).split('\u0000');
+                return <>{before}<b>{new Intl.NumberFormat('ru-RU').format(together)}</b>{after}</>;
+              })()}
+            </p>
+          )}
           <div className={styles.titleRow}>
             <h1 className={styles.title}>{t('archive.title')}</h1>
             <div className={styles.yearSelector}>

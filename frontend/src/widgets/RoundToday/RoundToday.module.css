@@ -615,3 +615,96 @@
 .savedCheck path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: drawCheck 0.25s cubic-bezier(.2,.8,.2,1) forwards; }
 @keyframes drawCheck { to { stroke-dashoffset: 0; } }
 @media (prefers-reduced-motion: reduce) { .savedCheck path { animation: none; stroke-dashoffset: 0; } }
+
+.allReaders {
+  display: block;
+  margin: 12px 0 0;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.allReaders:hover {
+  color: var(--color-text-primary);
+}
+
+/* ---- «Напомнить завтра в 21:45?» after a saved day (2026-10-15) ---- */
+.offerActions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.offerOther,
+.offerLater {
+  align-self: center;
+  padding: 6px 10px;
+  border: 0;
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.offerOther:hover,
+.offerLater:hover {
+  color: var(--color-text-primary);
+}
+
+.offerNote {
+  margin: 10px 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* ---- the first days of a month: last month's reader, the new circle in one tap ---- */
+.newCircle {
+  margin: 0 0 var(--spacing-5);
+  padding: 20px 20px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-card);
+}
+
+.newCirclePast {
+  margin: 0 0 6px;
+  color: var(--color-success);
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.newCircleTitle {
+  margin: 0 0 6px;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.newCircleLead {
+  margin: 0 0 16px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.newCircleResults {
+  display: block;
+  margin-top: 12px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.newCircleResults:hover {
+  color: var(--color-text-primary);
+}

@@ -43,11 +43,24 @@ export function HomePage() {
   // Links elsewhere point at /#powerbook (how a circle goes).
   useEffect(() => {
     if (window.location.hash !== '#powerbook') return;
-    const id = window.setTimeout(
-      () => document.getElementById('powerbook')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-      300,
-    );
-    return () => window.clearTimeout(id);
+    const go = (behavior: ScrollBehavior) => document.getElementById('powerbook')?.scrollIntoView({ behavior, block: 'start' });
+    // smoothly at once, then a quiet correction once the shared total and the covers above it have come in and
+    // pushed it down (Профиль → «Как устроен PowerBook» lands here; the smooth scroll alone stopped short of it)
+    const first = window.setTimeout(() => go('smooth'), 300);
+    let moved = false;
+    const mark = () => { moved = true; };
+    const events = ['touchstart', 'wheel', 'keydown'] as const;
+    events.forEach((e) => window.addEventListener(e, mark, { once: true, passive: true }));
+    const settle = () => {
+      const top = document.getElementById('powerbook')?.getBoundingClientRect().top ?? 0;
+      if (!moved && (top > 120 || top < 0)) go('auto');
+    };
+    const again = [window.setTimeout(settle, 1800), window.setTimeout(settle, 3200)];
+    return () => {
+      window.clearTimeout(first);
+      again.forEach((id) => window.clearTimeout(id));
+      events.forEach((e) => window.removeEventListener(e, mark));
+    };
   }, []);
 
   return (

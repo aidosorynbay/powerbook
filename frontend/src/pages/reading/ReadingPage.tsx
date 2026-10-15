@@ -19,7 +19,7 @@ import { WorkSheet } from '../books/WorkSheet';
 import store from '../books/Store.module.css';
 import { LetterError, Working, useDigest } from './digest';
 import styles from './Reading.module.css';
-import { LibrarySwitch } from '../books/LibrarySwitch';
+
 
 type Tab = 'recap' | 'recs' | 'notes';
 
@@ -266,7 +266,7 @@ function Recap({ onOpenBook }: { onOpenBook: (key: string) => void }) {
       ) : (
         <>
           <div className={styles.tiles}>
-            <div className={styles.tile}><strong>{Math.round(data.minutes / 60)}</strong><span>{t('rd.hours')}</span></div>
+            <div className={styles.tile}><strong>{Math.floor(data.minutes / 60)}</strong><span>{t('rd.hours')}</span></div>
             <div className={styles.tile}><strong>{data.days_read}</strong><span>{t('rd.days')}</span></div>
             <div className={styles.tile}><strong>{data.books.length}</strong><span>{t('rd.books')}</span></div>
             <div className={styles.tile}><strong>{data.longest_streak}</strong><span>{t('rd.streak')}</span></div>
@@ -481,9 +481,8 @@ export function ReadingPage() {
         <Container>
           <div className={store.head}>
             <div>
-              <h1 className={store.title}>
-                <LibrarySwitch current="reading" />
-              </h1>
+              <Link to="/insights" className={store.back}>‹ {t('set2.back')}</Link>
+              <h1 className={store.title}>{t('prof2.myReading')}</h1>
               <p className={store.subtitle}>{t('rd.subtitle')}</p>
             </div>
           </div>

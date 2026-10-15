@@ -1,40 +1,38 @@
 import { Link, useLocation } from 'react-router-dom';
 import { isReaderPath, useAuth, useI18n } from '@/shared/lib';
-import { Icon } from '@/shared/ui';
+import { Avatar, Icon } from '@/shared/ui';
+import { MEMBER_TABS, isTabActive } from './tabs';
 import styles from './BottomNav.module.css';
 
-// The shared library, the market and the reading recap live under the
-// library's tab; the tab stays lit on all of them.
-const tabs = [
-  { path: '/round', icon: 'clock' as const, label: 'nav.round', also: [] as string[] },
-  { path: '/archive', icon: 'refresh' as const, label: 'nav.archive', also: [] },
-  { path: '/results', icon: 'check' as const, label: 'nav.results', also: [] },
-  { path: '/insights', icon: 'user' as const, label: 'nav.profile', also: [] },
-  { path: '/library', icon: 'book' as const, label: 'nav.library', also: ['/books', '/market', '/reading'] },
-];
-
+// Four places, in the order thumbs already know: the circle first, the library at the right edge (where it was).
+// Архив, Результаты and Топ became one place, «Итоги»; the profile wears the reader's own picture.
 export function BottomNav() {
   const { t } = useI18n();
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   // A visitor has none of these yet — every tab would only ask to log in.
   if (!isAuthenticated) return null;
-  // An open book has its own bar at the bottom: page turns, the timer, Lock in.
+  // An open book has its own bar at the bottom: page turns, the timer, the reading mode.
   if (isReaderPath(location.pathname)) return null;
   return (
     <nav className={styles.bottomNav} data-bottom-nav>
-      {tabs.map(({ path, icon, label, also }) => {
-        const isActive = [path, ...also].some(
-          (p) => location.pathname === p || location.pathname.startsWith(`${p}/`)
-        );
+      {MEMBER_TABS.map((tab) => {
+        const isActive = isTabActive(location.pathname, tab);
         return (
           <Link
-            key={path}
-            to={path}
+            key={tab.path}
+            to={tab.path}
             className={`${styles.tab} ${isActive ? styles.tabActive : ''}`}
+            aria-current={isActive ? 'page' : undefined}
           >
-            <Icon name={icon} size="sm" />
-            <span className={styles.tabLabel}>{t(label)}</span>
+            {tab.path === '/insights' && user ? (
+              <span className={`${styles.face} ${isActive ? styles.faceActive : ''}`}>
+                <Avatar src={user.avatar_data} name={user.display_name || user.username} size="sm" />
+              </span>
+            ) : (
+              <Icon name={tab.icon} size="sm" />
+            )}
+            <span className={styles.tabLabel}>{t(tab.label)}</span>
           </Link>
         );
       })}

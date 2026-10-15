@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   useAuth,
   useI18n,
+  useTheme,
+  LOCALES,
+  type ThemeChoice,
   apiPut,
   apiGet,
   apiPost,
@@ -13,13 +16,14 @@ import {
   type ManualBook,
   type BookshelfEntry,
 } from '@/shared/lib';
-import { Button, Card, Container, Logo, PageTransition, Avatar, PasswordInput } from '@/shared/ui';
+import { Button, Card, Container, PageTransition, Avatar, PasswordInput } from '@/shared/ui';
+import { Header, ReadingReminder } from '@/widgets';
 import styles from './ProfilePage.module.css';
 
 type Gender = 'male' | 'female' | 'unknown';
 
 export function ProfilePage() {
-  const { user, refreshUser, logout } = useAuth();
+  const { user, refreshUser, logout, login } = useAuth();
   const navigate = useNavigate();
 
   const [showDelete, setShowDelete] = useState(false);
@@ -45,7 +49,8 @@ export function ProfilePage() {
     logout();
     navigate('/');
   };
-  const { t } = useI18n();
+  const { t, locale, setLocale } = useI18n();
+  const theme = useTheme();
 
   // Profile form
   const [username, setUsername] = useState(user?.username ?? '');
@@ -236,7 +241,7 @@ export function ProfilePage() {
 
     setIsChangingPassword(true);
 
-    const { error } = await apiPut<{ detail: string }>('/auth/change-password', {
+    const { data, error } = await apiPut<{ detail: string; access_token?: string }>('/auth/change-password', {
       current_password: currentPassword,
       new_password: newPassword,
     }, { requireAuth: true });
@@ -244,6 +249,8 @@ export function ProfilePage() {
     if (error) {
       setPasswordError(error === 'error.network' || error === 'error.validation' ? t(error) : error);
     } else {
+      // the new password ends the other devices' sessions; this one carries on with the token for it
+      if (data?.access_token) login(data.access_token);
       setPasswordSuccess(t('profile.passwordChanged'));
       setCurrentPassword('');
       setNewPassword('');
@@ -255,17 +262,37 @@ export function ProfilePage() {
   return (
     <PageTransition>
       <div className={styles.page}>
+        <Header />
         <Container size="sm">
+          <Link to="/insights" className={styles.back}>‹ {t('set2.back')}</Link>
           <Card variant="glass" padding="lg" className={styles.card}>
             <div className={styles.header}>
-              <div>
-                <div className={styles.title}>{t('profile.settingsTitle')}</div>
-                <div className={styles.subtitle}>{t('profile.subtitle')}</div>
-              </div>
-              <Link to="/" aria-label="Go to home">
-                <Logo size="md" />
-              </Link>
+              <div className={styles.title}>{t('profile.settingsTitle')}</div>
             </div>
+
+            {/* set once, so they live here and not in the bar of every page (theme and language used to sit in the header) */}
+            <div className={styles.sectionTitle}>{t('set2.appearance')}</div>
+            <div className={styles.pills} role="group" aria-label={t('theme.label')}>
+              {(['dark', 'light', 'system'] as ThemeChoice[]).map((c) => (
+                <button key={c} type="button" aria-pressed={theme.choice === c} onClick={() => theme.set(c)}>
+                  {t(`theme.${c}`)}
+                </button>
+              ))}
+            </div>
+            <div className={styles.sectionTitle}>{t('set2.language')}</div>
+            <div className={styles.pills} role="group" aria-label={t('set2.language')}>
+              {LOCALES.map((loc) => (
+                <button key={loc.code} type="button" aria-pressed={locale === loc.code} onClick={() => setLocale(loc.code)}>
+                  {loc.label}
+                </button>
+              ))}
+            </div>
+
+            <hr className={styles.divider} />
+            <ReadingReminder source="settings" />
+
+            <hr className={styles.divider} />
+            <div className={styles.sectionTitle}>{t('set2.account')}</div>
 
             {profileError && <div className={styles.error}>{profileError}</div>}
             {profileSuccess && <div className={styles.success}>{profileSuccess}</div>}
@@ -410,128 +437,7 @@ export function ProfilePage() {
 
             <hr className={styles.divider} />
 
-            <div className={styles.sectionTitle}>{t('profile.readBooks')}</div>
-            <div className={styles.hint}>{t('profile.readBooksHint')}</div>
-
-            {roundBookCount > 0 && (
-              <div className={styles.bookCounted}>
-                {t('profile.readBooksFromRounds').replace('{count}', String(roundBookCount))}
-              </div>
-            )}
-
-            <form onSubmit={onAddBook} className={styles.bookForm}>
-              <input
-                type="text"
-                className={styles.input}
-                value={bookTitle}
-                onChange={(e) => setBookTitle(e.target.value)}
-                placeholder={t('profile.bookTitlePlaceholder')}
-                maxLength={300}
-              />
-              <div className={styles.bookFormRow}>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={bookAuthor}
-                  onChange={(e) => setBookAuthor(e.target.value)}
-                  placeholder={t('profile.bookAuthorPlaceholder')}
-                  maxLength={200}
-                />
-                <input
-                  type="date"
-                  className={styles.input}
-                  value={bookDate}
-                  onChange={(e) => setBookDate(e.target.value)}
-                  aria-label={t('profile.bookDateLabel')}
-                  max={new Date().toISOString().slice(0, 10)}
-                />
-              </div>
-
-              {bookError && <div className={styles.error}>{bookError}</div>}
-              {bookSuccess && <div className={styles.success}>{bookSuccess}</div>}
-
-              <Button type="submit" variant="secondary" disabled={isAddingBook}>
-                {isAddingBook ? t('profile.addingBook') : t('profile.addBook')}
-              </Button>
-            </form>
-
-            {manualBooks.length === 0 ? (
-              <div className={styles.hint}>{t('profile.noReadBooks')}</div>
-            ) : (
-              <div className={styles.bookList}>
-                {manualBooks.map((b) => (
-                  <div key={b.id} className={styles.bookRow}>
-                    <div className={styles.bookInfo}>
-                      <span className={styles.bookTitle}>{b.title}</span>
-                      {(b.author || b.finished_on) && (
-                        <span className={styles.bookMeta}>
-                          {[b.author, b.finished_on].filter(Boolean).join(' · ')}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      className={styles.buddyRemoveBtn}
-                      onClick={() => onRemoveBook(b.id)}
-                      aria-label={t('profile.removeBook')}
-                    >
-                      &times;
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <hr className={styles.divider} />
-
-            <div className={styles.sectionTitle}>{t('profile.myBuddies')}</div>
-            {buddies.length === 0 ? (
-              <div className={styles.hint}>{t('profile.noBuddies')}</div>
-            ) : (
-              <div className={styles.buddyList}>
-                {buddies.map((b) => (
-                  <div key={b.user_id} className={styles.buddyRow}>
-                    <Link to={`/readers/${b.user_id}`} className={styles.buddyLink}>
-                      <Avatar src={b.avatar_data} name={b.display_name} size="sm" />
-                      <span>{b.display_name}</span>
-                    </Link>
-                    <button className={styles.buddyRemoveBtn} onClick={() => removeBuddy(b.user_id)}>
-                      &times;
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <Link className={styles.link} to="/readers">
-              {t('profile.viewDirectory')}
-            </Link>
-
-            <hr className={styles.divider} />
-
-            <div className={styles.sectionTitle}>{t('profile.whoAddedYou')}</div>
-            {buddyError && <div className={styles.error}>{buddyError}</div>}
-            {followers.length === 0 ? (
-              <div className={styles.hint}>{t('profile.noFollowers')}</div>
-            ) : (
-              <div className={styles.buddyList}>
-                {followers.map((f) => {
-                  const alreadyBuddy = buddies.some((b) => b.user_id === f.user_id);
-                  return (
-                    <div key={f.user_id} className={styles.buddyRow}>
-                      <Link to={`/readers/${f.user_id}`} className={styles.buddyLink}>
-                        <Avatar src={f.avatar_data} name={f.display_name} size="sm" />
-                        <span>{f.display_name}</span>
-                      </Link>
-                      {!alreadyBuddy && (
-                        <button className={styles.addBackBtn} onClick={() => addBuddyBack(f.user_id)}>
-                          {t('profile.addBack')}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <p className={styles.hint}>{t('set2.booksMoved')}</p>
 
             <hr className={styles.divider} />
 
@@ -591,9 +497,6 @@ export function ProfilePage() {
             </form>
 
             <div className={styles.footer}>
-              <Link className={styles.link} to="/round">
-                {t('header.currentRound')}
-              </Link>
               <button type="button" className={styles.logoutBtn} onClick={onLogout}>
                 {t('header.logout')}
               </button>

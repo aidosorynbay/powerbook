@@ -737,3 +737,194 @@
   color: var(--color-accent-primary);
   font-size: 0.85em;
 }
+
+/* ---------- Профиль, 2026-10-14: you, one block of numbers, a short list ---------- */
+
+.idRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.idText {
+  flex: 1;
+  min-width: 0;
+}
+
+.idText .title {
+  font-size: var(--font-size-2xl);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idText .subtitle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  font-size: var(--font-size-sm);
+}
+
+.gear {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+}
+
+.gear:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-accent);
+}
+
+/* four numbers: two by two on a phone, one row on a computer */
+.idRow ~ .statGrid,
+.statGrid:has(> :nth-child(4):last-child) {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 600px) {
+  .idRow ~ .statGrid,
+  .statGrid:has(> :nth-child(4):last-child) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 8px 0 12px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  overflow: hidden;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 16px;
+  border: 0;
+  border-top: 1px solid var(--color-border-secondary);
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.rows > .row:first-child {
+  border-top: 0;
+}
+
+.row:hover {
+  background: var(--color-bg-secondary);
+}
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rowText b {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+}
+
+.rowText small {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.rowChev {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: 20px;
+  line-height: 1;
+  transition: transform var(--transition-fast);
+}
+
+.rowChevOpen {
+  transform: rotate(90deg);
+}
+
+.rowBody {
+  padding: 4px 16px 16px;
+  border-top: 1px solid var(--color-border-secondary);
+}
+
+.quiet {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0 0 28px;
+  padding: 0 4px;
+  font-size: 13px;
+}
+
+.quiet a {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.quiet a:hover {
+  color: var(--color-text-primary);
+}
+
+.aboutTitle {
+  margin: 8px 0 12px;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+/* on a computer the profile reads as one calm column, not a list stretched across the screen */
+.col {
+  max-width: 820px;
+}
+
+.quietBtn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.quietBtn:hover {
+  color: var(--color-text-primary);
+}
+
+/* a phone: the year card goes under the name, so «Первый круг — июль 2026» keeps to one line */
+@media (max-width: 480px) {
+  .idRow {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 14px;
+    row-gap: 10px;
+  }
+
+  .idRow > button {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .idText .subtitle span {
+    white-space: nowrap;
+  }
+}

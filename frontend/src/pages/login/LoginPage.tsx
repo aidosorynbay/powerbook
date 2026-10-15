@@ -34,7 +34,8 @@ export function LoginPage() {
     if (data) {
       login(data.access_token);
       const redirect = searchParams.get('redirect');
-      const safeRedirect = redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/';
+      // a member's home is the circle: after logging in they went to the front page and on from there (GA4: 52 times in 14 days)
+      const safeRedirect = redirect && redirect.startsWith('/') && !redirect.startsWith('//') && redirect !== '/' ? redirect : '/round';
       navigate(safeRedirect);
     }
     setIsSubmitting(false);

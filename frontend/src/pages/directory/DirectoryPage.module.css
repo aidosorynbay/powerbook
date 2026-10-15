@@ -225,3 +225,16 @@
   color: var(--color-text-muted);
   overflow-wrap: anywhere;
 }
+
+.back {
+  display: inline-block;
+  margin-bottom: 6px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.back:hover {
+  color: var(--color-text-primary);
+}

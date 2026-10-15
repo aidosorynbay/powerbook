@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { apiGet, useI18n, type CatalogItem, type CatalogPage as Page } from '@/shared/lib';
 import { Container } from '@/shared/ui';
 import { Header } from '@/widgets';
 import { BookFace, ExtBadge, PbBadge, Shelves, useCount } from './bookUi';
 import { WorkSheet } from './WorkSheet';
 import styles from './Store.module.css';
-import { LibrarySwitch } from './LibrarySwitch';
+import { LibraryTabs } from '@/widgets/SectionTabs';
+import { CircleBooks } from './CircleBooks';
 
 type Filter = 'all' | 'rated' | 'reviewed' | 'sale';
 type Sort = 'popular' | 'pb' | 'ext' | 'new' | 'az';
@@ -88,11 +89,18 @@ export function CatalogPage() {
       <Header />
       <main className={styles.main}>
         <Container>
+          <LibraryTabs />
+          <CircleBooks />
+          <Link to="/market" className={styles.bazaarRow}>
+            <span>
+              <b>{t('mkt.title')}</b>
+              <small>{t('libswitch.marketHint')}</small>
+            </span>
+            <span aria-hidden="true">›</span>
+          </Link>
           <div className={styles.head}>
             <div>
-              <h1 className={styles.title}>
-                <LibrarySwitch current="books" />
-              </h1>
+              <h1 className={styles.title}>{t('nav2.allBooks')}</h1>
               <p className={styles.subtitle}>{t('cat.subtitle')}</p>
               {counts && (
                 <p className={styles.headStats}>

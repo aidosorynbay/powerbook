@@ -26,3 +26,5 @@ export { InstallGuideBody, InstallSheet, Handoff } from './InstallGuide';
 export { InstallLanding } from './InstallLanding';
 export { InstallNudge } from './InstallNudge';
 export { ReadingReminder } from './ReadingReminder';
+export { SectionTabs, HistoryTabs, LibraryTabs } from './SectionTabs';
+export { WhatsNew } from './WhatsNew';

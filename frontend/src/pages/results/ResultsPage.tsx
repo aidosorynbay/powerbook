@@ -13,7 +13,7 @@ import {
   type CalendarDay,
 } from '@/shared/lib';
 import { Container, PageTransition, Icon } from '@/shared/ui';
-import { Header, Footer } from '@/widgets';
+import { Header, Footer, HistoryTabs } from '@/widgets';
 import { RoundStory } from './RoundStory';
 import { ExchangeGallery, PhotoConfirm } from './ExchangePhotos';
 import styles from './ResultsPage.module.css';
@@ -240,14 +240,15 @@ export function ResultsPage() {
 
         <main className={styles.main}>
           <Container>
+            <HistoryTabs />
             {isLoading ? (
               <div className={styles.loading}>{t('dashboard.loading')}</div>
             ) : !lastRound || !results ? (
               <div className={styles.empty}>{t('results.noResults')}</div>
             ) : (
               <>
-                <div className={styles.title}>{t('results.marathon')}</div>
-                <div className={styles.subtitle}>{monthName} {results.year}</div>
+                <div className={styles.title}>{t(`roundTitle.${results.month}`)}</div>
+                <div className={styles.subtitle}>{t('nav2.results')} · {monthName} {results.year}</div>
 
                 <div className={styles.sections}>
                   {/* Left column */}
@@ -274,6 +275,33 @@ export function ResultsPage() {
                             {t('results.backToMine')}
                           </button>
                         )}
+                      </div>
+                    )}
+
+                    {/* Stats for selected user */}
+                    {selectedEntry && (
+                      <div className={styles.statsSection}>
+                        <div className={styles.statsSectionTitle}>
+                          <span className={styles.statsSectionTitleName}>
+                            {isSelf ? t('results.yourStats') : selectedDisplayName}
+                          </span>
+                        </div>
+                        <div className={styles.statsRow}>
+                          <div className={styles.statCard}>
+                            <div className={styles.statValue}>
+                              {(viewedCalendar?.total_minutes ?? 0).toLocaleString()}
+                            </div>
+                            <div className={styles.statLabel}>{t('results.minutes')}</div>
+                          </div>
+                          <div className={styles.statCard}>
+                            <div className={styles.statValue}>{selectedEntry.total_score}</div>
+                            <div className={styles.statLabel}>{t('results.days')}</div>
+                          </div>
+                          <div className={styles.statCard}>
+                            <div className={styles.statValue}>#{selectedEntry.rank}</div>
+                            <div className={styles.statLabel}>{t('results.placeLabel')}</div>
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -317,36 +345,6 @@ export function ResultsPage() {
                         {myExchange && (
                           <PhotoConfirm pairId={myExchange.pair_id} photoUrl={myExchange.photo_url ?? null} onChanged={fetchData} />
                         )}
-                      </div>
-                    )}
-
-                    {/* Stats for selected user */}
-                    {selectedEntry && (
-                      <div className={styles.statsSection}>
-                        <div className={styles.statsSectionTitle}>
-                          <span className={styles.statsSectionTitleName}>
-                            {isSelf ? t('results.yourStats') : selectedDisplayName}
-                          </span>
-                          <span className={styles.rankBadge}>
-                            {t('results.place', { rank: selectedEntry.rank })}
-                          </span>
-                        </div>
-                        <div className={styles.statsRow}>
-                          <div className={styles.statCard}>
-                            <div className={styles.statValue}>
-                              {(viewedCalendar?.total_minutes ?? 0).toLocaleString()}
-                            </div>
-                            <div className={styles.statLabel}>{t('results.minutes')}</div>
-                          </div>
-                          <div className={styles.statCard}>
-                            <div className={styles.statValue}>{selectedEntry.total_score}</div>
-                            <div className={styles.statLabel}>{t('results.days')}</div>
-                          </div>
-                          <div className={styles.statCard}>
-                            <div className={styles.statValue}>#{selectedEntry.rank}</div>
-                            <div className={styles.statLabel}>{t('results.placeLabel')}</div>
-                          </div>
-                        </div>
                       </div>
                     )}
 

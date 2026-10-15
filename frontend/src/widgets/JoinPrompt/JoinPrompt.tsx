@@ -46,7 +46,9 @@ export function JoinPrompt() {
     if (!isAuthenticated && pathname !== '/') return;
     let next: Kind | null = null;
     if (isAuthenticated && state.waited_for_open) next = 'open';
-    else if (state.phase === 'registration' && !state.in_open_round && !state.in_current_round) next = 'reg';
+    // a member on the circle page already has the sign-up there («Октябрьский круг · Записаться в круг», with their
+    // last circle in one line): a second, generic window over it said the same thing twice (2026-10-15)
+    else if (state.phase === 'registration' && !state.in_open_round && !state.in_current_round && !(isAuthenticated && pathname === '/round')) next = 'reg';
     else if (state.phase === 'waitlist' && !state.in_current_round && !state.on_waitlist && state.days_left_in_month <= 4) next = 'wait';
     if (!next) return;
     try {

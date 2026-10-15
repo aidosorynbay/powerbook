@@ -37,7 +37,7 @@ export function applyTheme(choice: ThemeChoice): void {
   window.dispatchEvent(new CustomEvent('pb:theme', { detail: theme }));
 }
 
-export function useTheme(): { choice: ThemeChoice; theme: 'dark' | 'light'; cycle: () => void } {
+export function useTheme(): { choice: ThemeChoice; theme: 'dark' | 'light'; cycle: () => void; set: (next: ThemeChoice) => void } {
   const [choice, setChoice] = useState<ThemeChoice>(readThemeChoice);
 
   useEffect(() => {
@@ -61,7 +61,17 @@ export function useTheme(): { choice: ThemeChoice; theme: 'dark' | 'light'; cycl
     });
   }, []);
 
-  return { choice, theme: resolveTheme(choice), cycle };
+  // Settings picks one of the three directly (the header button only ever cycled through them)
+  const set = useCallback((next: ThemeChoice) => {
+    try {
+      localStorage.setItem(THEME_KEY, next);
+    } catch {
+      // storage blocked: the choice lasts for this visit
+    }
+    setChoice(next);
+  }, []);
+
+  return { choice, theme: resolveTheme(choice), cycle, set };
 }
 
 /** The theme in force right now ('dark' or 'light'), following every switch. */

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import { getApiBaseUrl, track, useI18n } from '@/shared/lib';
 import type { CalendarDay, LeaderboardEntry, RosterEntry } from '@/shared/lib';
 import { ReadingReminder, type ReminderState } from '@/widgets/ReadingReminder';
@@ -164,6 +165,10 @@ export function ReadersSheet({
           );
         })}
       </ul>
+      {/* the directory used to be a menu-only page (clipped off the desktop bar): reached from the people it lists */}
+      <Link to="/readers" className={styles.allReaders} onClick={onClose}>
+        {t('dir2.allReaders')} <span aria-hidden="true">›</span>
+      </Link>
       <button type="button" className={`${styles.sheetClose} ${styles.closeBtn}`} onClick={onClose}>
         {t('today.close')}
       </button>

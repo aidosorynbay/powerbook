@@ -1,8 +1,15 @@
 .page {
   min-height: 100vh;
   display: flex;
-  align-items: center;
-  padding: var(--spacing-12) 0;
+  /* the site's bar on top now (this page had none, so it was a dead end on phones), the card under it */
+  flex-direction: column;
+  padding: 0 0 var(--spacing-12);
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding-bottom: 96px;
+  }
 }
 
 .card {
@@ -158,8 +165,8 @@
 
 @media (max-width: 768px) {
   .page {
-    align-items: flex-start;
-    padding-top: var(--spacing-8);
+    /* the bar spans the page; only the card below keeps to its column */
+    align-items: stretch;
   }
 }
 
@@ -419,4 +426,50 @@
   align-items: center;
   margin-top: 14px;
   flex-wrap: wrap;
+}
+
+/* ---------- 2026-10-14: a way back, and the set-once choices as the circle page's pills ---------- */
+
+.back {
+  display: inline-block;
+  margin: 16px 0 8px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.back:hover {
+  color: var(--color-text-primary);
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 16px;
+}
+
+.pills button {
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  min-height: 36px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-primary);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.pills button[aria-pressed='true'] {
+  color: var(--color-accent-primary);
+  border-color: var(--color-border-accent);
+  background: var(--color-accent-primary-muted);
+}
+
+/* three theme pills on one line even on a 375 px phone inside the card */
+@media (max-width: 420px) {
+  .pills button { padding: 6px 11px; font-size: 13px; }
 }

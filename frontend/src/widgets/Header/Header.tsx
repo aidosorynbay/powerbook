@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { track, useAuth, useI18n, useTheme, LOCALES, type ThemeChoice } from '@/shared/lib';
 import { Logo, Button, Icon, Container } from '@/shared/ui';
 import { Bell } from '@/widgets/Notifications';
+import { MEMBER_TABS, isTabActive } from '@/widgets/BottomNav/tabs';
 import styles from './Header.module.css';
 
 // One button, three states: tap to go dark → light → as the system says.
@@ -37,7 +38,67 @@ function ThemeButton({ className }: { className: string }) {
 
 const HINT_KEY = 'pb.menuHintSeen';
 
+/** A globe and the language's short name: the one setting someone who can't read the page still has to find. */
+function LangPicker({ className }: { className: string }) {
+  const { locale, setLocale } = useI18n();
+  return (
+    <label className={className}>
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3c2.6 2.8 3.9 5.8 3.9 9s-1.3 6.2-3.9 9M12 3C9.4 5.8 8.1 8.8 8.1 12s1.3 6.2 3.9 9" />
+      </svg>
+      <select value={locale} onChange={(e) => setLocale(e.target.value as typeof locale)} aria-label="Language / Язык / Тіл">
+        {LOCALES.map((loc) => (
+          <option key={loc.code} value={loc.code}>{loc.label}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+/**
+ * A member's bar: the logo goes to the circle (their home), the same four places as the phone's tab bar
+ * on computers, and only the language and the bell beside them. Theme, settings, the ideas box and the app
+ * moved into Профиль; nothing here can run out of room and hide a link (2026-10-14 audit: «Читатели»,
+ * «Топ» and Telegram sat clipped at every desktop width).
+ */
+function MemberHeader() {
+  const { t } = useI18n();
+  const { pathname } = useLocation();
+  return (
+    <header className={styles.header}>
+      <Container>
+        <div className={styles.memberInner}>
+          <Link to="/round" className={styles.memberLogo} aria-label={`PowerBook — ${t('nav.round')}`}>
+            <img src="/logo-icon.png" alt="" className={styles.memberLogoIcon} />
+            <span className={styles.memberLogoText}>PowerBook</span>
+          </Link>
+          <nav className={styles.memberNav} aria-label={t('nav2.main')}>
+            {MEMBER_TABS.map((tab) => {
+              const on = isTabActive(pathname, tab);
+              return (
+                <Link key={tab.path} to={tab.path} className={`${styles.memberLink} ${on ? styles.memberLinkOn : ''}`} aria-current={on ? 'page' : undefined}>
+                  {t(tab.label)}
+                </Link>
+              );
+            })}
+          </nav>
+          <div className={styles.memberActions}>
+            <LangPicker className={styles.globe} />
+            <Bell />
+          </div>
+        </div>
+      </Container>
+    </header>
+  );
+}
+
 export function Header() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <MemberHeader /> : <GuestHeader />;
+}
+
+function GuestHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, user } = useAuth();

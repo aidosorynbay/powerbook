@@ -1657,3 +1657,28 @@
 
 .gone { display: none !important; }
 .roundHeaderMember .roundTitle { min-width: 0; }
+
+/* «В читальный зал ↓» under the save button: quiet, a door rather than a second call to action */
+.toRoom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  margin: 10px 0 0;
+  padding: 10px 16px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.toRoom:hover {
+  border-color: var(--color-border-accent);
+  background: var(--color-bg-secondary);
+}

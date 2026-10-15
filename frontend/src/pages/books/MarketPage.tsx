@@ -6,7 +6,7 @@ import { Header } from '@/widgets';
 import { BookFace, PbBadge, Shelves, formatPrice, useToast } from './bookUi';
 import { ListingSheet, SellSheet } from './ListingSheet';
 import styles from './Store.module.css';
-import { LibrarySwitch } from './LibrarySwitch';
+import { LibraryTabs } from '@/widgets/SectionTabs';
 
 type Sort = 'new' | 'cheap' | 'dear';
 const PAGE = 48;
@@ -110,11 +110,10 @@ export function MarketPage() {
       <Header />
       <main className={styles.main}>
         <Container>
+          <LibraryTabs />
           <div className={styles.head}>
             <div>
-              <h1 className={styles.title}>
-                <LibrarySwitch current="market" />
-              </h1>
+              <h1 className={styles.title}>{t('mkt.title')}</h1>
               <p className={styles.subtitle}>{t('mkt.subtitle')}</p>
             </div>
             <button type="button" className={styles.primary} onClick={() => setParam({ new: '1' })}>

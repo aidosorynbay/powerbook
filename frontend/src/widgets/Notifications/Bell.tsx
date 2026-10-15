@@ -10,9 +10,9 @@ import styles from './Bell.module.css';
 const POLL_MS = 60_000;
 
 // The switches, in the order the server lists them.
-const KINDS = ['new_review', 'review_reply', 'watch_listing', 'watch_finished', 'wanted_by', 'guest_read'] as const;
+const KINDS = ['new_circle', 'new_review', 'review_reply', 'watch_listing', 'watch_finished', 'wanted_by', 'guest_read'] as const;
 
-const ICONS: Record<string, IconName> = { new_review: 'chat', review_reply: 'chat', watch_listing: 'tag', wanted_by: 'users', guest_read: 'gift' };
+const ICONS: Record<string, IconName> = { new_circle: 'calendar', new_review: 'chat', review_reply: 'chat', watch_listing: 'tag', wanted_by: 'users', guest_read: 'gift' };
 
 /** Where a notification leads, and what it says. */
 function useWords() {
@@ -56,6 +56,10 @@ function useWords() {
         text: t('notif.wanted', { title, n: Number(d.n ?? 1) }),
         to: `/market?sell=${encodeURIComponent(String(d.volume_key ?? ''))}&title=${encodeURIComponent(title)}${author}`,
       };
+    }
+    if (n.kind === 'new_circle') {
+      // the first day of a month, for last month's reader who has not signed up yet
+      return { text: t('notif.newCircle', { circle: t(`roundTitle.${Number(d.month ?? 1)}`) }), to: '/round?source=bell_new_circle' };
     }
     if (n.kind === 'guest_read') {
       return {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useI18n, apiGet, type DirectoryEntry } from '@/shared/lib';
+import { useI18n, apiGet, type Buddy, type DirectoryEntry } from '@/shared/lib';
 import { Container, PageTransition, Avatar, BookCard, Icon } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import styles from './DirectoryPage.module.css';
@@ -13,7 +13,15 @@ export function DirectoryPage() {
   const [query, setQuery] = useState('');
   // Registered members first by default — the archive is much larger and
   // would otherwise bury the people who are actually here.
-  const [showArchive, setShowArchive] = useState(false);
+  // «Мои друзья» (reading friends) moved here from Настройки: the people you follow sit with everyone else
+  const [view, setView] = useState<'members' | 'friends' | 'archive'>(() => (window.location.hash === '#friends' ? 'friends' : 'members'));
+  const showArchive = view === 'archive';
+  const [friendIds, setFriendIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    apiGet<Buddy[]>('/social/buddies/mine', { requireAuth: true }).then(({ data }) => {
+      if (data) setFriendIds(new Set(data.map((b) => b.user_id)));
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,7 +40,7 @@ export function DirectoryPage() {
   const archive = useMemo(() => entries.filter((e) => e.is_archive), [entries]);
 
   const filtered = useMemo(() => {
-    const pool = showArchive ? archive : members;
+    const pool = showArchive ? archive : view === 'friends' ? members.filter((e) => friendIds.has(e.user_id)) : members;
     const q = query.trim().toLowerCase();
     if (!q) return pool;
     return pool.filter(
@@ -42,7 +50,7 @@ export function DirectoryPage() {
         e.archive_usernames.some((u) => u.toLowerCase().includes(q)) ||
         (e.telegram_id ?? '').toLowerCase().includes(q)
     );
-  }, [members, archive, query, showArchive]);
+  }, [members, archive, query, showArchive, view, friendIds]);
 
   return (
     <PageTransition>
@@ -50,22 +58,31 @@ export function DirectoryPage() {
         <Header />
         <main className={styles.main}>
           <Container>
+            <Link to="/insights" className={styles.back}>‹ {t('set2.back')}</Link>
             <h1 className={styles.title}>{t('directory.title')}</h1>
 
             <div className={styles.tabs} role="group">
               <button
                 type="button"
-                className={`${styles.tab} ${!showArchive ? styles.tabActive : ''}`}
-                aria-pressed={!showArchive}
-                onClick={() => setShowArchive(false)}
+                className={`${styles.tab} ${view === 'members' ? styles.tabActive : ''}`}
+                aria-pressed={view === 'members'}
+                onClick={() => setView('members')}
               >
                 {t('directory.tabMembers')} ({members.length})
               </button>
               <button
                 type="button"
-                className={`${styles.tab} ${showArchive ? styles.tabActive : ''}`}
-                aria-pressed={showArchive}
-                onClick={() => setShowArchive(true)}
+                className={`${styles.tab} ${view === 'friends' ? styles.tabActive : ''}`}
+                aria-pressed={view === 'friends'}
+                onClick={() => setView('friends')}
+              >
+                {t('dir2.friends')} ({friendIds.size})
+              </button>
+              <button
+                type="button"
+                className={`${styles.tab} ${view === 'archive' ? styles.tabActive : ''}`}
+                aria-pressed={view === 'archive'}
+                onClick={() => setView('archive')}
               >
                 {t('directory.tabArchive')} ({archive.length})
               </button>
@@ -89,6 +106,8 @@ export function DirectoryPage() {
 
             {isLoading ? (
               <div className={styles.loading}>{t('dashboard.loading')}</div>
+            ) : view === 'friends' && filtered.length === 0 ? (
+              <p className={styles.subtitle}>{t('dir2.friendsEmpty')}</p>
             ) : (
               <div className={styles.grid}>
                 {filtered.map((entry) => (

@@ -3,7 +3,7 @@ import { Suspense, lazy, useEffect } from 'react';
 import * as Sentry from '@sentry/react';
 import { AuthProvider, useAuth, I18nProvider, useI18n, isReaderPath, setAnalyticsUser } from '@/shared/lib';
 import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage, JoinPage, ReaderDayPage, GetPage, AboutPage } from '@/pages';
-import { ArchivePrompt, BottomNav, GuestKept, JoinPrompt, LastCallNotice } from '@/widgets';
+import { ArchivePrompt, BottomNav, GuestKept, JoinPrompt, LastCallNotice, WhatsNew } from '@/widgets';
 import '@/app/styles/theme.css';
 
 // Lets Sentry name traces by route pattern (/readers/:userId).
@@ -25,7 +25,16 @@ function ToLogin() {
 /** The round, opened by someone without an account (it is shared around):
  * the invitation page, which says what a circle is and how to get in. */
 function ToJoin() {
-  const { search } = useLocation();
+  const { pathname, search } = useLocation();
+  // A member whose session ran out is not a newcomer: straight to «Войти» and back to the circle,
+  // not past «Следующий круг — Ноябрь» on the invitation page (GA4: /join → /login 57 times in 14 days).
+  let member = false;
+  try {
+    member = localStorage.getItem('pb.wasMember') === '1';
+  } catch {
+    // storage blocked: treat as a visitor
+  }
+  if (member) return <Navigate to={`/login?redirect=${encodeURIComponent(pathname + search)}`} replace />;
   return <Navigate to={`/join${search}`} replace />;
 }
 
@@ -41,6 +50,13 @@ function AppRoutes() {
   useEffect(() => {
     Sentry.setUser(user ? { id: user.id } : null);
     setAnalyticsUser(user ? user.id : null);
+    if (user) {
+      try {
+        localStorage.setItem('pb.wasMember', '1');
+      } catch {
+        // storage blocked: the next logged-out visit just meets the invitation page
+      }
+    }
   }, [user]);
 
   if (isLoading) {
@@ -60,7 +76,10 @@ function AppRoutes() {
   return (
     <>
       <SentryRoutes>
-        <Route path="/" element={<HomePage />} />
+        {/* A member's home is the circle; the front page is for visitors (members still reach it through «О нас»). */}
+        <Route path="/" element={isAuthenticated ? <Navigate to="/round" replace /> : <HomePage />} />
+        {/* the front page for anyone — a member who signed up in a hurry reads the rules here (Профиль → «Как устроен PowerBook») */}
+        <Route path="/welcome" element={<HomePage />} />
         <Route
           path="/round"
           element={isAuthenticated ? <DashboardPage /> : <ToJoin />}
@@ -160,6 +179,8 @@ function AppRoutes() {
           last day whichever page they happen to open. */}
       {isAuthenticated && !reading && <LastCallNotice />}
       {isAuthenticated && !reading && <ArchivePrompt />}
+      {/* once, for members who knew the old places: where Архив, Результаты, Топ and the header buttons went */}
+      {isAuthenticated && !reading && <WhatsNew />}
       {/* For whoever is not reading in this month's circle: the way into the next one. */}
       {!reading && <JoinPrompt />}
       {/* minutes read as a visitor become the reader's once they have an account, wherever they signed up */}

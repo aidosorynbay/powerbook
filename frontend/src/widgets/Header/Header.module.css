@@ -577,3 +577,130 @@
 }
 
 .phoneLink:hover { color: var(--color-text-primary); }
+
+/* ---- a member's bar (2026-10-14): logo → circle, four places, language, bell ---- */
+
+.memberInner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-6);
+  min-width: 0;
+}
+
+.memberLogo {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.memberLogoIcon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  display: block;
+}
+
+.memberLogoText {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-accent-primary);
+  white-space: nowrap;
+}
+
+.memberNav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-6);
+  min-width: 0;
+}
+
+.memberLink {
+  position: relative;
+  flex: none;
+  padding: 6px 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.memberLink:hover {
+  color: var(--color-text-primary);
+}
+
+/* where you are, said once: the label in white with the orange line under it */
+.memberLinkOn {
+  color: var(--color-text-primary);
+}
+
+.memberLinkOn::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-accent-primary);
+}
+
+.memberActions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-left: auto;
+}
+
+.globe {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.globe:hover,
+.globe:focus-within {
+  border-color: var(--color-border-accent);
+  color: var(--color-text-primary);
+}
+
+.globe select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  outline: none;
+}
+
+@media (max-width: 900px) {
+  .memberNav { display: none; }
+  .memberLogoIcon { width: 38px; height: 38px; }
+  .memberLogoText {
+    font-size: var(--font-size-xl);
+    letter-spacing: -0.02em;
+    color: var(--color-text-primary);
+  }
+}
+
+@media (max-width: 360px) {
+  .memberLogoText { font-size: var(--font-size-lg); }
+}
