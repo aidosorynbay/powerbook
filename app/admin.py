@@ -2,19 +2,23 @@ from __future__ import annotations
 
 from datetime import timezone
 
-from sqladmin import Admin, ModelView, action
+import uuid
+
+from sqladmin import Admin, BaseView, ModelView, action, expose
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
-from markupsafe import Markup
-from starlette.responses import HTMLResponse, RedirectResponse
+from markupsafe import Markup, escape
+from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from app.core.constants import ROUND_TZ
+from app.core.photos import decode_photo
 from app.core.security import hash_password, verify_password
 from app.db.session import get_engine, get_session_factory
 from app.models.claim import UsernameClaim
 from app.models.enums import ClaimStatus, RoundStatus, SystemRole
 from app.models.exchange_photo import ExchangePhoto
 from app.models.group import Group, GroupMember
+from app.models.reader_feedback import ReaderFeedback
 from app.models.round import BookExchangePair, ReadingLog, Round, RoundParticipant, RoundResult
 from app.models.user import User
 from app.models.waitlist import WaitlistEntry
@@ -309,6 +313,85 @@ class ExchangePhotoAdmin(ModelView, model=ExchangePhoto):
     icon = "fa-solid fa-camera"
 
 
+_MOODS = {"love": "😍 Нравится", "ok": "🙂 Нормально", "improve": "🛠 Есть что улучшить"}
+
+
+def _feedback_photo(height: int):
+    def show(model: object, attr: object) -> Markup | str:
+        if not getattr(model, "photo", None):
+            return ""
+        url = f"/admin/feedback-photo/{model.id}"
+        return Markup(f"<a href='{url}' target='_blank'><img src='{url}' style='height:{height}px;border-radius:6px' loading='lazy'></a>")
+    return show
+
+
+class ReaderFeedbackAdmin(ModelView, model=ReaderFeedback):
+    """What readers think of PowerBook, from the window after a saved day.
+    A photo marked «можно показывать» may go on PowerBook's social pages and
+    site; the others are for the team only."""
+
+    column_list = [
+        ReaderFeedback.photo, ReaderFeedback.mood, ReaderFeedback.text, ReaderFeedback.photo_consent,
+        ReaderFeedback.user, ReaderFeedback.created_at,
+    ]
+    column_details_list = [
+        ReaderFeedback.photo, ReaderFeedback.mood, ReaderFeedback.text, ReaderFeedback.photo_consent,
+        ReaderFeedback.user, ReaderFeedback.round, ReaderFeedback.source, ReaderFeedback.locale, ReaderFeedback.created_at,
+    ]
+    column_labels = {
+        ReaderFeedback.photo: "фото", ReaderFeedback.mood: "оценка", ReaderFeedback.text: "текст",
+        ReaderFeedback.photo_consent: "можно показывать", ReaderFeedback.user: "читатель", ReaderFeedback.round: "круг",
+        ReaderFeedback.source: "откуда", ReaderFeedback.locale: "язык", ReaderFeedback.created_at: "когда (Астана)",
+    }
+    column_formatters = {
+        ReaderFeedback.photo: _feedback_photo(72),
+        ReaderFeedback.mood: lambda m, a: _MOODS.get(m.mood or "", ""),
+        ReaderFeedback.text: lambda m, a: Markup(f"<div style='max-width:420px;white-space:pre-wrap'>{escape(m.text or '')}</div>"),
+        ReaderFeedback.created_at: _astana,
+    }
+    column_formatters_detail = {
+        ReaderFeedback.photo: _feedback_photo(420),
+        ReaderFeedback.mood: lambda m, a: _MOODS.get(m.mood or "", ""),
+        ReaderFeedback.created_at: _astana,
+    }
+    column_default_sort = [(ReaderFeedback.created_at, True)]
+    column_sortable_list = [ReaderFeedback.created_at, ReaderFeedback.mood, ReaderFeedback.photo_consent]
+    # the words go to a spreadsheet; the photos would make it megabytes of base64
+    column_export_exclude_list = [ReaderFeedback.photo]
+    can_create = False
+    can_edit = False
+    name = "Отзыв читателя"
+    name_plural = "Отзывы читателей"
+    icon = "fa-solid fa-comment-dots"
+
+
+class FeedbackPhotoView(BaseView):
+    """The picture behind a feedback row, for the list above. Behind the
+    admin's login, unlike the exchange's photos: these are not public."""
+
+    name = "feedback photo"
+
+    def is_visible(self, request: Request) -> bool:
+        return False
+
+    @expose("/feedback-photo/{feedback_id}", methods=["GET"])
+    async def photo(self, request: Request):
+        try:
+            feedback_id = uuid.UUID(request.path_params["feedback_id"])
+        except ValueError:
+            return Response(status_code=404)
+        db = get_session_factory()()
+        try:
+            row = db.get(ReaderFeedback, feedback_id)
+            found = decode_photo(row.photo) if row else None
+        finally:
+            db.close()
+        if not found:
+            return Response(status_code=404)
+        data, media_type = found
+        return Response(content=data, media_type=media_type, headers={"Cache-Control": "private, max-age=86400"})
+
+
 class UsernameClaimAdmin(ModelView, model=UsernameClaim):
     """
     Every self-serve 'this old username is me' claim lands here, newest
@@ -434,6 +517,8 @@ def setup_admin(app):
     admin.add_view(RoundResultAdmin)
     admin.add_view(BookExchangePairAdmin)
     admin.add_view(ExchangePhotoAdmin)
+    admin.add_view(ReaderFeedbackAdmin)
+    admin.add_base_view(FeedbackPhotoView)
     admin.add_view(UsernameClaimAdmin)
     admin.add_base_view(ArchiveCoverageView)
     admin.add_base_view(BookMergeView)

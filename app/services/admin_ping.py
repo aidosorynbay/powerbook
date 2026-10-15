@@ -32,6 +32,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.photos import decode_photo
 from app.models.claim import UsernameClaim
 from app.models.enums import ClaimStatus
 from app.models.user import User
@@ -64,8 +65,12 @@ def _call(method: str, payload: dict) -> dict | None:
         return None
 
 
+def _in_background(fn, *args) -> None:
+    threading.Thread(target=fn, args=args, daemon=True).start()
+
+
 def _later(method: str, payload: dict) -> None:
-    threading.Thread(target=_call, args=(method, payload), daemon=True).start()
+    _in_background(_call, method, payload)
 
 
 def tell_admins(text: str, *, buttons: list[list[dict]] | None = None) -> None:
@@ -93,6 +98,64 @@ def set_webhook() -> None:
         logger.warning("the bot's webhook points elsewhere (%s); leaving it", current)
         return
     _call("setWebhook", {"url": WEBHOOK_URL, "secret_token": webhook_secret(), "allowed_updates": ["callback_query"]})
+
+
+def _send_photo(chat_id: str, data: bytes, media_type: str, caption: str) -> None:
+    """sendPhoto wants the picture as a file upload, so this one call is
+    multipart instead of JSON."""
+    boundary = uuid.uuid4().hex
+    fields = b"".join(
+        f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode()
+        for name, value in (("chat_id", chat_id), ("caption", caption))
+    )
+    head = (
+        f'--{boundary}\r\nContent-Disposition: form-data; name="photo"; filename="reader.{media_type.split("/")[-1]}"\r\n'
+        f"Content-Type: {media_type}\r\n\r\n"
+    ).encode()
+    request = urllib.request.Request(
+        f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendPhoto",
+        data=fields + head + data + f"\r\n--{boundary}--\r\n".encode(),
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            response.read()
+    except Exception:
+        logger.exception("telegram sendPhoto failed")
+
+
+# ---------- reader feedback ----------
+
+_MOODS = {"love": "😍 Нравится", "ok": "🙂 Нормально", "improve": "🛠 Есть что улучшить"}
+
+
+def feedback_received(*, row, user) -> None:
+    """A reader answered the window after a saved day: the words first, then
+    the photo under them, in one thread so they arrive in that order."""
+    if not settings.telegram_bot_token:
+        return
+    who = user.display_name or user.username
+    handle = user.telegram_handle
+    tg = f", tg @{handle}" if handle and handle != user.username else ""
+    shown = "можно показывать в соцсетях и на сайте ✅" if row.photo_consent else "только для нас (галочку «можно показать» не поставили)"
+    lines = ["💬 Отзыв о PowerBook", f"{who} (@{user.username}{tg})"]
+    if row.mood:
+        lines.append(_MOODS.get(row.mood, row.mood))
+    if row.text:
+        lines.append(f"«{row.text[:3000]}»")
+    if row.photo:
+        lines.append(f"📷 Фото — {shown}")
+    lines.append(f"Все отзывы: {SITE}/admin/reader-feedback/list")
+    text = "\n".join(lines)
+    photo = decode_photo(row.photo) if row.photo else None
+
+    def send(chat_id: str) -> None:
+        _call("sendMessage", {"chat_id": chat_id, "text": text, "disable_web_page_preview": True})
+        if photo:
+            _send_photo(chat_id, photo[0], photo[1], f"📷 {who} — {shown}")
+
+    for chat_id in chat_ids():
+        _in_background(send, chat_id)
 
 
 # ---------- archive nicknames ----------

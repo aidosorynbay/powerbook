@@ -22,6 +22,7 @@ from app.models.custom_shelf import CustomShelf, ShelfPlacement
 from app.models.day_share import DayShare
 from app.models.sticker_use import StickerUse
 from app.models.exchange_photo import ExchangePhoto
+from app.models.reader_feedback import ReaderFeedback
 from app.models.reading_room import GuestRoomSitting, ReadingRoomMessage, ReadingRoomSession
 from app.models.suggestion import Suggestion
 from app.models.user import User
@@ -69,5 +70,6 @@ __all__ = [
     "WaitlistEntry",
     "DayShare",
     "StickerUse",
+    "ReaderFeedback",
 ]
 
