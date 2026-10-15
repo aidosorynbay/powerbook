@@ -23,6 +23,8 @@ type Drawn = { blob: Blob; url: string };
 type Detail = Record<string, string>;
 
 const INKS: readonly Ink[] = ['light', 'dark'];
+type Mode = 'room' | 'photo';
+const MODES: readonly Mode[] = ['room', 'photo'];
 
 /** One Analytics event per sticker, so GA4's own Events report compares them with no custom dimensions set up. */
 const EVENT: Record<StickerKind, string> = {
@@ -86,11 +88,14 @@ export function StoryShare({ card, link, onSent, children }: { card: MyDayCard; 
   const [copied, setCopied] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
+  // On the reading room, to any app; or the sticker alone, for one's own photo in a story: the transparent slide
+  // Strava's runners swipe to, here a switch, so the four stickers stay the month's test (2026-10-15).
+  const [mode, setMode] = useState<Mode>(() => remembered('pb.share.mode', MODES, 'room'));
   const assets = useRef<StickerAssets | null>(null);
   const urls = useRef<string[]>([]);
   const story = useRef<{ key: string; file: File } | null>(null);
   const rail = useRef<HTMLDivElement>(null);
-  const howto = useRef<HTMLDivElement>(null);
+  const howto = useRef<HTMLParagraphElement>(null);
   const frame = useRef(0);
   const copyable = useMemo(canCopyImage, []);
   const touch = useMemo(() => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches, []);
@@ -143,6 +148,7 @@ export function StoryShare({ card, link, onSent, children }: { card: MyDayCard; 
 
   useEffect(() => remember('pb.sticker.kind', kind), [kind]);
   useEffect(() => remember('pb.sticker.ink', ink), [ink]);
+  useEffect(() => remember('pb.share.mode', mode), [mode]);
 
   const current = drawn[kind];
   const storyKey = current ? `${kind}:${ink}:${current.url}` : '';
@@ -282,7 +288,12 @@ export function StoryShare({ card, link, onSent, children }: { card: MyDayCard; 
                 aria-pressed={on}
                 aria-label={t(`sticker.${k}`)}
               >
-                <span className={styles.frame} data-ink={ink} style={{ backgroundImage: `url(${roomFor(ink)})` }}>
+                <span
+                  className={`${styles.frame} ${mode === 'photo' ? styles.framePhoto : ''}`}
+                  data-ink={ink}
+                  style={mode === 'room' ? { backgroundImage: `url(${roomFor(ink)})` } : undefined}
+                >
+                  {mode === 'photo' && <span className={styles.photoNote}>{t('shareDay.yourPhoto')}</span>}
                   {d ? (
                     <img src={d.url} alt="" draggable={false} style={{ width: `${STORY_WIDTH[k] * 100}%` }} />
                   ) : (
@@ -300,27 +311,41 @@ export function StoryShare({ card, link, onSent, children }: { card: MyDayCard; 
         </div>
       </div>
 
-      {/* One button, as on Strava: the picture as it is shown, to the phone's own share sheet (Instagram, Telegram,
-          WhatsApp are all in it). Everything else waits under «Другие способы» (the council, 2026-10-15). */}
-      <button type="button" className={`${styles.primary} ${styles.share}`} onClick={shareWhole} disabled={!current || busy}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 8 5-5 5 5" /><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>
-        {t('shareDay.share')}
-      </button>
+      <div className={styles.modes} role="group" aria-label={t('shareDay.title')}>
+        {MODES.map((m) => (
+          <button
+            key={m}
+            type="button"
+            aria-pressed={mode === m}
+            onClick={() => {
+              setMode(m);
+              track('share_mode', { mode: m });
+            }}
+          >
+            {t(m === 'room' ? 'shareDay.modeRoom' : 'shareDay.modePhoto')}
+          </button>
+        ))}
+      </div>
 
-      <details className={styles.more} onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && track('day_share_more')}>
-        <summary>{t('shareDay.otherWays')}</summary>
-        <div className={styles.moreBody}>
-          <p className={styles.moreLabel}>{t('shareDay.bareLabel')}</p>
-          <div className={styles.pair}>
-            {copyable && (
-              <button type="button" className={styles.secondary} onClick={copy} disabled={!current}>
-                {copied === copiedKey ? `✓ ${t('shareDay.stickerCopied')}` : t('shareDay.copySticker')}
-              </button>
-            )}
-            <button type="button" className={styles.secondary} onClick={save} disabled={!current}>
-              {t('shareDay.saveSticker')}
-            </button>
-          </div>
+      {/* One button, as on Strava: the picture as it is shown, to the phone's own share sheet (Instagram, Telegram,
+          WhatsApp are all in it); on «Своё фото», the sticker to the clipboard and then Instagram (the council, 2026-10-15). */}
+      {mode === 'room' ? (
+        <button type="button" className={`${styles.primary} ${styles.share}`} onClick={shareWhole} disabled={!current || busy}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 8 5-5 5 5" /><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>
+          {t('shareDay.share')}
+        </button>
+      ) : copied === copiedKey && phone ? (
+        <a className={`${styles.primary} ${styles.share}`} href="instagram://story-camera" onClick={() => track('share_open_instagram')}>
+          {t('shareDay.openInstagram')}
+        </a>
+      ) : (
+        <button type="button" className={`${styles.primary} ${styles.share}`} onClick={copyable ? copy : save} disabled={!current}>
+          {copied === copiedKey ? `✓ ${t('shareDay.stickerCopied')}` : t(copyable ? 'shareDay.copySticker' : 'shareDay.saveSticker')}
+        </button>
+      )}
+
+      {mode === 'photo' && (
+        <>
           <div className={styles.inks}>
             {INKS.map((i) => (
               <button
@@ -336,20 +361,24 @@ export function StoryShare({ card, link, onSent, children }: { card: MyDayCard; 
             ))}
           </div>
           {copied === copiedKey ? (
-            <div className={styles.howto} role="status" ref={howto}>
-              <p>{t('shareDay.howTo')}</p>
-              {phone && (
-                <a className={styles.insta} href="instagram://story-camera">
-                  {t('shareDay.openInstagram')}
-                </a>
-              )}
-            </div>
+            <p className={styles.howto} role="status" ref={howto}>
+              {t('shareDay.howTo')}
+            </p>
           ) : (
-            failed && (
-              <p className={styles.hint} role="alert">
-                {t('shareDay.copyFailed')}
-              </p>
-            )
+            <p className={styles.hint} role={failed ? 'alert' : undefined}>
+              {t(failed ? 'shareDay.copyFailed' : 'shareDay.photoHint')}
+            </p>
+          )}
+        </>
+      )}
+
+      <details className={styles.more} onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && track('day_share_more')}>
+        <summary>{t('shareDay.otherWays')}</summary>
+        <div className={styles.moreBody}>
+          {mode === 'photo' && copyable && (
+            <button type="button" className={styles.secondary} onClick={save} disabled={!current}>
+              {t('shareDay.saveSticker')}
+            </button>
           )}
           {children}
         </div>
