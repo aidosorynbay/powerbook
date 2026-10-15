@@ -9,7 +9,7 @@
  * a stale streak, is worse than seeing a loading state. Book files are skipped
  * for the same reason plus size: they are tens of MB and belong to one person.
  */
-const VERSION = 'pb-shell-v4';
+const VERSION = 'pb-shell-v5';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
@@ -89,7 +89,8 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body || '',
     icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
+    // Android draws the badge as a silhouette: the mark alone, white on clear
+    badge: '/icons/icon-monochrome-512.png',
     // One reminder replaces the previous one instead of piling up.
     tag: data.tag || 'powerbook',
     data: { url: data.url || '/round?source=push' },
