@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "dev-secret-change-me"
     jwt_algorithm: str = "HS256"
     jwt_access_token_exp_minutes: int = 60 * 24 * 7  # 7 days
+    # How long a sign-in lasts. The app swaps the token for a fresh one once a day while it is used, so a reader is
+    # never sent back to «Вход» unless they press «Выйти» or the password changes (2026-10-15: 36 of 69 returning
+    # members met the login page in two weeks when a token lived 7 days). The longer of this and the minutes above wins.
+    jwt_session_days: int = 400
 
     # Reading without an account in the library hall (the front page's «Начать читать»). False turns it off at once.
     guest_room_enabled: bool = True

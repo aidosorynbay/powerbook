@@ -44,7 +44,7 @@ class AuthService:
             telegram_id=telegram_id,
             invited_by=self._inviter(ref),
         )
-        token = create_access_token(subject=str(user.id))
+        token = create_access_token(subject=str(user.id), password_hash=user.password_hash)
         return user, token
 
     def _inviter(self, ref: str | None):
@@ -71,5 +71,5 @@ class AuthService:
             user.is_claimable = False
             self.db.commit()
 
-        return create_access_token(subject=str(user.id))
+        return create_access_token(subject=str(user.id), password_hash=user.password_hash)
 

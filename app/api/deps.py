@@ -7,7 +7,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from app.core.security import decode_access_token
+from app.core.security import decode_access_token, token_matches_password
 from app.db.session import get_db
 from app.models.enums import SystemRole
 from app.models.user import User
@@ -40,6 +40,8 @@ def get_current_user(
     user = UserRepository(db).get(user_id)
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    if not token_matches_password(payload, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session ended: the password has changed")
 
     # Id only, so Sentry can count affected readers without personal data.
     sentry_sdk.set_user({"id": str(user.id)})
@@ -73,7 +75,7 @@ def get_current_user_optional(
     except ValueError:
         return None
     user = UserRepository(db).get(user_id)
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or not token_matches_password(payload, user.password_hash):
         return None
     sentry_sdk.set_user({"id": str(user.id)})
     return user

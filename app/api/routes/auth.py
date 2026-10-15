@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.config import settings
-from app.core.security import hash_password, verify_password
+from app.core.security import create_access_token, hash_password, verify_password
 from app.db.session import get_db
 from app.models.user import User
 from app.repositories.users import UserRepository
@@ -57,6 +57,13 @@ def me(current_user=Depends(get_current_user)) -> UserOut:
     return UserOut.model_validate(current_user)
 
 
+@router.post("/refresh", response_model=TokenResponse)
+def refresh(current_user: User = Depends(get_current_user)) -> TokenResponse:
+    """A fresh token for the reader who is already signed in. The app asks once a day, so a session lasts as long
+    as PowerBook is used: nobody is sent to «Вход» again unless they press «Выйти» or change the password."""
+    return TokenResponse(access_token=create_access_token(subject=str(current_user.id), password_hash=current_user.password_hash))
+
+
 @router.put("/profile", response_model=UserOut)
 def update_profile(
     payload: UpdateProfileRequest,
@@ -89,7 +96,8 @@ def change_password(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
     new_hash = hash_password(payload.new_password)
     UserRepository(db).update(current_user, password_hash=new_hash)
-    return {"detail": "Password changed"}
+    # every other device's session ends with the old password; this one carries on with a token for the new one
+    return {"detail": "Password changed", "access_token": create_access_token(subject=str(current_user.id), password_hash=new_hash)}
 
 
 @router.post("/reset-password")

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
 import { getApiBaseUrl, getAuthToken } from './api';
 import { STORAGE_KEY_TOKEN } from './constants';
 import { readToken, rememberToken } from './api';
@@ -16,12 +16,49 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** The token's own claims (issued at, the password mark), read without checking: the server checks. */
+function claimsOf(token: string): { iat?: number; pv?: string } | null {
+  try {
+    const part = token.split('.')[1];
+    return JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')));
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => getAuthToken());
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // a token swapped in by renew(): the same reader, already loaded, so it does not reload the user
+  const renewed = useRef<string | null>(null);
 
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
+
+  // A session lasts while PowerBook is used: once a day the token is exchanged for a fresh one (400 days ahead), so
+  // nobody is sent to «Вход» again unless they press «Выйти» or change the password (2026-10-15).
+  const renew = useCallback(async (current: string) => {
+    const c = claimsOf(current);
+    if (!c) return;
+    const ageHours = (Date.now() / 1000 - (c.iat ?? 0)) / 3600;
+    if (ageHours < 20 && c.pv) return;
+    try {
+      const res = await fetch(`${apiBaseUrl}/auth/refresh`, { method: 'POST', headers: { Authorization: `Bearer ${current}` } });
+      if (!res.ok) return;
+      const { access_token: fresh } = (await res.json()) as { access_token?: string };
+      if (!fresh || readToken() !== current) return; // a sign-in or a sign-out happened meanwhile
+      renewed.current = fresh;
+      rememberToken(fresh);
+      try {
+        localStorage.setItem(STORAGE_KEY_TOKEN, fresh);
+      } catch {
+        /* storage refused: the fresh token lives in memory for this visit */
+      }
+      setToken(fresh);
+    } catch {
+      /* offline: tomorrow, or the next visit */
+    }
+  }, [apiBaseUrl]);
 
   // 'invalid' only when the server says so (401/403). A phone back from the background is often offline for a
   // moment, and that used to sign the reader out (the founder's iPhone, 2026-10-13): now it is 'offline' and kept.
@@ -62,13 +99,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
     } else if (u !== 'offline') {
       setUser(u);
+      void renew(token);
     }
     setIsLoading(false);
-  }, [token, fetchUser]);
+  }, [token, fetchUser, renew]);
 
   useEffect(() => {
+    if (token && token === renewed.current) return;
     refreshUser();
-  }, [refreshUser]);
+  }, [refreshUser, token]);
 
   const login = useCallback((newToken: string) => {
     rememberToken(newToken);
