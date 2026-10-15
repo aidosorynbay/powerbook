@@ -71,8 +71,8 @@ It is not a reading tracker, a book catalogue or a speed contest.
   - claimable archive profiles for Telegram-era readers;
   - the waiting list.
 - **Minutes, never pages.** Every text describes logging minutes per day.
-- **Terminology:** the monthly challenge is «круг» in Russian and "circle" in English («reading circle»), everywhere. Kazakh keeps «раунд».
-  - Some Russian strings still say «Раунд», including the bottom nav (`nav.round`), and some English strings still say "round". Both are to be migrated.
+- **Terminology:** the monthly circle is «круг» in Russian, «айналым» in Kazakh (founder, 15.10.2026: brand book) and "circle" in English («reading circle»), everywhere. «шеңбер» stays only for the minutes dial's round track and in Tolstoy's title «Оқу шеңбері». «айналым» is the round itself, not its people: where Russian «круг» means the readers, Kazakh says what happens in the round («айналымда оқылды») or «айналым оқырмандары». Never «марафон», «челлендж», «соревнуйтесь».
+  - Migrated 2026-10-15: no «Раунд», «шеңбер» (in the circle's sense) or "round" is left in the UI strings.
 - **Three languages for every string:** ru, kk and en, in `frontend/src/shared/lib/i18n.tsx`. Kazakh strings often run longer, and layouts must survive them.
 - **Existing members stay free forever.** Money may come only from new segments: organisers, sponsors, the book market. No paywall, deposit or paid tier may take anything away from current members.
 - **Data and analytics:** personal data is stored on servers in Kazakhstan. Analytics use account ids only, never names or e-mails.

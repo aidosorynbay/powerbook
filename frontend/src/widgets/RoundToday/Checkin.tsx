@@ -5,6 +5,8 @@ import { Avatar } from '@/shared/ui';
 import styles from './RoundToday.module.css';
 
 const SCORE_MINUTES = 30;
+/** Under this a day is a miss, as the calendar draws it; 2–29 minutes is a day read, short of the goal. */
+const MISSED_MINUTES = 2;
 
 /**
  * The day after a miss, one warm line built on the home page's rule «Главное — не пропускать два дня подряд»
@@ -29,7 +31,7 @@ export function MissedYesterday({
     todayMinutes < SCORE_MINUTES &&
     !!yesterday &&
     !!before &&
-    yesterday.minutes < SCORE_MINUTES &&
+    yesterday.minutes < MISSED_MINUTES &&
     before.minutes >= SCORE_MINUTES;
   useEffect(() => {
     if (show) track('missed_yesterday_shown');

@@ -527,7 +527,7 @@
 }
 
 .legendDot.legendMissed {
-  background: var(--color-bg-elevated);
+  background: var(--color-bg-secondary);
   border: 1px solid var(--color-border-primary);
 }
 
@@ -636,9 +636,11 @@
   color: var(--color-on-status);
 }
 
-/* a missed day: a quiet neutral cell, a shade above the days to come; red is for errors only (brand book 15.10.2026) */
+/* a missed day: a quiet neutral cell with a hairline — dashed is «before you joined», no line is «ahead»; red is
+   for errors only (brand book 15.10.2026) */
 .calendarDay.dayMissed {
-  background: var(--color-bg-elevated);
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border-primary);
   color: var(--color-text-secondary);
 }
 
@@ -1598,7 +1600,7 @@
 }
 .lgG { background: var(--color-success-fill); }
 .lgY { background: var(--color-warning-fill); }
-.lgM { background: var(--color-bg-elevated); box-shadow: inset 0 0 0 1px var(--color-border-primary); }
+.lgM { background: var(--color-bg-secondary); box-shadow: inset 0 0 0 1px var(--color-border-primary); }
 .calLegendRow .lgC { width: 11px; height: 11px; border-radius: 3px; margin: 0; }
 .lgC,
 .circleSum {

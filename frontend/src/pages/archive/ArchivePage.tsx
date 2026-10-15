@@ -37,14 +37,18 @@ function isFutureDay(dateStr: string): boolean {
 
 function getDayCell(minutes: number, dateStr: string, participated: boolean): { className: string; style?: CSSProperties } {
   if (isFutureDay(dateStr)) return { className: styles.future };
+  // today: the orange ring, as on the circle's calendar, and open (not missed) until it ends
+  const isToday = dateStr === new Date().toLocaleDateString('en-CA');
+  const ring = isToday ? ` ${styles.today}` : '';
   if (minutes >= 30) {
     const intensity = 0.35 + 0.65 * Math.min(minutes / INTENSITY_CAP_MINUTES, 1);
-    return { className: styles.green, style: { '--intensity': intensity } as CSSProperties };
+    return { className: styles.green + ring, style: { '--intensity': intensity } as CSSProperties };
   }
-  if (minutes >= 2) return { className: styles.yellow };
-  // If user didn't participate in this month's round, show gray instead of red
+  if (minutes >= 2) return { className: styles.yellow + ring };
+  // not in this month's circle: an empty day, not a miss
   if (!participated) return { className: styles.future };
-  return { className: styles.red };
+  if (isToday) return { className: styles.future + ring };
+  return { className: styles.missed };
 }
 
 const MIN_YEAR = 2021;
@@ -279,15 +283,15 @@ export function ArchivePage() {
                     <span className={`${styles.legendDot} ${styles.green}`} style={{ '--intensity': 0.65 } as CSSProperties} />
                     <span className={`${styles.legendDot} ${styles.green}`} style={{ '--intensity': 1 } as CSSProperties} />
                   </span>
-                  30+ min
+                  {t('archive.legend.goal')}
                 </span>
                 <span className={styles.legendItem}>
                   <span className={`${styles.legendDot} ${styles.yellow}`} />
-                  2-29 min
+                  {t('archive.legend.some')}
                 </span>
                 <span className={styles.legendItem}>
-                  <span className={`${styles.legendDot} ${styles.red}`} />
-                  &lt;2 min
+                  <span className={`${styles.legendDot} ${styles.missed}`} />
+                  {t('archive.legend.missed')}
                 </span>
                 <span className={styles.legendItem}>
                   <span className={`${styles.legendDot} ${styles.future}`} />
