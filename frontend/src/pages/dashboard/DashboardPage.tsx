@@ -1822,7 +1822,7 @@ export function DashboardPage() {
                         return (
                           <div
                             key={`c-${cell.date}`}
-                            className={`${styles.calendarDay} ${styles.circleDay} ${level ? styles.circleSum : ''} ${outsideWindow ? styles.outOfRound : ''} ${cell.date === todayStr ? styles.circleToday : ''}`}
+                            className={`${styles.calendarDay} ${styles.circleDay} ${level ? styles.circleSum : ''} ${level >= 4 ? styles.circleHi : ''} ${outsideWindow ? styles.outOfRound : ''} ${cell.date === todayStr ? styles.circleToday : ''}`}
                             style={clickable ? ({ cursor: 'pointer', '--k': level / 5 } as CSSProperties) : undefined}
                             title={`${cell.date}: ${sum} · ${count}`}
                             onClick={clickable ? () => openRosterModal(cell.date) : undefined}

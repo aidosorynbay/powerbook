@@ -1610,9 +1610,15 @@
   --circle-hi: var(--color-accent-primary);
   background: color-mix(in oklab, var(--circle-lo) calc((1 - var(--k, 1)) * 100%), var(--circle-hi) calc(var(--k, 1) * 100%));
 }
+/* the day's number in a step, not a blend: blended, a mid step put a pale grey on a mid orange (~1.3:1, the founder:
+   «цифры иногда не видны», light theme). The page's text on the lower steps; the navy on the two brightest, where it
+   reads best in both themes (dark: 4.2–5.5:1; light: the text is navy anyway) */
 .circleSum {
   border-color: var(--color-border-accent);
-  color: color-mix(in oklab, var(--color-text-primary) calc((1 - var(--k, 1)) * 100%), white calc(var(--k, 1) * 100%));
+  color: var(--color-text-primary);
+}
+.circleSum.circleHi {
+  color: var(--color-on-status);
 }
 .circleSum .dayMinutes { color: inherit; opacity: 0.8; }
 .circleToday { outline: 2px solid var(--color-accent-primary); outline-offset: -2px; }
