@@ -330,6 +330,14 @@ def scheduled() -> None:
         except Exception:
             logger.exception("push reminder tick failed")
             db.rollback()
+        try:
+            # the 1st of a month: last month's readers hear the new circle is open (once per circle)
+            from app.services import new_circle
+
+            new_circle.tick(db)
+        except Exception:
+            logger.exception("new circle tick failed")
+            db.rollback()
         finally:
             db.close()
             fcntl.flock(handle, fcntl.LOCK_UN)
