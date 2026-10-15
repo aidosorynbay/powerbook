@@ -919,9 +919,9 @@ export function DashboardPage() {
           track('treasury_drop_seen', { minutes: delta, fly });
           // one thing moves at a time: on the day's 30 the room's «30 минут» comes first, the drop after it
           const wait = before < DAILY_GOAL_MINUTES && minutes >= DAILY_GOAL_MINUTES ? 3300 : 250;
-          return new Promise((r) => window.setTimeout(r, wait)).then(() => dropToTreasury(cell, document.querySelector<HTMLElement>('[data-circle-tab]'), document.querySelector<HTMLElement>('[data-cal-week]'), {
+          return new Promise((r) => window.setTimeout(r, wait)).then(() => dropToTreasury(cell, document.querySelector<HTMLElement>('[data-cal-grid]'), {
             delta, before: circleBefore, after: circleBefore + delta,
-            plus: `+${t('ms.m', { m: delta })}`, words: t('cal.toTreasury'), total: fmt, fly,
+            plus: `+${t('ms.m', { m: delta })}`, label: t('cal.treasuryToday'), total: fmt, fly,
             onTap: () => { setCalendarView('circle'); track('circle_calendar_open', { source: 'treasury_drop' }); },
           }));
         });
@@ -1643,7 +1643,7 @@ export function DashboardPage() {
                         <button type="button" aria-pressed={calendarView === 'mine'} onClick={() => setCalendarView('mine')}>
                           {t('cal.mine')}
                         </button>
-                        <button type="button" data-circle-tab aria-pressed={calendarView === 'circle'} onClick={() => { setCalendarView('circle'); track('circle_calendar_open', {}); }}>
+                        <button type="button" aria-pressed={calendarView === 'circle'} onClick={() => { setCalendarView('circle'); track('circle_calendar_open', {}); }}>
                           {t('cal.circle')}
                         </button>
                       </div>
@@ -1665,6 +1665,7 @@ export function DashboardPage() {
 
                     <div
                       className={styles.calendar}
+                      data-cal-grid
                       onTouchStart={(e) => { calSwipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }}
                       onTouchEnd={(e) => {
                         const st = calSwipe.current;
@@ -1676,7 +1677,7 @@ export function DashboardPage() {
                       }}
                     >
                       {weekdays.map(day => (
-                        <div key={day} className={styles.calendarHeader} data-cal-week={day === weekdays[0] ? '' : undefined}>{day}</div>
+                        <div key={day} className={styles.calendarHeader}>{day}</div>
                       ))}
                       {calendarView === 'circle' ? circleCalendarGrid.map((cell, idx) => {
                         if (cell === null) {
