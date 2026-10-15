@@ -67,6 +67,18 @@ class ReadingRoomService:
     def __init__(self, db: Session) -> None:
         self.db = db
         self.participants = RoundParticipantRepository(db)
+        self._library = None
+
+    def _shown(self, title: str | None) -> str | None:
+        """A sitter's book as the shared library spells it (book_face.spelling): «три товарища» on one tag and
+        «Три товарища» on the next were one book. What is stored stays as the reader typed it."""
+        if not title:
+            return title
+        from app.services import book_face, catalog
+
+        if self._library is None:
+            self._library = catalog.index(self.db)
+        return book_face.spelling(self._library, title)
 
     # ---------- who may do what ----------
 
@@ -262,7 +274,7 @@ class ReadingRoomService:
                 "gender": genders.get(s.user_id, "unknown"),
                 "status": "paused" if away else s.status,
                 "elapsed_seconds": self.elapsed_seconds(s, _aware(s.last_seen_at) if away else now),
-                "book": s.book_title,
+                "book": self._shown(s.book_title),
             })
         from app.services.guest_room import GuestRoomService, elapsed as guest_elapsed, is_away as guest_away, public_key
 
@@ -272,7 +284,7 @@ class ReadingRoomService:
                 "key": public_key(g.id), "seat": g.seat, "gender": g.gender,
                 "status": "paused" if away else g.status,
                 "elapsed_seconds": guest_elapsed(g, _aware(g.last_seen_at) if away else now),
-                "book": g.book_title,
+                "book": self._shown(g.book_title),
             })
         day = self.day(hall=hall, scope=scope, now=now) if hall == "library" or rnd is not None else None
         open_hall = self.open_hall(rnd)
@@ -329,7 +341,7 @@ class ReadingRoomService:
             away = not me and self._away(s, now)
             readers.append({
                 "session_id": str(s.id), "user_id": str(u.id), "display_name": u.display_name, "username": u.username,
-                "gender": u.gender.value if u.gender else "unknown", "seat": s.seat, "book": s.book_title,
+                "gender": u.gender.value if u.gender else "unknown", "seat": s.seat, "book": self._shown(s.book_title),
                 "status": "paused" if away else s.status,
                 "elapsed_seconds": self.elapsed_seconds(s, _aware(s.last_seen_at) if away else now),
                 "today_minutes": logs.get(s.user_id, 0), "in_round": self.in_circle(rnd, u.id),
@@ -341,7 +353,7 @@ class ReadingRoomService:
             away = guest_away(g, now)
             readers.append({
                 "session_id": f"g-{g.id}", "user_id": "", "display_name": "", "username": "", "guest": True,
-                "gender": g.gender, "seat": g.seat, "book": g.book_title,
+                "gender": g.gender, "seat": g.seat, "book": self._shown(g.book_title),
                 "status": "paused" if away else g.status,
                 "elapsed_seconds": guest_elapsed(g, _aware(g.last_seen_at) if away else now),
                 "today_minutes": 0, "in_round": False, "book_minutes": 0, "me": False,
@@ -368,7 +380,7 @@ class ReadingRoomService:
 
     def _session_out(self, s: ReadingRoomSession, now: datetime | None = None) -> dict:
         return {
-            "id": str(s.id), "hall": s.hall, "seat": s.seat, "book": s.book_title, "status": s.status,
+            "id": str(s.id), "hall": s.hall, "seat": s.seat, "book": self._shown(s.book_title), "status": s.status,
             "elapsed_seconds": self.elapsed_seconds(s, now), "credited_minutes": int(s.credited_minutes),
             # a silence the reader has not answered for yet (see answer_away)
             "away_seconds": int(s.away_seconds or 0) if s.ended_at is None else 0,
@@ -512,7 +524,7 @@ class ReadingRoomService:
             people.setdefault(u.id, u.display_name)
             minutes += seconds // 60
             who = {"user_id": str(u.id), "display_name": u.display_name,
-                   "gender": u.gender.value if u.gender else "unknown", "book": s.book_title}
+                   "gender": u.gender.value if u.gender else "unknown", "book": self._shown(s.book_title)}
             created = _aware(s.created_at)
             if created is not None and created >= start:
                 events.append({"kind": "sit", "at": created.isoformat(), **who})

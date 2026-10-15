@@ -157,18 +157,29 @@ class LibraryService:
         Own shelf is always visible; anyone else only sees books the owner
         left visible to buddies.
         """
+        from app.services import book_face, catalog
+
         if owner_id == viewer_id:
             books = self.repo.list_for_user(user_id=owner_id)
         else:
             books = self.repo.list_visible_for_buddy(owner_id=owner_id)
-        return [
-            ShelfBookOut(
-                title=b.title,
-                author=b.author,
-                file_format=b.file_format,
-                cover_data=b.cover_data,
-                progress_percent=b.progress_percent,
-                last_read_at=b.last_read_at,
+        idx = catalog.index(self.db)
+        out = []
+        for b in books:
+            # The book's face from the shared library, as on the reader's own shelf (book_face.dress).
+            work = book_face.work_of(idx, title=b.title)
+            face = book_face.face(work, b.title) if work is not None else None
+            own_face = work is not None and catalog.face_key(b.title) in work.faces
+            cover = face.cover_url if face is not None and (own_face or not b.cover_data) else None
+            out.append(
+                ShelfBookOut(
+                    title=face.title if face is not None and own_face else b.title,
+                    author=(face.author if face is not None else None) or b.author,
+                    file_format=b.file_format,
+                    cover_data=None if cover else b.cover_data,
+                    cover_url=cover,
+                    progress_percent=b.progress_percent,
+                    last_read_at=b.last_read_at,
+                )
             )
-            for b in books
-        ]
+        return out

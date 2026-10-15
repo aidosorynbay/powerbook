@@ -134,13 +134,18 @@ def _book(db: Session, *, user: User, rnd: Round, day: date) -> str | None:
         .order_by(ReadingRoomSession.credited_date.desc(), ReadingRoomSession.credited_minutes.desc())
         .limit(1)
     ).first()
+    from app.services import book_face, catalog
+
     # The book finished that day, even if the reading room had more minutes.
     if logged is not None and logged[0] == day and logged[3] and logged[2].strip():
-        return logged[2].strip()
-    found = [row for row in (logged, sat) if row is not None and row[2].strip()]
-    if not found:
-        return None
-    return max(found, key=lambda row: (row[0], row[1]))[2].strip()
+        title = logged[2]
+    else:
+        found = [row for row in (logged, sat) if row is not None and row[2].strip()]
+        if not found:
+            return None
+        title = max(found, key=lambda row: (row[0], row[1]))[2]
+    # Spelled on the sticker as the shared library spells it, like on the shelf.
+    return book_face.spelling(catalog.index(db), title.strip())
 
 
 def _finished_days(db: Session, *, user: User, rnd: Round) -> list[date]:
