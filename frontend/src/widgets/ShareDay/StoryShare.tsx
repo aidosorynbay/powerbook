@@ -90,7 +90,8 @@ export function StoryShare({ card, link, onSent, children }: { card: MyDayCard; 
   const [busy, setBusy] = useState(false);
   // The sticker alone, for one's own photo in a story (Strava's runners' favourite, so it comes first), or the picture
   // on the reading room, to any app: a switch, so the four stickers stay the month's test (the founder, 2026-10-15).
-  const [mode, setMode] = useState<Mode>(() => remembered('pb.share.mode', MODES, 'photo'));
+  // Always opens on «Своё фото», whatever was picked last time (the founder, 2026-10-15).
+  const [mode, setMode] = useState<Mode>('photo');
   const assets = useRef<StickerAssets | null>(null);
   const urls = useRef<string[]>([]);
   const story = useRef<{ key: string; file: File } | null>(null);
@@ -148,7 +149,6 @@ export function StoryShare({ card, link, onSent, children }: { card: MyDayCard; 
 
   useEffect(() => remember('pb.sticker.kind', kind), [kind]);
   useEffect(() => remember('pb.sticker.ink', ink), [ink]);
-  useEffect(() => remember('pb.share.mode', mode), [mode]);
 
   const current = drawn[kind];
   const storyKey = current ? `${kind}:${ink}:${current.url}` : '';
