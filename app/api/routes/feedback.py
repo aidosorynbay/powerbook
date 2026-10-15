@@ -13,6 +13,19 @@ from app.services.feedback import FeedbackService
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
 
+@router.get("/due")
+def feedback_due(db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+    """Whether to ask this reader now: not within two months of an answer, nor within a month of the last
+    time the window came up, on any of their devices."""
+    return {"due": FeedbackService(db).due(user=user)}
+
+
+@router.post("/asked", status_code=204)
+def feedback_asked(db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> None:
+    """The window has come up for this reader."""
+    FeedbackService(db).asked(user=user)
+
+
 @router.post("", response_model=FeedbackOut)
 def send_feedback(
     payload: FeedbackIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)

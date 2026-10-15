@@ -313,7 +313,7 @@ class ExchangePhotoAdmin(ModelView, model=ExchangePhoto):
     icon = "fa-solid fa-camera"
 
 
-_MOODS = {"love": "😍 Нравится", "ok": "🙂 Нормально", "improve": "🛠 Есть что улучшить"}
+_MOODS = {"love": "😍 Нравится", "ok": "🙂 Нормально", "meh": "😕 Не очень"}
 
 
 def _feedback_photo(height: int):
@@ -336,12 +336,14 @@ class ReaderFeedbackAdmin(ModelView, model=ReaderFeedback):
     ]
     column_details_list = [
         ReaderFeedback.photo, ReaderFeedback.mood, ReaderFeedback.text, ReaderFeedback.photo_consent,
-        ReaderFeedback.user, ReaderFeedback.round, ReaderFeedback.source, ReaderFeedback.locale, ReaderFeedback.created_at,
+        ReaderFeedback.consent_version, ReaderFeedback.user, ReaderFeedback.round, ReaderFeedback.source,
+        ReaderFeedback.locale, ReaderFeedback.created_at,
     ]
     column_labels = {
         ReaderFeedback.photo: "фото", ReaderFeedback.mood: "оценка", ReaderFeedback.text: "текст",
         ReaderFeedback.photo_consent: "можно показывать", ReaderFeedback.user: "читатель", ReaderFeedback.round: "круг",
         ReaderFeedback.source: "откуда", ReaderFeedback.locale: "язык", ReaderFeedback.created_at: "когда (Астана)",
+        ReaderFeedback.consent_version: "текст согласия от",
     }
     column_formatters = {
         ReaderFeedback.photo: _feedback_photo(72),

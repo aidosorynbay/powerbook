@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, String, Text, Uuid
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -34,12 +35,15 @@ class ReaderFeedback(TimestampMixin, Base):
     round_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("rounds.id", ondelete="SET NULL"), nullable=True, default=None
     )
-    # "love" | "ok" | "improve"; None when the reader only wrote or sent a photo.
+    # "love" | "ok" | "meh"; None when the reader only wrote or sent a photo.
     mood: Mapped[str | None] = mapped_column(String(10), nullable=True, default=None)
     text: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     # A data URL, as the market and the exchange keep theirs (app/core/photos.py).
     photo: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     photo_consent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # Which wording of the tick the reader agreed to (with `locale` below): the
+    # proof of the consent, as the wording may change.
+    consent_version: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)
     # Where the window came from ("after_save" | "link"), and the language the
     # reader saw it in: the wording of the consent they ticked.
     source: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)
@@ -47,3 +51,16 @@ class ReaderFeedback(TimestampMixin, Base):
 
     user: Mapped["User"] = relationship(foreign_keys=[user_id])
     round: Mapped["Round | None"] = relationship(foreign_keys=[round_id])
+
+
+class FeedbackAsk(Base):
+    """When the window last came up for a reader. «At most once a month» is
+    the reader's, not the browser's: Telegram's own browser and the app on
+    the home screen keep their storage apart."""
+
+    __tablename__ = "feedback_asks"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    asked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 
 class FeedbackIn(BaseModel):
-    mood: Literal["love", "ok", "improve"] | None = None
+    mood: Literal["love", "ok", "meh"] | None = None
     text: str | None = Field(default=None, max_length=4000)
     # A data URL the page has already shrunk (app/core/photos.py checks it).
     photo: str | None = None

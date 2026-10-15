@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.photos import check_photo
-from app.models.reader_feedback import ReaderFeedback
+from app.models.reader_feedback import FeedbackAsk, ReaderFeedback
 from app.models.round import Round
 from app.models.user import User
 
@@ -21,11 +21,48 @@ MAX_PER_DAY = 5
 # These photos may go into posts and stories, so they come larger than the
 # market's: the page sends up to 2048 px, which fits here.
 MAX_PHOTO_BYTES = 1_500_000
+# Once the window has come up, a month before it comes up again; after an
+# answer, two.
+ASK_EVERY = timedelta(days=30)
+ANSWER_QUIET = timedelta(days=60)
+# The first time, readers are spread over two weeks from the launch, each on a
+# day of their own, so the window does not come up for everyone at once.
+FIRST_ASKS_FROM = datetime(2026, 10, 15, tzinfo=timezone.utc)
+SPREAD_DAYS = 14
+# The wording of «Мне есть 18, и это фото можно использовать…» (i18n.tsx,
+# feedback.consent and feedback.consentNote); a new wording, a new version.
+CONSENT_VERSION = "2026-10-15"
+
+
+def _utc(moment: datetime) -> datetime:
+    # SQLite hands back naive datetimes; they are UTC.
+    return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
 
 
 class FeedbackService:
     def __init__(self, db: Session) -> None:
         self.db = db
+
+    def due(self, *, user: User) -> bool:
+        """Whether the window may come up for this reader now, on any device."""
+        now = datetime.now(timezone.utc)
+        answered = self.db.scalar(select(func.max(ReaderFeedback.created_at)).where(ReaderFeedback.user_id == user.id))
+        if answered and _utc(answered) > now - ANSWER_QUIET:
+            return False
+        ask = self.db.get(FeedbackAsk, user.id)
+        if ask is None and answered is None:
+            return now >= FIRST_ASKS_FROM + timedelta(days=user.id.int % SPREAD_DAYS)
+        return not (ask and _utc(ask.asked_at) > now - ASK_EVERY)
+
+    def asked(self, *, user: User) -> None:
+        """The window has just come up: the month of quiet starts now."""
+        now = datetime.now(timezone.utc)
+        ask = self.db.get(FeedbackAsk, user.id)
+        if ask is None:
+            self.db.add(FeedbackAsk(user_id=user.id, asked_at=now))
+        else:
+            ask.asked_at = now
+        self.db.commit()
 
     def create(
         self,
@@ -60,6 +97,7 @@ class FeedbackService:
             photo=photo,
             # The tick means something only with a photo to show.
             photo_consent=bool(photo and photo_consent),
+            consent_version=CONSENT_VERSION if photo and photo_consent else None,
             source=source,
             locale=locale,
         )

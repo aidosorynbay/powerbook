@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core import storage
 from app.core.security import verify_password
-from app.models.reader_feedback import ReaderFeedback
+from app.models.reader_feedback import FeedbackAsk, ReaderFeedback
 from app.models.user import User
 from app.repositories.library import LibraryRepository
 from app.repositories.users import UserRepository
@@ -45,6 +45,7 @@ class AccountDeletionService:
 
         # 2. So are their answers to the feedback window, photos included.
         self.db.query(ReaderFeedback).filter(ReaderFeedback.user_id == user.id).delete(synchronize_session=False)
+        self.db.query(FeedbackAsk).filter(FeedbackAsk.user_id == user.id).delete(synchronize_session=False)
 
         # 3. Strip every identifying field. The username has to stay unique and
         # non-null, so it becomes an opaque tombstone rather than being cleared.

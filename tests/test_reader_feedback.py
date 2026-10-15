@@ -1,11 +1,12 @@
-"""The window after a saved day: a reader tells what they think of PowerBook
-and may send a photo of how they read. The answer lands in /admin, the
-founder hears of it in Telegram, and a photo is shown only with the
-reader's own tick."""
+"""«Как вам PowerBook?»: a reader tells what they think of PowerBook and may
+send a photo of how they read. The answer lands in /admin, the founder hears
+of it in Telegram (the photo stays in /admin), a photo is shown only with the
+reader's own tick, and the window comes up at most once a month per reader."""
 from __future__ import annotations
 
 import base64
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -22,10 +23,11 @@ from app.db.session import get_db
 from app.main import create_app
 from app.models.enums import Gender, RoundStatus, SystemRole
 from app.models.group import Group
-from app.models.reader_feedback import ReaderFeedback
+from app.models.reader_feedback import FeedbackAsk, ReaderFeedback
 from app.models.round import Round
 from app.models.user import User
 from app.services import admin_ping
+from app.services import feedback as feedback_service
 
 JPEG_BYTES = b"\xff\xd8\xff\xe0" + b"0" * 200 + b"\xff\xd9"
 JPEG = "data:image/jpeg;base64," + base64.b64encode(JPEG_BYTES).decode()
@@ -34,12 +36,13 @@ JPEG = "data:image/jpeg;base64," + base64.b64encode(JPEG_BYTES).decode()
 @pytest.fixture()
 def env(monkeypatch):
     monkeypatch.setattr(settings, "telegram_bot_token", "123:test-token")
+    # every reader's first day of the launch spread is behind us, unless a test says otherwise
+    monkeypatch.setattr(feedback_service, "FIRST_ASKS_FROM", datetime(2000, 1, 1, tzinfo=timezone.utc))
     monkeypatch.setattr(admin_ping, "chat_ids", lambda: ["1"])
     # what would go to Telegram, in the order it would arrive
     sent: list[tuple] = []
     monkeypatch.setattr(admin_ping, "_in_background", lambda fn, *args: fn(*args))
     monkeypatch.setattr(admin_ping, "_call", lambda method, payload: sent.append((method, payload)))
-    monkeypatch.setattr(admin_ping, "_send_photo", lambda chat_id, data, media_type, caption: sent.append(("sendPhoto", data, media_type, caption)))
 
     # As the live database has it since n4p5q6r7s8t9: deleting an account clears gender.
     monkeypatch.setattr(User.__table__.c.gender, "nullable", True)
@@ -100,17 +103,16 @@ def test_a_reader_answers_with_a_photo_and_the_founder_hears(env):
     [row] = rows(env)
     assert row.user_id == env.reader.id and row.round_id == env.round.id
     assert row.mood == "love" and row.text == "Календарь держит меня в тонусе"
-    assert row.photo == JPEG and row.photo_consent is True
+    assert row.photo == JPEG and row.photo_consent is True and row.consent_version == feedback_service.CONSENT_VERSION
     assert row.source == "after_save" and row.locale == "ru"
 
-    # the words first, then the photo under them
-    (method, message), photo = env.sent
+    # one message: the words and a link to the photo, which itself stays in /admin
+    [(method, message)] = env.sent
     assert method == "sendMessage"
     text = message["text"]
     assert "Айгерим (@aigerim, tg @aigerim_kz)" in text and "😍 Нравится" in text
-    assert "«Календарь держит меня в тонусе»" in text and "можно показывать" in text
-    assert "/admin/reader-feedback/list" in text
-    assert photo[0] == "sendPhoto" and photo[1] == JPEG_BYTES and photo[2] == "image/jpeg" and "✅" in photo[3]
+    assert "«Календарь держит меня в тонусе»" in text and "можно показывать ✅" in text
+    assert f"/admin/reader-feedback/details/{row.id}" in text and "/admin/reader-feedback/list" in text
 
 
 def test_a_photo_without_the_tick_is_for_the_team_only(env):
@@ -118,22 +120,23 @@ def test_a_photo_without_the_tick_is_for_the_team_only(env):
     assert r.status_code == 200, r.text
     [row] = rows(env)
     assert row.photo_consent is False and row.mood is None and row.text is None
-    assert "только для нас" in env.sent[0][1]["text"]
+    assert "только для команды" in env.sent[0][1]["text"]
 
 
 def test_a_mood_alone_is_an_answer_and_the_tick_needs_a_photo(env):
-    r = env.client.post("/api/feedback", json={"mood": "improve", "photo_consent": True}, headers=env.h(env.reader))
+    r = env.client.post("/api/feedback", json={"mood": "meh", "photo_consent": True}, headers=env.h(env.reader))
     assert r.status_code == 200, r.text
     [row] = rows(env)
-    assert row.mood == "improve" and row.photo is None and row.photo_consent is False
-    assert [m for m, *_ in env.sent] == ["sendMessage"]
+    assert row.mood == "meh" and row.photo is None and row.photo_consent is False and row.consent_version is None
+    [(method, message)] = env.sent
+    assert method == "sendMessage" and "📷" not in message["text"]
 
 
 def test_nothing_to_send_bad_photos_and_strangers_are_refused(env):
     c = env.client
     assert c.post("/api/feedback", json={"text": "   "}, headers=env.h(env.reader)).json()["detail"] == "empty_feedback"
     assert c.post("/api/feedback", json={"photo": "data:text/html;base64,PGI+"}, headers=env.h(env.reader)).json()["detail"] == "bad_photo"
-    assert c.post("/api/feedback", json={"mood": "meh"}, headers=env.h(env.reader)).status_code == 422
+    assert c.post("/api/feedback", json={"mood": "terrible"}, headers=env.h(env.reader)).status_code == 422
     huge = "data:image/jpeg;base64," + base64.b64encode(b"0" * 1_600_000).decode()
     assert c.post("/api/feedback", json={"photo": huge}, headers=env.h(env.reader)).json()["detail"] == "photo_too_large"
     assert c.post("/api/feedback", json={"mood": "love"}).status_code in (401, 403)
@@ -158,10 +161,11 @@ def test_deleting_the_account_deletes_the_answers_and_photos(env):
     env.reader.password_hash = hash_password("pw")
     env.db.commit()
     env.client.post("/api/feedback", json={"photo": JPEG, "photo_consent": True}, headers=env.h(env.reader))
+    env.client.post("/api/feedback/asked", headers=env.h(env.reader))
     assert len(rows(env)) == 1
     r = env.client.post("/api/auth/delete-account", json={"password": "pw"}, headers=env.h(env.reader))
     assert r.status_code == 204, r.text
-    assert rows(env) == []
+    assert rows(env) == [] and env.db.get(FeedbackAsk, env.reader.id) is None
 
 
 def test_the_photo_opens_in_admin_only_after_signing_in(env):
@@ -179,3 +183,36 @@ def test_the_photo_opens_in_admin_only_after_signing_in(env):
 
     page = c.get("/admin/reader-feedback/list")
     assert page.status_code == 200 and f"/admin/feedback-photo/{row.id}" in page.text
+
+
+def test_once_a_month_per_reader_on_every_device(env):
+    c, h = env.client, env.h(env.reader)
+    assert c.get("/api/feedback/due", headers=h).json() == {"due": True}
+    # the window came up (in Telegram's browser, say): the home-screen app hears it is not due
+    assert c.post("/api/feedback/asked", headers=h).status_code == 204
+    assert c.get("/api/feedback/due", headers=h).json() == {"due": False}
+    ask = env.db.get(FeedbackAsk, env.reader.id)
+    ask.asked_at = datetime.now(timezone.utc) - timedelta(days=31)
+    env.db.commit()
+    assert c.get("/api/feedback/due", headers=h).json() == {"due": True}
+    # an answer keeps it away for two months, whatever the asks say
+    c.post("/api/feedback", json={"mood": "ok"}, headers=h)
+    assert c.get("/api/feedback/due", headers=h).json() == {"due": False}
+    [row] = rows(env)
+    row.created_at = datetime.now(timezone.utc) - timedelta(days=45)
+    env.db.commit()
+    assert c.get("/api/feedback/due", headers=h).json() == {"due": False}
+    row.created_at = datetime.now(timezone.utc) - timedelta(days=61)
+    env.db.commit()
+    assert c.get("/api/feedback/due", headers=h).json() == {"due": True}
+    assert c.get("/api/feedback/due").status_code in (401, 403)
+
+
+def test_the_first_asks_are_spread_over_two_weeks(env, monkeypatch):
+    monkeypatch.setattr(feedback_service, "FIRST_ASKS_FROM", datetime.now(timezone.utc) - timedelta(days=3, hours=1))
+    early = User(id=uuid.UUID(int=14 * 1000 + 2), username="early", display_name="Early", password_hash="x", gender=Gender.female)
+    late = User(id=uuid.UUID(int=14 * 1000 + 10), username="late", display_name="Late", password_hash="x", gender=Gender.male)
+    env.db.add_all([early, late])
+    env.db.commit()
+    assert env.client.get("/api/feedback/due", headers=env.h(early)).json() == {"due": True}
+    assert env.client.get("/api/feedback/due", headers=env.h(late)).json() == {"due": False}
