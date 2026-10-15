@@ -1558,7 +1558,7 @@ a.perk:focus-visible,
   align-items: center;
   gap: var(--spacing-3);
   /* the photo is dark in both themes: the second button keeps the dark glass */
-  --color-surface-rgb: 22, 27, 34;
+  --color-surface-rgb: 21, 39, 49;
   --color-text-primary: #ffffff;
 }
 

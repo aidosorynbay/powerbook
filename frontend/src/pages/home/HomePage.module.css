@@ -31,15 +31,15 @@
   color-scheme: dark;
   --color-text-primary: #ffffff;
   --color-text-secondary: #8b949e;
-  --color-text-muted: #6e7681;
+  --color-text-muted: #848D97;
   --color-bg-card: rgba(21, 39, 49, 0.6);
   --color-bg-secondary: #152731;
   --color-bg-elevated: #1C2D37;
   --color-border-primary: rgba(255, 255, 255, 0.1);
   --color-success: #39d98a;
   --color-success-fill: #39d98a;
-  --color-page-rgb: 13, 17, 23;
-  --color-surface-rgb: 22, 27, 34;
+  --color-page-rgb: 11, 28, 38;
+  --color-surface-rgb: 21, 39, 49;
 }
 
 .photoArt,
