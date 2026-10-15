@@ -4,14 +4,16 @@
    ============================================ */
 
 :root {
+    /* The dark ground is the logo's navy «Синий» #0B1C26 (brand book v1.0, founder 15.10.2026): one dark for
+       the site, the app icon, posts and video. Cards and raised surfaces are the same hue, lighter. */
     /* ========== Colors ========== */
 
     /* Background colors */
-    --color-bg-primary: #0D1117;
-    --color-bg-secondary: #161B22;
-    --color-bg-card: rgba(22, 27, 34, 0.6);
-    --color-bg-card-hover: rgba(22, 27, 34, 0.8);
-    --color-bg-elevated: #1C2128;
+    --color-bg-primary: #0B1C26;
+    --color-bg-secondary: #152731;
+    --color-bg-card: rgba(21, 39, 49, 0.6);
+    --color-bg-card-hover: rgba(21, 39, 49, 0.8);
+    --color-bg-elevated: #1C2D37;
 
     /* Accent colors */
     --color-accent-primary: #F26430;
@@ -20,12 +22,12 @@
     /* Text on an orange fill: white buttons and badges, and the few dark
        glyphs the dark theme puts on orange. Both white on paper. */
     --color-on-accent: #FFFFFF;
-    --color-on-accent-alt: #0D1117;
+    --color-on-accent-alt: #0B1C26;
 
     /* Text colors */
     --color-text-primary: #FFFFFF;
     --color-text-secondary: #8B949E;
-    --color-text-muted: #6E7681;
+    --color-text-muted: #848D97;
     --color-text-accent: #F26430;
 
     /* Border colors */
@@ -47,16 +49,16 @@
     --color-success-fill: #39D98A;
     --color-warning-fill: #F0C929;
     --color-danger-fill: #E8695A;
-    --color-on-status: #0D1117;
+    --color-on-status: #0B1C26;
     --color-on-status-dot: rgba(255, 255, 255, 0.8);
 
     /* Bars that float over the page. */
-    --color-header-bg: rgba(13, 17, 23, 0.8);
+    --color-header-bg: rgba(11, 28, 38, 0.8);
 
     /* The page and card colours as r, g, b, for translucent layers
        (fades, glass): rgba(var(--color-page-rgb), 0.8). */
-    --color-page-rgb: 13, 17, 23;
-    --color-surface-rgb: 22, 27, 34;
+    --color-page-rgb: 11, 28, 38;
+    --color-surface-rgb: 21, 39, 49;
 
     /* Activity heatmaps (home, archive): quiet → busy. On dark, busier is
        brighter; on paper, busier is deeper. */
@@ -197,7 +199,7 @@
     --color-on-accent: #FFFFFF;
     --color-on-accent-alt: #FFFFFF;
 
-    --color-text-primary: #25231F;
+    --color-text-primary: #0B1C26;
     --color-text-secondary: #67635B;
     --color-text-muted: #6A655D;
     --color-text-accent: #A74735;
@@ -217,7 +219,7 @@
     --color-success-fill: #7CC896;
     --color-warning-fill: #EBC96A;
     --color-danger-fill: #E48A79;
-    --color-on-status: #25231F;
+    --color-on-status: #0B1C26;
     --color-on-status-dot: rgba(37, 35, 31, 0.55);
 
     --color-header-bg: rgba(238, 232, 219, 0.9);

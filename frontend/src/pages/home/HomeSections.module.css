@@ -1290,7 +1290,7 @@ a.perk:focus-visible,
   border-radius: 20px;
   overflow: hidden;
   /* the poster comes with the video, mounted only near: nothing heavy on the first load */
-  background: #0d1117;
+  background: #0B1C26;
   box-shadow:
     0 0 0 1px rgba(255, 184, 102, 0.22),
     0 30px 80px rgba(0, 0, 0, 0.5);
@@ -1477,7 +1477,7 @@ a.perk:focus-visible,
   align-content: center;
   padding: var(--spacing-20) 0;
   /* a dark window in both themes, like the room: the photo's own night */
-  background: #0d1117;
+  background: #0B1C26;
 }
 
 .finalArt,
@@ -1502,27 +1502,27 @@ a.perk:focus-visible,
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(ellipse 55% 65% at 50% 50%, rgba(13, 17, 23, 0.74), rgba(13, 17, 23, 0.38) 70%, rgba(13, 17, 23, 0.22)),
+    radial-gradient(ellipse 55% 65% at 50% 50%, rgba(11, 28, 38, 0.74), rgba(11, 28, 38, 0.38) 70%, rgba(11, 28, 38, 0.22)),
     linear-gradient(
       180deg,
-      #0d1117 0%,
-      rgba(13, 17, 23, 0.74) 5%,
-      rgba(13, 17, 23, 0.45) 11%,
-      rgba(13, 17, 23, 0.2) 18%,
-      rgba(13, 17, 23, 0.06) 25%,
-      rgba(13, 17, 23, 0) 30%,
-      rgba(13, 17, 23, 0) 70%,
-      rgba(13, 17, 23, 0.06) 75%,
-      rgba(13, 17, 23, 0.2) 82%,
-      rgba(13, 17, 23, 0.45) 89%,
-      rgba(13, 17, 23, 0.74) 95%,
-      #0d1117 100%
+      #0B1C26 0%,
+      rgba(11, 28, 38, 0.74) 5%,
+      rgba(11, 28, 38, 0.45) 11%,
+      rgba(11, 28, 38, 0.2) 18%,
+      rgba(11, 28, 38, 0.06) 25%,
+      rgba(11, 28, 38, 0) 30%,
+      rgba(11, 28, 38, 0) 70%,
+      rgba(11, 28, 38, 0.06) 75%,
+      rgba(11, 28, 38, 0.2) 82%,
+      rgba(11, 28, 38, 0.45) 89%,
+      rgba(11, 28, 38, 0.74) 95%,
+      #0B1C26 100%
     );
 }
 
 /* the light theme: a dark window on paper with crisp edges, only darkest behind the words */
 :global(html[data-theme='light']) .finalShade {
-  background: radial-gradient(ellipse 55% 65% at 50% 50%, rgba(13, 17, 23, 0.74), rgba(13, 17, 23, 0.4) 70%, rgba(13, 17, 23, 0.28));
+  background: radial-gradient(ellipse 55% 65% at 50% 50%, rgba(11, 28, 38, 0.74), rgba(11, 28, 38, 0.4) 70%, rgba(11, 28, 38, 0.28));
 }
 
 .finalInner {
@@ -1624,11 +1624,11 @@ a.perk:focus-visible,
   opacity: 0;
   background: linear-gradient(
     0deg,
-    rgb(13, 17, 23) 0%,
-    rgba(13, 17, 23, 0.738) 14%,
-    rgba(13, 17, 23, 0.382) 33%,
-    rgba(13, 17, 23, 0.126) 54%,
-    rgba(13, 17, 23, 0) 78%
+    rgb(11, 28, 38) 0%,
+    rgba(11, 28, 38, 0.738) 14%,
+    rgba(11, 28, 38, 0.382) 33%,
+    rgba(11, 28, 38, 0.126) 54%,
+    rgba(11, 28, 38, 0) 78%
   );
 }
 

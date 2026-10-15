@@ -52,7 +52,7 @@ const LAMP_POWER = 55;
  */
 const LOOKS = {
   dark: {
-    fog: '#0d1117', hemiSky: '#9aa6bd', hemiGround: '#2b2119', hemi: 1.05, key: '#dfe6f2', keyI: 1.35,
+    fog: '#0B1C26', hemiSky: '#9aa6bd', hemiGround: '#2b2119', hemi: 1.05, key: '#dfe6f2', keyI: 1.35,
     fill: '#6c7a92', fillI: 0.55, warmI: 0.35, shadow: '#000000', shadowOpacity: 0.4,
     lamp: LAMP_COLOR, lampI: LAMP_POWER, lampAngle: 0.42,
   },

@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 export type ThemeChoice = 'dark' | 'light' | 'system';
 
 export const THEME_KEY = 'pb.theme';
-const BAR = { dark: '#0D1117', light: '#EEE8DB' } as const;
+const BAR = { dark: '#0B1C26', light: '#EEE8DB' } as const;
 const ORDER: ThemeChoice[] = ['dark', 'light', 'system'];
 
 export function readThemeChoice(): ThemeChoice {

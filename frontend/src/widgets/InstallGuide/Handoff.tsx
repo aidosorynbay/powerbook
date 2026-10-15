@@ -20,7 +20,7 @@ export function Handoff({ source, compact = false }: { source: string; compact?:
     let alive = true;
     // The encoder is only needed here, so it loads only here.
     import('qrcode')
-      .then((QR) => QR.toDataURL(link('qr'), { width: 240, margin: 1, color: { dark: '#0D1117', light: '#FFFFFF' } }))
+      .then((QR) => QR.toDataURL(link('qr'), { width: 240, margin: 1, color: { dark: '#0B1C26', light: '#FFFFFF' } }))
       .then((url) => {
         if (alive) setQr(url);
       })
