@@ -134,7 +134,7 @@ function FounderView({ readerId }: { readerId: string | null }) {
                 {t(`msg.admin.status.${i.status}`)}
                 {i.answer && i.answer !== 'text' ? ` · ${t(`checkin.${i.answer}`)}` : ''}
               </span>
-              {i.status === 'planned' && (
+              {(i.status === 'planned' || i.status === 'approved') && (
                 <button
                   type="button"
                   className={styles.link}

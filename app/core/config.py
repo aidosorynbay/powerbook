@@ -41,10 +41,13 @@ class Settings(BaseSettings):
     telegram_admin_chat_ids: str = ""
 
     # «Хей, как вы?» to readers quiet in the circle (app/services/checkins.py).
-    # Whose name the message goes out in: a username; empty means the first
-    # superadmin. CHECKIN_AUTO=true sends without the founder's morning tap.
+    # Whose account the founder's answers come from: a username; empty means the
+    # first superadmin. The automatic word speaks as CHECKIN_VOICE: "powerbook"
+    # (the product, as Duolingo does) or "founder" (his name and photo).
+    # CHECKIN_AUTO=false brings back the founder's morning ✅.
     checkin_from_username: str = ""
-    checkin_auto: bool = False
+    checkin_auto: bool = True
+    checkin_voice: str = "powerbook"
     # Messages between readers (app/services/buddy_chat.py): built and lawful, but parked until the
     # club has 80+ active readers (the council and the founder, 2026-10-15). Off: its routes are 404.
     buddy_chat_enabled: bool = False

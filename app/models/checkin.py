@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import Date, DateTime, ForeignKey, Index, SmallInteger, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -27,7 +27,7 @@ class Checkin(TimestampMixin, Base):
 
     __tablename__ = "checkins"
     __table_args__ = (
-        UniqueConstraint("user_id", "round_id", "last_read", name="uq_checkins_pause"),
+        UniqueConstraint("user_id", "round_id", "last_read", "step", name="uq_checkins_pause_step"),
         Index("ix_checkins_status_day", "status", "day"),
     )
 
@@ -43,6 +43,8 @@ class Checkin(TimestampMixin, Base):
     # The reading day it was noticed on.
     day: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[str] = mapped_column(String(12), nullable=False, default="planned")
+    # 1: the first word after three quiet days; 2: the last one, a week in («больше не будем напоминать»).
+    step: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=1, server_default="1")
     text: Mapped[str] = mapped_column(Text, nullable=False)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
     # The reader's quick answer: "forgot" | "ok" | "hard" | "out"; None until they tap one.
@@ -73,3 +75,5 @@ class DirectMessage(TimestampMixin, Base):
         Uuid(as_uuid=True), ForeignKey("checkins.id", ondelete="SET NULL"), nullable=True, default=None
     )
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    # "powerbook": said in PowerBook's voice (the automatic word); None: the author's own.
+    voice: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)

@@ -1,35 +1,23 @@
-"""«Хей, как вы, всё ок?» — the founder's word to a reader who has gone quiet.
+"""«Как вы?» — PowerBook's word to a reader who has gone quiet, and the founder's answers.
 
-How it was (the founder, 2026-10-15): he watched the circle's table, and
-when someone had not logged their minutes for more than three days he wrote
-to them in Telegram: «Хей, как вы, всё ок?». Then they talked; he cheered
-them on and gave advice where it helped. He asked for the same, on the site,
-without Telegram for the readers, and still feeling like a person.
+How it was (the founder, 2026-10-15): he watched the circle's table, and when someone had not logged
+their minutes for more than three days he wrote to them in Telegram «Хей, как вы, всё ок?»; then they
+talked. The first version sent the same in his name after his morning ✅. The same evening he asked
+to think further ahead («у Duolingo не человек же пишет»), and the council agreed on the shape of a
+system that still works with a thousand readers:
 
-The council's answer (2026-10-15): automate the noticing, not the caring.
+- PowerBook writes, on its own (CHECKIN_VOICE=powerbook, CHECKIN_AUTO=true): the founder's Telegram
+  gets the morning's list only to know, with «❌ <имя>» for someone better left alone.
+- As Duolingo does it: at the hour the reader usually reads (their reminder, or when they usually log),
+  about their circle today («круг сегодня уже прочитал 412 мин — хватит и 10»; in Kazakh the readers read, not the айналым), at most twice in one
+  pause — after three quiet days, and a last word a week in that says it will not remind again.
+- One neutral text in the reader's language (Kazakh for ru/kk, the founder's choice; English for en),
+  not split by gender, no religious greeting: a club for the world.
+- The reader answers with a tap or in words; the founder hears in Telegram who answered (never what:
+  the words stay on the server in Kazakhstan) and answers in /messages in his own name.
 
-- At 10:00 Astana time the site lists the readers of a running circle who
-  have logged nothing for the last three full days, and the bot sends the
-  founder that list in Telegram: «✅ Отправить всем», «❌ <имя>».
-- Nothing goes out without his ✅ (CHECKIN_AUTO=true sends it on its own,
-  with an honest line that the site told him). An unapproved list expires
-  with its day.
-- Approved messages reach the reader between 11:00 and 20:00 of their own
-  time: in their conversation with the founder (/messages, the speech
-  bubble beside the bell; the bell itself stays out of it: one message,
-  one signal), as a push where they allowed pushes, and on top of «Круг»,
-  with quick answers («Читаю — отмечу сейчас», «Всё ок», and under «Ещё»
-  «Сейчас сложный период», «Пока не участвую») or their own words.
-- The founder hears in Telegram at once that the reader answered (who, never
-  what: the words stay on the server in Kazakhstan); he reads and answers in
-  /messages, in his own words.
-
-Never twice for one pause (a pause is known by the last day read before it),
-never in the circle's first three days, never to someone who has left it or
-switched «Личные сообщения» off, never at night. A reader who comes back
-before the message goes out does not get it.
-
-Nothing here may break the scheduler or what a reader was doing.
+Never in the circle's first three days, never to someone who has left it, came back, or switched
+«Личные сообщения» off, never at night. Nothing here may break the scheduler or what a reader did.
 """
 from __future__ import annotations
 
@@ -60,9 +48,14 @@ SITE = "https://powerbook.kz"
 # Three full days without a word, as the founder used to count.
 QUIET_DAYS = 3
 PLAN_FROM_HOUR = 10
-# The reader's own clock: never before or after these.
-SEND_FROM_HOUR = 11
-SEND_UNTIL_HOUR = 20
+# The reader's own clock: never before or after these; their usual reading hour inside them.
+SEND_FROM_HOUR = 9
+SEND_UNTIL_HOUR = 21
+DEFAULT_HOUR = 19
+# The last word comes when a pause has lasted this many full days.
+LAST_WORD_DAYS = 7
+BRAND = "PowerBook"
+BRAND_AVATAR = "/icons/icon-192.png"
 # An approved message still worth sending this many days after it was noticed.
 STALE_AFTER_DAYS = 2
 # How long the card on «Круг» waits for an answer.
@@ -70,33 +63,21 @@ CARD_DAYS = 3
 MAX_CHARS = 2000
 RUNNING = (RoundStatus.registration_open, RoundStatus.locked)
 
-# In the founder's words; the reader's book, when we know it, makes it theirs.
-TEXTS: dict[str, dict[str, list[str]]] = {
-    "ru": {
-        "plain": [
-            "Хей, как вы, всё ок?",
-            "Хей! Несколько дней вас не видно в круге — как вы? Всё хорошо?",
-            "Привет! Как вы? Давно не слышно — всё в порядке?",
-        ],
-        "book": ["Хей, как вы, всё ок? Как идёт «{book}»?"],
-        "auto": "PowerBook подсказывает мне, когда кто-то пропадает, а отвечаю я сам.",
-    },
+# One neutral text per language, the circle's minutes when there are any. Kazakh for readers on ru and
+# kk (the founder's choice, 2026-10-15), English for en.
+WORDS: dict[str, dict[str, str]] = {
     "kk": {
-        "plain": [
-            "Сәлем, қалайсыз, бәрі жақсы ма?",
-            "Сәлем! Бірнеше күн айналымда көрінбей кеттіңіз — қалайсыз? Бәрі жақсы ма?",
-            "Сәлеметсіз бе! Қалайсыз? Біраз уақыт хабар болмады — бәрі дұрыс па?",
-        ],
-        "book": ["Сәлем, қалайсыз, бәрі жақсы ма? «{book}» қалай жүріп жатыр?"],
+        "first": "Сәлем, қалайсыз? Кітап оқу қалай болып жатыр?",
+        "circle": "Бүгін айналым қатысушылары {minutes} минут оқыды — қайта оралуға 10 минут та жетеді.",
+        "nocircle": "Қайта оралуға 10 минут та жетеді.",
+        "last": "Сәлем! Бұдан әрі еске салмаймыз. Айналым әрқашан ашық — кез келген күні қайта оралыңыз.",
         "auto": "Біреу жоғалып кетсе, PowerBook маған айтып отырады, ал жауапты өзім жазамын.",
     },
     "en": {
-        "plain": [
-            "Hey, how are you, all good?",
-            "Hey! Haven't seen you in the circle for a few days — how are you? All well?",
-            "Hi! How are you? It's been quiet for a bit — everything okay?",
-        ],
-        "book": ["Hey, how are you, all good? How is «{book}» going?"],
+        "first": "Hi, how are you? How is the reading going?",
+        "circle": "Readers in the circle have read {minutes} min today — 10 minutes is enough to come back.",
+        "nocircle": "10 minutes is enough to come back.",
+        "last": "Hi! We won't remind you again. The circle is always open — come back any day you like.",
         "auto": "PowerBook tells me when someone goes quiet; the answers are mine.",
     },
 }
@@ -136,7 +117,7 @@ def sender(db: Session) -> User | None:
 
 def _locale(db: Session, user_id: uuid.UUID) -> str:
     row = db.get(ReadingReminder, user_id)
-    return row.locale if row and row.locale in TEXTS else "ru"
+    return "en" if row and row.locale == "en" else "kk"
 
 
 def _zone(db: Session, user_id: uuid.UUID) -> ZoneInfo:
@@ -158,28 +139,44 @@ def _last_book(db: Session, round_id: uuid.UUID, user_id: uuid.UUID) -> str | No
     return title.strip()[:80] if title and title.strip() else None
 
 
-# The founder's own words (2026-10-15): in Kazakh, to women and to men as he greets them. Readers
-# who chose English get the English line.
-GREETINGS = {
-    "female": "Сәлеем, қалайсыз? Кітап оқу қалай болып жатыр?",
-    "male": "Ассаламу алейкум, қалайсыздар? Осы ай айналымы қалай өтіп жатыр екен?",
-}
+def _brand() -> bool:
+    return settings.checkin_voice == "powerbook"
 
 
-def compose(locale: str, seed: int, book: str | None, gender: str | None = None) -> str:
-    words = TEXTS.get(locale) or TEXTS["ru"]
-    if locale != "en":
-        text = GREETINGS.get(gender or "", GREETINGS["female"])
-        words = TEXTS["kk"]
-    elif book and seed % 2 == 0:
-        options = words["book"]
-        text = options[seed % len(options)].format(book=book)
+def compose(locale: str, step: int, circle_minutes: int | None) -> str:
+    words = WORDS.get(locale) or WORDS["kk"]
+    if step >= 2:
+        text = words["last"]
     else:
-        options = words["plain"]
-        text = options[seed % len(options)]
-    if settings.checkin_auto:
+        tail = words["circle"].format(minutes=circle_minutes) if circle_minutes else words["nocircle"]
+        text = f"{words['first']} {tail}"
+    if settings.checkin_auto and not _brand():
+        # in a person's name but not by their hand: say so
         text = f"{text}\n\n{words['auto']}"
     return text
+
+
+def _circle_minutes(db: Session, round_id: uuid.UUID, day: date) -> int:
+    return int(db.execute(
+        select(func.coalesce(func.sum(ReadingLog.minutes), 0)).where(ReadingLog.round_id == round_id, ReadingLog.date == day)
+    ).scalar_one())
+
+
+def usual_hour(db: Session, user_id: uuid.UUID, zone: ZoneInfo) -> int:
+    """When to write: the reader's reminder if they set one, else the hour they usually log, else the evening."""
+    reminder = db.get(ReadingReminder, user_id)
+    if reminder is not None and reminder.enabled:
+        hour = reminder.hour
+    else:
+        stamps = db.execute(
+            select(ReadingLog.updated_at).where(ReadingLog.user_id == user_id, ReadingLog.minutes > 0)
+            .order_by(ReadingLog.date.desc()).limit(30)
+        ).scalars().all()
+        hours = sorted(
+            (ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)).astimezone(zone).hour for ts in stamps if ts
+        )
+        hour = hours[len(hours) // 2] if hours else DEFAULT_HOUR
+    return min(max(hour, SEND_FROM_HOUR), SEND_UNTIL_HOUR - 1)
 
 
 # ---------- noticing ----------
@@ -238,19 +235,34 @@ def plan(db: Session, now: datetime | None = None) -> list[Checkin]:
         user = db.get(User, p.user_id)
         if user is None or not user.is_active or user.is_claimable:
             continue
-        exists = db.execute(
-            select(Checkin.id).where(Checkin.user_id == p.user_id, Checkin.round_id == rnd.id, Checkin.last_read == last_read)
-        ).first()
-        if exists:
+        first = db.execute(
+            select(Checkin).where(
+                Checkin.user_id == p.user_id, Checkin.round_id == rnd.id, Checkin.last_read == last_read, Checkin.step == 1
+            )
+        ).scalar_one_or_none()
+        if first is None:
+            step = 1
+        elif (
+            first.status == "sent" and first.answer is None
+            and (today - last_read).days > LAST_WORD_DAYS
+            and (today - first.day).days >= LAST_WORD_DAYS - QUIET_DAYS
+            and db.execute(select(Checkin.id).where(
+                Checkin.user_id == p.user_id, Checkin.round_id == rnd.id, Checkin.last_read == last_read, Checkin.step == 2
+            )).first() is None
+        ):
+            # a week in, no answer and no reading: the last word, and then quiet
+            step = 2
+        else:
             continue
-        seed = p.user_id.int + today.toordinal()
         row = Checkin(
             user_id=p.user_id,
             round_id=rnd.id,
             last_read=last_read,
             day=today,
+            step=step,
             status="approved" if settings.checkin_auto else "planned",
-            text=compose(_locale(db, p.user_id), seed, _last_book(db, rnd.id, p.user_id), getattr(user.gender, "value", None)),
+            # the circle's minutes are filled in when it goes
+            text=compose(_locale(db, p.user_id), step, None),
         )
         db.add(row)
         try:
@@ -276,34 +288,39 @@ def _when(last_read: date, rnd_first: date, user: User | None = None) -> str:
 
 
 def _list_text(db: Session, day: date, rows: list[Checkin]) -> str:
-    lines = [f"☕ Молчат 3+ дня: {len(rows)}", ""]
+    lines = [f"☕ Сегодня {BRAND} напишет тем, кто молчит: {len(rows)}" if settings.checkin_auto else f"☕ Молчат 3+ дня: {len(rows)}", ""]
     for i, row in enumerate(rows, 1):
         user = db.get(User, row.user_id)
         rnd = db.get(Round, row.round_id)
         handle = f" (@{user.username})" if user else ""
-        lines.append(f"{i}. {_name(user)}{handle} — {_when(row.last_read, rnd.first_day_date if rnd else row.last_read, user)}")
-        lines.append(f"   «{row.text.splitlines()[0]}»")
+        last = " · последнее, «больше не напомним»" if row.step >= 2 else ""
+        lines.append(f"{i}. {_name(user)}{handle} — {_when(row.last_read, rnd.first_day_date if rnd else row.last_read, user)}{last}")
     lines.append("")
     if settings.checkin_auto:
-        lines.append("Напишу им сам днём (11:00–20:00 по их времени).")
+        lines.append("Уйдёт само, в обычное время чтения каждого (9:00–21:00 по их часам). ❌ — этого не трогать.")
+        lines.append("Ответы придут сюда; отвечаете вы, своим именем.")
     else:
         lines.append("✅ — напишу им от вашего имени днём (11:00–20:00 по их времени). Без нажатия ничего не уйдёт.")
     if day.weekday() == 0:
         s = stats(db, days=7, today=day)
         lines.append(f"\nЗа неделю: написали {s['sent']}, ответили {s['answered']}, вернулись за 2 дня {s['returned']}.")
     who = sender(db)
-    lines.append(f"Подпись: {_name(who)}" + ("" if who is None or who.avatar_data else " (без фото — поставьте в профиле)"))
+    if _brand():
+        lines.append(f"Подпись сообщений: {BRAND}. Ваши ответы подписаны: {_name(who)}")
+    else:
+        lines.append(f"Подпись: {_name(who)}" + ("" if who is None or who.avatar_data else " (без фото — поставьте в профиле)"))
     lines.append(f"Переписки: {SITE}/messages")
     return "\n".join(lines)
 
 
 def _keyboard(db: Session, day: date) -> list[list[dict]]:
     planned = db.execute(
-        select(Checkin).where(Checkin.day == day, Checkin.status == "planned").order_by(Checkin.created_at)
+        select(Checkin).where(Checkin.day == day, Checkin.status.in_(("planned", "approved"))).order_by(Checkin.created_at)
     ).scalars().all()
     if not planned:
         return []
-    rows = [[{"text": f"✅ Отправить всем ({len(planned)})", "callback_data": f"ci:all:{day.isoformat()}"}]]
+    waiting = [c for c in planned if c.status == "planned"]
+    rows = [[{"text": f"✅ Отправить всем ({len(waiting)})", "callback_data": f"ci:all:{day.isoformat()}"}]] if waiting else []
     skip = [{"text": f"❌ {_name(db.get(User, c.user_id))[:24]}", "callback_data": f"ci:x:{c.id}"} for c in planned]
     rows += [skip[i:i + 2] for i in range(0, len(skip), 2)]
     return rows
@@ -313,7 +330,7 @@ def _tell_founder_list(db: Session, day: date, rows: list[Checkin]) -> None:
     from app.services import admin_ping
 
     try:
-        buttons = None if settings.checkin_auto else _keyboard(db, day)
+        buttons = _keyboard(db, day)
         admin_ping.tell_admins(_list_text(db, day, rows), buttons=buttons or None)
     except Exception:
         logger.exception("check-in list to the founder failed")
@@ -334,8 +351,8 @@ def decide(db: Session, data: str) -> tuple[str, str | None, list[list[dict]] | 
         names = ", ".join(_name(db.get(User, r.user_id)) for r in rows)
         return "✅ Отправлю", f"✅ Отправлю днём: {names}", []
     row = db.get(Checkin, uuid.UUID(arg))
-    if row is None or row.status != "planned":
-        return "Уже решено", None, None
+    if row is None or row.status not in ("planned", "approved"):
+        return ("Уже ушло" if row is not None and row.status == "sent" else "Уже решено"), None, None
     row.status = "skipped"
     db.commit()
     return "Не пишу", f"❌ Не писать: {_name(db.get(User, row.user_id))}", _keyboard(db, row.day)
@@ -397,17 +414,20 @@ def deliver(db: Session, now: datetime | None = None) -> int:
             row.status = "cancelled"
             db.commit()
             continue
-        hour = now.astimezone(_zone(db, row.user_id)).hour
-        if not SEND_FROM_HOUR <= hour < SEND_UNTIL_HOUR:
+        zone = _zone(db, row.user_id)
+        hour = now.astimezone(zone).hour
+        if not usual_hour(db, row.user_id, zone) <= hour < SEND_UNTIL_HOUR:
             continue
+        row.text = compose(_locale(db, row.user_id), row.step, _circle_minutes(db, row.round_id, today))
         row.status = "sent"
         row.sent_at = now
-        db.add(DirectMessage(reader_id=row.user_id, author_id=who_sends.id, text=row.text, checkin_id=row.id))
+        voice = "powerbook" if _brand() else None
+        db.add(DirectMessage(reader_id=row.user_id, author_id=who_sends.id, text=row.text, checkin_id=row.id, voice=voice))
         db.commit()
         sent += 1
         try:
             push.send_to_user(db, row.user_id, {
-                "title": _name(who_sends), "body": row.text.splitlines()[0],
+                "title": BRAND if voice else _name(who_sends), "body": row.text.splitlines()[0],
                 "url": "/round?source=push_checkin", "tag": "checkin",
             })
         except Exception:  # someone else's push server; the site already has it
@@ -424,14 +444,16 @@ def tick(db: Session, now: datetime | None = None) -> None:
 
 
 def _message_out(msg: DirectMessage, author: User | None, viewer: User) -> dict:
+    brand = msg.voice == "powerbook"
     return {
         "id": str(msg.id),
         "text": msg.text,
         "created_at": msg.created_at,
-        "mine": msg.author_id == viewer.id,
+        # the founder sees PowerBook's automatic word as PowerBook's, not as his own
+        "mine": msg.author_id == viewer.id and not brand,
         "from_reader": msg.author_id == msg.reader_id,
-        "author": _name(author),
-        "avatar_data": author.avatar_data if author else None,
+        "author": BRAND if brand else _name(author),
+        "avatar_data": BRAND_AVATAR if brand else (author.avatar_data if author else None),
     }
 
 
@@ -475,8 +497,8 @@ def card(db: Session, user: User) -> dict | None:
         "id": str(row.id),
         "text": row.text,
         "answers": [k for k in ANSWERS if k != "out" or can_step_out],
-        "from": _name(who),
-        "avatar_data": who.avatar_data if who else None,
+        "from": BRAND if _brand() else _name(who),
+        "avatar_data": BRAND_AVATAR if _brand() else (who.avatar_data if who else None),
         "sent_at": row.sent_at,
     }
 
@@ -485,7 +507,12 @@ def my_thread(db: Session, user: User) -> dict:
     messages = _thread(db, user.id, user)
     _mark_read(db, user.id, by_reader=True)
     who = sender(db)
-    return {"messages": messages, "founder": _name(who), "founder_avatar": who.avatar_data if who else None, "card": card(db, user)}
+    return {
+        "messages": messages,
+        "founder": BRAND if _brand() else _name(who),
+        "founder_avatar": BRAND_AVATAR if _brand() else (who.avatar_data if who else None),
+        "card": card(db, user),
+    }
 
 
 def _clean(text: str) -> str:
