@@ -40,3 +40,6 @@ class BookCover(TimestampMixin, Base):
 
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    # When the catalogues were asked again who wrote it, because the sources of its book disagreed
+    # (app.services.covers.recheck_disputed). Each lookup is asked once.
+    author_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)

@@ -36,7 +36,9 @@ from datetime import date, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core import authors as names
 from app.core.booktitles import canonical_key, match_key, matching_key
+from app.models.book_author import BookAuthor
 from app.models.book_cover import BookCover
 from app.models.book_link import BookLink
 from app.models.book_review import BookReview
@@ -76,6 +78,12 @@ class Work:
     # account id -> the key of this book on that account's shelf
     holders: dict[uuid.UUID, str] = field(default_factory=dict)
     search: str = ""
+    # When the sources name more than one person: each person and the weight of what named them, the chosen first.
+    author_rivals: list[tuple[str, float]] = field(default_factory=list)
+    # The founder said who wrote it (book_authors).
+    author_fixed: bool = False
+    # The cover lookups of its spellings (book_covers keys).
+    cover_keys: set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -112,6 +120,8 @@ class _Entry:
     at: date | None
     # The title the reader said this copy is («Какая это книга?»).
     pinned_title: str | None = None
+    # The author hint was typed in an author field (a book added by hand), not read off a day's comment.
+    author_typed: bool = False
 
 
 class _Union:
@@ -189,7 +199,10 @@ def _build(db: Session) -> CatalogIndex:
         select(ShelfOverride.user_id, ShelfOverride.volume_key).where(ShelfOverride.hidden.is_(True))
     ).all()}
 
-    def add(raw_key: str | None, clean: str, hint: str | None, account: uuid.UUID, volume_key: str | None, at: object) -> None:
+    def add(
+        raw_key: str | None, clean: str, hint: str | None, account: uuid.UUID, volume_key: str | None, at: object,
+        typed: bool = False,
+    ) -> None:
         if volume_key and ((account, volume_key) in hidden or (fold.get(account, account), volume_key) in hidden):
             return
         nodes = [k for k in dict.fromkeys([raw_key, canonical_key(clean)]) if k]
@@ -214,6 +227,7 @@ def _build(db: Session) -> CatalogIndex:
                 volume_key=volume_key,
                 at=_as_date(at),
                 pinned_title=pinned_title,
+                author_typed=typed,
             )
         )
 
@@ -239,15 +253,23 @@ def _build(db: Session) -> CatalogIndex:
         clean = covers.clean_title(title)
         if not clean:
             continue
-        add(canonical_key(title), clean, author, account, f"m:{book_id}", finished_on or created_at)
+        add(canonical_key(title), clean, author, account, f"m:{book_id}", finished_on or created_at, typed=True)
 
     for account, key, volume_key, title, author, updated_at in db.execute(
         select(BookReview.user_id, BookReview.work_key, BookReview.volume_key, BookReview.title, BookReview.author, BookReview.updated_at)
     ).all():
         clean = covers.clean_title(title) or title
-        add(key, clean, author, account, volume_key, updated_at)
+        # A mark keeps a copy of the author the library showed when it was given: no word of its own on who wrote it.
+        add(key, clean, None, account, volume_key, updated_at)
 
     found = covers.cached(db, list(wanted_covers)) if wanted_covers else {}
+    # The founder's word on who wrote a book, and every author the catalogues ever named: what tells a reader's
+    # «Ремарк» (a real author, written short) from «Перечитала».
+    fixed = {key: author for key, author in db.execute(select(BookAuthor.key, BookAuthor.author)).all() if author}
+    known = names.Directory(
+        [a for (a,) in db.execute(select(BookCover.author).where(BookCover.author.is_not(None))).all()]
+        + list(fixed.values())
+    )
     union = _Union()
     for e in entries:
         row = found.get(covers.cover_key(e.title))
@@ -275,8 +297,9 @@ def _build(db: Session) -> CatalogIndex:
     by_person: dict[uuid.UUID, set[str]] = defaultdict(set)
     for group in groups.values():
         titles: Counter[str] = Counter()
-        authors: Counter[str] = Counter()
-        hints: Counter[str] = Counter()
+        said: list[tuple[str, float]] = []
+        looked_up: set[str] = set()
+        heard: set[tuple[uuid.UUID, str]] = set()
         images: Counter[str] = Counter()
         source_url = None
         for e in group:
@@ -289,10 +312,15 @@ def _build(db: Session) -> CatalogIndex:
             else:
                 # The corrected spelling counts double: it is the book's own.
                 titles[(row.title if row is not None and row.title else e.title)] += 2 if row is not None else 1
-            if row is not None and row.author:
-                authors[row.author] += 1
-            if e.author_hint:
-                hints[e.author_hint.strip()] += 1
+            # Who wrote it: one lookup is one opinion, however many readers spelled the title its way, and each
+            # reader's own word after the title counts once, for as much as it looks like an author's name.
+            if row is not None and row.author and row.key not in looked_up:
+                looked_up.add(row.key)
+                said.append((row.author, 1.0))
+            hint = (e.author_hint or "").strip()
+            if hint and (e.person, hint.casefold()) not in heard:
+                heard.add((e.person, hint.casefold()))
+                said.extend(_hint_votes(hint, known, typed=e.author_typed))
             if row is not None and row.image:
                 images[row.image] += 1
             if source_url is None and row is not None and row.source == "google" and row.source_id:
@@ -302,7 +330,9 @@ def _build(db: Session) -> CatalogIndex:
         primary = canonical_key(title)
         if not primary or primary not in members:
             primary = sorted(members, key=lambda k: (-sum(k in e.nodes for e in group), k))[0]
-        author = (authors.most_common(1)[0][0] if authors else None) or (hints.most_common(1)[0][0] if hints else None)
+        script = names.script_of(title)
+        rivals = names.people(said, prominence=known.prominence)
+        author = (rivals[0].written(script) or rivals[0].written()) if rivals else None
         work = Work(
             key=primary,
             members=members,
@@ -310,6 +340,10 @@ def _build(db: Session) -> CatalogIndex:
             author=author,
             image=images.most_common(1)[0][0] if images else None,
             source_url=source_url,
+            author_rivals=[(p.written(script) or p.written() or p.names[0], round(p.weight, 2)) for p in rivals]
+            if len(rivals) > 1
+            else [],
+            cover_keys={covers.cover_key(e.title) for e in group},
         )
         for e in group:
             work.readers.add(e.person)
@@ -328,7 +362,38 @@ def _build(db: Session) -> CatalogIndex:
         for member in members:
             by_member[member] = primary
 
+    # The founder's word on who wrote a book is the last one.
+    for key, author in fixed.items():
+        work = works.get(by_member.get(key, ""))
+        if work is not None:
+            work.author = author[:200]
+            work.author_fixed = True
+            work.search = f"{work.title} {work.author}".casefold()
+
     return CatalogIndex(works=works, by_member=by_member, by_person=dict(by_person), fold=fold, representative=representative)
+
+
+def _hint_votes(hint: str, known: names.Directory, *, typed: bool = False) -> list[tuple[str, float]]:
+    """What a reader's words say about who wrote a book.
+
+    A name the catalogues know as one author («Ремарк», even «ремарк») is a
+    reader vouching for a real author: worth more than a single lookup, which
+    may have caught a translator or another book of the same title. It votes
+    in the catalogues' own spellings, so the book prints the full name. Any
+    other name typed in an author field counts as much as a lookup; a
+    name-like word after a title, unknown, for less; «перечитала» for nothing.
+    """
+    if not names.looks_like_name(hint, capitals=False):
+        return []
+    spellings = known.find(hint)
+    if spellings and len(names.people((s, 1.0) for s in spellings)) == 1:
+        own = [(hint, 0.01)] if names.looks_like_name(hint) else []
+        return [(s, 1.5 / len(spellings)) for s in spellings] + own
+    if typed:
+        return [(hint, 1.0)]
+    if names.looks_like_name(hint):
+        return [(hint, 0.75 if len(hint.split()) > 1 else 0.5)]
+    return []
 
 
 def _stamp() -> float:

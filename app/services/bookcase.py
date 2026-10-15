@@ -18,6 +18,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core import authors as names
 from app.core.constants import ROUND_TZ
 from app.core.booktitles import canonical_key, matching_key, matching_title
 from app.services import book_notes, covers, custom_shelves, shelf_overrides
@@ -190,7 +191,8 @@ class BookcaseService:
                 BookcaseBookOut(
                     key=f"r:{_short_hash(norm)}",
                     title=title,
-                    author=author,
+                    # «Очень понравилось» after the title is no author; the lookup still hears it, it may be «ремарк».
+                    author=author if names.looks_like_name(author) else None,
                     note=note,
                     note_is_private=bool(is_private),
                     status="finished",
@@ -404,6 +406,18 @@ class BookcaseService:
                 twin.minutes_read += vol.minutes_read
                 twin.days_read += vol.days_read
                 volumes.remove(vol)
+
+        # One book, one author. A copy that is a book of the shared library shows the library's word on who wrote it,
+        # not its own comment's, file's or spelling's lookup's: «Три товарища» was Remarque's on some shelves and
+        # another name on others. Only an author the reader typed in themselves stays theirs; a pinned copy kept the
+        # author the library had when it was pinned, and follows the library since.
+        for vol in volumes:
+            override = overrides.get(vol.key)
+            if override is not None and override.author and not override.work_key:
+                continue
+            work = idx.find(held.get(vol.key)) or idx.find(vol.match_key) or idx.find(catalog.work_key(vol.title))
+            if work is not None and work.author:
+                vol.author = work.author
 
         # «Убрать с полки»: what the reader said is no book (a day's comment) is off the shelf. They alone still get
         # it, marked, to bring it back.

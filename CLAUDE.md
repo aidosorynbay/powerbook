@@ -64,6 +64,12 @@ it in a browser, phone width (390px) included.
 - **Reading logs:** one `reading_logs` row per reader per day holds the day's total and
   score; `reading_log_books` splits it across books («Что читаю»). A finished book's title
   is also the first line of the day's comment, which the shelf and covers read.
+- **Book authors:** one author per book of the shared library, never one source's word. `catalog._build`
+  votes over every source with names compared as people (`app/core/authors.py`: «Ремарк» = "Erich Maria
+  Remarque"): one vote per cover lookup, more for a reader's known author name, nothing for «перечитала».
+  Shelves show `work.author` unless the reader typed their own. Cover lookups take the author most editions
+  name, not the pictured edition's first creator (often a translator). The founder fixes a book in /admin →
+  «Книги: склейка» (`book_authors`); «Автор под вопросом» there lists books whose sources disagree.
 - Existing members stay free forever; monetisation ideas must not take away what they have.
 - **Reading room pictures:** `frontend/public/reading-room/` and `widgets/ReadingRoom/casts.js` are built on the
   founder's Mac by `~/powerbook-sync/prototypes/reading-room/` (not in git): `seg_birefnet.py` → `dump_owners.py` →

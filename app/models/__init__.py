@@ -1,4 +1,5 @@
 from app.models.ai_digest import AiDigest
+from app.models.book_author import BookAuthor
 from app.models.book_chat import BookChat
 from app.models.book_cover import BookCover
 from app.models.book_fact import BookFact
@@ -36,6 +37,7 @@ __all__ = [
     "ReadingReminder",
     "BookChat",
     "BookLink",
+    "BookAuthor",
     "User",
     "Group",
     "GroupMember",
