@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core import storage
 from app.core.security import verify_password
+from app.models.chat import BuddyMessage, ChatAccept, ChatBlock, ChatConsent, ChatReport
 from app.models.checkin import Checkin, DirectMessage
 from app.models.reader_feedback import FeedbackAsk, ReaderFeedback
 from app.models.user import User
@@ -52,6 +53,20 @@ class AccountDeletionService:
             (DirectMessage.reader_id == user.id) | (DirectMessage.author_id == user.id)
         ).delete(synchronize_session=False)
         self.db.query(Checkin).filter(Checkin.user_id == user.id).delete(synchronize_session=False)
+        # And every conversation with other readers, both sides of it, with the consent, accepts, blocks and
+        # the complaints they wrote. Complaints about them stay (a year, privacy policy section 6): deleting
+        # the account must not erase what someone reported.
+        self.db.query(BuddyMessage).filter(
+            (BuddyMessage.sender_id == user.id) | (BuddyMessage.recipient_id == user.id)
+        ).delete(synchronize_session=False)
+        self.db.query(ChatBlock).filter(
+            (ChatBlock.blocker_id == user.id) | (ChatBlock.blocked_id == user.id)
+        ).delete(synchronize_session=False)
+        self.db.query(ChatAccept).filter(
+            (ChatAccept.user_id == user.id) | (ChatAccept.other_id == user.id)
+        ).delete(synchronize_session=False)
+        self.db.query(ChatReport).filter(ChatReport.reporter_id == user.id).delete(synchronize_session=False)
+        self.db.query(ChatConsent).filter(ChatConsent.user_id == user.id).delete(synchronize_session=False)
 
         # 3. Strip every identifying field. The username has to stay unique and
         # non-null, so it becomes an opaque tombstone rather than being cleared.

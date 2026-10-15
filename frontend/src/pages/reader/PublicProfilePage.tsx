@@ -131,6 +131,12 @@ export function PublicProfilePage() {
                         {profile.is_buddy ? t('profile.removeBuddy') : t('profile.addBuddy')}
                       </Button>
                     )}
+                    {/* writing happens on the site now, not in Telegram (2026-10-15): to a buddy */}
+                    {!profile.is_archive && !profile.is_self && profile.is_buddy && userId && (
+                      <Link to={`/messages?u=${userId}`} className={styles.claimLink}>
+                        <Button variant="primary" size="sm">{t('chat.write')}</Button>
+                      </Link>
+                    )}
                     {profile.telegram_id && (
                       <a
                         href={`https://t.me/${profile.telegram_id}`}

@@ -10,7 +10,7 @@ import styles from './Bell.module.css';
 const POLL_MS = 60_000;
 
 // The switches, in the order the server lists them.
-const KINDS = ['checkin', 'new_circle', 'new_review', 'review_reply', 'watch_listing', 'watch_finished', 'wanted_by', 'guest_read'] as const;
+const KINDS = ['checkin', 'buddy_message', 'new_circle', 'new_review', 'review_reply', 'watch_listing', 'watch_finished', 'wanted_by', 'guest_read'] as const;
 
 const ICONS: Record<string, IconName> = { checkin: 'chat', checkin_reply: 'chat', new_circle: 'calendar', new_review: 'chat', review_reply: 'chat', watch_listing: 'tag', wanted_by: 'users', guest_read: 'gift' };
 
@@ -66,7 +66,7 @@ function useWords() {
       const text = String(d.text ?? '');
       return {
         text: t(n.kind === 'checkin' ? 'notif.checkin' : 'notif.checkinReply', { from: String(d.from ?? ''), text }),
-        to: n.kind === 'checkin' ? '/round?source=bell_checkin' : '/messages?source=bell',
+        to: n.kind === 'checkin' ? '/round?source=bell_checkin' : '/messages?with=founder',
       };
     }
     if (n.kind === 'guest_read') {

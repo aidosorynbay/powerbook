@@ -128,7 +128,7 @@ def test_the_readers_answer_reaches_the_founder(env, monkeypatch):
     out = checkins.answer(db, quiet, __import__("uuid").UUID(card["id"]), "hard", "ru")
     assert out["card"] is None
     assert [m["text"] for m in out["messages"]][-1] == "Сейчас сложный период"
-    assert "Quiet" in told[-1][0] and "сложный период" in told[-1][0]
+    assert "Quiet" in told[-1][0] and "сложный период" not in told[-1][0]  # who answered, never what
     # the founder sees it waiting, answers, and the reader hears
     founder = db.get(User, users["founder"].id)
     assert checkins.unread(db, founder)["count"] == 1

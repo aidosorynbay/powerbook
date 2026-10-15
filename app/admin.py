@@ -8,6 +8,7 @@ from sqladmin import Admin, BaseView, ModelView, action, expose
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
 from markupsafe import Markup, escape
+from wtforms import SelectField
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from app.core.constants import ROUND_TZ
@@ -18,6 +19,7 @@ from app.models.claim import UsernameClaim
 from app.models.enums import ClaimStatus, RoundStatus, SystemRole
 from app.models.exchange_photo import ExchangePhoto
 from app.models.group import Group, GroupMember
+from app.models.chat import ChatReport
 from app.models.reader_feedback import ReaderFeedback
 from app.models.round import BookExchangePair, ReadingLog, Round, RoundParticipant, RoundResult
 from app.models.user import User
@@ -367,6 +369,37 @@ class ReaderFeedbackAdmin(ModelView, model=ReaderFeedback):
     icon = "fa-solid fa-comment-dots"
 
 
+class ChatReportAdmin(ModelView, model=ChatReport):
+    """«Пожаловаться» in private messages between readers: answer within 20 days (KZ law on online
+    platforms, Art. 11). The excerpt is the latest messages of that conversation — the only way the
+    team sees one (privacy policy, section 6). Mark it answered and write what was done."""
+
+    column_list = [ChatReport.status, ChatReport.reporter, ChatReport.reported, ChatReport.reason, ChatReport.created_at]
+    column_details_list = [
+        ChatReport.status, ChatReport.reporter, ChatReport.reported, ChatReport.reason, ChatReport.excerpt,
+        ChatReport.answer, ChatReport.created_at,
+    ]
+    column_labels = {
+        ChatReport.status: "статус (new / answered)", ChatReport.reporter: "кто жалуется", ChatReport.reported: "на кого",
+        ChatReport.reason: "причина", ChatReport.excerpt: "последние сообщения", ChatReport.answer: "что сделали",
+        ChatReport.created_at: "когда (Астана)",
+    }
+    column_formatters = {ChatReport.created_at: _astana}
+    column_formatters_detail = {
+        ChatReport.created_at: _astana,
+        ChatReport.excerpt: lambda m, a: Markup(f"<div style='white-space:pre-wrap'>{escape(m.excerpt or '')}</div>"),
+    }
+    column_default_sort = [(ChatReport.created_at, True)]
+    form_columns = [ChatReport.status, ChatReport.answer]
+    form_args = {"status": {"choices": [("new", "new — ждёт ответа"), ("answered", "answered — ответили")]}}
+    form_overrides = {"status": SelectField}
+    can_create = False
+    can_delete = False
+    name = "Жалоба (сообщения)"
+    name_plural = "Жалобы (сообщения)"
+    icon = "fa-solid fa-flag"
+
+
 class FeedbackPhotoView(BaseView):
     """The picture behind a feedback row, for the list above. Behind the
     admin's login, unlike the exchange's photos: these are not public."""
@@ -520,6 +553,7 @@ def setup_admin(app):
     admin.add_view(BookExchangePairAdmin)
     admin.add_view(ExchangePhotoAdmin)
     admin.add_view(ReaderFeedbackAdmin)
+    admin.add_view(ChatReportAdmin)
     admin.add_base_view(FeedbackPhotoView)
     admin.add_view(UsernameClaimAdmin)
     admin.add_base_view(ArchiveCoverageView)

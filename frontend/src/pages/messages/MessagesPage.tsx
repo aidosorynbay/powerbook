@@ -1,87 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { apiGet, apiPost, track, useAuth, useI18n, type Locale } from '@/shared/lib';
+import { apiGet, apiPost, track, useAuth, useI18n } from '@/shared/lib';
 import { Avatar, Container, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
-import { READ_EVENT } from '@/widgets/Notifications/MessagesLink';
-
-/** The header's count is read again once the page has read the conversation. */
-const saidRead = () => window.dispatchEvent(new Event(READ_EVENT));
+import { BuddyChat, ChatList } from './BuddyChat';
+import { Conversation, saidRead, type Message } from './parts';
 import styles from './MessagesPage.module.css';
 
-const MAX_CHARS = 2000;
-
-type Message = { id: string; text: string; created_at: string; mine: boolean; from_reader: boolean; author: string; avatar_data: string | null };
 type MyThread = { messages: Message[]; founder: string; founder_avatar: string | null };
 type Thread = { reader_id: string; name: string; username: string; avatar_data: string | null; last_text: string; last_at: string; last_from_reader: boolean; unread: number };
 type ReaderThread = { reader_id: string; name: string; username: string; avatar_data: string | null; messages: Message[]; context: string | null };
 type Planned = { id: string; day: string; status: string; text: string; reader_id: string; name: string; when: string; answer: string | null };
 type Today = { today: string; auto: boolean; items: Planned[]; stats: { sent: number; answered: number; returned: number } };
 
-const INTL: Record<Locale, string> = { ru: 'ru-RU', kk: 'kk-KZ', en: 'en-GB' };
-
-function when(iso: string, locale: Locale): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleString(INTL[locale], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-}
-
-/** The conversation itself: oldest first, like a chat, with a box to write in. */
-function Conversation({ messages, onSend }: { messages: Message[]; onSend: (text: string) => Promise<boolean> }) {
-  const { t, locale } = useI18n();
-  const [text, setText] = useState('');
-  const [sending, setSending] = useState(false);
-  const end = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    end.current?.scrollIntoView({ block: 'end' });
-  }, [messages.length]);
-
-  const send = async () => {
-    const words = text.trim();
-    if (!words || sending) return;
-    setSending(true);
-    const ok = await onSend(words);
-    setSending(false);
-    if (ok) setText('');
-  };
-  return (
-    <>
-      <div className={styles.list}>
-        {messages.map((m) => (
-          <div key={m.id} className={`${styles.message} ${m.mine ? styles.mine : ''}`}>
-            {!m.mine && <Avatar src={m.avatar_data ?? undefined} name={m.author} size="sm" />}
-            <div className={styles.bubble}>
-              <p>{m.text}</p>
-              <small>{m.mine ? t('msg.you') : m.author} · {when(m.created_at, locale)}</small>
-            </div>
-          </div>
-        ))}
-        <div ref={end} />
-      </div>
-      <div className={styles.form}>
-        <textarea
-          value={text}
-          maxLength={MAX_CHARS}
-          rows={3}
-          placeholder={t('msg.placeholder')}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && window.matchMedia('(pointer: fine)').matches) {
-              e.preventDefault();
-              send();
-            }
-          }}
-        />
-        <button type="button" className={styles.send} disabled={sending || !text.trim()} onClick={send}>
-          {t('msg.send')}
-        </button>
-      </div>
-    </>
-  );
-}
-
 /** A reader: their conversation with the founder. */
-function ReaderView() {
+function FounderThread() {
   const { t } = useI18n();
   const [thread, setThread] = useState<MyThread | null>(null);
   useEffect(() => {
@@ -93,6 +26,7 @@ function ReaderView() {
   if (!thread) return <div className={styles.muted}>{t('dashboard.loading')}</div>;
   return (
     <>
+      <Link to="/messages" className={styles.back}>← {t('msg.title')}</Link>
       <div className={styles.head}>
         <Avatar src={thread.founder_avatar ?? undefined} name={thread.founder} size="md" />
         <div>
@@ -100,9 +34,9 @@ function ReaderView() {
           <p className={styles.sub}>{t('msg.with')}</p>
         </div>
       </div>
-      {thread.messages.length === 0 && <p className={styles.muted}>{t('msg.empty', { name: thread.founder })}</p>}
       <Conversation
         messages={thread.messages}
+        closed={thread.messages.length === 0 ? t('msg.empty', { name: thread.founder }) : undefined}
         onSend={async (text) => {
           const { data } = await apiPost<MyThread>('/messages', { text }, { requireAuth: true });
           if (data) {
@@ -112,6 +46,24 @@ function ReaderView() {
           return !!data;
         }}
       />
+    </>
+  );
+}
+
+/** A reader's list: the founder's conversation, if there is one, and those with other readers. */
+function ReaderList() {
+  const { t } = useI18n();
+  const [founder, setFounder] = useState<{ name: string; avatar_data: string | null; last_text: string; last_at: string } | null | undefined>(undefined);
+  useEffect(() => {
+    apiGet<MyThread>('/messages', { requireAuth: true }).then(({ data }) => {
+      const last = data?.messages[data.messages.length - 1];
+      setFounder(data && last ? { name: data.founder, avatar_data: data.founder_avatar, last_text: last.text, last_at: last.created_at } : null);
+    });
+  }, []);
+  return (
+    <>
+      <h1 className={styles.title}>{t('msg.title')}</h1>
+      {founder !== undefined && <ChatList founder={founder} />}
     </>
   );
 }
@@ -212,6 +164,10 @@ function FounderView({ readerId }: { readerId: string | null }) {
         </section>
       )}
       <section className={styles.section}>
+        <h2>{t('msg.admin.mine')}</h2>
+        <ChatList />
+      </section>
+      <section className={styles.section}>
         <h2>{t('msg.admin.threads')}</h2>
         {threads && threads.length === 0 && <p className={styles.muted}>{t('msg.admin.noThreads')}</p>}
         {threads?.map((th) => (
@@ -231,7 +187,8 @@ function FounderView({ readerId }: { readerId: string | null }) {
 
 /**
  * «Сообщения»: a reader's conversation with the founder, opened by «Хей, как вы?» after three quiet days
- * (app/services/checkins.py). The founder sees the morning's list here too, and answers everyone from here.
+ * (app/services/checkins.py), and their conversations with other readers (?u=, app/services/buddy_chat.py).
+ * The founder sees the morning's list here too, and answers everyone from here.
  */
 export function MessagesPage() {
   const { user } = useAuth();
@@ -242,7 +199,17 @@ export function MessagesPage() {
       <div className={styles.page}>
         <Header />
         <main className={styles.main}>
-          <Container size="sm">{isAdmin ? <FounderView readerId={params.get('r')} /> : <ReaderView />}</Container>
+          <Container size="sm">
+            {params.get('u') ? (
+              <BuddyChat key={params.get('u')} otherId={params.get('u') as string} />
+            ) : isAdmin ? (
+              <FounderView readerId={params.get('r')} />
+            ) : params.get('with') === 'founder' ? (
+              <FounderThread />
+            ) : (
+              <ReaderList />
+            )}
+          </Container>
         </main>
         <Footer />
       </div>

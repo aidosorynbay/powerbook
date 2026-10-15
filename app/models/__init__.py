@@ -24,6 +24,7 @@ from app.models.sticker_use import StickerUse
 from app.models.exchange_photo import ExchangePhoto
 from app.models.reader_feedback import FeedbackAsk, ReaderFeedback
 from app.models.checkin import Checkin, DirectMessage
+from app.models.chat import BuddyMessage, ChatAccept, ChatBlock, ChatConsent, ChatReport
 from app.models.reading_room import GuestRoomSitting, ReadingRoomMessage, ReadingRoomSession
 from app.models.suggestion import Suggestion
 from app.models.user import User
@@ -75,5 +76,10 @@ __all__ = [
     "FeedbackAsk",
     "Checkin",
     "DirectMessage",
+    "BuddyMessage",
+    "ChatAccept",
+    "ChatBlock",
+    "ChatConsent",
+    "ChatReport",
 ]
 

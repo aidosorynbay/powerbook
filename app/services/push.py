@@ -225,6 +225,8 @@ def send(db: Session, sub: PushSubscription, payload: dict) -> bool:
             vapid_private_key=_private_key_b64(keys.private_pem),
             vapid_claims={"sub": VAPID_SUBJECT},
             ttl=TTL_SECONDS,
+            # someone else's server must not hold a worker: a message between readers sends inside the request
+            timeout=5,
         )
     except WebPushException as exc:
         code = getattr(getattr(exc, "response", None), "status_code", None)

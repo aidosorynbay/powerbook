@@ -94,7 +94,7 @@ export function CheckinCard({ onForgot, onShown }: { onForgot: () => void; onSho
     return (
       <div className={styles.checkin}>
         <p className={styles.checkinThanks}>{thanks}</p>
-        <Link to="/messages" className={styles.checkinLink}>{t('checkin.open')}</Link>
+        <Link to="/messages?with=founder" className={styles.checkinLink}>{t('checkin.open')}</Link>
       </div>
     );
   }
@@ -134,7 +134,7 @@ export function CheckinCard({ onForgot, onShown }: { onForgot: () => void; onSho
             {t(`checkin.${kind}`)}
           </button>
         ))}
-        <Link to="/messages" onClick={() => track('checkin_answer', { answer: 'write' })}>
+        <Link to="/messages?with=founder" onClick={() => track('checkin_answer', { answer: 'write' })}>
           {t('checkin.write')}
         </Link>
         {more ? (

@@ -20,8 +20,9 @@ The council's answer (2026-10-15): automate the noticing, not the caring.
   one signal), as a push where they allowed pushes, and on top of «Круг»,
   with quick answers («Читаю — отмечу сейчас», «Всё ок», and under «Ещё»
   «Сейчас сложный период», «Пока не участвую») or their own words.
-- Whatever the reader answers reaches the founder in Telegram at once; he
-  answers in /messages, in his own words.
+- The founder hears in Telegram at once that the reader answered (who, never
+  what: the words stay on the server in Kazakhstan); he reads and answers in
+  /messages, in his own words.
 
 Never twice for one pause (a pause is known by the last day read before it),
 never in the circle's first three days, never to someone who has left it or
@@ -510,7 +511,7 @@ def answer(db: Session, user: User, checkin_id: uuid.UUID, kind: str, locale: st
         text = ANSWERS[kind].get(locale) or ANSWERS[kind]["ru"]
         db.add(DirectMessage(reader_id=user.id, author_id=user.id, text=text, checkin_id=row.id))
         db.commit()
-        _tell_founder_answer(user, f"{ANSWER_ICONS[kind]} {ANSWERS[kind]['ru']}")
+        _tell_founder_answer(user)
     return my_thread(db, user)
 
 
@@ -541,15 +542,17 @@ def write(db: Session, user: User, text: str) -> dict:
         row.answer = "text"
         row.answered_at = _now()
     db.commit()
-    _tell_founder_answer(user, f"«{text[:1500]}»")
+    _tell_founder_answer(user)
     return my_thread(db, user)
 
 
-def _tell_founder_answer(user: User, what: str) -> None:
+def _tell_founder_answer(user: User) -> None:
+    """Who answered, never what: the words stay on our server in Kazakhstan and do not travel to Telegram
+    (the legal check of 2026-10-15; privacy policy, section 6)."""
     from app.services import admin_ping
 
     try:
-        admin_ping.tell_admins(f"💬 {_name(user)} (@{user.username}): {what}\nОтветить: {SITE}/messages?r={user.id}")
+        admin_ping.tell_admins(f"💬 {_name(user)} (@{user.username}) ответил(а) на ваше сообщение\nОткрыть: {SITE}/messages?r={user.id}")
     except Exception:
         logger.exception("check-in answer to the founder failed")
 
@@ -642,7 +645,7 @@ def reply(db: Session, admin: User, reader_id: uuid.UUID, text: str) -> dict:
     db.add(DirectMessage(reader_id=reader_id, author_id=admin.id, text=text))
     db.commit()
     try:
-        push.send_to_user(db, reader_id, {"title": _name(admin), "body": text[:140], "url": "/messages?source=push", "tag": "checkin-reply"})
+        push.send_to_user(db, reader_id, {"title": _name(admin), "body": text[:140], "url": "/messages?with=founder", "tag": "checkin-reply"})
     except Exception:
         logger.exception("reply push failed for %s", reader_id)
     return thread_for(db, admin, reader_id)
