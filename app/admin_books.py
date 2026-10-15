@@ -7,27 +7,36 @@ sold under another title. Here the founder finds such books, by search or
 in the list of likely doubles, and says they are one: a book link
 (app/models/book_link.py), which the shared library follows from then on.
 Marks, readers and listings of both count for the one book.
+
+Here too the founder says who wrote a book when the sources got it wrong
+(app/models/book_author.py): the book's card and every shelf holding it
+show that name, and the list «Автор под вопросом» brings up the books whose
+sources name different people.
 """
 from __future__ import annotations
 
 import inspect
+import re
 import uuid
 from collections import defaultdict
 from difflib import SequenceMatcher
 from urllib.parse import quote
 
 from sqladmin import BaseView, ModelView, expose
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
 from app.core.booktitles import match_key
 from app.db.session import get_session_factory
+from app.models.book_author import BookAuthor
+from app.models.book_cover import BookCover
 from app.models.book_link import BookLink
 from app.models.book_review import BookReview
 from app.services import catalog
 
 _DOUBLES = 60
+_DISPUTES = 60
 
 
 def _row(work, votes: dict[str, int]) -> dict:
@@ -38,7 +47,41 @@ def _row(work, votes: dict[str, int]) -> dict:
         "readers": len(work.readers),
         "votes": votes.get(work.key, 0),
         "image": work.image,
+        "author_fixed": work.author_fixed,
+        # the other people the sources name, with the weight of what named them
+        "rivals": [{"name": name, "weight": weight} for name, weight in work.author_rivals[1:4]],
     }
+
+
+def author_disputes(idx, votes: dict[str, int]) -> list[dict]:
+    """Books whose sources name more than one person as the author, for real:
+    a catalogue's lookup or a reader's known author name against another,
+    not a reader's «Перечитала» after the title."""
+    works = [
+        w for w in idx.works.values()
+        if not w.author_fixed and len(w.author_rivals) > 1 and w.author_rivals[1][1] >= 0.75
+    ]
+    works.sort(key=lambda w: (-len(w.readers), w.title.casefold()))
+    return [_row(w, votes) for w in works[:_DISPUTES]]
+
+
+def set_author(db, key: str, author: str | None, admin_id: uuid.UUID | None) -> bool:
+    """The founder's word on who wrote a book; an empty name gives the choice
+    back to the sources. The book's lookups are asked again with the name,
+    so their covers become editions by that author (covers.recheck_disputed)."""
+    work = catalog.index(db).find(key)
+    if work is None:
+        return False
+    name = re.sub(r"\s+", " ", author or "").strip(" ,;")[:200]
+    # One word per book, whichever of its keys an earlier one was kept under.
+    db.execute(delete(BookAuthor).where(BookAuthor.key.in_(sorted(work.members))))
+    if name:
+        db.add(BookAuthor(key=work.key, author=name, title=work.title[:300], created_by=admin_id))
+        if work.cover_keys:
+            db.execute(update(BookCover).where(BookCover.key.in_(sorted(work.cover_keys))).values(author_checked_at=None))
+    db.commit()
+    catalog.invalidate()
+    return True
 
 
 def _votes(db, idx) -> dict[str, int]:
@@ -136,16 +179,18 @@ class BookMergeView(BaseView):
                 found.sort(key=lambda w: (-len(w.readers), w.title.casefold()))
                 found = [_row(w, votes) for w in found[:60]]
             doubles = likely_doubles(idx, votes) if not q else []
+            disputes = author_disputes(idx, votes) if not q else []
             links = db.execute(select(BookLink).order_by(BookLink.created_at.desc()).limit(100)).scalars().all()
             link_rows = [{"id": str(x.id), "a": x.title_a or x.key_a, "b": x.title_b or x.key_b} for x in links]
         finally:
             db.close()
         context = {
             "title": "Книги: склейка",
-            "subtitle": "Одна книга в общей библиотеке — одна карточка и общие оценки",
+            "subtitle": "Одна книга в общей библиотеке — одна карточка, один автор и общие оценки",
             "q": q,
             "found": found,
             "doubles": doubles,
+            "disputes": disputes,
             "links": link_rows,
             "base": str(request.url_for("admin:index")).rstrip("/"),
             "msg": request.query_params.get("msg", ""),
@@ -168,6 +213,28 @@ class BookMergeView(BaseView):
         finally:
             db.close()
         msg = f"Склеено: {made}" if made else "Нечего склеивать — выберите хотя бы две разные книги"
+        q = f"&q={quote(back)}" if back else ""
+        return RedirectResponse(f"{base}/book-merge?msg={quote(msg)}{q}", status_code=303)
+
+    @expose("/book-merge/author", methods=["POST"])
+    async def author(self, request: Request):
+        form = await request.form()
+        key = str(form.get("key") or "")
+        back = str(form.get("back") or "")
+        base = str(request.url_for("admin:index")).rstrip("/")
+        admin = request.session.get("admin_user")
+        name = str(form.get("author") or "")
+        db = get_session_factory()()
+        try:
+            done = set_author(db, key, name, uuid.UUID(admin) if admin else None)
+        finally:
+            db.close()
+        if not done:
+            msg = "Книга не найдена"
+        elif name.strip():
+            msg = f"Автор сохранён: {name.strip()[:200]}"
+        else:
+            msg = "Автор снова по источникам"
         q = f"&q={quote(back)}" if back else ""
         return RedirectResponse(f"{base}/book-merge?msg={quote(msg)}{q}", status_code=303)
 

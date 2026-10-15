@@ -22,7 +22,11 @@
             {% for w in found %}
               <tr>
                 <td><input class="form-check-input pick" type="checkbox" name="key" value="{{ w.key }}"></td>
-                <td><b>{{ w.title }}</b> <div class="text-muted small">{{ w.author }}</div></td>
+                <td><b>{{ w.title }}</b> <div class="text-muted small">{{ w.author }}{% if w.author_fixed %} <span class="badge bg-blue-lt">автор задан вручную</span>{% endif %}</div>
+                  <div class="d-flex gap-1 mt-1">
+                    <input class="form-control form-control-sm" style="max-width: 260px" form="au-{{ loop.index }}" name="author" value="{{ w.author }}" placeholder="Автор">
+                    <button class="btn btn-outline-primary btn-sm" form="au-{{ loop.index }}" type="submit">Сохранить автора</button>
+                  </div></td>
                 <td>{{ w.readers }}</td><td>{{ w.votes }}</td>
                 <td class="text-muted small">{{ w.key }}</td>
               </tr>
@@ -35,6 +39,12 @@
         <div id="kept" class="text-muted small mb-2"></div>
         <button class="btn btn-success" type="submit">Это одна книга — склеить отмеченные</button>
       </form>
+      <p class="text-muted small mt-2 mb-0">Автор: впишите и сохраните — он встанет на карточке книги и на полке у каждого читателя. Пустое поле — автор снова по источникам.</p>
+      {% for w in found %}
+      <form id="au-{{ loop.index }}" method="post" action="{{ base }}/book-merge/author" class="d-none">
+        <input type="hidden" name="key" value="{{ w.key }}"><input type="hidden" name="back" value="{{ q }}">
+      </form>
+      {% endfor %}
       <script>
         // Picks survive a new search on this page, so a translation and its original can be found in turn.
         (function () {
@@ -65,6 +75,38 @@
       {% endif %}
     </div>
   </div>
+
+  {% if disputes %}
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Автор под вопросом ({{ disputes|length }})</h3></div>
+    <div class="card-body text-muted small pb-0">Источники называют разных людей: поиск обложки нашёл одного, читатели в комментариях пишут другого, или переводчика приняли за автора. У всех читателей сейчас стоит автор из колонки «Сейчас». Нажмите правильного или впишите своего — сохранённый автор больше не спорится.</div>
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead><tr><th>Книга</th><th>Сейчас</th><th>Ещё называют</th><th>Свой вариант</th></tr></thead>
+        <tbody>
+        {% for w in disputes %}
+          <tr>
+            <td><b>{{ w.title }}</b><div class="text-muted small">{{ w.readers }} чит.</div></td>
+            <td>{{ w.author }}
+              <form method="post" action="{{ base }}/book-merge/author" class="d-inline m-0">
+                <input type="hidden" name="key" value="{{ w.key }}"><input type="hidden" name="author" value="{{ w.author }}">
+                <button class="btn btn-outline-success btn-sm" type="submit">Верно</button></form></td>
+            <td>{% for r in w.rivals %}
+              <form method="post" action="{{ base }}/book-merge/author" class="d-inline m-0">
+                <input type="hidden" name="key" value="{{ w.key }}"><input type="hidden" name="author" value="{{ r.name }}">
+                <button class="btn btn-outline-primary btn-sm mb-1" type="submit" title="вес {{ r.weight }}">{{ r.name }}</button></form>
+              {% endfor %}</td>
+            <td><form method="post" action="{{ base }}/book-merge/author" class="d-flex gap-1 m-0">
+              <input type="hidden" name="key" value="{{ w.key }}">
+              <input class="form-control form-control-sm" name="author" placeholder="Автор">
+              <button class="btn btn-outline-secondary btn-sm" type="submit">Сохранить</button></form></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
 
   {% if doubles %}
   <div class="card mb-3">
