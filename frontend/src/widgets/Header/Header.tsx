@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { track, useAuth, useI18n, useTheme, LOCALES, type ThemeChoice } from '@/shared/lib';
 import { Logo, Button, Icon, Container } from '@/shared/ui';
 import { Bell } from '@/widgets/Notifications';
+import { HelpButton } from '@/widgets/Help';
 import { MEMBER_TABS, isTabActive } from '@/widgets/BottomNav/tabs';
 import styles from './Header.module.css';
 
@@ -58,7 +59,7 @@ function LangPicker({ className }: { className: string }) {
 
 /**
  * A member's bar: the logo goes to the circle (their home), the same four places as the phone's tab bar
- * on computers, and only the language and the bell beside them. Theme, settings, the ideas box and the app
+ * on computers, and only the language, the bell and «?» (the rules and answers, HelpSheet) beside them. Theme, settings, the ideas box and the app
  * moved into Профиль; nothing here can run out of room and hide a link (2026-10-14 audit: «Читатели»,
  * «Топ» and Telegram sat clipped at every desktop width).
  */
@@ -86,6 +87,7 @@ function MemberHeader() {
           <div className={styles.memberActions}>
             <LangPicker className={styles.globe} />
             <Bell />
+            <HelpButton />
           </div>
         </div>
       </Container>

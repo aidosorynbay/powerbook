@@ -24,7 +24,7 @@ import {
 } from '@/shared/lib';
 import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
-import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews } from '@/widgets';
+import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews, useHelpOn } from '@/widgets';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
 import { FeedbackPrompt, feedbackDue, feedbackDueHere, type FeedbackSource } from '@/widgets/FeedbackPrompt';
@@ -204,6 +204,7 @@ export function DashboardPage() {
   // «Сохранить» turns into a ✓ that draws itself for a moment after a save
   const [justSaved, setJustSaved] = useState(false);
   const [legendOpen, setLegendOpen] = useState(false);
+  const helpOn = useHelpOn();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [topPage, setTopPage] = useState(0);
   const topPager = useRef<HTMLDivElement>(null);
@@ -1741,7 +1742,8 @@ export function DashboardPage() {
                             {t('cal.many')}
                           </span>
                         )}
-                        <span className={styles.calQ}>?</span>
+                        {/* «i»: the colours explained; «?» in the header is for the rules (the council, 2026-10-15) */}
+                        <span className={styles.calQ}>{helpOn ? 'i' : '?'}</span>
                       </button>
                     </div>
 
@@ -1991,6 +1993,11 @@ export function DashboardPage() {
             </div>
             <p className={rt.sheetLead}>{t('cal.circleScale')}</p>
           </>
+        )}
+        {helpOn && (
+          <Link to="/welcome#powerbook" className={styles.legendRules} onClick={() => track('help_link', { key: 'legend_rules' })}>
+            {t('help.rulesShort')} ›
+          </Link>
         )}
         <button type="button" className={`${rt.sheetClose} ${rt.closeBtn}`} onClick={() => setLegendOpen(false)}>{t('dial.coachOk')}</button>
       </Sheet>

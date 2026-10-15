@@ -17,9 +17,10 @@ import {
   type BadgeStats,
   type LeagueTier,
   isStandalone,
+  track,
 } from '@/shared/lib';
 import { Avatar, Card, Container, PageTransition, ProgressBar, Button, BookCard, Icon } from '@/shared/ui';
-import { Header, Footer, ClaimPicker, WrappedCard, BookTime, InviteFriends } from '@/widgets';
+import { Header, Footer, ClaimPicker, WrappedCard, BookTime, InviteFriends, HelpSheet, useHelpOn } from '@/widgets';
 import { paletteFor, dimensionsFor } from '@/pages/library/bookcase/bookArt';
 import { bookCount } from '@/pages/library/bookcase/plural';
 import styles from './InsightsPage.module.css';
@@ -82,6 +83,9 @@ export function InsightsPage() {
   const [inviteOpen, setInviteOpen] = useState(() => window.location.hash === '#invite');
   const [claimOpen, setClaimOpen] = useState(() => window.location.hash === '#claim');
   const isAdmin = user?.system_role === 'admin' || user?.system_role === 'superadmin';
+  // «Правила и о нас» opens the same sheet as «?» in the header: one place for the rules, two ways in
+  const helpOn = useHelpOn();
+  const [helpOpen, setHelpOpen] = useState(false);
   const [hasClaims, setHasClaims] = useState(false);
   useEffect(() => {
     apiGet<unknown[]>('/claims/mine', { requireAuth: true }).then(({ data }) => setHasClaims(Array.isArray(data) && data.length > 0));
@@ -356,10 +360,17 @@ export function InsightsPage() {
                       <ClaimPicker onChange={load} />
                     </section>
                   )}
-                  <Link to="/welcome#powerbook" className={styles.row}>
-                    <span className={styles.rowText}><b>{t('prof2.howItWorks')}</b><small>{t('prof2.howItWorksHint')}</small></span>
-                    <span className={styles.rowChev} aria-hidden="true">›</span>
-                  </Link>
+                  {helpOn ? (
+                    <button type="button" className={styles.row} onClick={() => { setHelpOpen(true); track('help_open', { from: 'profile' }); }}>
+                      <span className={styles.rowText}><b>{t('help.profileRow')}</b><small>{t('prof2.howItWorksHint')}</small></span>
+                      <span className={styles.rowChev} aria-hidden="true">›</span>
+                    </button>
+                  ) : (
+                    <Link to="/welcome#powerbook" className={styles.row}>
+                      <span className={styles.rowText}><b>{t('prof2.howItWorks')}</b><small>{t('prof2.howItWorksHint')}</small></span>
+                      <span className={styles.rowChev} aria-hidden="true">›</span>
+                    </Link>
+                  )}
                   <a href="https://t.me/+ZSmueLtmT8Y1MDBi" target="_blank" rel="noopener noreferrer" className={styles.row}>
                     <span className={styles.rowText}><b>{t('prof2.telegram')}</b></span>
                     <span className={styles.rowChev} aria-hidden="true">↗</span>
@@ -369,6 +380,7 @@ export function InsightsPage() {
                     <span className={styles.rowChev} aria-hidden="true">›</span>
                   </Link>
                 </nav>
+                {helpOn && <HelpSheet open={helpOpen} onClose={() => setHelpOpen(false)} />}
 
                 {/* the rarely needed, quietly: the app only while it isn't installed yet; the ideas box for whoever has one */}
                 <p className={styles.quiet}>

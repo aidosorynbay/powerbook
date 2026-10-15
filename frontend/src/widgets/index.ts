@@ -19,6 +19,7 @@ export { JoinPrompt, WaitlistCard } from './JoinPrompt';
 export { Explainer, MotionReel } from './Explainer';
 export { BookChat } from './BookChat';
 export { Bell } from './Notifications';
+export { HelpButton, HelpSheet, useHelpOn } from './Help';
 export { Bookworm, BookwormCard, BookwormIntro, wormStage } from './Mascot';
 export { BookTime, shelfMinutes } from './BookTime';
 export { InviteFriends } from './InviteFriends/InviteFriends';

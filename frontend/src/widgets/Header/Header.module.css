@@ -704,3 +704,11 @@
 @media (max-width: 360px) {
   .memberLogoText { font-size: var(--font-size-lg); }
 }
+
+/* the narrowest phones (320 px): the logo, the language, the bell and «?» still on one row */
+@media (max-width: 340px) {
+  .memberInner { gap: var(--spacing-3); }
+  .memberActions { gap: 6px; }
+  .globe { padding: 0 7px; }
+  .memberLogoText { font-size: var(--font-size-base); }
+}

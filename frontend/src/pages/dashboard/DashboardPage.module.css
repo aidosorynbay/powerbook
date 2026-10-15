@@ -1566,6 +1566,14 @@
 .calLegendRow i:first-child { margin-left: 0; }
 .calLegendRow em { font-style: normal; margin-left: 4px; }
 .calLegendRow u { width: 5px; height: 5px; border-radius: 50%; background: var(--color-text-secondary); display: inline-block; margin-left: 2px; }
+.legendRules {
+  display: block;
+  margin-top: var(--spacing-3);
+  color: var(--color-accent-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
 .calQ {
   width: 18px;
   height: 18px;
