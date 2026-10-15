@@ -70,6 +70,28 @@
   position: relative;
   height: 100%;
 }
+/* phones, dark theme: the hall's ceiling melts into the header's navy, as the front page's hall does (a tall screen
+   leaves the photo's dark band under the header, and on the logo's navy its edge showed) */
+@media (max-width: 900px) {
+  :global(:root:not([data-theme='light'])) .scroll .stage::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 170px;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      rgb(var(--color-page-rgb)) 0%,
+      rgb(var(--color-page-rgb)) 40%,
+      rgba(var(--color-page-rgb), 0.55) 62%,
+      rgba(var(--color-page-rgb), 0.18) 82%,
+      rgba(var(--color-page-rgb), 0) 100%
+    );
+  }
+}
 .frame {
   position: absolute;
   inset: 0;
