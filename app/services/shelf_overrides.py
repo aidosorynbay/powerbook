@@ -2,9 +2,12 @@
 
 The cover lookup is a good guess, not the last word. Here a reader fixes a
 title or an author, picks another edition's cover, photographs their own
-copy, or asks for the painted edition instead. Every change is theirs
-alone: it shows on their shelf (to them and to anyone visiting it) and
-leaves everyone else's copy of the same book as it was.
+copy, or asks for the painted edition instead. Each change shows on their
+shelf, to them and to anyone visiting it. A picked edition does more: a
+person's choice outranks the lookups, so it becomes the book's cover on
+every shelf and on its card (app.services.book_face). A photo of the
+reader's own copy, a typed title or author and the painted edition stay on
+their shelf alone.
 """
 from __future__ import annotations
 
@@ -54,6 +57,14 @@ def _drop_image(row: ShelfOverride) -> None:
     row.image = row.source = row.source_id = None
 
 
+def _library_changed() -> None:
+    """A picked edition is the book's cover for everyone (app.services.book_face): the shared library is told at
+    once, in both server processes, rather than five minutes later."""
+    from app.services import catalog
+
+    catalog.invalidate()
+
+
 def _tidy(db: Session, row: ShelfOverride) -> None:
     """An override that overrides nothing is just a row; don't keep it."""
     if row.cover_mode == "auto" and not row.title and not row.author and not row.work_key and not row.hidden:
@@ -79,6 +90,7 @@ def set_mode(db: Session, user_id: uuid.UUID, volume_key: str, mode: str) -> Non
     row.cover_mode = mode
     _tidy(db, row)
     db.commit()
+    _library_changed()
 
 
 def pick(db: Session, user_id: uuid.UUID, volume_key: str, source: str, volume_id: str) -> None:
@@ -94,6 +106,7 @@ def pick(db: Session, user_id: uuid.UUID, volume_key: str, source: str, volume_i
     row.cover_mode = "image"
     row.source, row.source_id = source, volume_id
     db.commit()
+    _library_changed()
 
 
 async def upload_photo(
@@ -114,6 +127,7 @@ async def upload_photo(
     row.source = "photo"
     row.source_id = None
     db.commit()
+    _library_changed()
 
 
 def reset(db: Session, user_id: uuid.UUID, volume_key: str) -> None:
@@ -122,6 +136,7 @@ def reset(db: Session, user_id: uuid.UUID, volume_key: str) -> None:
         _drop_image(row)
         db.delete(row)
         db.commit()
+        _library_changed()
 
 
 def search_editions(query: str) -> list[dict]:
