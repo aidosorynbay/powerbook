@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiGet, apiPost, getApiBaseUrl, track, useAuth, useI18n, useWaitlist, type PublicStats } from '@/shared/lib';
-import { LiveRoom, clock, type PublicRoom } from './LiveRoom';
+import { LiveRoom, clock, type PublicHall, type PublicRoom } from './LiveRoom';
+import { useOpenHall } from './openHall';
 import { Ding } from './sound';
 import styles from './GuestRoom.module.css';
 
@@ -9,7 +10,7 @@ import styles from './GuestRoom.module.css';
 export const GUEST_KEY = 'pb.guestSit';
 type Kept = { id: string; token: string; key: string; book: string; ended?: boolean; minutes?: number };
 type SittingOut = {
-  id: string; key: string; seat: number; book: string; status: 'reading' | 'paused';
+  id: string; key: string; hall: PublicHall; seat: number; book: string; status: 'reading' | 'paused';
   elapsed_seconds: number; away_seconds: number; ended: boolean; claimed: boolean;
 };
 type Claimed = { minutes: number; credited: boolean };
@@ -115,12 +116,12 @@ function useWakeLock(on: boolean) {
 }
 
 /**
- * The library hall for a visitor without an account: one tap sits them in a free chair (the book's name is
- * optional), the timer runs with the screen kept on, a locked phone is asked about rather than lost, and when they
- * are done they keep the minutes by joining the circle or just signing up — or leave them.
+ * The reading room for a visitor without an account, the same hall the members read in: one tap sits them in a free
+ * chair (the book's name is optional), the timer runs with the screen kept on, a locked phone is asked about rather
+ * than lost, and when they are done they keep the minutes by joining the circle or just signing up — or leave them.
  */
 /**
- * The visitor's own sitting in the library hall: its own page (/library/hall), or — layout "scroll", the front page —
+ * The visitor's own sitting in the hall: its own page (/library/hall), or — layout "scroll", the front page —
  * the hall coming up as the page scrolls into it, the Round tab's way, with the chair, the book and the timer right
  * there (the founder, 2026-10-14).
  */
@@ -140,6 +141,7 @@ export function GuestRoom({ layout = 'full', cinematic = false }: { layout?: 'fu
   const [stats, setStats] = useState<PublicStats | null>(null);
   const [titles, setTitles] = useState<string[]>([]);
   const [goal, setGoal] = useState(false);
+  const openHall = useOpenHall();
   // the free chairs this screen draws («Сесть в любое кресло» never seats a visitor where they can't see themselves)
   const [drawable, setDrawable] = useState<number[]>([]);
   const stamp = useRef(performance.now());
@@ -408,7 +410,8 @@ export function GuestRoom({ layout = 'full', cinematic = false }: { layout?: 'fu
   return (
     <>
       <LiveRoom
-        hall="library"
+        // a sitting begun in another hall (the library's, before 2026-10-15) is shown where it is until it ends
+        hall={open && sitting && !sitting.ended ? sitting.hall : openHall}
         layout={layout === 'scroll' ? 'scroll' : 'block'}
         cinematic={cinematic}
         reads={cinematic}

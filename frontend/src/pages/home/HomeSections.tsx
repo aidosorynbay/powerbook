@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { Link, useNavigate } from 'react-router-dom';
 import { apiGet, circleOrdinal, getApiBaseUrl, track, trackSectionView, useAuth, useI18n, useWaitlist, type PublicStats } from '@/shared/lib';
 import { Button, Container, Icon } from '@/shared/ui';
-import { GuestRoom, ReadingRoom } from '@/widgets';
+import { GuestRoom, ReadingRoom, useOpenHall } from '@/widgets';
 import { plural } from '@/pages/library/bookcase/plural';
 import { finishFlagIcon } from '@/shared/lib/quietDays';
 import styles from './HomeSections.module.css';
@@ -411,13 +411,13 @@ function HeroTotal({ stats }: { stats: PublicStats }) {
  * The reading room, once on the page, right under the shared treasury — entered the Round tab's way (the founder,
  * 2026-10-14): as the page scrolls, the hall shows as a framed window, opens to the full screen and draws the camera in,
  * smoothly, its top and foot melting into the page; at the end of the way in one can sit down and start the timer right
- * here — a visitor in the library hall (GuestRoom), a member in their circle's hall or the library's (ReadingRoom, as on
- * /round) — or scroll on, and the hall sinks into the page. Mounted only when the reader comes near: the textures are
- * heavy and most visitors never come this far.
+ * here — in the one hall everyone reads in, a visitor (GuestRoom) or a member (ReadingRoom, as on /round) — or scroll
+ * on, and the hall sinks into the page. Mounted only when the reader comes near: the textures are heavy and most
+ * visitors never come this far.
  */
 export function RoomSection() {
   const { isAuthenticated, isLoading } = useAuth();
-  const { state, ready: settled } = useWaitlist();
+  const hall = useOpenHall();
   const ref = useSectionView<HTMLDivElement>('room');
   const box = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(false);
@@ -438,16 +438,12 @@ export function RoomSection() {
     return () => io.disconnect();
   }, []);
 
-  // a member's hall is the one /library/hall would give them: their circle's, or the library's
-  const ready = !isLoading && (!isAuthenticated || settled);
-  const inCircle = !!state && (state.in_current_round || state.in_open_round);
-
   return (
     <div ref={ref} className={styles.roomSection}>
       <div ref={box} className={`${styles.roomScroll} ${isAuthenticated ? styles.roomScrollMember : ''}`}>
-        {near && ready ? (
+        {near && !isLoading ? (
           isAuthenticated
-            ? <ReadingRoom key={inCircle ? 'round' : 'library'} hall={inCircle ? 'round' : 'library'} layout="scroll" />
+            ? <ReadingRoom key={hall} hall={hall} layout="scroll" />
             : <GuestRoom layout="scroll" cinematic />
         ) : (
           <div className={styles.roomWait} aria-hidden="true" />

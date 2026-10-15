@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { apiGet, useI18n } from '@/shared/lib';
 import { HALLS, charFor, createRoomEngine, seatChar, type HallKey, type RoomEngine } from './engine';
+import { noteOpenHall } from './openHall';
 import styles from './ReadingRoom.module.css';
 import own from './LiveRoom.module.css';
 
@@ -13,8 +14,12 @@ export type PublicReader = {
   elapsed_seconds: number;
   book: string;
 };
-export type PublicRoom = { seats: number; readers: PublicReader[]; today: { readers: number; minutes: number }; guest_seats_left?: number };
 export type PublicHall = 'round' | 'library';
+export type PublicRoom = {
+  seats: number; readers: PublicReader[]; today: { readers: number; minutes: number }; guest_seats_left?: number;
+  /* the hall everyone reads in now (see useOpenHall) */
+  open_hall?: PublicHall;
+};
 
 const PHONE = '(max-width: 759px)';
 const HALL_KEY: Record<PublicHall, HallKey> = { round: 'a', library: 'b' };
@@ -98,6 +103,7 @@ export function LiveRoom({ hall, children, onSeat, mineKey, onRoom, refresh = 0,
     const load = async () => {
       const { data } = await apiGet<PublicRoom>(`/reading-room/${hall}/public`);
       if (!alive || !data) return;
+      noteOpenHall(data.open_hall);
       stamp.current = performance.now();
       setRoom(data);
       const taken = new Set(data.readers.map((r) => r.seat));

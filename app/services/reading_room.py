@@ -89,6 +89,15 @@ class ReadingRoomService:
         """The round hall is the current circle's room; the library hall has no circle."""
         return rnd.id if hall == "round" and rnd is not None else None
 
+    def scope(self, hall: str) -> uuid.UUID | None:
+        return self._scope(hall, self.current_round())
+
+    def open_hall(self, rnd: Round | None = None) -> str:
+        """The one hall everyone reads in, in the circle or not, with an account or without — one hall, so that it fills
+        up (the founder, 2026-10-15): the circle's, or the library's while no circle runs this month."""
+        rnd = rnd if rnd is not None else self.current_round()
+        return "round" if rnd is not None else "library"
+
     def _require_seatable(self, hall: str, rnd: Round | None, user: User) -> None:
         # For now the circle's room is open to every reader (the library leads there too); only the circle's own
         # readers get their minutes into its calendar (see _credit). It needs a circle to belong to.
@@ -266,13 +275,15 @@ class ReadingRoomService:
                 "book": g.book_title,
             })
         day = self.day(hall=hall, scope=scope, now=now) if hall == "library" or rnd is not None else None
-        from app.services.guest_room import GUEST_HALL
+        open_hall = self.open_hall(rnd)
 
         return {
             "hall": hall,
+            # the hall to show instead, when this one is not where everyone reads now
+            "open_hall": open_hall,
             "seats": SEATS[hall],
             # how many chairs a visitor without an account may still take here (0: none, or guest reading is off)
-            "guest_seats_left": GuestRoomService(self.db).seats_left() if hall == GUEST_HALL else 0,
+            "guest_seats_left": GuestRoomService(self.db).seats_left() if hall == open_hall else 0,
             "readers": readers,
             "today": {"readers": day["readers"], "minutes": day["minutes"]} if day else {"readers": 0, "minutes": 0},
             "server_time": now.isoformat(),
@@ -337,6 +348,7 @@ class ReadingRoomService:
             })
         return {
             "hall": hall,
+            "open_hall": self.open_hall(rnd),
             "seats": SEATS[hall],
             "can_sit": can_sit,
             "room_minutes": self.room_minutes(user.id),

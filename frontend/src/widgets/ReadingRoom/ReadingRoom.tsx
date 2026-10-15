@@ -4,14 +4,16 @@ import { apiGet, apiPost, colorFromSeed, formatSpent, useAuth, useI18n, useResol
 import { HALLS, charFor, createRoomEngine, seatChar, type HallKey, type RoomEngine } from './engine';
 import { Ding, Snd, type SoundChannel } from './sound';
 import { ShareDay } from '@/widgets/ShareDay';
+import { noteOpenHall } from './openHall';
 import styles from './ReadingRoom.module.css';
 
 /**
  * The reading room: the founder's render of a reading hall, alive, with the readers who are reading right now sitting in
- * its chairs. "round" is the current circle's hall (only its participants sit there, and their minutes go into «Сегодня»),
- * "library" is open to everyone. In the "scroll" layout the hall unfolds as the page scrolls into it (under the round
- * page); in "full" it fills its own page (the library's hall). Phones show the founder's portrait render of the hall,
- * the same picture for both halls, with the readers and the chat in a sheet from below.
+ * its chairs. "round" is the current circle's hall and the one hall everyone reads in (useOpenHall): its participants'
+ * minutes go into «Сегодня», anyone else's are kept as their room minutes, and visitors without an account sit there
+ * too (GuestRoom); "library" is the hall while no circle runs this month. In the "scroll" layout the hall unfolds as the
+ * page scrolls into it (under the round page); in "full" it fills its own page (/library/hall). Phones show the
+ * founder's portrait render of the hall, with the readers and the chat in a sheet from below.
  */
 export type HallName = 'round' | 'library';
 
@@ -43,6 +45,8 @@ type HallDay = { date: string; readers: number; names: string[]; minutes: number
 type MySession = { id: string; hall: HallName; seat: number; book: string; status: 'reading' | 'paused'; elapsed_seconds: number; away_seconds: number; days?: string[] };
 type RoomState = {
   hall: HallName;
+  /* the hall everyone reads in now (see useOpenHall) */
+  open_hall?: HallName;
   seats: number;
   can_sit: boolean;
   round: { id: string; year: number; month: number } | null;
@@ -287,6 +291,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     const q = since.current ? `?since=${encodeURIComponent(since.current)}` : '';
     const { data } = await apiGet<RoomState>(`/reading-room/${hall}/state${q}`, { requireAuth: true });
     if (!data) return;
+    noteOpenHall(data.open_hall);
     stamp.current = performance.now();
     setState(data);
     setLoaded(true);

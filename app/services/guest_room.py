@@ -1,9 +1,10 @@
-"""Reading in the library hall without an account (the front page's «Начать читать»).
+"""Reading in the reading room without an account (the front page's «Начать читать»).
 
-A visitor takes a free chair with a book; their browser keeps a secret token for the sitting, the server only its
-hash. The room shows them like anyone else (a figure, a timer, the book; never a name). When they get up they may keep
-the minutes: after signing up or logging in, `claim` turns the sitting into one of their own ReadingRoomSession rows,
-credited like any sitting (into the circle's day when they are in the circle).
+A visitor takes a free chair with a book in the one hall everyone reads in (ReadingRoomService.open_hall: the
+circle's); their browser keeps a secret token for the sitting, the server only its hash. The room shows them like anyone
+else (a figure, a timer, the book; never a name). When they get up they may keep the minutes: after signing up or
+logging in, `claim` turns the sitting into one of their own ReadingRoomSession rows, credited like any sitting (into the
+circle's day when they are in the circle).
 """
 from __future__ import annotations
 
@@ -26,8 +27,6 @@ from app.models.reading_room import GuestRoomSitting, ReadingRoomSession
 from app.models.user import User
 from app.services.reading_room import AWAY_AFTER, MAX_SITTING, SEATS, ReadingRoomService, reading_day
 
-# Visitors read in the library hall: the circle's own room is for its readers.
-GUEST_HALL = "library"
 GENDERS = {"female", "male", "unknown"}
 # Chairs always left for readers with an account: visitors can never fill the whole hall.
 KEPT_FOR_READERS = 3
@@ -165,13 +164,14 @@ class GuestRoomService:
     # ---------- the visitor's sitting ----------
 
     def seats_left(self) -> int:
-        """Chairs a visitor may still take in the guests' hall."""
+        """Chairs a visitor may still take in the hall everyone reads in."""
         if not settings.guest_room_enabled:
             return 0
-        taken = ReadingRoomService(self.db).taken_seats(GUEST_HALL)
-        free = SEATS[GUEST_HALL] - len(taken)
-        guests = len(self.open_sittings(GUEST_HALL))
-        return max(0, min(free, SEATS[GUEST_HALL] - KEPT_FOR_READERS - guests))
+        rooms = ReadingRoomService(self.db)
+        hall = rooms.open_hall()
+        free = SEATS[hall] - len(rooms.taken_seats(hall))
+        guests = len(self.open_sittings(hall))
+        return max(0, min(free, SEATS[hall] - KEPT_FOR_READERS - guests))
 
     def sit(self, *, seat: int, book: str, gender: str, address: str | None = None) -> dict:
         if not settings.guest_room_enabled:
@@ -182,16 +182,18 @@ class GuestRoomService:
             raise HTTPException(status_code=422, detail="Not a book title")
         if not _allow_sit(address):
             raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many sittings")
-        if not 0 <= seat < SEATS[GUEST_HALL]:
+        rooms = ReadingRoomService(self.db)
+        hall = rooms.open_hall()
+        if not 0 <= seat < SEATS[hall]:
             raise HTTPException(status_code=422, detail="No such chair")
-        if seat in ReadingRoomService(self.db).taken_seats(GUEST_HALL):
+        if seat in rooms.taken_seats(hall):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Chair is taken")
-        if len(self.open_sittings(GUEST_HALL)) >= SEATS[GUEST_HALL] - KEPT_FOR_READERS:
+        if len(self.open_sittings(hall)) >= SEATS[hall] - KEPT_FOR_READERS:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Hall is full for guests")
         token = secrets.token_urlsafe(24)
         now = _now()
         g = GuestRoomSitting(
-            token_hash=_hash(token), hall=GUEST_HALL, seat=seat, book_title=book or "Книга",
+            token_hash=_hash(token), hall=hall, seat=seat, book_title=book or "Книга",
             gender=gender if gender in GENDERS else "unknown",
             status="reading", accumulated_seconds=0, run_started_at=now, last_seen_at=now,
         )
@@ -265,9 +267,10 @@ class GuestRoomService:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already kept")
             return {"minutes": int(s.accumulated_seconds) // 60, "credited": int(s.credited_minutes) > 0, "reason": None}
         rooms = ReadingRoomService(self.db)
+        # in the circle's hall it is a sitting of this circle's day there, like everyone's (the hall's «сегодня»)
         s = ReadingRoomSession(
-            user_id=user.id, hall=g.hall, round_id=None, seat=g.seat, book_title=g.book_title, status="ended",
-            accumulated_seconds=int(g.accumulated_seconds), run_started_at=None,
+            user_id=user.id, hall=g.hall, round_id=rooms.scope(g.hall), seat=g.seat, book_title=g.book_title,
+            status="ended", accumulated_seconds=int(g.accumulated_seconds), run_started_at=None,
             last_seen_at=g.ended_at, ended_at=g.ended_at,
         )
         self.db.add(s)

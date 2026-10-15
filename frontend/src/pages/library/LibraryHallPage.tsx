@@ -1,22 +1,19 @@
-import { useAuth, useWaitlist } from '@/shared/lib';
-import { GuestRoom, Header, ReadingRoom } from '@/widgets';
+import { useAuth } from '@/shared/lib';
+import { GuestRoom, Header, ReadingRoom, useOpenHall } from '@/widgets';
 
 /**
- * The reading room page. A reader of the current circle sits in the circle's own hall; anyone else in the library
- * hall, where their minutes are kept as reading-room minutes. A visitor without an account reads in the library hall
- * too (GuestRoom), and keeps the minutes by signing up afterwards (GuestKept, in the app shell).
+ * The reading room page: one hall for everyone (useOpenHall, the circle's). A reader of the current circle gets their
+ * minutes into the circle's day, anyone else keeps them as reading-room minutes; a visitor without an account reads
+ * there too (GuestRoom) and keeps the minutes by signing up afterwards (GuestKept, in the app shell).
  */
 export function LibraryHallPage() {
   const { isAuthenticated, isLoading } = useAuth();
-  const { state, ready: settled } = useWaitlist();
-  // a reader just logged in from the guest room: wait for their own state, not the visitor's still in memory
-  const ready = !isLoading && (!isAuthenticated || settled);
-  const inCircle = !!state && (state.in_current_round || state.in_open_round);
+  const hall = useOpenHall();
 
   return (
     <div style={{ minHeight: '100svh', background: '#170b06' }}>
       <Header />
-      {ready && (isAuthenticated ? <ReadingRoom key={inCircle ? 'round' : 'library'} hall={inCircle ? 'round' : 'library'} layout="full" /> : <GuestRoom />)}
+      {!isLoading && (isAuthenticated ? <ReadingRoom key={hall} hall={hall} layout="full" /> : <GuestRoom />)}
     </div>
   );
 }
