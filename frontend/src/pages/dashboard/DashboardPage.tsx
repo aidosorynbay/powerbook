@@ -28,7 +28,7 @@ import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type Rin
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
 import { useMediaQuery } from '@/shared/hooks';
-import { MinutesDial, MonthStats, ReminderChip, ReadersSheet, WelcomeBack, Sheet, usePulse, pulseClass, useBookCover, flyMinutes, unlockSound } from '@/widgets/RoundToday';
+import { MinutesDial, MonthStats, ReminderChip, ReadersSheet, WelcomeBack, Sheet, usePulse, pulseClass, useBookCover, flyMinutes, dropToTreasury, unlockSound } from '@/widgets/RoundToday';
 import rt from '@/widgets/RoundToday/RoundToday.module.css';
 import { ShareDay } from '@/widgets/ShareDay';
 import anim from '@/shared/styles/animations.module.css';
@@ -905,7 +905,26 @@ export function DashboardPage() {
       if (dialRect && minutes > 0) {
         setViewUser(null);
         setCalendarView('mine');
-        void flyMinutes(dialRect, () => document.querySelector<HTMLElement>(`[data-day="${todayStr}"]`), minutes, minutes >= DAILY_GOAL_MINUTES);
+        // …and then on into the circle's treasury: one drop to «Круг», today's circle total counting up (2026-10-15)
+        const delta = minutes - before;
+        const circleBefore = circleMinutes.get(todayStr) ?? 0;
+        let fly = true;
+        try {
+          fly = localStorage.getItem('pb.treasuryDrop') !== todayStr;
+          localStorage.setItem('pb.treasuryDrop', todayStr);
+        } catch { /* private mode: fly every time */ }
+        void flyMinutes(dialRect, () => document.querySelector<HTMLElement>(`[data-day="${todayStr}"]`), minutes, minutes >= DAILY_GOAL_MINUTES).then((cell) => {
+          if (!cell || delta <= 0) return;
+          const fmt = (m: number) => (m >= 60 ? (m % 60 ? t('ms.hm', { h: Math.floor(m / 60), m: m % 60 }) : t('ms.h', { h: Math.floor(m / 60) })) : t('ms.m', { m }));
+          track('treasury_drop_seen', { minutes: delta, fly });
+          // one thing moves at a time: on the day's 30 the room's «30 минут» comes first, the drop after it
+          const wait = before < DAILY_GOAL_MINUTES && minutes >= DAILY_GOAL_MINUTES ? 3300 : 250;
+          return new Promise((r) => window.setTimeout(r, wait)).then(() => dropToTreasury(cell, document.querySelector<HTMLElement>('[data-circle-tab]'), document.querySelector<HTMLElement>('[data-cal-week]'), {
+            delta, before: circleBefore, after: circleBefore + delta,
+            plus: `+${t('ms.m', { m: delta })}`, words: t('cal.toTreasury'), total: fmt, fly,
+            onTap: () => { setCalendarView('circle'); track('circle_calendar_open', { source: 'treasury_drop' }); },
+          }));
+        });
       }
       // The moment a runner posts the run: the day has just reached its 30 minutes.
       if (before < DAILY_GOAL_MINUTES && minutes >= DAILY_GOAL_MINUTES) setGoalJustMet(true);
@@ -1624,7 +1643,7 @@ export function DashboardPage() {
                         <button type="button" aria-pressed={calendarView === 'mine'} onClick={() => setCalendarView('mine')}>
                           {t('cal.mine')}
                         </button>
-                        <button type="button" aria-pressed={calendarView === 'circle'} onClick={() => { setCalendarView('circle'); track('circle_calendar_open', {}); }}>
+                        <button type="button" data-circle-tab aria-pressed={calendarView === 'circle'} onClick={() => { setCalendarView('circle'); track('circle_calendar_open', {}); }}>
                           {t('cal.circle')}
                         </button>
                       </div>
@@ -1657,7 +1676,7 @@ export function DashboardPage() {
                       }}
                     >
                       {weekdays.map(day => (
-                        <div key={day} className={styles.calendarHeader}>{day}</div>
+                        <div key={day} className={styles.calendarHeader} data-cal-week={day === weekdays[0] ? '' : undefined}>{day}</div>
                       ))}
                       {calendarView === 'circle' ? circleCalendarGrid.map((cell, idx) => {
                         if (cell === null) {
