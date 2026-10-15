@@ -188,7 +188,10 @@ class InsightsService:
 
     # ---------- all-time profile ----------
 
-    def all_time_profile(self, *, user_id: uuid.UUID) -> AllTimeProfileOut:
+    def all_time_profile(self, *, user_id: uuid.UUID, exact_books: bool = False) -> AllTimeProfileOut:
+        """exact_books: count books as the reader's shelf does (one reader's own pages: Профиль, a public profile).
+        Lists over every reader (the directory, badges) keep the cheap circle-only count: building a thousand shelves
+        would stall them."""
         ids = self._effective_ids(user_id)
         dates = self.repo.all_logged_dates(user_ids=ids)
         longest, current = streaks.longest_and_current(dates, streaks.circle_last_days(self.db))
@@ -197,7 +200,7 @@ class InsightsService:
         total_days_logged = self.repo.total_days_logged(user_ids=ids)
         rounds_participated = self.repo.rounds_participated_count(user_ids=ids)
         first_round = self.repo.first_round_for_user(user_ids=ids)
-        books = self.repo.finished_book_titles_for_user(user_ids=ids)
+        books = self._finished_books(user_id) if exact_books else self.repo.finished_book_titles_for_user(user_ids=ids)
 
         possible_days = sum(calendar.monthrange(rnd.year, rnd.month)[1] for rnd in self._participated_rounds(ids))
         consistency = int(round((total_days_logged / possible_days) * 100)) if possible_days else 0
@@ -213,6 +216,15 @@ class InsightsService:
             first_round_label=(f"{MONTHS[first_round.month]} {first_round.year}" if first_round else None),
             books_finished=len(books),
         )
+
+    def _finished_books(self, user_id: uuid.UUID) -> list:
+        """The books the reader has finished, as their shelf shows them: finished in a circle, added by hand as read
+        outside the circles, or an uploaded book read to the end. Профиль counted only the circle ones, so its
+        «0 книг прочитано» stood next to books the shelf and «Моё чтение» called finished (2026-10-15)."""
+        from app.services.bookcase import BookcaseService
+
+        shelf = BookcaseService(self.db).bookcase(owner_id=user_id, viewer_id=user_id)
+        return [b for b in shelf.books if b.status == "finished"]
 
     def _participated_rounds(self, user_ids: list[uuid.UUID]) -> list:
         """The circles these accounts were in, in one query: one per circle
@@ -738,7 +750,6 @@ class InsightsService:
             best_month = max(by_month, key=lambda m: by_month[m])
             best_minutes = by_month[best_month]
 
-        profile = self.all_time_profile(user_id=user_id)
         arch = self.archetype(user_id=user_id)
 
         rounds_in_year = [rnd for rnd in self._participated_rounds(ids) if rnd.year == year]
@@ -750,9 +761,10 @@ class InsightsService:
             except HTTPException:
                 continue
 
-        books_this_year = sum(
-            1 for _, d, rnd in self.repo.finished_books_for_user(user_ids=ids) if rnd.year == year
-        )
+        # the year card says what «Моё чтение» says for the same year: the shelf's finished books, the counted-day streak
+        books_this_year = sum(1 for b in self._finished_books(user_id) if (b.finished_on or "").startswith(str(year)))
+        year_days = [d for d in self.repo.all_logged_dates(user_ids=ids) if d.year == year]
+        year_streak, _ = streaks.longest_and_current(year_days, streaks.circle_last_days(self.db))
 
         rounds_this_year = len(rounds_in_year)
 
@@ -764,7 +776,7 @@ class InsightsService:
             total_hours=total_minutes // 60,
             best_month_label=(MONTHS[best_month] if best_month else None),
             best_month_minutes=best_minutes,
-            longest_streak_days=profile.longest_streak_days,
+            longest_streak_days=year_streak,
             books_finished=books_this_year,
             percentile_best=best_pct,
             archetype=arch,

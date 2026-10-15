@@ -118,6 +118,9 @@ def overview(db: Session, *, user: User, period: str) -> ReadingOverviewOut:
 
     in_books = [b for b in finished if _in_period(b.finished_on, year, month)]
     in_days = {d: m for d, m in daily.items() if m > 0 and _in_period(d.isoformat(), year, month)}
+    # A streak is a run of counted (30-minute) days everywhere in the product — Профиль, Рекорды, «Мой месяц» — so
+    # this page counts the same days, not every day with a minute in it (2026-10-15: 9 here against 8 in Профиль).
+    counted = [d for d in InsightsRepository(db).all_logged_dates(user_ids=ids) if _in_period(d.isoformat(), year, month)]
 
     notes_count = 0
     for b in shelf.books:
@@ -185,7 +188,7 @@ def overview(db: Session, *, user: User, period: str) -> ReadingOverviewOut:
         months=months,
         minutes=sum(in_days.values()),
         days_read=len(in_days),
-        longest_streak=_streak(list(in_days), streaks.circle_last_days(db)),
+        longest_streak=_streak(counted, streaks.circle_last_days(db)),
         best_day=BestDayOut(date=best[0].isoformat(), minutes=best[1]) if best else None,
         units=[UnitOut(key=k, minutes=v[0], books=v[1]) for k, v in sorted(units.items())],
         books=sorted(book_rows, key=lambda r: r.finished_on or "", reverse=True),

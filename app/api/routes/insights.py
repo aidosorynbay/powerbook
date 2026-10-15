@@ -30,7 +30,7 @@ router = APIRouter(prefix="/insights", tags=["insights"])
 
 @router.get("/profile", response_model=AllTimeProfileOut)
 def get_all_time_profile(db: Session = Depends(get_db), user=Depends(get_current_user)) -> AllTimeProfileOut:
-    return InsightsService(db).all_time_profile(user_id=user.id)
+    return InsightsService(db).all_time_profile(user_id=user.id, exact_books=True)
 
 
 @router.get("/percentile", response_model=PercentileOut)

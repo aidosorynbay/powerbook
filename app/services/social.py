@@ -158,7 +158,7 @@ class SocialService:
         if target is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-        profile = self.insights.all_time_profile(user_id=target.id)
+        profile = self.insights.all_time_profile(user_id=target.id, exact_books=True)
         arch_key, arch_weekday = self._archetype_ref(target.id)
         badges = self.insights.badges(user_id=target.id)
         earned = sum(1 for b in badges if b.earned)
