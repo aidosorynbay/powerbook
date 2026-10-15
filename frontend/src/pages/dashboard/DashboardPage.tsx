@@ -27,6 +27,7 @@ import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews } from '@/widgets';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
+import { FeedbackPrompt, feedbackDue, type FeedbackSource } from '@/widgets/FeedbackPrompt';
 import { useMediaQuery } from '@/shared/hooks';
 import { MinutesDial, MonthStats, ReminderChip, ReadersSheet, WelcomeBack, Sheet, usePulse, pulseClass, useBookCover, flyMinutes, dropToTreasury, unlockSound, ReminderOffer, reminderOfferDue, NewCircleCard } from '@/widgets/RoundToday';
 import rt from '@/widgets/RoundToday/RoundToday.module.css';
@@ -214,6 +215,16 @@ export function DashboardPage() {
     if (next === 1) track('stats_open', {});
   };
   const [goalJustMet, setGoalJustMet] = useState(false);
+  // «Как вам PowerBook?»: after an ordinary saved day at most once a month, or at once from the founder's link
+  const [feedback, setFeedback] = useState<FeedbackSource | null>(null);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('feedback') !== '1') return;
+    q.delete('feedback');
+    const rest = q.toString();
+    window.history.replaceState(window.history.state, '', window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash);
+    setFeedback('link');
+  }, []);
   const [todayBooks, setTodayBooks] = useState<DayBook[]>([]);
   const [todayStart, setTodayStart] = useState<string | null>(null);
 
@@ -971,7 +982,19 @@ export function DashboardPage() {
         // the app opens, maybe the next morning, which is the wrong moment for «напомнить в это же время»
         const savedAt = Date.now();
         void reminderOfferDue().then((due) => {
-          if (!due) return;
+          if (!due) {
+            // One prompt per save: with no reminder to offer, now and then «Как вам PowerBook?» (a few days read),
+            // once the drop is in the pool, and never over another sheet.
+            const daysRead = prev.filter((d) => d.minutes > 0).length + 1;
+            if (feedbackDue(daysRead)) {
+              void Promise.race([dropDone.catch(() => {}), new Promise((r) => window.setTimeout(r, 8000))]).then(() =>
+                window.setTimeout(() => {
+                  if (feedbackDue(daysRead) && !document.querySelector('[role="dialog"]')) setFeedback((f) => f ?? 'after_save');
+                }, 1200),
+              );
+            }
+            return;
+          }
           void Promise.race([dropDone.catch(() => {}), new Promise((r) => window.setTimeout(r, 8000))]).then(() =>
             window.setTimeout(() => {
               if (document.visibilityState !== 'visible' || Date.now() - savedAt > 30_000) return;
@@ -2147,6 +2170,7 @@ export function DashboardPage() {
         </div>
       )}
 
+      {feedback && <FeedbackPrompt source={feedback} roundId={roundStatus?.round?.id} onClose={() => setFeedback(null)} />}
     </PageTransition>
   );
 }

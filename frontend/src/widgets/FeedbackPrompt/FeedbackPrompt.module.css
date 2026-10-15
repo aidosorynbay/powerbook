@@ -1,0 +1,139 @@
+/* «Как вам PowerBook?»: the sheet after a saved day */
+
+.moods {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: var(--spacing-4);
+}
+.mood {
+  min-height: 48px;
+  padding: 8px 6px;
+  border-radius: 14px;
+  /* the light theme's sheet and secondary ground are one colour: the edge keeps the choice visible */
+  border: 1.5px solid var(--color-border-primary);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  text-wrap: balance;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.moodOn {
+  border-color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 16%, var(--color-bg-elevated));
+}
+
+.text {
+  display: block;
+  width: 100%;
+  min-height: 84px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font: inherit;
+  /* 16 px: an iPhone does not zoom into the field */
+  font-size: 16px;
+  line-height: 1.4;
+  resize: vertical;
+}
+.text::placeholder { color: var(--color-text-muted); }
+.text:focus { outline: none; border-color: var(--color-accent-primary); }
+
+.addPhoto {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1.5px dashed var(--color-border-primary);
+  background: none;
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.addPhoto:disabled { cursor: progress; opacity: 0.7; }
+.addIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--color-accent-primary-muted);
+  color: var(--color-accent-primary);
+  font-size: 20px;
+}
+.addPhoto b { display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
+.addPhoto small { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.35; color: var(--color-text-secondary); }
+
+.photo {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-secondary);
+}
+.thumb { display: block; width: 76px; height: 96px; border-radius: 10px; object-fit: cover; }
+.photoActions { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.photoActions button {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+.consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13.5px;
+  line-height: 1.35;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+.consent input { flex: none; width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--color-accent-primary); }
+
+.error { margin: 10px 0 0; font-size: var(--font-size-sm); color: var(--color-danger); }
+.send { margin-top: var(--spacing-4); }
+.later {
+  display: block;
+  margin: 4px auto 0;
+  padding: 10px 16px;
+  border: 0;
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.thanks { padding-top: 6px; text-align: center; }
+.thanksIcon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: var(--color-success-muted);
+  color: var(--color-success);
+  font-size: 26px;
+}
