@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { track, useAuth, useI18n, useTheme, LOCALES, type ThemeChoice } from '@/shared/lib';
-import { Logo, Button, Icon, Container } from '@/shared/ui';
+import { Logo, LogoLockup, Button, Icon, Container } from '@/shared/ui';
 import { Bell, MessagesLink } from '@/widgets/Notifications';
 import { HelpButton } from '@/widgets/Help';
 import { MEMBER_TABS, isTabActive } from '@/widgets/BottomNav/tabs';
@@ -71,8 +71,7 @@ function MemberHeader() {
       <Container>
         <div className={styles.memberInner}>
           <Link to="/round" className={styles.memberLogo} aria-label={`PowerBook — ${t('nav.round')}`}>
-            <img src="/logo-icon.png" alt="" className={styles.memberLogoIcon} />
-            <span className={styles.memberLogoText}>PowerBook</span>
+            <LogoLockup className={styles.memberLockup} />
           </Link>
           <nav className={styles.memberNav} aria-label={t('nav2.main')}>
             {MEMBER_TABS.map((tab) => {
@@ -205,8 +204,7 @@ function GuestHeader() {
               aria-haspopup="true"
               aria-label={t('header.menuHint')}
             >
-              <img src="/logo-icon.png" alt="" className={styles.logoTriggerIcon} />
-              <span className={styles.logoTriggerText}>PowerBook</span>
+              <LogoLockup className={styles.triggerLockup} />
               <span className={`${styles.logoChev} ${menuOpen ? styles.logoChevOpen : ''}`} aria-hidden="true">▾</span>
               {showHint && <span className={styles.hintDot} aria-hidden="true" />}
             </button>

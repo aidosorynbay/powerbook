@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { LogoLockup } from './LogoLockup';
 import styles from './Logo.module.css';
 
 interface LogoProps {
@@ -7,6 +8,7 @@ interface LogoProps {
   className?: string;
 }
 
+/** The logo as the way home: the brand kit's lockup, or its mark alone when there is no room for the word. */
 export function Logo({ size = 'md', showText = true, className = '' }: LogoProps) {
   const classNames = [
     styles.logo,
@@ -15,9 +17,8 @@ export function Logo({ size = 'md', showText = true, className = '' }: LogoProps
   ].filter(Boolean).join(' ');
 
   return (
-    <Link to="/" className={classNames}>
-      <img src="/logo-icon.png" alt="PowerBook" className={styles.icon} />
-      {showText && <span className={styles.text}>PowerBook</span>}
+    <Link to="/" className={classNames} aria-label="PowerBook">
+      <LogoLockup mark={!showText} />
     </Link>
   );
 }

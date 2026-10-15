@@ -222,7 +222,7 @@
 .logoTrigger {
   display: none;
   align-items: center;
-  gap: var(--spacing-2);
+  gap: var(--spacing-3); /* the chevron keeps out of the logo's clear space */
   padding: var(--spacing-1) var(--spacing-2) var(--spacing-1) 0;
   background: transparent;
   border: none;
@@ -233,16 +233,9 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.logoTriggerIcon {
-  width: 26px;
+/* the brand kit's lockup (shared/ui/Logo/LogoLockup): only its height is set, its width follows */
+.triggerLockup {
   height: 26px;
-  object-fit: contain;
-  display: block;
-}
-
-.logoTriggerText {
-  font-size: var(--font-size-base);
-  white-space: nowrap;
 }
 
 .logoChev {
@@ -256,11 +249,12 @@
   color: var(--color-accent-primary);
 }
 
-/* First-visit nudge: a dot on the control plus a short label beside it. */
+/* First-visit nudge: a dot on the control plus a short label beside it. The dot sits by the chevron, the menu's own
+   sign — never on the logo (the brand kit: nothing added to the mark). */
 .hintDot {
   position: absolute;
-  left: 18px;
-  bottom: 2px;
+  right: 0;
+  top: 4px;
   width: 8px;
   height: 8px;
   border-radius: var(--radius-full);
@@ -500,14 +494,8 @@
 @media (max-width: 900px) {
   /* The mark is the brand's most recognisable asset and the menu trigger —
      on a phone it deserves more presence than a desktop-sized icon. */
-  .logoTriggerIcon {
-    width: 38px;
-    height: 38px;
-  }
-
-  .logoTriggerText {
-    font-size: var(--font-size-xl);
-    letter-spacing: -0.02em;
+  .triggerLockup {
+    height: 30px;
   }
 
   .logoChev {
@@ -515,7 +503,6 @@
   }
 
   .hintDot {
-    left: 26px;
     width: 9px;
     height: 9px;
   }
@@ -596,19 +583,9 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.memberLogoIcon {
-  width: 32px;
-  height: 32px;
-  object-fit: contain;
-  display: block;
-}
-
-.memberLogoText {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: var(--letter-spacing-tight);
-  color: var(--color-accent-primary);
-  white-space: nowrap;
+/* the brand kit's lockup (shared/ui/Logo/LogoLockup): only its height is set, its width follows */
+.memberLockup {
+  height: 28px;
 }
 
 .memberNav {
@@ -693,16 +670,17 @@
 
 @media (max-width: 900px) {
   .memberNav { display: none; }
-  .memberLogoIcon { width: 38px; height: 38px; }
-  .memberLogoText {
-    font-size: var(--font-size-xl);
-    letter-spacing: -0.02em;
-    color: var(--color-text-primary);
-  }
+  .memberLockup { height: 30px; }
 }
 
-@media (max-width: 360px) {
-  .memberLogoText { font-size: var(--font-size-lg); }
+/* Phones: the mark alone, 32 px (brand book p. 16: «высота знака 28–32 px. На телефоне — только знак») — a square
+   box cuts the word off the kit's lockup. It also leaves the bell and «?» their room at 320–375 px. */
+@media (max-width: 600px) {
+  .memberLockup,
+  .triggerLockup {
+    height: 32px;
+    aspect-ratio: 1;
+  }
 }
 
 /* the narrowest phones (320 px): the logo, the language, the bell and «?» still on one row */
@@ -710,5 +688,4 @@
   .memberInner { gap: var(--spacing-3); }
   .memberActions { gap: 6px; }
   .globe { padding: 0 7px; }
-  .memberLogoText { font-size: var(--font-size-base); }
 }

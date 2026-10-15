@@ -12,7 +12,7 @@ export { ProgressBar } from './ProgressBar';
 export { Icon } from './Icon';
 export type { IconName } from './Icon';
 
-export { Logo } from './Logo';
+export { Logo, LogoLockup } from './Logo';
 
 export { Container } from './Container';
 

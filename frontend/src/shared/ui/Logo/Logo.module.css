@@ -1,46 +1,52 @@
 .logo {
   display: flex;
   align-items: center;
-  gap: var(--spacing-2);
   text-decoration: none;
 }
 
-.icon {
-  object-fit: contain;
+/* The kit's lockup keeps its own proportions (1050.9 × 200): only its height is set. The word takes the page's
+   ink — #FFFFFF on the navy, #0B1C26 on paper, the kit's whiteword and navyword. */
+.lockup {
+  display: block;
+  height: 28px;
+  width: auto;
+  aspect-ratio: 1050.9 / 200;
+  color: var(--color-text-primary);
+  flex: none;
 }
 
-.sm .icon {
+.markOnly {
+  display: block;
+  height: 32px;
+  width: auto;
+  aspect-ratio: 1;
+  flex: none;
+}
+
+.sm .lockup {
+  height: 22px;
+}
+
+.md .lockup {
+  height: 28px;
+}
+
+.lg .lockup {
+  height: 36px;
+}
+
+.sm .markOnly {
   height: 24px;
 }
 
-.md .icon {
-  height: 32px;
-}
-
-.lg .icon {
+.lg .markOnly {
   height: 40px;
 }
 
-.text {
-  font-weight: var(--font-weight-bold);
-  color: var(--color-accent-primary);
-  letter-spacing: var(--letter-spacing-tight);
-}
-
-.sm .text {
-  font-size: var(--font-size-base);
-}
-
-.md .text {
-  font-size: var(--font-size-lg);
-}
-
-.lg .text {
-  font-size: var(--font-size-xl);
-}
-
+/* Phones: the mark alone (brand book p. 16, «На телефоне — только знак»; the logo did so before the kit's lockup
+   too) — a square box cuts the word off the lockup. */
 @media (max-width: 600px) {
-  .text {
-    display: none;
+  .lockup {
+    aspect-ratio: 1;
   }
 }
