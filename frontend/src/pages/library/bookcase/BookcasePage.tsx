@@ -729,8 +729,8 @@ export function BookcasePage({ ownerId }: Props) {
     setWorks((w) => {
       const next = { ...w };
       const book = data?.books.find((b) => b.key === key);
-      const key = bookKey(book);
-      if (key) delete next[key];
+      const cached = bookKey(book);
+      if (cached) delete next[cached];
       return next;
     });
   }, [data]);
