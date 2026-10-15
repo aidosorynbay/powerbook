@@ -278,3 +278,15 @@ def test_only_the_shared_library_decides_how_a_book_looks():
         for start in [m.start() for m in re.finditer(r"<BookFace\b", text)]:
             end = min(i for i in (text.find("/>", start), text.find(">\n", start), len(text)) if i >= 0)
             assert "seed=" in text[start:end], f"{path.relative_to(root)}: a BookFace without seed= (the book's key)"
+
+
+def test_popular_books_name_titles_only_and_leave_private_books_out(env):
+    from app.repositories.insights import InsightsRepository
+
+    env.db.add(ReadingLog(round_id=env.rnd.id, user_id=env.orken.id, date=date(2026, 9, 27), minutes=40, score=0,
+                          comment="«Тайный дневник» — никому", book_finished=True, is_comment_private=True))
+    env.db.add(ReadingLog(round_id=env.rnd.id, user_id=env.orken.id, date=date(2026, 9, 28), minutes=40, score=0,
+                          comment="«Мартин Иден»\nПлакал весь вечер", book_finished=True))
+    env.db.commit()
+    titles = [t for t, _ in InsightsRepository(env.db).popular_books(limit=20)]
+    assert "Мартин Иден" in titles and not any("Тайный" in t or "Плакал" in t for t in titles)

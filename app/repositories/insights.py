@@ -220,9 +220,11 @@ class InsightsRepository(BaseRepository[None]):
         # (an appended aside, reaction-thread noise, a quoted vs. unquoted
         # title) would otherwise split one book's finishers across several
         # rows and undercount every title. Each group keeps its most common
-        # raw spelling as the display title.
+        # spelling of the title (never the rest of the comment) as the display
+        # title, and a book finished with a private comment stays out of it.
         stmt = select(ReadingLog.user_id, ReadingLog.comment).where(
-            ReadingLog.book_finished.is_(True), ReadingLog.comment.is_not(None)
+            ReadingLog.book_finished.is_(True), ReadingLog.comment.is_not(None),
+            ReadingLog.is_comment_private.is_(False),
         )
         readers_by_norm: dict[str, set[uuid.UUID]] = defaultdict(set)
         raw_counts_by_norm: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -231,7 +233,7 @@ class InsightsRepository(BaseRepository[None]):
                 continue
             norm = normalize_book_title(comment)
             readers_by_norm[norm].add(user_id)
-            raw_counts_by_norm[norm][comment.strip()] += 1
+            raw_counts_by_norm[norm][(matching_title(comment) or comment.split("\n", 1)[0]).strip()] += 1
 
         ranked = sorted(readers_by_norm.items(), key=lambda kv: -len(kv[1]))[:limit]
         return [
