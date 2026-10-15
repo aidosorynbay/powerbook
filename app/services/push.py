@@ -338,6 +338,14 @@ def scheduled() -> None:
         except Exception:
             logger.exception("new circle tick failed")
             db.rollback()
+        try:
+            # «Хей, как вы?»: the morning list to the founder, and the messages he said yes to
+            from app.services import checkins
+
+            checkins.tick(db)
+        except Exception:
+            logger.exception("check-in tick failed")
+            db.rollback()
         finally:
             db.close()
             fcntl.flock(handle, fcntl.LOCK_UN)

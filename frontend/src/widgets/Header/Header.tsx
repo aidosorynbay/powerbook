@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { track, useAuth, useI18n, useTheme, LOCALES, type ThemeChoice } from '@/shared/lib';
 import { Logo, Button, Icon, Container } from '@/shared/ui';
-import { Bell } from '@/widgets/Notifications';
+import { Bell, MessagesLink } from '@/widgets/Notifications';
 import { HelpButton } from '@/widgets/Help';
 import { MEMBER_TABS, isTabActive } from '@/widgets/BottomNav/tabs';
 import styles from './Header.module.css';
@@ -86,6 +86,7 @@ function MemberHeader() {
           </nav>
           <div className={styles.memberActions}>
             <LangPicker className={styles.globe} />
+            <MessagesLink />
             <Bell />
             <HelpButton />
           </div>
@@ -274,6 +275,7 @@ function GuestHeader() {
           {/* Phones: the row holds only the logo, so language and account fit
               here as compact chips instead of hiding inside the menu. */}
           <div className={styles.mobileActions}>
+            <MessagesLink />
             <Bell />
             <ThemeButton className={styles.themeBtn} />
             <select
@@ -315,6 +317,7 @@ function GuestHeader() {
               </Link>
             )}
 
+            <MessagesLink />
             <Bell />
 
             <ThemeButton className={styles.themeBtn} />

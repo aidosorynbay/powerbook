@@ -10,9 +10,9 @@ import styles from './Bell.module.css';
 const POLL_MS = 60_000;
 
 // The switches, in the order the server lists them.
-const KINDS = ['new_circle', 'new_review', 'review_reply', 'watch_listing', 'watch_finished', 'wanted_by', 'guest_read'] as const;
+const KINDS = ['checkin', 'new_circle', 'new_review', 'review_reply', 'watch_listing', 'watch_finished', 'wanted_by', 'guest_read'] as const;
 
-const ICONS: Record<string, IconName> = { new_circle: 'calendar', new_review: 'chat', review_reply: 'chat', watch_listing: 'tag', wanted_by: 'users', guest_read: 'gift' };
+const ICONS: Record<string, IconName> = { checkin: 'chat', checkin_reply: 'chat', new_circle: 'calendar', new_review: 'chat', review_reply: 'chat', watch_listing: 'tag', wanted_by: 'users', guest_read: 'gift' };
 
 /** Where a notification leads, and what it says. */
 function useWords() {
@@ -60,6 +60,14 @@ function useWords() {
     if (n.kind === 'new_circle') {
       // the first day of a month, for last month's reader who has not signed up yet
       return { text: t('notif.newCircle', { circle: t(`roundTitle.${Number(d.month ?? 1)}`) }), to: '/round?source=bell_new_circle' };
+    }
+    if (n.kind === 'checkin' || n.kind === 'checkin_reply') {
+      // «Хей, как вы?» from the founder, and his answers in the conversation it opened
+      const text = String(d.text ?? '');
+      return {
+        text: t(n.kind === 'checkin' ? 'notif.checkin' : 'notif.checkinReply', { from: String(d.from ?? ''), text }),
+        to: n.kind === 'checkin' ? '/round?source=bell_checkin' : '/messages?source=bell',
+      };
     }
     if (n.kind === 'guest_read') {
       return {

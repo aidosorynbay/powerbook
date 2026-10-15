@@ -29,7 +29,7 @@ import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
 import { FeedbackPrompt, feedbackDue, feedbackDueHere, type FeedbackSource } from '@/widgets/FeedbackPrompt';
 import { useMediaQuery } from '@/shared/hooks';
-import { MinutesDial, MonthStats, ReminderChip, ReadersSheet, WelcomeBack, Sheet, usePulse, pulseClass, useBookCover, flyMinutes, dropToTreasury, unlockSound, ReminderOffer, reminderOfferDue, NewCircleCard } from '@/widgets/RoundToday';
+import { MinutesDial, MonthStats, ReminderChip, ReadersSheet, WelcomeBack, Sheet, usePulse, pulseClass, useBookCover, flyMinutes, dropToTreasury, unlockSound, ReminderOffer, reminderOfferDue, NewCircleCard, MissedYesterday, CheckinCard, CheckinAsk } from '@/widgets/RoundToday';
 import rt from '@/widgets/RoundToday/RoundToday.module.css';
 import { ShareDay } from '@/widgets/ShareDay';
 import anim from '@/shared/styles/animations.module.css';
@@ -159,6 +159,7 @@ export function DashboardPage() {
 
   // Modal for logging minutes
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [checkinShown, setCheckinShown] = useState(false);
   const [minutesInput, setMinutesInput] = useState('');
   // Day tapped on a decorative (out-of-round) cell, or null
   const [quietDay, setQuietDay] = useState<number | null>(null);
@@ -1380,7 +1381,22 @@ export function DashboardPage() {
                         </div>
                       )}
 
-                      {calendar && <WelcomeBack days={calendar.days} todayStr={todayStr} todayMinutes={todayData?.minutes ?? 0} />}
+                      {/* «Хей, как вы?» from the founder after three quiet days (app/services/checkins.py); while it is
+                          up, the other lines about a break stay quiet: one voice at a time */}
+                      <CheckinCard
+                        onShown={setCheckinShown}
+                        onForgot={() => openLogModal(yesterdayStr, calendar?.days.find((d) => d.date === yesterdayStr)?.minutes ?? 0)}
+                      />
+                      {calendar && !checkinShown && <WelcomeBack days={calendar.days} todayStr={todayStr} todayMinutes={todayData?.minutes ?? 0} />}
+                      {calendar && !checkinShown && (
+                        <MissedYesterday
+                          days={calendar.days}
+                          todayStr={todayStr}
+                          todayMinutes={todayData?.minutes ?? 0}
+                          onLogYesterday={(date) => openLogModal(date, calendar.days.find((d) => d.date === date)?.minutes ?? 0)}
+                        />
+                      )}
+                      {!checkinShown && <CheckinAsk todayMinutes={todayData?.minutes ?? 0} />}
 
                       {/* «Сегодня» (2026-10-13): the book and the reminder, the dial, «Сохранить»; a swipe in the
                           dial's middle (or the dots) turns to «Мой месяц» */}

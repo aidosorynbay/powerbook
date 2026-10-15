@@ -5,7 +5,7 @@
 export const MEMBER_TABS = [
   { path: '/round', icon: 'clock', label: 'nav.round', also: [] as string[] },
   { path: '/results', icon: 'calendar', label: 'nav2.results', also: ['/archive', '/hall-of-fame'] },
-  { path: '/insights', icon: 'user', label: 'nav.profile', also: ['/profile', '/readers', '/reading', '/suggestions', '/get'] },
+  { path: '/insights', icon: 'user', label: 'nav.profile', also: ['/profile', '/readers', '/reading', '/suggestions', '/get', '/messages'] },
   { path: '/library', icon: 'book', label: 'nav.library', also: ['/books', '/market'] },
 ] as const;
 

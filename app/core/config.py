@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     # numeric chat ids, comma-separated. Empty means nobody.
     telegram_admin_chat_ids: str = ""
 
+    # «Хей, как вы?» to readers quiet in the circle (app/services/checkins.py).
+    # Whose name the message goes out in: a username; empty means the first
+    # superadmin. CHECKIN_AUTO=true sends without the founder's morning tap.
+    checkin_from_username: str = ""
+    checkin_auto: bool = False
+
     # Google Books API key for cover lookups (app/services/covers.py). Empty
     # means the keyless public feed, which works but searches less well.
     google_books_api_key: str = ""

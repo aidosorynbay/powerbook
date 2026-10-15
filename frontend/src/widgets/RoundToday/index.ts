@@ -7,3 +7,4 @@ export { flyMinutes, dropToTreasury } from './flyMinutes';
 export { unlockSound } from './haptics';
 export { ReminderOffer, reminderOfferDue } from './ReminderOffer';
 export { NewCircleCard } from './NewCircleCard';
+export { MissedYesterday, CheckinCard, CheckinAsk } from './Checkin';

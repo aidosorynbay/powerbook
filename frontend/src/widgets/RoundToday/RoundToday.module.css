@@ -487,6 +487,70 @@
 .welcome p { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-secondary); line-height: 1.4; }
 .welcome button { justify-self: start; font: inherit; font-size: var(--font-size-xs); color: var(--color-text-muted); background: none; border: 0; padding: 2px 0; cursor: pointer; }
 
+/* the day after a miss: one quiet line, no colour of its own */
+.missedLine { margin: 0 0 var(--spacing-2); font-size: var(--font-size-sm); color: var(--color-text-secondary); line-height: 1.4; }
+
+/* «Хей, как вы?» — the founder's message, a letter from a person rather than a banner */
+.checkin {
+  display: grid;
+  gap: var(--spacing-2);
+  margin: 0 0 var(--spacing-3);
+  padding: var(--spacing-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-primary);
+}
+.checkinHead { display: flex; align-items: center; gap: var(--spacing-2); font-size: var(--font-size-sm); }
+.checkinText { margin: 0; font-size: var(--font-size-base); line-height: 1.45; white-space: pre-line; }
+.checkinThanks { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.checkinLink { justify-self: start; font-size: var(--font-size-sm); color: var(--color-accent-primary); }
+.checkinAnswers { display: flex; flex-wrap: wrap; gap: 6px; }
+.checkinAnswers button,
+.checkinAnswers a {
+  font: inherit;
+  font-size: var(--font-size-sm);
+  padding: 8px 12px;
+  min-height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  cursor: pointer;
+}
+.checkinAnswers button:disabled { opacity: 0.6; cursor: default; }
+.checkinAnswers .checkinMore { border-color: transparent; background: none; color: var(--color-text-muted); padding-inline: 6px; }
+.checkinClose {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  font-size: 20px;
+  line-height: 1;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.missedLog {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent-primary);
+  cursor: pointer;
+}
+.checkinAsk { display: flex; gap: var(--spacing-3); align-items: center; margin-top: 4px; }
+.welcome .checkinYes {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-on-accent);
+  background: var(--color-accent-primary);
+  border-radius: 999px;
+  padding: 8px 14px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pulseFast::after, .pulseSlow::after, .sheet { animation: none; }
 }

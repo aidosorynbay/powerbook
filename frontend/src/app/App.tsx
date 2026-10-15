@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { Suspense, lazy, useEffect } from 'react';
 import * as Sentry from '@sentry/react';
 import { AuthProvider, useAuth, I18nProvider, useI18n, isReaderPath, setAnalyticsUser } from '@/shared/lib';
-import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage, JoinPage, ReaderDayPage, GetPage, AboutPage } from '@/pages';
+import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage, JoinPage, ReaderDayPage, GetPage, AboutPage, MessagesPage } from '@/pages';
 import { ArchivePrompt, BottomNav, GuestKept, JoinPrompt, LastCallNotice, WhatsNew } from '@/widgets';
 import '@/app/styles/theme.css';
 
@@ -104,6 +104,8 @@ function AppRoutes() {
           path="/insights"
           element={isAuthenticated ? <InsightsPage /> : <ToLogin />}
         />
+        {/* A reader's conversation with the founder («Хей, как вы?»); the founder answers everyone here. */}
+        <Route path="/messages" element={isAuthenticated ? <MessagesPage /> : <ToLogin />} />
         <Route path="/claim" element={<ClaimPage />} />
         {/* Open to anyone: it is the page members send to friends. */}
         <Route path="/join" element={<JoinPage />} />

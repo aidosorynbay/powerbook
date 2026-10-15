@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core import storage
 from app.core.security import verify_password
+from app.models.checkin import Checkin, DirectMessage
 from app.models.reader_feedback import FeedbackAsk, ReaderFeedback
 from app.models.user import User
 from app.repositories.library import LibraryRepository
@@ -46,6 +47,11 @@ class AccountDeletionService:
         # 2. So are their answers to the feedback window, photos included.
         self.db.query(ReaderFeedback).filter(ReaderFeedback.user_id == user.id).delete(synchronize_session=False)
         self.db.query(FeedbackAsk).filter(FeedbackAsk.user_id == user.id).delete(synchronize_session=False)
+        # And their conversation with the founder («Хей, как вы?»).
+        self.db.query(DirectMessage).filter(
+            (DirectMessage.reader_id == user.id) | (DirectMessage.author_id == user.id)
+        ).delete(synchronize_session=False)
+        self.db.query(Checkin).filter(Checkin.user_id == user.id).delete(synchronize_session=False)
 
         # 3. Strip every identifying field. The username has to stay unique and
         # non-null, so it becomes an opaque tombstone rather than being cleared.

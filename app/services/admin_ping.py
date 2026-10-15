@@ -193,15 +193,43 @@ def decide_claim(db: Session, claim_id: uuid.UUID, approve: bool) -> str:
     return "✅ Одобрено" if approve else "❌ Отказано"
 
 
+def _on_checkin_button(db: Session, query: dict, data: str) -> None:
+    """«✅ Отправить всем» / «❌ <имя>» under the morning list (app/services/checkins.py)."""
+    from app.services import checkins
+
+    try:
+        verdict, line, buttons = checkins.decide(db, data)
+    except Exception:
+        logger.exception("check-in button failed")
+        db.rollback()
+        verdict, line, buttons = "Не получилось — откройте /messages", None, None
+    _later("answerCallbackQuery", {"callback_query_id": query.get("id"), "text": verdict})
+    message = query.get("message") or {}
+    if not line or not message.get("message_id"):
+        return
+    payload = {
+        "chat_id": (message.get("chat") or {}).get("id"),
+        "message_id": message["message_id"],
+        "text": f"{message.get('text', '')}\n{line}"[-4000:],  # Telegram takes 4096 at most
+        "disable_web_page_preview": True,
+    }
+    if buttons:
+        payload["reply_markup"] = {"inline_keyboard": buttons}
+    _later("editMessageText", payload)
+
+
 def on_update(db: Session, update: dict) -> None:
     """One update from Telegram: only a founder's button press means anything."""
     query = update.get("callback_query") or {}
     data = query.get("data") or ""
     sender = str((query.get("from") or {}).get("id") or "")
-    if not data.startswith("claim:"):
+    if not data.startswith(("claim:", "ci:")):
         return
     if sender not in chat_ids():
         _later("answerCallbackQuery", {"callback_query_id": query.get("id"), "text": "Только для админа"})
+        return
+    if data.startswith("ci:"):
+        _on_checkin_button(db, query, data)
         return
     try:
         _, verb, raw_id = data.split(":", 2)
