@@ -87,7 +87,7 @@ def _shelf(db: Session, user: User):
 
 
 def _work_of(idx: CatalogIndex, vol: BookcaseBookOut):
-    return idx.find(vol.match_key) or idx.find(catalog.work_key(vol.title))
+    return idx.find(vol.work_key) or idx.find(vol.match_key) or idx.find(catalog.work_key(vol.title))
 
 
 def _streak(days: list[date], neutral: frozenset[date] = frozenset()) -> int:

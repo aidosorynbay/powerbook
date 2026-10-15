@@ -69,9 +69,14 @@ function formatSize(bytes: number): string {
   return `${(bytes / MB).toFixed(1)} MB`;
 }
 
+/** The copy's book in the shared library: its card, its readers, its marks, its watchers all hang on this key. */
+function bookKey(book: BookcaseBook | null | undefined): string | null {
+  return book?.work_key || book?.match_key || null;
+}
+
 /** What a cover-less book is painted from: the shared library's book first, so it has the colours of its card. */
 function seedOf(book: BookcaseBook): string {
-  return book.work_key || book.match_key || book.title.trim().toLowerCase();
+  return bookKey(book) || book.title.trim().toLowerCase();
 }
 
 /**
@@ -688,8 +693,9 @@ export function BookcasePage({ ownerId }: Props) {
 
   // Who else read the book being looked at — fetched once it is opened.
   useEffect(() => {
-    if (!inspecting || !current || !data || !current.match_key || current.fellow_readers === 0) return;
-    const key = current.match_key;
+    // the shared library's book first: its card lists the same readers
+    const key = bookKey(current);
+    if (!inspecting || !current || !data || !key || current.fellow_readers === 0) return;
     if (fellows[key]) return;
     setFellows((f) => ({ ...f, [key]: 'loading' }));
     apiGet<FellowReader[]>(
@@ -699,8 +705,8 @@ export function BookcasePage({ ownerId }: Props) {
   }, [inspecting, current, data, fellows]);
 
   useEffect(() => {
-    if (!inspecting || !current?.match_key) return;
-    const key = current.match_key;
+    const key = bookKey(current);
+    if (!inspecting || !key) return;
     if (works[key]) return;
     setWorks((w) => ({ ...w, [key]: 'loading' }));
     apiGet<Work>(`/books/work/${encodeURIComponent(key)}?locale=${locale}`, { requireAuth: true }).then(({ data: work }) =>
@@ -723,7 +729,8 @@ export function BookcasePage({ ownerId }: Props) {
     setWorks((w) => {
       const next = { ...w };
       const book = data?.books.find((b) => b.key === key);
-      if (book?.match_key) delete next[book.match_key];
+      const key = bookKey(book);
+      if (key) delete next[key];
       return next;
     });
   }, [data]);
@@ -911,7 +918,8 @@ export function BookcasePage({ ownerId }: Props) {
   const q = query.trim().toLocaleLowerCase();
   const noMatch = !!q && !!data && !data.books.some((b) => `${b.title} ${b.author ?? ''}`.toLocaleLowerCase().includes(q));
   const showScene = !!data && !noWebgl && !empty;
-  const fellowList = current?.match_key ? fellows[current.match_key] : undefined;
+  const fellowKey = bookKey(current);
+  const fellowList = fellowKey ? fellows[fellowKey] : undefined;
 
   // Phones: tell the shelf how much room is left between the header row and
   // the caption, so it frames the books there instead of under the caption.
@@ -1232,7 +1240,7 @@ export function BookcasePage({ ownerId }: Props) {
                   )}
 
                   {(() => {
-                    const work = current.match_key ? works[current.match_key] : undefined;
+                    const work = bookKey(current) ? works[bookKey(current) ?? ''] : undefined;
                     if (!work || work === 'loading' || work === 'missing') return null;
                     return (
                       <Link className={styles.libraryLine} to={`/books?book=${encodeURIComponent(work.key)}`}>
@@ -1253,14 +1261,14 @@ export function BookcasePage({ ownerId }: Props) {
                       onSaved={(review) => setMark(current.key, review)}
                     />
                   )}
-                  {!isSelf && current.match_key && (
+                  {!isSelf && bookKey(current) && (
                     <div className={styles.bookActions}>
                       <button
                         type="button"
                         className={styles.bookAction}
                         onClick={async () => {
                           const { data: state } = await apiPut<{ watching: boolean }>(
-                            `/books/watch/${encodeURIComponent(current.match_key ?? '')}`,
+                            `/books/watch/${encodeURIComponent(bookKey(current) ?? '')}`,
                             {},
                             { requireAuth: true }
                           );

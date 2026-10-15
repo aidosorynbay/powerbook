@@ -516,23 +516,18 @@ class InsightsService:
     # ---------- reading twins ----------
 
     def reading_twins(self, *, user_id: uuid.UUID, limit: int = 5) -> list[ReadingTwinOut]:
-        ids = self._effective_ids(user_id)
-        mine = self.repo.matching_book_keys_for_user(user_ids=ids)
+        """Readers whose shelves share the most books with this one's — books of the shared library (its
+        people and its books: every spelling of a book, a hand-added or marked copy, one reader with all their
+        archive nicknames), so two readers of «Три товарища» meet however each of them wrote it."""
+        from app.services import catalog
+
+        idx = catalog.index(self.db)
+        own = {idx.person_of(i) for i in self._effective_ids(user_id)}
+        mine: set[str] = set().union(*(idx.by_person.get(p, set()) for p in own))
         if not mine:
             return []
 
-        # Fold every claimed archive nickname into the reader who owns it,
-        # otherwise one person arrives as several half-empty strangers.
-        owner_of = self.claims.approved_owner_by_ghost()
-        own = set(ids)
-        merged: dict[uuid.UUID, set[str]] = defaultdict(set)
-        for account_id, books in self.repo.all_users_matching_books(exclude_user_ids=ids).items():
-            owner = owner_of.get(account_id, account_id)
-            if owner in own:
-                continue
-            merged[owner] |= books
-
-        display = self.repo.matching_title_display_map(user_ids=ids)
+        merged = {person: books for person, books in idx.by_person.items() if person not in own}
 
         scored = []
         for other_id, other_books in merged.items():
@@ -552,16 +547,17 @@ class InsightsService:
 
         out = []
         for other_id, shared, overlap in scored[:limit]:
-            info = self.repo.display_name_and_telegram(user_id=other_id)
+            account = idx.account_of(other_id)
+            info = self.repo.display_name_and_telegram(user_id=account)
             if not info:
                 continue
             display_name, telegram_id = info
             out.append(
                 ReadingTwinOut(
-                    user_id=str(other_id),
+                    user_id=str(account),
                     display_name=display_name,
                     telegram_id=telegram_id,
-                    shared_books=sorted(display.get(k, k) for k in shared)[:10],
+                    shared_books=sorted(idx.works[k].title if k in idx.works else k for k in shared)[:10],
                     match_percent=max(1, int(round(overlap * 100))),
                 )
             )
@@ -570,11 +566,20 @@ class InsightsService:
     # ---------- celebrity match ----------
 
     def celebrity_match(self, *, user_id: uuid.UUID) -> list[CelebrityMatchOut]:
+        from app.services import catalog
+
+        idx = catalog.index(self.db)
         ids = self._effective_ids(user_id)
-        mine = self.repo.finished_book_titles_for_user(user_ids=ids)
+
+        def book(key: str) -> str:
+            # the shared library's book a key spells, so «Три товарища Ремарк» meets a list's «Три товарища»
+            work = idx.find(key)
+            return work.key if work is not None else key
+
+        mine = {book(k) for k in self.repo.finished_book_titles_for_user(user_ids=ids)}
         out = []
         for entry in CELEBRITY_READING_LISTS:
-            celeb_display = {canonical_key(b): b for b in entry["books"] if canonical_key(b)}
+            celeb_display = {book(canonical_key(b)): b for b in entry["books"] if canonical_key(b)}
             celeb_books = set(celeb_display)
             shared = mine & celeb_books
             if not shared:

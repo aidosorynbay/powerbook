@@ -9,9 +9,7 @@ readable — instead of two copies standing side by side.
 from __future__ import annotations
 
 import hashlib
-import time
 import uuid
-from collections import defaultdict
 from datetime import datetime
 
 from fastapi import HTTPException, status
@@ -43,11 +41,6 @@ from app.schemas.library import (
 # on the spine — the reader wrote it — but cut down to something a spine holds.
 _SPINE_TITLE_CHARS = 80
 
-# Who-else-read-this is a scan of every finished log on the platform. Cheap,
-# but not free, and it changes once a day at most per reader, so a short-lived
-# per-process copy is plenty.
-_FELLOW_TTL_SECONDS = 120
-_fellow_cache: dict[str, object] = {"at": 0.0, "index": None}
 
 
 # A book given minutes this many days ago, never finished and on no shelf, still stands there as «Читаю».
@@ -128,13 +121,6 @@ class BookcaseService:
 
         is_self = owner.id == viewer_id
         ids = self._owner_ids(owner)
-        fellows = self._fellow_index()
-        own_people = {self._person_of(i, fellows["fold"]) for i in ids}
-
-        def fellow_count(key: str | None) -> int:
-            if not key:
-                return 0
-            return len(fellows["readers"].get(key, set()) - own_people)
 
         volumes: list[BookcaseBookOut] = []
         by_norm: dict[str, BookcaseBookOut] = {}
@@ -449,7 +435,12 @@ class BookcaseService:
             by_volume = {r.volume_key: r for r in marks if r.volume_key}
             by_work = {r.work_key: r for r in marks}
             for vol in volumes:
-                review = by_volume.get(vol.key) or by_work.get(vol.match_key or "") or by_work.get(catalog.work_key(vol.title) or "")
+                review = (
+                    by_volume.get(vol.key)
+                    or by_work.get(vol.work_key or "")
+                    or by_work.get(vol.match_key or "")
+                    or by_work.get(catalog.work_key(vol.title) or "")
+                )
                 if review is None:
                     continue
                 vol.rating = review.rating
@@ -474,12 +465,17 @@ class BookcaseService:
                 for vol in volumes:
                     if vol.status != "finished":
                         continue
-                    work = idx.find(vol.match_key) or idx.find(_catalog.work_key(vol.title) or "")
+                    work = book_face.work_of(idx, vol.work_key, vol.match_key, title=vol.title)
                     if work is not None:
                         vol.wanted_by = len(wanted.get(work.key, ()))
 
+        # Who else read each book: the people its card in the shared library lists under «Читали в PowerBook»
+        # (finished it in a circle, added it by hand or marked it), not only those who spelled its title the way
+        # this reader did — «Три товарища» showed one fellow reader on the founder's shelf and five on its card.
+        own_people = {idx.person_of(i) for i in ids}
         for vol in volumes:
-            vol.fellow_readers = fellow_count(vol.match_key)
+            work = idx.find(vol.work_key) if vol.work_key else None
+            vol.fellow_readers = len(work.readers - own_people) if work is not None else 0
             if vol.status == "finished" and vol.finished_on:
                 vol.shelved_on = vol.finished_on
             elif vol.key in added_on:
@@ -535,55 +531,6 @@ class BookcaseService:
 
     # ---------- who else read it ----------
 
-    @staticmethod
-    def _person_of(account_id: uuid.UUID, fold: dict[uuid.UUID, uuid.UUID]) -> uuid.UUID:
-        return fold.get(account_id, account_id)
-
-    def _fellow_index(self) -> dict:
-        """match key -> the people (not accounts) who finished that book.
-
-        Accounts are folded into people twice over: a claimed archive nickname
-        belongs to the member who claimed it, and archive spellings linked by
-        the import share one person. Without that one reader with four old
-        nicknames counts as four readers of every book they finished.
-        """
-        cached = _fellow_cache.get("index")
-        if cached is not None and time.monotonic() - float(_fellow_cache["at"]) < _FELLOW_TTL_SECONDS:
-            return cached  # type: ignore[return-value]
-
-        claimed = self.claims.approved_owner_by_ghost()
-        fold: dict[uuid.UUID, uuid.UUID] = dict(claimed)
-        representative: dict[uuid.UUID, uuid.UUID] = {}
-        for account_id, person_id in self.db.execute(
-            select(User.id, User.person_id).where(User.is_claimable.is_(True), User.person_id.is_not(None))
-        ).all():
-            if account_id in fold:
-                continue
-            fold[account_id] = person_id
-            representative.setdefault(person_id, account_id)
-
-        readers: dict[str, set[uuid.UUID]] = defaultdict(set)
-        rows = self.db.execute(
-            select(ReadingLog.user_id, ReadingLog.comment).where(
-                ReadingLog.book_finished.is_(True),
-                ReadingLog.comment.is_not(None),
-                ReadingLog.is_comment_private.is_(False),
-            )
-        ).all()
-        for account_id, comment in rows:
-            key = matching_key(comment) if comment else None
-            if key:
-                readers[key].add(fold.get(account_id, account_id))
-
-        for account_id, title in self.db.execute(select(ManualBook.user_id, ManualBook.title)).all():
-            key = canonical_key(title)
-            if key:
-                readers[key].add(fold.get(account_id, account_id))
-
-        index = {"readers": dict(readers), "fold": fold, "representative": representative}
-        _fellow_cache["index"], _fellow_cache["at"] = index, time.monotonic()
-        return index
-
     def fellow_readers(
         self, *, key: str, owner_id: uuid.UUID, viewer_id: uuid.UUID, limit: int = 24
     ) -> list[FellowReaderOut]:
@@ -591,15 +538,19 @@ class BookcaseService:
         if owner is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-        index = self._fellow_index()
-        fold, representative = index["fold"], index["representative"]
-        own_people = {self._person_of(i, fold) for i in self._owner_ids(owner)}
-        people = index["readers"].get(key, set()) - own_people
+        # The shared library's readers of the book (book_face): its card lists the same people.
+        from app.services import catalog
+
+        idx = catalog.index(self.db)
+        work = idx.find(key)
+        if work is None:
+            return []
+        people = work.readers - {idx.person_of(i) for i in self._owner_ids(owner)}
         if not people:
             return []
 
-        viewer_person = self._person_of(viewer_id, fold)
-        account_ids = [representative.get(p, p) for p in people]
+        viewer_person = idx.person_of(viewer_id)
+        account_ids = [idx.account_of(p) for p in people]
         found = self.db.execute(
             select(User.id, User.display_name, User.username, User.avatar_data, User.is_claimable).where(
                 User.id.in_(account_ids)
@@ -612,7 +563,7 @@ class BookcaseService:
                 display_name=display_name or username,
                 avatar_data=avatar,
                 is_archive=bool(is_archive),
-                is_viewer=self._person_of(uid, fold) == viewer_person,
+                is_viewer=idx.person_of(uid) == viewer_person,
             )
             for uid, display_name, username, avatar, is_archive in found
         ]
