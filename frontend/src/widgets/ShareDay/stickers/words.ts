@@ -5,39 +5,41 @@ import type { StickerData } from './types';
 
 type T = (key: string, params?: Record<string, string | number>) => string;
 
+/** A title is cut after this many letters: two lines at most on any sticker. */
+const TITLE_MAX = 28;
+
+const bare = (title: string | null | undefined) => title?.trim().replace(/^[«"“„']+|[»"”']+$/g, '') || null;
+
 /** The reader's day, in the words the stickers print. `today` is the reader's own date. */
 export function stickerData(card: MyDayCard, t: T, locale: Locale, today: string): StickerData {
   const forms = (key: string) => ({ one: t(`${key}.one`), few: t(`${key}.few`), many: t(`${key}.many`) });
   const minuteWord = plural(locale, card.minutes, forms('sticker.minute'));
-  const streak = card.streak >= 2 ? `${card.streak} ${plural(locale, card.streak, forms('dayPage.streak'))}` : null;
-  const month = t(`month.${card.month}`);
-  const title = card.book?.trim().replace(/^[«"“„']+|[»"”']+$/g, '') || null;
-  const sofar = card.days.filter((d) => d.date <= card.day).length;
-  // A day sent later than it was read says which day it was.
+  const title = bare(card.book);
+  const short = title && [...title].length > TITLE_MAX ? `${[...title].slice(0, TITLE_MAX - 1).join('').trimEnd()}…` : title;
+  // Without a book the unit says what the minutes were; with one, the title does. Either way it says which day,
+  // so «34» never reads as the month's total (the council, 2026-10-16).
+  const read = title ? '' : 'Read';
   const ago = daysAgo(card.day, today);
   const unit =
-    ago === 0 ? t('sticker.unitToday', { unit: minuteWord }) : ago === 1 ? t('sticker.unitYesterday', { unit: minuteWord }) : minuteWord;
-  const when = ago === 0 ? t('sticker.today') : ago === 1 ? t('sticker.yesterday') : dayDate(card.day, locale, true);
+    ago === 0
+      ? t(`sticker.unitToday${read}`, { unit: minuteWord })
+      : ago === 1
+        ? t(`sticker.unitYesterday${read}`, { unit: minuteWord })
+        : t(`sticker.unitOn${read}`, { unit: minuteWord, date: dayDate(card.day, locale, true) });
+  const now = title?.toLocaleLowerCase();
 
   return {
     minutes: card.minutes,
     day: card.day,
     days: card.days.map((d) => ({ date: d.date, minutes: d.minutes })),
+    books: (card.month_books ?? []).map((b) => ({ title: b.title, minutes: b.minutes, now: !!now && bare(b.title)?.toLocaleLowerCase() === now })),
     words: {
       unit,
-      dayOf: t('dayPage.dayOf', { n: card.day_number, total: card.days.length }),
-      streak,
-      month,
-      weekdays: t('sticker.weekdays').split(','),
-      quoted: title ? (locale === 'en' ? `“${title}”` : `«${title}»`) : null,
+      quoted: short ? (locale === 'en' ? `“${short}”` : `«${short}»`) : null,
+      run: t('sticker.run', { n: card.goal_days, days: plural(locale, card.goal_days, forms('shareDay.day')), month: t(`month.in.${card.month}`) }),
       finished: card.finished_days?.includes(card.day) ? t('sticker.finished') : null,
-      stats: [
-        { label: when, value: String(card.minutes), unit: t('sticker.min') },
-        streak
-          ? { label: t('sticker.streak'), value: String(card.streak), unit: plural(locale, card.streak, forms('shareDay.day')) }
-          : { label: t('sticker.day'), value: String(card.day_number), unit: t('sticker.of', { n: card.days.length }) },
-        { label: t('sticker.goalDays'), value: String(card.goal_days), unit: t('sticker.of', { n: sofar }) },
-      ],
+      month: t(`month.${card.month}`),
+      weekdays: t('sticker.weekdays').split(','),
     },
   };
 }

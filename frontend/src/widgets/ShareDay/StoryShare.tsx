@@ -28,10 +28,9 @@ const MODES: readonly Mode[] = ['photo', 'room'];
 
 /** One Analytics event per sticker, so GA4's own Events report compares them with no custom dimensions set up. */
 const EVENT: Record<StickerKind, string> = {
-  page: 'sticker_page',
-  shelf: 'sticker_shelf',
-  calendar: 'sticker_calendar',
-  shelfCalendar: 'sticker_shelf_calendar',
+  number: 'sticker_number',
+  month: 'sticker_month',
+  shelf: 'sticker_books',
 };
 
 function remembered<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
@@ -77,11 +76,8 @@ function download(file: File) {
  */
 export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: string; onSent: (channel: ShareChannel, detail: Detail) => void }) {
   const { t, locale } = useI18n();
-  // A reader's first sticker is picked at random, then kept: whichever one the
-  // sheet opened on would otherwise win the month's count in Analytics.
-  const [kind, setKind] = useState<StickerKind>(() =>
-    remembered('pb.sticker.kind', STICKERS, STICKERS[Math.floor(Math.random() * STICKERS.length)])
-  );
+  // «Число» first, every time; «Месяц» and «Полка» one swipe away (the founder, 2026-10-16).
+  const [kind, setKind] = useState<StickerKind>('number');
   const [ink, setInk] = useState<Ink>(() => remembered('pb.sticker.ink', INKS, 'light'));
   const [drawn, setDrawn] = useState<Partial<Record<StickerKind, Drawn>>>({});
   const [fontsTick, setFontsTick] = useState(0);
@@ -147,7 +143,6 @@ export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: stri
 
   useEffect(() => () => urls.current.forEach((u) => URL.revokeObjectURL(u)), []);
 
-  useEffect(() => remember('pb.sticker.kind', kind), [kind]);
   useEffect(() => remember('pb.sticker.ink', ink), [ink]);
 
   const current = drawn[kind];

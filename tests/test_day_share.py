@@ -242,6 +242,8 @@ def test_an_earlier_day_goes_out_with_the_book_finished_on_it(env):
     # The finished book names the day, though another had more minutes.
     assert yesterday["book"] == "Шантарам"
     assert yesterday["finished_days"] == ["2026-10-04"]
+    # The «Полка» sticker's books: both, in the order started, with their minutes.
+    assert [(b["title"], b["minutes"]) for b in yesterday["month_books"]] == [("Абай жолы", 70), ("Шантарам", 25)]
 
     # Today is empty, and the picker still sees every day read.
     today = env.client.get("/api/share/day", params={"day": "2026-10-05"}, headers=env.h(env.aigerim)).json()
@@ -251,7 +253,7 @@ def test_an_earlier_day_goes_out_with_the_book_finished_on_it(env):
     shared = env.db.execute(select(DayShare)).scalar_one()
     assert shared.day == date(2026, 10, 4)
     public = env.client.get("/api/share/r/aigerim").json()
-    assert "finished_days" not in public and "Шантарам" not in str(public)
+    assert "finished_days" not in public and "month_books" not in public and "Шантарам" not in str(public)
 
 
 def test_a_reader_sees_who_came_by_their_link_and_what_they_read(env):

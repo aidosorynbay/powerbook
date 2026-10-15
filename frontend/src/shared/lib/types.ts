@@ -165,7 +165,14 @@ export type DayCard = {
 
 /** The reader's own card: `book` and the days a book was finished are for their
  * story sticker and the day picker, and never on the public card. */
-export type MyDayCard = DayCard & { round_id: string; invited: number; book: string | null; finished_days: string[] };
+export type MyDayCard = DayCard & {
+  round_id: string;
+  invited: number;
+  book: string | null;
+  finished_days: string[];
+  /** The month's books up to the day, for the «Полка» sticker. */
+  month_books?: { title: string; minutes: number }[];
+};
 
 /** «Приведи друга»: a guest who signed up by the reader's link, and what they have read since (/share/invites). */
 export type InviteGuest = {

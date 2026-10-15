@@ -1,6 +1,5 @@
-import { INKS, SANS, font, loadImage, release, surface, trimmed, type Ink } from './canvas';
-import { drawCalendarPage, drawPage } from './page';
-import { drawShelf, drawShelfCalendar } from './shelf';
+import { INKS, SANS, font, loadImage, release, surface, type Ink } from './canvas';
+import { drawMonth, drawNumber, drawShelf } from './family';
 import type { StickerData, StickerKind } from './types';
 
 export { STICKERS, type StickerData, type StickerKind, type StickerWords } from './types';
@@ -9,34 +8,31 @@ export { loadImage } from './canvas';
 export { stickerData } from './words';
 export type { Ink } from './canvas';
 
-/** What the drawings need from the network: the PowerBook mark. */
-export type StickerAssets = { mark: HTMLCanvasElement | null };
+/** What the drawings need from the network: the PowerBook mark, in its own orange. */
+export type StickerAssets = { mark: HTMLImageElement | null };
 
-const LOGO = '/logo-icon.png';
+const MARK = '/sticker-mark.svg';
 /** The reading room at night behind white stickers, by day behind black ones. */
 const ROOM: Record<Ink, string> = { light: '/reading-room/m-night-m.jpg', dark: '/reading-room/m-day-m.jpg' };
 
 export async function loadStickerAssets(): Promise<StickerAssets> {
-  const logo = await loadImage(LOGO);
-  return { mark: logo ? trimmed(logo) : null };
+  return { mark: await loadImage(MARK) };
 }
 
 /** The sticker alone, on nothing: Instagram lays it over the reader's own photo. */
 export function drawSticker(kind: StickerKind, data: StickerData, ink: Ink, assets: StickerAssets): HTMLCanvasElement {
   switch (kind) {
-    case 'page':
-      return drawPage(data, ink, assets.mark);
+    case 'number':
+      return drawNumber(data, ink, assets.mark);
+    case 'month':
+      return drawMonth(data, ink, assets.mark);
     case 'shelf':
       return drawShelf(data, ink, assets.mark);
-    case 'calendar':
-      return drawCalendarPage(data, ink, assets.mark);
-    case 'shelfCalendar':
-      return drawShelfCalendar(data, ink, assets.mark);
   }
 }
 
-/** How wide a sticker sits on a story, as a share of the screen, so all four look the same size. */
-export const STORY_WIDTH: Record<StickerKind, number> = { page: 0.74, shelf: 0.9, calendar: 0.72, shelfCalendar: 0.9 };
+/** How wide a sticker sits on a story, as a share of the screen: the tall ones a little narrower. */
+export const STORY_WIDTH: Record<StickerKind, number> = { number: 0.74, month: 0.66, shelf: 0.7 };
 
 export function roomFor(ink: Ink): string {
   return ROOM[ink];

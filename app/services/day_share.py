@@ -27,7 +27,7 @@ from app.models.reading_room import ReadingRoomSession
 from app.models.round import ReadingLog, ReadingLogBook, Round, RoundParticipant
 from app.models.sticker_use import StickerUse
 from app.models.user import User
-from app.schemas.share import CardDayOut, DayCardOut, MyDayCardOut
+from app.schemas.share import CardDayOut, DayCardOut, MonthBookOut, MyDayCardOut
 
 _IN_ROUND = (RoundParticipantStatus.active, RoundParticipantStatus.locked)
 
@@ -158,6 +158,41 @@ def _finished_days(db: Session, *, user: User, rnd: Round) -> list[date]:
     ).scalars())
 
 
+def _month_books(db: Session, *, user: User, rnd: Round, day: date, limit: int = 5) -> list[MonthBookOut]:
+    """The books the reader read in the round up to `day`, from «Что читаю» and
+    from the reading room, each with its minutes, in the order they were started:
+    the shelf on the «Полка» sticker. One book under every spelling, the way the
+    shared library spells it; at most `limit`, the latest read."""
+    logged = db.execute(
+        select(ReadingLog.date, ReadingLogBook.title, ReadingLogBook.minutes)
+        .join(ReadingLogBook, ReadingLogBook.reading_log_id == ReadingLog.id)
+        .where(ReadingLog.round_id == rnd.id, ReadingLog.user_id == user.id, ReadingLog.date <= day)
+    ).all()
+    sat = db.execute(
+        select(ReadingRoomSession.credited_date, ReadingRoomSession.book_title, ReadingRoomSession.credited_minutes)
+        .where(
+            ReadingRoomSession.user_id == user.id,
+            ReadingRoomSession.credited_round_id == rnd.id,
+            ReadingRoomSession.credited_date <= day,
+            ReadingRoomSession.credited_minutes > 0,
+        )
+    ).all()
+    from app.services import book_face, catalog
+
+    idx = catalog.index(db)
+    books: dict[str, dict] = {}
+    for when, title, minutes in [*logged, *sat]:
+        if not title or not title.strip() or when is None:
+            continue
+        name = book_face.spelling(idx, title.strip()) or title.strip()
+        book = books.setdefault(name.casefold(), {"title": name, "minutes": 0, "first": when, "last": when})
+        book["minutes"] += int(minutes or 0)
+        book["first"] = min(book["first"], when)
+        book["last"] = max(book["last"], when)
+    latest = sorted(books.values(), key=lambda b: b["last"], reverse=True)[:limit]
+    return [MonthBookOut(title=b["title"], minutes=b["minutes"]) for b in sorted(latest, key=lambda b: b["first"])]
+
+
 def my_card(db: Session, *, user: User, day: date, round_id: str | None = None) -> MyDayCardOut:
     """The reader's own day, for the text they are about to send. `day` is
     the reader's own date: the page knows it better than the server does.
@@ -174,6 +209,7 @@ def my_card(db: Session, *, user: User, day: date, round_id: str | None = None) 
         invited=int(invited),
         book=_book(db, user=user, rnd=rnd, day=card["day"]),
         finished_days=_finished_days(db, user=user, rnd=rnd),
+        month_books=_month_books(db, user=user, rnd=rnd, day=card["day"]),
     )
 
 

@@ -53,6 +53,13 @@ class DayCardOut(BaseModel):
     days: list[CardDayOut]
 
 
+class MonthBookOut(BaseModel):
+    """A book on the «Полка» sticker: what the reader read this month, and how long."""
+
+    title: str
+    minutes: int
+
+
 class MyDayCardOut(DayCardOut):
     round_id: str
     # Readers who signed up from this reader's links.
@@ -63,6 +70,9 @@ class MyDayCardOut(DayCardOut):
     # The round's days the reader finished a book on, for the day picker and
     # the sticker. Own card only, like the book.
     finished_days: list[date] = []
+    # The month's books up to the day, the order they were started in, at most
+    # five (the latest), for the «Полка» sticker. Own card only, like the book.
+    month_books: list[MonthBookOut] = []
 
 
 class InviteGuestOut(BaseModel):

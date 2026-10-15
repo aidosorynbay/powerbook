@@ -1,25 +1,21 @@
-/** The stickers, in the order the sheet offers them. */
-export const STICKERS = ['page', 'shelf', 'calendar', 'shelfCalendar'] as const;
+/** The stickers, in the order the sheet offers them: «Число» first (the founder, 2026-10-16). */
+export const STICKERS = ['number', 'month', 'shelf'] as const;
 export type StickerKind = (typeof STICKERS)[number];
 
 /** Every word a sticker prints, already in the reader's language. */
 export type StickerWords = {
-  /** "минут сегодня", "минут вчера", or "минут" for a day before that. */
+  /** "минуты сегодня", or "минуты чтения сегодня" when no book names what was read; "вчера", or the date, for a day sent later. */
   unit: string;
-  /** "день 5 из 31" */
-  dayOf: string;
-  /** "5 дней подряд"; null before a run of two days. */
-  streak: string | null;
-  /** "Октябрь" */
-  month: string;
-  /** The calendar's column heads, Monday first: "П", "В", "С"… */
-  weekdays: string[];
-  /** «Шантарам» or “Shantaram”. */
+  /** «Три товарища» or “Three Comrades”; null when the day has no book. */
   quoted: string | null;
+  /** "11 дней в октябре": the month's days of 30 minutes and more. */
+  run: string;
   /** "Книга дочитана", on the day a book was finished. */
   finished: string | null;
-  /** The shelf's three figures, label over value, the way Strava sets distance, pace and time. */
-  stats: { label: string; value: string; unit: string }[];
+  /** "Октябрь", over the calendar. */
+  month: string;
+  /** The calendar's column heads, Monday first: "п", "в", "с"… */
+  weekdays: string[];
 };
 
 export type StickerData = {
@@ -27,5 +23,7 @@ export type StickerData = {
   /** The day the sticker is about, and the round's days up to the end of the month. */
   day: string;
   days: { date: string; minutes: number }[];
+  /** The month's books for the shelf, the order they were started in; `now` is the book of the day. */
+  books: { title: string; minutes: number; now: boolean }[];
   words: StickerWords;
 };
