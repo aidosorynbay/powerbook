@@ -64,12 +64,16 @@ it in a browser, phone width (390px) included.
 - **Reading logs:** one `reading_logs` row per reader per day holds the day's total and
   score; `reading_log_books` splits it across books («Что читаю»). A finished book's title
   is also the first line of the day's comment, which the shelf and covers read.
-- **Book authors:** one author per book of the shared library, never one source's word. `catalog._build`
-  votes over every source with names compared as people (`app/core/authors.py`: «Ремарк» = "Erich Maria
-  Remarque"): one vote per cover lookup, more for a reader's known author name, nothing for «перечитала».
-  Shelves show `work.author` unless the reader typed their own. Cover lookups take the author most editions
-  name, not the pictured edition's first creator (often a translator). The founder fixes a book in /admin →
-  «Книги: склейка» (`book_authors`); «Автор под вопросом» there lists books whose sources disagree.
+- **One book, one face:** a book of the shared library looks the same everywhere — shelf, card, Round, room,
+  stickers, profile. Show a book only through `app/services/book_face.py` (`dress` for a shelf copy; `face`,
+  `of_title`, `spelling` elsewhere), never from a `book_covers` row of one spelling, a file's `cover_data` or
+  raw typed text (`tests/test_book_faces.py` guards it). `catalog._build` decides each face per title
+  (`face_key`: «три товарища!!» = «Три товарища»; a translation or a volume keeps its own): the spelling, the
+  cover (an edition a reader picked outranks lookups; photos never leave their shelf) and the author — voted
+  over all sources with names compared as people (`app/core/authors.py`: «Ремарк» = "Erich Maria Remarque"),
+  lookups taking the author most editions name, not a translator. Only what a reader chose for their own copy
+  stays theirs. The founder fixes an author in /admin → «Книги: склейка» (`book_authors`; «Автор под
+  вопросом» lists books whose sources disagree). Painted covers are seeded by the book's key (`BookFace seed`).
 - Existing members stay free forever; monetisation ideas must not take away what they have.
 - **Reading room pictures:** `frontend/public/reading-room/` and `widgets/ReadingRoom/casts.js` are built on the
   founder's Mac by `~/powerbook-sync/prototypes/reading-room/` (not in git): `seg_birefnet.py` → `dump_owners.py` →
