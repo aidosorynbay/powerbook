@@ -12,7 +12,7 @@ feedback_asks keeps when the window last came up for each reader, so that
 New tables only, so this is safe to apply to live data.
 
 Revision ID: fb20261015a1
-Revises: rr20261014a1
+Revises: ba20261015a1
 Create Date: 2026-10-15
 
 """
@@ -22,7 +22,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "fb20261015a1"
-down_revision = "rr20261014a1"
+down_revision = "ba20261015a1"
 branch_labels = None
 depends_on = None
 
