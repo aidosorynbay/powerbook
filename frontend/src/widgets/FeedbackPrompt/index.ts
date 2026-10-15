@@ -1,1 +1,1 @@
-export { FeedbackPrompt, feedbackDue, type FeedbackSource } from './FeedbackPrompt';
+export { FeedbackPrompt, feedbackDue, feedbackDueHere, type FeedbackSource } from './FeedbackPrompt';

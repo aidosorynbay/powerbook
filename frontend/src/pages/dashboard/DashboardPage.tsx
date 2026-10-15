@@ -27,7 +27,7 @@ import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews } from '@/widgets';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
-import { FeedbackPrompt, feedbackDue, type FeedbackSource } from '@/widgets/FeedbackPrompt';
+import { FeedbackPrompt, feedbackDue, feedbackDueHere, type FeedbackSource } from '@/widgets/FeedbackPrompt';
 import { useMediaQuery } from '@/shared/hooks';
 import { MinutesDial, MonthStats, ReminderChip, ReadersSheet, WelcomeBack, Sheet, usePulse, pulseClass, useBookCover, flyMinutes, dropToTreasury, unlockSound, ReminderOffer, reminderOfferDue, NewCircleCard } from '@/widgets/RoundToday';
 import rt from '@/widgets/RoundToday/RoundToday.module.css';
@@ -983,16 +983,18 @@ export function DashboardPage() {
         const savedAt = Date.now();
         void reminderOfferDue().then((due) => {
           if (!due) {
-            // One prompt per save: with no reminder to offer, now and then «Как вам PowerBook?» (a few days read),
-            // once the drop is in the pool, and never over another sheet.
+            // One prompt per save: with no reminder to offer, now and then «Как вам PowerBook?» (a few days read, once
+            // a month on any device), once the drop is in the pool, never over another sheet, with the same guard.
             const daysRead = prev.filter((d) => d.minutes > 0).length + 1;
-            if (feedbackDue(daysRead)) {
-              void Promise.race([dropDone.catch(() => {}), new Promise((r) => window.setTimeout(r, 8000))]).then(() =>
-                window.setTimeout(() => {
-                  if (feedbackDue(daysRead) && !document.querySelector('[role="dialog"]')) setFeedback((f) => f ?? 'after_save');
-                }, 1200),
-              );
-            }
+            const settled = Promise.race([dropDone.catch(() => {}), new Promise((r) => window.setTimeout(r, 8000))]);
+            void Promise.all([feedbackDue(daysRead), settled]).then(([ask]) => {
+              if (!ask) return;
+              window.setTimeout(() => {
+                if (document.visibilityState !== 'visible' || Date.now() - savedAt > 30_000) return;
+                if (!feedbackDueHere(daysRead) || document.querySelector('[role="dialog"]')) return;
+                setFeedback((f) => f ?? 'after_save');
+              }, 1200);
+            });
             return;
           }
           void Promise.race([dropDone.catch(() => {}), new Promise((r) => window.setTimeout(r, 8000))]).then(() =>

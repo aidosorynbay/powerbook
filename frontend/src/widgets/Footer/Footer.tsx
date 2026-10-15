@@ -46,6 +46,11 @@ export function Footer({ onPhone = false }: { onPhone?: boolean } = {}) {
                 <Icon name="email" size="sm" />
                 <span>Email</span>
               </a>
+              {/* «Как вам PowerBook?» whenever a reader wants it, not only after a saved day */}
+              <Link to="/feedback" className={styles.link}>
+                <Icon name="chat" size="sm" />
+                <span>{t('footer.feedback')}</span>
+              </Link>
             </nav>
           </div>
         </div>

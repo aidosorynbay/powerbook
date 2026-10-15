@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { apiPost, resizeImageToDataUrl, track, useI18n } from '@/shared/lib';
+import { apiGet, apiPost, resizeImageToDataUrl, track, useI18n } from '@/shared/lib';
 import { Button, Icon } from '@/shared/ui';
 import { Sheet } from '@/widgets/RoundToday';
 import rt from '@/widgets/RoundToday/RoundToday.module.css';
 import styles from './FeedbackPrompt.module.css';
 
-type Mood = 'love' | 'ok' | 'improve';
+type Mood = 'love' | 'ok' | 'meh';
 export type FeedbackSource = 'after_save' | 'link';
 
-const MOODS: Mood[] = ['love', 'ok', 'improve'];
+const MOODS: Mood[] = ['love', 'ok', 'meh'];
 const SNOOZE_KEY = 'pb.feedback.until';
 const DAY = 86_400_000;
-/** «Позже», or the window closed without an answer: a month of quiet. */
+/** Once the window has come up: a month of quiet, answered or not. */
 const LATER_DAYS = 30;
 /** After an answer: two months before asking again. */
 const SENT_DAYS = 60;
@@ -20,15 +20,23 @@ const MIN_DAYS_READ = 3;
 // The server takes photos up to 1.5 MB; a data URL is a third longer than the bytes.
 const MAX_CHARS = 1_990_000;
 
-/** Whether the window may come up after a save: a reader with a few days behind them, at most once a month. */
-export function feedbackDue(daysRead: number): boolean {
+/** This device's side of «at most once a month». */
+export function feedbackDueHere(daysRead: number): boolean {
   if (daysRead < MIN_DAYS_READ) return false;
   try {
     return Number(localStorage.getItem(SNOOZE_KEY) || 0) <= Date.now();
   } catch {
-    // storage blocked: a «Позже» could not be kept, so never ask at all
+    // storage blocked: the quiet could not be kept, so never ask at all
     return false;
   }
+}
+
+/** Whether the window may come up after a save: a reader with a few days behind them, at most once a month on any
+ * of their devices (Telegram's own browser and the home-screen app keep their storage apart, so the server knows). */
+export async function feedbackDue(daysRead: number): Promise<boolean> {
+  if (!feedbackDueHere(daysRead)) return false;
+  const { data } = await apiGet<{ due: boolean }>('/feedback/due', { requireAuth: true });
+  return !!data?.due;
 }
 
 function snooze(days: number) {
@@ -67,13 +75,19 @@ export function FeedbackPrompt({ source, roundId, onClose }: { source: FeedbackS
   const input = useRef<HTMLInputElement>(null);
   const dirty = !!(mood || text.trim() || photo);
 
+  // The photo is asked for on the founder's link only, where his post says what it is for; after a save the window
+  // stays two questions (the council, 2026-10-15).
+  const askPhoto = source === 'link';
+
   useEffect(() => {
     track('feedback_shown', { source });
+    // the month of quiet starts now, whatever the reader does next: here, and on their other devices
+    snooze(LATER_DAYS);
+    void apiPost('/feedback/asked', {}, { requireAuth: true });
     // once per window
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const later = () => {
-    snooze(LATER_DAYS);
     track('feedback_later', { source, started: dirty });
     onClose();
   };
@@ -154,7 +168,7 @@ export function FeedbackPrompt({ source, roundId, onClose }: { source: FeedbackS
             placeholder={t(mood ? `feedback.ask.${mood}` : 'feedback.ask.none')}
             aria-label={t(mood ? `feedback.ask.${mood}` : 'feedback.ask.none')}
           />
-          {photo ? (
+          {askPhoto && (photo ? (
             <div className={styles.photo}>
               <img src={photo} alt="" className={styles.thumb} />
               <div>
@@ -177,6 +191,7 @@ export function FeedbackPrompt({ source, roundId, onClose }: { source: FeedbackS
                   <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
                   <span>{t('feedback.consent')}</span>
                 </label>
+                <p className={styles.consentNote}>{t('feedback.consentNote')}</p>
               </div>
             </div>
           ) : (
@@ -189,15 +204,16 @@ export function FeedbackPrompt({ source, roundId, onClose }: { source: FeedbackS
                 <small>{t('feedback.photoHint')}</small>
               </span>
             </button>
-          )}
+          ))}
           {/* No "capture": the reader chooses between the camera and a photo already taken. */}
-          <input ref={input} type="file" accept="image/*" hidden onChange={pick} />
+          {askPhoto && <input ref={input} type="file" accept="image/*" hidden onChange={pick} />}
           {error && (
             <p className={styles.error} role="alert">
               {error}
             </p>
           )}
-          <Button fullWidth className={styles.send} onClick={send} disabled={!dirty || !!busy}>
+          {/* orange only once there is something to send: orange means an action */}
+          <Button fullWidth variant={dirty ? 'primary' : 'secondary'} className={styles.send} onClick={send} disabled={!dirty || !!busy}>
             {busy === 'send' ? t('feedback.sending') : t('feedback.send')}
           </Button>
           <button type="button" className={styles.later} onClick={later}>
