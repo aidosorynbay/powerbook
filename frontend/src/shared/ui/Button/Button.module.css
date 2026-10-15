@@ -54,6 +54,21 @@
     box-shadow: none;
 }
 
+/* White on orange is 3.16:1: it reads only as large text (WCAG: 19 px bold). So the orange button's words
+   are 19 px, weight 700, on a button 48 px tall at least (brand book v1.0, founder 15.10.2026)… */
+.primary.md,
+.primary.lg {
+    font-size: 1.1875rem;
+    font-weight: var(--font-weight-bold);
+    min-height: 48px;
+}
+
+/* …and a small one, where 19 px does not fit, takes the navy instead of white (5.5:1, readable at any size). */
+.primary.sm {
+    color: var(--color-on-accent-alt);
+    font-weight: var(--font-weight-bold);
+}
+
 .secondary {
     background-color: var(--color-bg-elevated);
     color: var(--color-text-primary);
