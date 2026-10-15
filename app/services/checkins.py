@@ -279,6 +279,8 @@ def _list_text(db: Session, day: date, rows: list[Checkin]) -> str:
     if day.weekday() == 0:
         s = stats(db, days=7, today=day)
         lines.append(f"\nЗа неделю: написали {s['sent']}, ответили {s['answered']}, вернулись за 2 дня {s['returned']}.")
+    who = sender(db)
+    lines.append(f"Подпись: {_name(who)}" + ("" if who is None or who.avatar_data else " (без фото — поставьте в профиле)"))
     lines.append(f"Переписки: {SITE}/messages")
     return "\n".join(lines)
 
@@ -452,9 +454,15 @@ def card(db: Session, user: User) -> dict | None:
     if row is None:
         return None
     who = sender(db)
+    rnd = db.get(Round, row.round_id)
+    # «Пока не участвую» only while the circle still takes sign-ups and leavings (to the 10th):
+    # after that the reader is in it to the end, and the answer would promise what it cannot do
+    # (the founder, 2026-10-15).
+    can_step_out = rnd is not None and reading_day().day <= rnd.registration_open_until_day
     return {
         "id": str(row.id),
         "text": row.text,
+        "answers": [k for k in ANSWERS if k != "out" or can_step_out],
         "from": _name(who),
         "avatar_data": who.avatar_data if who else None,
         "sent_at": row.sent_at,
@@ -479,6 +487,9 @@ def answer(db: Session, user: User, checkin_id: uuid.UUID, kind: str, locale: st
     """A quick answer under the message: it goes into the conversation and to the founder."""
     if kind not in ANSWERS:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="unknown_answer")
+    shown = card(db, user)
+    if shown is not None and kind not in shown["answers"]:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="answer_closed")
     row = db.get(Checkin, checkin_id)
     if row is None or row.user_id != user.id or row.status != "sent":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="checkin_not_found")

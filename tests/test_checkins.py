@@ -105,7 +105,7 @@ def test_the_morning_list_and_the_founders_yes(env):
     assert pushed[0][1]["title"] == "Founder"
 
 
-def test_the_readers_answer_reaches_the_founder(env):
+def test_the_readers_answer_reaches_the_founder(env, monkeypatch):
     db, users, october, told, pushed = env
     checkins.plan(db, at(15, 10))
     checkins.decide(db, "ci:all:2026-10-15")
@@ -113,6 +113,14 @@ def test_the_readers_answer_reaches_the_founder(env):
     quiet = db.get(User, users["quiet"].id)
     card = checkins.card(db, quiet)
     assert card and card["from"] == "Founder"
+    # the 15th: sign-ups closed on the 10th, so «Пока не участвую» is not offered; on the 8th it was
+    real_day = checkins.reading_day
+    monkeypatch.setattr(checkins, "reading_day", lambda *a: date(2026, 10, 15))
+    card = checkins.card(db, quiet)
+    assert "out" not in card["answers"] and "hard" in card["answers"]
+    monkeypatch.setattr(checkins, "reading_day", lambda *a: date(2026, 10, 8))
+    assert "out" in checkins.card(db, quiet)["answers"]
+    monkeypatch.setattr(checkins, "reading_day", real_day)
     out = checkins.answer(db, quiet, __import__("uuid").UUID(card["id"]), "hard", "ru")
     assert out["card"] is None
     assert [m["text"] for m in out["messages"]][-1] == "Сейчас сложный период"

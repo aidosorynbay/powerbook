@@ -46,7 +46,7 @@ export function MissedYesterday({
   );
 }
 
-type Card = { id: string; text: string; from: string; avatar_data: string | null };
+type Card = { id: string; text: string; from: string; avatar_data: string | null; answers: string[] };
 
 const MAIN = ['forgot', 'ok'] as const;
 const MORE = ['hard', 'out'] as const;
@@ -138,7 +138,7 @@ export function CheckinCard({ onForgot, onShown }: { onForgot: () => void; onSho
           {t('checkin.write')}
         </Link>
         {more ? (
-          MORE.map((kind) => (
+          MORE.filter((kind) => card.answers.includes(kind)).map((kind) => (
             <button key={kind} type="button" disabled={busy} onClick={() => answer(kind)}>
               {t(`checkin.${kind}`)}
             </button>
