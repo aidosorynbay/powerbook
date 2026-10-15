@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { track, useI18n, type MyDayCard, type ShareChannel } from '@/shared/lib';
 import {
   STICKERS,
@@ -75,7 +75,7 @@ function download(file: File) {
  * For someone without a photo there is the whole picture, the sticker over
  * the reading room.
  */
-export function StoryShare({ card, link, onSent, children }: { card: MyDayCard; link: string; onSent: (channel: ShareChannel, detail: Detail) => void; children?: ReactNode }) {
+export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: string; onSent: (channel: ShareChannel, detail: Detail) => void }) {
   const { t, locale } = useI18n();
   // A reader's first sticker is picked at random, then kept: whichever one the
   // sheet opened on would otherwise win the month's count in Analytics.
@@ -377,17 +377,6 @@ export function StoryShare({ card, link, onSent, children }: { card: MyDayCard; 
         </>
       )}
 
-      <details className={styles.more} onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && track('day_share_more')}>
-        <summary>{t('shareDay.otherWays')}</summary>
-        <div className={styles.moreBody}>
-          {mode === 'photo' && copyable && (
-            <button type="button" className={styles.secondary} onClick={save} disabled={!current}>
-              {t('shareDay.saveSticker')}
-            </button>
-          )}
-          {children}
-        </div>
-      </details>
     </div>
   );
 }
