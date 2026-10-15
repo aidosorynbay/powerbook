@@ -902,26 +902,43 @@ export function DashboardPage() {
       // the minutes fly into today's cell of the calendar (the founder's idea, 2026-10-13)
       setJustSaved(true);
       window.setTimeout(() => setJustSaved(false), 1500);
+      let dropDone: Promise<unknown> = Promise.resolve();
       if (dialRect && minutes > 0) {
         setViewUser(null);
         setCalendarView('mine');
-        // …and then on into the circle's treasury: one drop to «Круг», today's circle total counting up (2026-10-15)
+        // …and then on into the circle's treasury: a drop falls from today's cell into the pool under the calendar,
+        // today's circle total counting up (2026-10-15). Only once the circle's day is known: never «казна: 45 мин».
         const delta = minutes - before;
-        const circleBefore = circleMinutes.get(todayStr) ?? 0;
+        const circleBefore = roster ? circleMinutes.get(todayStr) ?? 0 : null;
         let fly = true;
-        try {
-          fly = localStorage.getItem('pb.treasuryDrop') !== todayStr;
-          localStorage.setItem('pb.treasuryDrop', todayStr);
-        } catch { /* private mode: fly every time */ }
-        void flyMinutes(dialRect, () => document.querySelector<HTMLElement>(`[data-day="${todayStr}"]`), minutes, minutes >= DAILY_GOAL_MINUTES).then((cell) => {
-          if (!cell || delta <= 0) return;
+        try { fly = localStorage.getItem('pb.treasuryDrop') !== todayStr; } catch { /* private mode: fly every time */ }
+        dropDone = flyMinutes(dialRect, () => document.querySelector<HTMLElement>(`[data-day="${todayStr}"]`), minutes, minutes >= DAILY_GOAL_MINUTES).then((cell) => {
+          if (!cell || delta <= 0 || circleBefore === null) return;
           const fmt = (m: number) => (m >= 60 ? (m % 60 ? t('ms.hm', { h: Math.floor(m / 60), m: m % 60 }) : t('ms.h', { h: Math.floor(m / 60) })) : t('ms.m', { m }));
-          track('treasury_drop_seen', { minutes: delta, fly });
-          // one thing moves at a time: on the day's 30 the room's «30 минут» comes first, the drop after it
-          const wait = before < DAILY_GOAL_MINUTES && minutes >= DAILY_GOAL_MINUTES ? 3300 : 250;
-          return new Promise((r) => window.setTimeout(r, wait)).then(() => dropToTreasury(cell, document.querySelector<HTMLElement>('[data-cal-grid]'), {
+          // one thing moves at a time: on the day's 30 the room's «30 минут» comes first (it starts a moment after the
+          // save), the drop once it has gone — 7 s at most
+          const goalDay = before < DAILY_GOAL_MINUTES && minutes >= DAILY_GOAL_MINUTES;
+          const quiet = new Promise<void>((r) => {
+            if (!goalDay) { window.setTimeout(r, 250); return; }
+            const t0 = performance.now();
+            let seenAt = 0;
+            const check = () => {
+              const busy = !!document.querySelector('[data-room-goal]');
+              const now = performance.now();
+              if (busy && !seenAt) seenAt = now;
+              const elapsed = now - t0;
+              // the room's card is gone from sight ~2.3 s after it shows (its node stays until 3.6 s)
+              if ((seenAt && (!busy || now - seenAt > 2300)) || (!seenAt && elapsed > 4500) || elapsed > 9000) window.setTimeout(r, seenAt ? 150 : 0);
+              else window.setTimeout(check, 100);
+            };
+            check();
+          });
+          return quiet.then(() => dropToTreasury({
+            today: todayStr, grid: () => document.querySelector<HTMLElement>('[data-cal-grid]'),
+            counted: minutes >= DAILY_GOAL_MINUTES,
             delta, before: circleBefore, after: circleBefore + delta,
-            plus: `+${t('ms.m', { m: delta })}`, label: t('cal.treasuryToday'), total: fmt, fly,
+            plus: `+${fmt(delta)}`, label: t('cal.treasuryToday'), total: fmt, fly,
+            onSeen: () => track('treasury_drop_seen', { minutes: delta }),
             onTap: () => { setCalendarView('circle'); track('circle_calendar_open', { source: 'treasury_drop' }); },
           }));
         });
@@ -941,7 +958,10 @@ export function DashboardPage() {
         : null;
       if (reason) {
         track('share_prompt_shown', { reason });
-        window.setTimeout(() => setSharing(todayStr), 1900);
+        // after the drop has joined the pool (or 8 s at most), so the sheet never covers it
+        void Promise.race([dropDone.catch(() => {}), new Promise((r) => window.setTimeout(r, 8000))]).then(() =>
+          window.setTimeout(() => setSharing(todayStr), 300),
+        );
       }
       await fetchCalendar(roundStatus.round.id);
       await fetchLeaderboard(roundStatus.round.id);

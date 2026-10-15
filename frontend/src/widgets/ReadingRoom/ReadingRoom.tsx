@@ -1187,7 +1187,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
       )}
       {shareDay && <ShareDay day={shareDay} onClose={() => setShareDay(null)} />}
       {goal > 0 && (
-        <div className={styles.goal} role="status" key={goal}>
+        <div className={styles.goal} role="status" key={goal} data-room-goal>
           <div className={styles.goalIn}>
             <svg viewBox="0 0 110 110" aria-hidden="true"><circle className={styles.gRing} cx="55" cy="55" r="48" /><path className={styles.gTick} d="M33 57l15 15 29-32" /></svg>
             <div className={styles.goalT}>{t('room.goalTitle', { min: GOAL })}</div>
