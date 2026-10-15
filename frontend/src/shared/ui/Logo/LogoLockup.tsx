@@ -31,7 +31,7 @@ const WORD = 'M48.08510638297873 64.25531914893617H33.04964539007092V100.0H8.794
 /**
  * The PowerBook logo. The word takes the page's ink — white on the navy, navy on paper: exactly the kit's
  * «whiteword» and «navyword» lockups (brand book 15.10.2026, «one mark, always with its dots»). `mark` draws
- * the mark alone; so does a square box (CSS `aspect-ratio: 1`), which is how phones get «только знак».
+ * the mark alone; so does a square box (CSS `aspect-ratio: 1`), which is how the sign-in cards fit a phone.
  * Decorative unless `title` is given (a link or a button around it names itself).
  */
 export function LogoLockup({ mark = false, title, className = '' }: { mark?: boolean; title?: string; className?: string }) {
@@ -40,7 +40,7 @@ export function LogoLockup({ mark = false, title, className = '' }: { mark?: boo
   return (
     <svg
       viewBox={mark ? '0 0 200 200' : '0 0 1050.9 200'}
-      // a square box shows the mark alone (the word is cut off on its right): phones, brand book p. 16
+      // a square box shows the mark alone (the word is cut off on its right): the sign-in cards on phones
       preserveAspectRatio="xMinYMid slice"
       className={`${mark ? styles.markOnly : styles.lockup} ${className}`}
       role={title ? 'img' : undefined}

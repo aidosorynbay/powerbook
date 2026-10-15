@@ -43,10 +43,10 @@
   height: 40px;
 }
 
-/* Phones: the mark alone (brand book p. 16, «На телефоне — только знак»; the logo did so before the kit's lockup
-   too) — a square box cuts the word off the lockup. */
+/* Phones: the logo on a page (the sign-in cards, the footer) shows the mark alone, as it did before the kit's
+   lockup — a square box cuts the word off. The header keeps its word (Header.module.css). */
 @media (max-width: 600px) {
-  .lockup {
+  .logo .lockup {
     aspect-ratio: 1;
   }
 }

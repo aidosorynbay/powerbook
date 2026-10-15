@@ -673,13 +673,23 @@
   .memberLockup { height: 30px; }
 }
 
-/* Phones: the mark alone, 32 px (brand book p. 16: «высота знака 28–32 px. На телефоне — только знак») — a square
-   box cuts the word off the kit's lockup. It also leaves the bell and «?» their room at 320–375 px. */
+/* Phones keep the word too (the founder, 16.10.2026: «пусть надпись PowerBook будет», over the brand book's «на
+   телефоне — только знак», p. 16), at the book's 28 px where the bar has room. A member's bar has the language,
+   the messages, the bell and «?» (~190 px) plus ~56 px of paddings and gap, so below ~395 px the logo shrinks with
+   the screen (18 px at 320) rather than push «?» off it. The guest's bar is shorter: 28 px, 24 px up to 360. */
 @media (max-width: 600px) {
-  .memberLockup,
+  .memberLockup {
+    height: clamp(18px, calc((100vw - 246px) / 5.25), 28px);
+  }
+
   .triggerLockup {
-    height: 32px;
-    aspect-ratio: 1;
+    height: 28px;
+  }
+}
+
+@media (max-width: 360px) {
+  .triggerLockup {
+    height: 24px;
   }
 }
 
