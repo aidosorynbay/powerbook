@@ -110,8 +110,9 @@ class SocialService:
         out = []
         for u in self.users.list_real_users():
             arch_key, arch_weekday = self._archetype_ref(u.id)
-            shelf = self.insights.bookshelf(user_id=u.id)
-            recent_books = [b.title for b in shelf[-3:][::-1]]
+            # newest first already: the three latest, private ones left out
+            shelf = self.insights.bookshelf(user_id=u.id, public=True)
+            recent_books = [b.title for b in shelf[:3]]
             badges_earned = sum(1 for b in self.insights.badges(user_id=u.id) if b.earned)
             out.append(
                 DirectoryEntryOut(
@@ -131,11 +132,11 @@ class SocialService:
 
     def favorite_covers(self, titles: list[str]) -> list[str | None]:
         """A cover for each of the reader's top-3, the way the 3D shelf finds
-        them: the shared library's book first, then the cover cache. A title
-        nobody has looked up yet is asked for in the background
+        them: the shared library's face of the book first (book_face, the
+        cover it has on every shelf), then the cover cache. A title nobody
+        has looked up yet is asked for in the background
         (`self.pending_lookups`), so it shows next time."""
-        from app.core.booktitles import canonical_key
-        from app.services import catalog, covers
+        from app.services import book_face, catalog, covers
 
         idx = catalog.index(self.db)
         cleaned = [covers.clean_title(t) or t for t in titles]
@@ -143,9 +144,9 @@ class SocialService:
         rows = covers.cached(self.db, keys)
         out: list[str | None] = []
         for clean, key in zip(cleaned, keys):
-            work = idx.find(canonical_key(clean) or "")
-            if work is not None and work.image:
-                out.append(f"/library/covers/{work.image}.jpg")
+            face = book_face.of_title(idx, clean)
+            if face is not None and face.cover_url:
+                out.append(face.cover_url)
                 continue
             row = rows.get(key)
             if covers.wants_lookup(row):
@@ -162,8 +163,8 @@ class SocialService:
         arch_key, arch_weekday = self._archetype_ref(target.id)
         badges = self.insights.badges(user_id=target.id)
         earned = sum(1 for b in badges if b.earned)
-        shelf = self.insights.bookshelf(user_id=target.id)
-        recent_books = [b.title for b in shelf[-6:][::-1]]
+        shelf = self.insights.bookshelf(user_id=target.id, public=target.id != viewer_id)
+        recent_books = [b.title for b in shelf[:6]]
 
         is_buddy = self.buddies.get(user_id=viewer_id, buddy_user_id=target.id) is not None
 

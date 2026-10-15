@@ -76,7 +76,9 @@ class InsightsRepository(BaseRepository[None]):
         )
         return self.db.execute(stmt).scalar_one_or_none()
 
-    def finished_books_for_user(self, *, user_ids: list[uuid.UUID]) -> list[tuple[str, object, Round]]:
+    def finished_books_for_user(
+        self, *, user_ids: list[uuid.UUID], include_private: bool = True
+    ) -> list[tuple[str, object, Round]]:
         stmt = (
             select(ReadingLog.comment, ReadingLog.date, Round)
             .join(Round, Round.id == ReadingLog.round_id)
@@ -87,6 +89,9 @@ class InsightsRepository(BaseRepository[None]):
             )
             .order_by(ReadingLog.date.asc())
         )
+        if not include_private:
+            # A private comment is hidden from the circle, and so is the book it names.
+            stmt = stmt.where(ReadingLog.is_comment_private.is_(False))
         return [(row[0], row[1], row[2]) for row in self.db.execute(stmt).all()]
 
     def manual_books_for_user(self, *, user_ids: list[uuid.UUID]) -> list[ManualBook]:

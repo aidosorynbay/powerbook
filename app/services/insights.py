@@ -408,23 +408,32 @@ class InsightsService:
 
     # ---------- bookshelf ----------
 
-    def bookshelf(self, *, user_id: uuid.UUID) -> list[BookshelfEntryOut]:
+    def bookshelf(self, *, user_id: uuid.UUID, public: bool = False) -> list[BookshelfEntryOut]:
         """Books finished in a round, plus whatever the reader added by hand.
 
         A title can legitimately exist on both sides — someone logs a book
         during a round and later adds it manually, or vice versa. The round
         entry wins: it carries a real date and the round it belongs to, which
         the manual one can't reconstruct.
+
+        Each round book is the title carved out of the day's comment, never the
+        comment itself, spelled as the shared library spells it (book_face).
+        `public`: for other people's eyes, so a book finished with a private
+        comment stays out, as it does on the shelf.
         """
+        from app.services import book_face, catalog
+        from app.services.bookcase import _split_comment
+
+        idx = catalog.index(self.db)
         ids = self._effective_ids(user_id)
-        rows = self.repo.finished_books_for_user(user_ids=ids)
+        rows = self.repo.finished_books_for_user(user_ids=ids, include_private=not public)
 
         shelf: list[BookshelfEntryOut] = []
         seen: set[str] = set()
         for comment, d, rnd in rows:
             shelf.append(
                 BookshelfEntryOut(
-                    title=comment,
+                    title=book_face.spelling(idx, _split_comment(comment)[0]),
                     date=d.isoformat(),
                     round_label=self.repo.round_label(rnd),
                     source="round",
