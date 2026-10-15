@@ -15,6 +15,12 @@ would forbid, and a cover must not vanish when someone else's CDN changes.
 
     python -m app.services.covers backfill                  # every title not yet looked up
     python -m app.services.covers backfill --retry-misses   # and every miss again
+
+Who wrote the book is not taken from the edition whose picture is used:
+that edition may list its translator in the reader's script and the author
+in the original one, or be another book that shares the title. The author is the
+person most editions of the title agree on (app.core.authors); the reader's
+own «Ремарк» after the title decides it when an edition bears it out.
 """
 from __future__ import annotations
 
@@ -40,6 +46,7 @@ from sqlalchemy import and_, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.core import authors as names
 from app.core.booktitles import match_key, matching_title
 from app.core.config import settings
 from app.models.book_cover import BookCover
@@ -386,6 +393,24 @@ def _judge(query: str, author_hint: str | None, candidate: _Candidate) -> _Match
     return _Match(candidate=candidate, score=score, title=title, author=author)
 
 
+def _agreed_author(matches: list[_Match], hint: str | None) -> names.Person | None:
+    """Who wrote the book, by the editions of its title met so far: the
+    person named on most of them. The author is on every edition; a
+    translator or an illustrator on a few; the odd other book of the same
+    title on one. The reader's own word wins when an edition bears it out."""
+    votes = [
+        (creator, 1.0)
+        for m in matches
+        for creator in dict.fromkeys(c.strip() for c in m.candidate.creators if c and c.strip())
+    ]
+    found = names.people(votes)
+    if hint:
+        vouched = next((p for p in found if p.is_(hint)), None)
+        if vouched is not None:
+            return vouched
+    return found[0] if found else None
+
+
 def _split_author(query: str, candidate: _Candidate) -> _Match | None:
     """"Мастер и Маргарита - Булгаков" or "Булгаков — Мастер и Маргарита":
     one side is the title, the other must be the edition's author for the
@@ -633,10 +658,23 @@ _LOOKUP_SECONDS = 40
 def _look_up(row: BookCover, author_hint: str | None) -> None:
     query = row.query
     core = _VOLUME.sub("", query).strip(_TRIM) or query
+    script = _script(core)
+    # Every edition of this title met so far, to tell its author from whoever else an edition names.
+    met: list[_Match] = []
 
     def judged(candidates: list[_Candidate]) -> list[_Match]:
         found = [m for m in (_judge(core, author_hint, c) or _split_author(core, c) for c in candidates) if m]
-        return sorted(found, key=lambda m: m.score, reverse=True)
+        met.extend(found)
+        person = _agreed_author(met, author_hint)
+        # The picture comes from an edition by the author the editions agree on, before the odd book that only
+        # shares the title.
+        by_them = lambda m: person is not None and any(person.is_(c) for c in m.candidate.creators)  # noqa: E731
+        return sorted(found, key=lambda m: m.score + (0.15 if by_them(m) else 0), reverse=True)
+
+    def author() -> str | None:
+        person = _agreed_author(met, author_hint)
+        # Written the way the title is: a transliterated name on a Cyrillic title reads as a mistake.
+        return person.written(script) if person is not None else None
 
     # Plainest question first; then the exact title, which digs a popular
     # book's own edition out from under the summaries of it; then each side
@@ -674,7 +712,7 @@ def _look_up(row: BookCover, author_hint: str | None) -> None:
             tries += 1
             images = _fetch_images(match.candidate)
             if images:
-                _keep(row, match, images, keep_title=core == query, fallback=fallback)
+                _keep(row, match, images, keep_title=core == query, author=author())
                 return
     # No sharp cover anywhere: a well-known book's Wikipedia article usually
     # shows one; failing that, a small cover still beats a painted stand-in
@@ -685,15 +723,15 @@ def _look_up(row: BookCover, author_hint: str | None) -> None:
         found = None
     if found:
         match, images = found
-        _keep(row, match, images, keep_title=core == query, fallback=fallback)
+        _keep(row, match, images, keep_title=core == query, author=author())
         return
     for match in with_picture[:3]:
         images = _fetch_images(match.candidate, min_width=110)
         if images:
-            _keep(row, match, images, keep_title=core == query, fallback=fallback)
+            _keep(row, match, images, keep_title=core == query, author=author())
             return
     if fallback:
-        _keep(row, fallback, None, keep_title=core == query)
+        _keep(row, fallback, None, keep_title=core == query, author=author())
     else:
         row.status = "none"
 
@@ -704,12 +742,11 @@ def _keep(
     images: tuple[bytes, bytes] | None,
     *,
     keep_title: bool,
-    fallback: _Match | None = None,
+    author: str | None,
 ) -> None:
     row.title = match.title if keep_title else None
-    # The edition with a picture may list no author in the reader's script;
-    # the best textual match usually does.
-    row.author = match.author or (fallback.author if fallback else None)
+    # Not the pictured edition's own first name: who the editions agree wrote it (_agreed_author).
+    row.author = author
     row.source = match.candidate.source
     row.source_id = match.candidate.volume_id
     row.image = _store(row.key, f"{match.candidate.source}:{match.candidate.volume_id}", images) if images else None
@@ -817,6 +854,77 @@ def wants_lookup(row: BookCover | None) -> bool:
     if row.status == "none":
         return checked < now - timedelta(days=60)
     return False
+
+
+# ---------- asking again who wrote it ----------
+
+# Lookups asked again per scheduler tick (every few minutes): a handful, so
+# readers' own shelf lookups never wait behind them.
+_RECHECK_PER_TICK = 3
+
+
+def recheck(row: BookCover, hint: str | None) -> None:
+    """Ask the catalogues again about a title looked up before, under today's
+    matcher. A picture found this time replaces the old one, which may have
+    been the cover of another book of the same title; without one only the
+    author changes, so a bad day at Google never takes a cover away."""
+    fresh = BookCover(key=row.key, query=row.query, status="working", attempts=0)
+    _look_up(fresh, hint)
+    if fresh.status == "found" and fresh.image:
+        old = row.image
+        row.title, row.author, row.source, row.source_id, row.image = (
+            fresh.title, fresh.author, fresh.source, fresh.source_id, fresh.image,
+        )
+        if old and old != fresh.image:
+            delete_image(old)
+    elif fresh.status == "found":
+        row.author = fresh.author
+    row.author_checked_at = datetime.now(timezone.utc)
+
+
+def recheck_disputed(db: Session, limit: int = _RECHECK_PER_TICK) -> int:
+    """Books whose sources name different people as the author, and books
+    whose author the founder has named: each of their spellings' lookups is
+    asked again, once. Before 2026-10-15 a lookup took the author of
+    whichever edition had a picture — a translator, or another book of the
+    same title — and those answers are still in the cache. A founder's name
+    is searched with, so the picture becomes an edition by that author.
+    Returns how many lookups were asked."""
+    from app.services import catalog
+
+    idx = catalog.index(db)
+    due: list[tuple[str, str | None]] = []
+    for work in sorted(idx.works.values(), key=lambda w: (-len(w.readers), w.key)):
+        disputed = len(work.author_rivals) > 1 and work.author_rivals[1][1] >= 1.0
+        if work.author_fixed or disputed:
+            due += [(key, work.author if work.author_fixed else None) for key in sorted(work.cover_keys)]
+    rows = cached(db, [key for key, _ in due])
+    asked = 0
+    for key, hint in due:
+        row = rows.get(key)
+        if row is None or row.status != "found" or row.author_checked_at is not None:
+            continue
+        if hint and row.author and names.same_person(row.author, hint):
+            continue
+        try:
+            recheck(row, hint)
+        except urllib.error.HTTPError:
+            # Google pushing back: the rest wait for a later tick.
+            db.rollback()
+            break
+        except Exception:
+            db.rollback()
+            row = db.get(BookCover, key)
+            if row is None:
+                continue
+            row.author_checked_at = datetime.now(timezone.utc)
+        db.commit()
+        asked += 1
+        if asked >= limit:
+            break
+    if asked:
+        catalog.invalidate()
+    return asked
 
 
 # ---------- backfill ----------

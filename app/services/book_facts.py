@@ -548,15 +548,28 @@ def scheduled() -> None:
             return
         db = get_session_factory()()
         try:
-            fill(db, limit=12)
-            if settings.ai_book_facts:
-                fill_ai(db, limit=4)
-        except Exception:
-            logger.exception("book facts tick failed")
-            db.rollback()
+            _tick(db)
         finally:
             db.close()
             fcntl.flock(handle, fcntl.LOCK_UN)
+
+
+def _tick(db: Session) -> None:
+    try:
+        fill(db, limit=12)
+        if settings.ai_book_facts:
+            fill_ai(db, limit=4)
+    except Exception:
+        logger.exception("book facts tick failed")
+        db.rollback()
+    # Books whose sources disagree on the author: their lookups asked again, a few a tick.
+    try:
+        from app.services import covers
+
+        covers.recheck_disputed(db)
+    except Exception:
+        logger.exception("author recheck failed")
+        db.rollback()
 
 
 def _arg(name: str, default: int) -> int:
