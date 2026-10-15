@@ -37,13 +37,15 @@ export function MissedYesterday({
     if (show) track('missed_yesterday_shown');
   }, [show]);
   if (!show) return null;
+  // Many a «miss» is a day read and not logged: the question comes first, the miss only after it, as an «if not»
+  // (the council, 15.10.2026).
   return (
     <p className={styles.missedLine}>
-      {t('today.missedYesterday')}{' '}
-      {/* many a «miss» is a day read and not logged */}
+      {t('today.missedAsk')}{' '}
       <button type="button" className={styles.missedLog} onClick={() => onLogYesterday(yesterday.date)}>
         {t('today.missedLog')}
       </button>
+      <span className={styles.missedOk}>{t('today.missedYesterday')}</span>
     </p>
   );
 }

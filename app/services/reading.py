@@ -3,7 +3,7 @@ from __future__ import annotations
 import calendar
 import uuid
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
@@ -14,6 +14,7 @@ from app.models.enums import RoundParticipantStatus, RoundStatus
 from app.models.round import ReadingLog, ReadingLogBook
 from app.repositories.claims import ClaimsRepository
 from app.repositories.insights import normalize_book_title
+from app.repositories.participants import RoundParticipantRepository
 from app.repositories.reading_logs import ReadingLogRepository
 from app.services.rounds import RoundService
 
@@ -318,11 +319,25 @@ class ReadingService:
             "round_id": str(round_id),
             "total_minutes": total_minutes,
             "total_score": total_score,
+            "joined_day": self._joined_day(rnd, user_id),
             "start_day": max(1, rnd.start_day),
             "end_day": rnd.last_day_num,
             "is_partial_month": rnd.is_partial_month,
             "days": days,
         }
+
+    def _joined_day(self, rnd, user_id: uuid.UUID) -> str | None:
+        """The day the reader took their place, in the circle's time zone: someone else's calendar draws the days
+        before it as «before they joined», not as misses (council, 15.10.2026). Only the date, never the time."""
+        part = RoundParticipantRepository(self.db).get_for_user(round_id=rnd.id, user_id=user_id)
+        if part is None or part.joined_at is None:
+            return None
+        at = part.joined_at if part.joined_at.tzinfo else part.joined_at.replace(tzinfo=timezone.utc)  # SQLite drops it
+        try:
+            zone = ZoneInfo(rnd.timezone or "UTC")
+        except Exception:
+            zone = timezone.utc
+        return at.astimezone(zone).date().isoformat()
 
     def yearly_archive(self, *, user_id: uuid.UUID, year: int, group_id: uuid.UUID) -> dict:
         # Fold in any archive usernames this user has claimed as their own —

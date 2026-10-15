@@ -136,6 +136,8 @@ export type CalendarResponse = {
   round_id: string;
   total_minutes: number;
   total_score: number;
+  /** The day the reader took their place (the circle's time zone): days before it are not misses. */
+  joined_day?: string | null;
   days: CalendarDay[];
 };
 

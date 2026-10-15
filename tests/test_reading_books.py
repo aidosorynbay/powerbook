@@ -174,6 +174,24 @@ def test_someone_else_does_not_see_the_days_books(env):
     assert day["books"] == []
 
 
+def test_someone_elses_calendar_knows_the_day_they_joined(env):
+    """A late joiner's first days are «before they joined» on their calendar for everyone, not misses: the calendar
+    carries the day they took their place, in the circle's time zone, and only the date."""
+    from datetime import timezone
+
+    with env.Session() as s:
+        part = s.query(RoundParticipant).filter_by(round_id=env.round.id, user_id=env.aigerim.id).one()
+        part.joined_at = datetime(2026, 9, 12, 20, 30, tzinfo=timezone.utc)  # 13 September, 01:30 in Almaty
+        s.get(Round, env.round.id).timezone = "Asia/Almaty"
+        s.commit()
+    seen = env.c.get(f"/api/rounds/{env.round.id}/calendar/{env.aigerim.id}", headers=env.dana_h).json()
+    own = env.c.get(f"/api/rounds/{env.round.id}/calendar", headers=env.h).json()
+    assert seen["joined_day"] == own["joined_day"] == "2026-09-13"
+    # someone who never took a place has no such day
+    nobody = env.c.get(f"/api/rounds/{env.round.id}/calendar", headers=env.dana_h).json()
+    assert nobody["joined_day"] is None
+
+
 def test_an_ai_letter_whose_writer_died_offers_to_write_again(env):
     """A deploy restarts the server and kills the thread writing a letter:
     after six minutes it reads as interrupted, not as forever «пишется»."""

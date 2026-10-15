@@ -489,6 +489,7 @@
 
 /* the day after a miss: one quiet line, no colour of its own */
 .missedLine { margin: 0 0 var(--spacing-2); font-size: var(--font-size-sm); color: var(--color-text-secondary); line-height: 1.4; }
+.missedOk { display: block; }
 
 /* «Хей, как вы?» — the founder's message, a letter from a person rather than a banner */
 .checkin {
