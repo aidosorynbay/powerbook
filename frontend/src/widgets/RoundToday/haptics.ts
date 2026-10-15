@@ -16,18 +16,43 @@ let audio: AudioContext | null = null;
  * iPhone timer's wheel. Web Audio may only start inside a touch, so the
  * dial calls this on pointerdown; on an iPhone it stays silent with the
  * ringer switch off, as the timer does.
+ *
+ * Sometimes there was sound and sometimes not (the founder, 2026-10-16): iPhone Safari counts a lifted finger or a
+ * tap as the gesture, not the press that starts a drag, so the first wind of a visit was silent; and back from
+ * the background (the app switcher, a call, a locked screen) the context is 'interrupted', which was never
+ * resumed. Now any finger lift or tap on the page resumes it, whatever the state, and a closed one is made anew.
  */
 export function unlockSound() {
   try {
-    if (!audio) {
+    if (!audio || audio.state === 'closed') {
       const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!Ctx) return;
       audio = new Ctx();
     }
-    if (audio.state === 'suspended') void audio.resume();
+    if (audio.state !== 'running') void audio.resume().catch(() => {});
   } catch {
     audio = null;
   }
+}
+
+/** The context made but left asleep (allowed without a touch); the next tap or finger lift anywhere wakes it. */
+export function prepareSound() {
+  try {
+    if (audio && audio.state !== 'closed') return;
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (Ctx) audio = new Ctx();
+  } catch {
+    audio = null;
+  }
+}
+
+function wake() {
+  if (audio && audio.state !== 'running') unlockSound();
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('touchend', wake, { capture: true, passive: true });
+  document.addEventListener('click', wake, { capture: true, passive: true });
 }
 
 function click(strong: boolean) {

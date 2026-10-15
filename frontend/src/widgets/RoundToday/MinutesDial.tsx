@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '@/shared/lib';
 import { track } from '@/shared/lib/analytics';
-import { releaseTap, tick, unlockSound } from './haptics';
+import { prepareSound, releaseTap, tick, unlockSound } from './haptics';
 import styles from './RoundToday.module.css';
 
 /**
@@ -167,6 +167,11 @@ export function MinutesDial({
       released.current = { strong: g.from < GOAL && total.current >= GOAL };
     }
   };
+
+  // the sound made ready but asleep as the dial appears, so any tap before the first wind wakes it and that wind clicks too
+  useEffect(() => {
+    if (!readOnly) prepareSound();
+  }, [readOnly]);
 
   // the finger lifts: the one moment iPhone Safari lets a page tap the Taptic Engine
   useEffect(() => {
