@@ -273,7 +273,7 @@
 
 /* a missed day: neutral, as on the circle's calendar (brand book 15.10.2026) */
 .missed {
-  background: var(--color-bg-elevated);
+  background: var(--color-bg-secondary);
   color: var(--color-text-secondary);
   box-shadow: inset 0 0 0 1px var(--color-border-primary);
 }
@@ -606,7 +606,8 @@
   letter-spacing: -0.01em;
 }
 
-/* today, as on the circle's calendar: the orange ring */
+/* today, as on the circle's calendar: the orange ring, outside the cell */
 .today {
-  box-shadow: inset 0 0 0 2px var(--color-accent-primary);
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 1px;
 }

@@ -650,9 +650,11 @@
   color: var(--color-text-primary);
 }
 
-/* today, whatever it holds: the orange ring, as the Round marks «today» everywhere */
+/* today, whatever it holds: the orange ring, as the Round marks «today» everywhere — outside the cell, against the
+   card, so it still reads on a green or yellow day (inside, orange on green was 1.7:1) */
 .calendarDay.dayToday {
-  box-shadow: inset 0 0 0 2px var(--color-accent-primary);
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 1px;
 }
 
 .calendarDay.dayFuture {
