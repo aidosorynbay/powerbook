@@ -271,6 +271,23 @@ def test_only_the_shared_library_decides_how_a_book_looks():
     )
     assert offenders == [], f"show a book through app.services.book_face, not book_covers: {offenders}"
 
+    # Which book a title is — who else read it, which books two readers share — is the shared library's word
+    # (catalog: work.readers, by_person, holders), not a comparison of spellings: the founder's shelf counted one
+    # fellow reader of «Три товарища» where its card listed five. These modules may turn a title into a key: they
+    # build the library, find a title's book in it, or match a list that is not in it (celebrities' books).
+    keyed = {
+        "app/core/booktitles.py", "app/services/catalog.py", "app/services/book_face.py", "app/services/book_time.py",
+        "app/services/bookcase.py", "app/services/book_finish.py", "app/services/notify.py",
+        "app/services/shelf_overrides.py", "app/services/insights.py", "app/repositories/insights.py",
+    }
+    offenders = sorted(
+        path.relative_to(root).as_posix()
+        for path in (root / "app").rglob("*.py")
+        if re.search(r"\b(matching_key|canonical_key)\(", path.read_text(encoding="utf-8"))
+        and path.relative_to(root).as_posix() not in keyed
+    )
+    assert offenders == [], f"find a book through app.services.catalog / book_face, not by its spelling: {offenders}"
+
     # A cover-less book is painted from its key in the shared library, as the 3D shelf paints it, so it has the
     # same colours everywhere.
     for path in (root / "frontend" / "src").rglob("*.tsx"):
@@ -290,3 +307,44 @@ def test_popular_books_name_titles_only_and_leave_private_books_out(env):
     env.db.commit()
     titles = [t for t, _ in InsightsRepository(env.db).popular_books(limit=20)]
     assert "Мартин Иден" in titles and not any("Тайный" in t or "Плакал" in t for t in titles)
+
+
+def test_who_else_read_it_is_the_cards_readers_on_every_shelf(env):
+    from app.models.book_review import BookReview
+    from app.models.manual_book import ManualBook
+
+    # Two more readers, neither spelling it like anyone: one added it by hand, one only marked it.
+    nur = User(username="nur", display_name="Nurdaulet", password_hash="x", gender=Gender.male)
+    ayan = User(username="ayan", display_name="Ayan", password_hash="x", gender=Gender.male)
+    env.db.add_all([nur, ayan])
+    env.db.flush()
+    env.db.add(ManualBook(user_id=nur.id, title="Три товарища (Ремарк)", title_norm="три товарища ремарк"))
+    work = _work(env.db, "Три товарища")
+    env.db.add(BookReview(user_id=ayan.id, work_key=work.key, title="Три товарища", rating=9))
+    env.db.commit()
+    catalog.invalidate()
+    work = _work(env.db, "Три товарища")
+    assert len(work.readers) == 6
+    service = BookcaseService(env.db)
+    for reader in (env.madik, env.orken, nur):
+        vol = env.shelf(reader)["Три товарища"]
+        assert vol.fellow_readers == 5, reader.username
+        names = {r.display_name for r in service.fellow_readers(key=vol.work_key, owner_id=reader.id, viewer_id=reader.id)}
+        assert len(names) == 5 and reader.display_name not in names
+
+
+def test_readers_of_one_book_are_twins_however_they_spelled_it(env):
+    from app.services.insights import InsightsService
+
+    twins = {t.display_name: t for t in InsightsService(env.db).reading_twins(user_id=env.madik.id)}
+    # Madik wrote «Три товарища Ремарк», Orken «три товарища!!», Uldai and Gumi «Три товарища».
+    assert set(twins) == {"Uldai", "Gumi", "Orken"}
+    assert twins["Orken"].shared_books == ["Три товарища"]
+
+
+def test_a_celebritys_list_meets_every_spelling_of_a_book(env, monkeypatch):
+    from app.services import insights
+
+    monkeypatch.setattr(insights, "CELEBRITY_READING_LISTS", [{"name": "Кто-то", "role": "писатель", "books": ["Три товарища", "Улисс"]}])
+    found = insights.InsightsService(env.db).celebrity_match(user_id=env.madik.id)
+    assert [c.shared_books for c in found] == [["Три товарища"]] and found[0].match_percent == 50

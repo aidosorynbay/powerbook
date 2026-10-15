@@ -74,6 +74,9 @@ it in a browser, phone width (390px) included.
   lookups taking the author most editions name, not a translator. Only what a reader chose for their own copy
   stays theirs. The founder fixes an author in /admin → «Книги: склейка» (`book_authors`; «Автор под
   вопросом» lists books whose sources disagree). Painted covers are seeded by the book's key (`BookFace seed`).
+  The same goes for what hangs on a book: who else read it, the books two readers share, its card, marks and
+  watchers come from the catalog work (`work.readers`, `idx.by_person`, the copy's `work_key`), never from
+  comparing spellings — the guard test fails on a new module that turns titles into keys itself.
 - Existing members stay free forever; monetisation ideas must not take away what they have.
 - **Reading room pictures:** `frontend/public/reading-room/` and `widgets/ReadingRoom/casts.js` are built on the
   founder's Mac by `~/powerbook-sync/prototypes/reading-room/` (not in git): `seg_birefnet.py` → `dump_owners.py` →
