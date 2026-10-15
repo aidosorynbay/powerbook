@@ -739,19 +739,11 @@
   opacity: 0.72;
 }
 
-/* An empty past day's sign in the minutes' place, so «8 / –» has the shape of «7 / 45». Grey, never orange: orange
-   is today and the buttons. The «+» a size up, so a finger finds it; the «–» as quiet as the minutes. */
+/* An empty past day's «–» in the minutes' place, so «8 / –» has the shape of «7 / 45»: as quiet as the minutes,
+   grey, never orange (orange is today and the buttons). Not a dot: a dot is «the day has a comment». */
 .calendarDay.dayMissed .dayDash {
   font-size: 12px;
   color: var(--color-text-muted);
-  opacity: 1;
-}
-
-.calendarDay.dayMissed .dayPlus {
-  font-size: 15px;
-  font-weight: var(--font-weight-semibold);
-  line-height: 1;
-  margin-top: 1px;
   opacity: 1;
 }
 
@@ -1625,12 +1617,11 @@
 }
 .lgG { background: var(--color-success-fill); }
 .lgY { background: var(--color-warning-fill); }
-/* the missed day and its «+» by their signs, as the calendar draws them */
-.lgM, .lgP { font-style: normal; line-height: 1; color: var(--color-text-secondary); }
+/* the missed day by its sign, as the calendar draws it */
+.lgM { font-style: normal; line-height: 1; color: var(--color-text-secondary); }
 .lgM::after { content: '–'; }
-.lgP::after { content: '+'; font-weight: var(--font-weight-semibold); }
 .calLegendRow .lgM { display: inline-grid; place-items: center; border-radius: 0; }
-.legendList .lgM, .legendList .lgP { display: grid; place-items: center; background: var(--color-bg-secondary); font-size: 15px; }
+.legendList .lgM { display: grid; place-items: center; background: var(--color-bg-secondary); font-size: 15px; }
 .calLegendRow .lgC { width: 11px; height: 11px; border-radius: 3px; margin: 0; }
 .lgC,
 .circleSum {

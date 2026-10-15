@@ -802,16 +802,6 @@ export function DashboardPage() {
     d.setDate(d.getDate() - 1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, [dayNow]);
-  // the day before yesterday: the oldest day whose minutes a reader still remembers, so the oldest with a «+»
-  const dayBeforeStr = useMemo(() => {
-    const d = new Date(dayNow);
-    d.setDate(d.getDate() - 2);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }, [dayNow]);
-  // the circle still takes minutes for its past days: not closed, and not past the last day's 20:00
-  const minutesOpen = !!roundStatus?.round
-    && roundStatus.round.status !== 'closed' && roundStatus.round.status !== 'results_published'
-    && !inRegistrationWindow;
 
   // Sync Today panel from calendar data when calendar loads/changes
   const todayData = useMemo(() => {
@@ -1874,12 +1864,11 @@ export function DashboardPage() {
                         const colorClass = dayClass + (cell.date === todayStr ? ` ${styles.dayToday}` : '');
                         const lastDayClickable = cellIsLastDay && correctionsOpen;
                         const canClick = !cellIsLastDay || lastDayClickable;
-                        // An empty past day says so where its minutes would be, not by a colour (the council,
-                        // 15.10.2026): «+» on yesterday and the day before, whose minutes a reader still remembers,
-                        // while the circle still takes them — one tap writes them in; «–», nothing logged, on older ones.
-                        const sign = dayClass === styles.dayMissed && cell.minutes === 0
-                          ? (minutesOpen && cell.date >= dayBeforeStr ? '+' : '–')
-                          : null;
+                        // An empty past day says so where its minutes would be — «–», nothing logged — not by a
+                        // colour (the council, 15.10.2026). One sign only: a «+» on the freshest days needed
+                        // explaining and asked nothing the morning line doesn't (the founder, the same night); any
+                        // day still opens the minutes form.
+                        const empty = dayClass === styles.dayMissed && cell.minutes === 0;
                         return (
                           <div
                             key={cell.date}
@@ -1887,8 +1876,7 @@ export function DashboardPage() {
                             className={`${styles.calendarDay} ${colorClass}`}
                             style={lastDayClickable ? { cursor: 'pointer', opacity: 1 } : undefined}
                             onClick={canClick ? () => openLogModal(cell.date, cell.minutes) : undefined}
-                            title={cellIsLastDay ? t('dashboard.lastDayCorrection') : sign === '+' ? t('cal.addMinutes') : undefined}
-                            aria-label={sign === '+' ? `${cell.day} · ${t('cal.addMinutes')}` : undefined}
+                            title={cellIsLastDay ? t('dashboard.lastDayCorrection') : undefined}
                           >
                             {cellIsLastDay ? (
                               <svg className={styles.dayFinishIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{finishFlagIcon()}</svg>
@@ -1898,9 +1886,7 @@ export function DashboardPage() {
                             {cell.minutes > 0 && !cellIsLastDay && (
                               <span className={styles.dayMinutes}>{cell.minutes}{cell.minutes < 1000 && <span className={styles.dayMinutesUnit}> {t('rings.minutesShort')}</span>}</span>
                             )}
-                            {sign && (
-                              <span className={`${styles.dayMinutes} ${sign === '+' ? styles.dayPlus : styles.dayDash}`} aria-hidden="true">{sign}</span>
-                            )}
+                            {empty && <span className={`${styles.dayMinutes} ${styles.dayDash}`} aria-hidden="true">–</span>}
                             {cell.book_finished && <span className={styles.dayStar}>&#9733;</span>}
                             {cell.comment && <span className={styles.dayCommentDot} />}
                           </div>
@@ -2033,7 +2019,6 @@ export function DashboardPage() {
               <li><i className={styles.lgG} />{t('cal.mine30')}</li>
               <li><i className={styles.lgY} />{t('cal.mine2')}</li>
               <li><i className={styles.lgM} />{t('cal.mine0')}</li>
-              <li><i className={styles.lgP} />{t('cal.minePlus')}</li>
               <li><em>&#9733;</em>{t('cal.mineStar')}</li>
               <li><u />{t('cal.mineDot')}</li>
               <li><i className={styles.lgToday} />{t('cal.mineToday')}</li>
