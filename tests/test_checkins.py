@@ -103,6 +103,10 @@ def test_the_morning_list_and_the_founders_yes(env):
     assert checkins.unread(db, db.get(User, users["quiet"].id)) == {"count": 1, "has_thread": True}
     assert [u for u, _ in pushed] == [users["quiet"].id]
     assert pushed[0][1]["title"] == "Founder"
+    # the founder's own Kazakh greeting, as he greets women and men
+    assert msg.text == "Сәлеем, қалайсыз? Кітап оқу қалай болып жатыр?"
+    assert checkins.compose("ru", 0, None, "male").startswith("Ассаламу алейкум")
+    assert checkins.compose("en", 1, None, "male") == "Hey! Haven't seen you in the circle for a few days — how are you? All well?"
 
 
 def test_the_readers_answer_reaches_the_founder(env, monkeypatch):

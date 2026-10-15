@@ -157,9 +157,20 @@ def _last_book(db: Session, round_id: uuid.UUID, user_id: uuid.UUID) -> str | No
     return title.strip()[:80] if title and title.strip() else None
 
 
-def compose(locale: str, seed: int, book: str | None) -> str:
+# The founder's own words (2026-10-15): in Kazakh, to women and to men as he greets them. Readers
+# who chose English get the English line.
+GREETINGS = {
+    "female": "Сәлеем, қалайсыз? Кітап оқу қалай болып жатыр?",
+    "male": "Ассаламу алейкум, қалайсыздар? Осы ай айналымы қалай өтіп жатыр екен?",
+}
+
+
+def compose(locale: str, seed: int, book: str | None, gender: str | None = None) -> str:
     words = TEXTS.get(locale) or TEXTS["ru"]
-    if book and seed % 2 == 0:
+    if locale != "en":
+        text = GREETINGS.get(gender or "", GREETINGS["female"])
+        words = TEXTS["kk"]
+    elif book and seed % 2 == 0:
         options = words["book"]
         text = options[seed % len(options)].format(book=book)
     else:
@@ -238,7 +249,7 @@ def plan(db: Session, now: datetime | None = None) -> list[Checkin]:
             last_read=last_read,
             day=today,
             status="approved" if settings.checkin_auto else "planned",
-            text=compose(_locale(db, p.user_id), seed, _last_book(db, rnd.id, p.user_id)),
+            text=compose(_locale(db, p.user_id), seed, _last_book(db, rnd.id, p.user_id), getattr(user.gender, "value", None)),
         )
         db.add(row)
         try:
