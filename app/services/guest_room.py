@@ -154,8 +154,12 @@ class GuestRoomService:
         g.last_seen_at = now
 
     def out(self, g: GuestRoomSitting) -> dict:
+        from app.services import book_face, catalog
+
         return {
-            "id": str(g.id), "key": public_key(g.id), "hall": g.hall, "seat": g.seat, "book": g.book_title,
+            "id": str(g.id), "key": public_key(g.id), "hall": g.hall, "seat": g.seat,
+            # spelled as the shared library spells the book, as on the room's tags (book_face.spelling)
+            "book": book_face.spelling(catalog.index(self.db), g.book_title),
             "status": g.status, "elapsed_seconds": elapsed(g), "away_seconds": int(g.away_seconds or 0),
             "ended": g.ended_at is not None,
             "claimed": g.claimed_session_id is not None,
