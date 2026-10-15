@@ -1410,7 +1410,7 @@ export function DashboardPage() {
                               <div className={rt.bookText}>
                                 {todayBooks[0]?.title ? (
                                   <>
-                                    <span className={rt.bookTitleBig}>{todayBooks.map((b) => b.title).filter(Boolean).join(' · ')}</span>
+                                    <span className={rt.bookTitleBig}>{todayBooks.map((b, i) => (i === 0 && bookCover.title) || b.title).filter(Boolean).join(' · ')}</span>
                                     {bookCover.author && <span className={rt.bookAuthor}>{bookCover.author}</span>}
                                   </>
                                 ) : (

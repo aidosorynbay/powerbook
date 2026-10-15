@@ -315,7 +315,7 @@ function Recap({ onOpenBook }: { onOpenBook: (key: string) => void }) {
               <div className={store.strip} style={{ marginTop: 12 }}>
                 {data.books.map((b) => (
                   <button key={b.key} type="button" className={store.stripItem} onClick={() => b.work_key && onOpenBook(b.work_key)}>
-                    <BookFace title={b.title} author={b.author} cover={b.cover_url}>
+                    <BookFace title={b.title} author={b.author} cover={b.cover_url} seed={b.work_key}>
                       {b.rating !== null && <span className={store.faceBadges}><PbBadge value={b.rating} /></span>}
                     </BookFace>
                     <span className={store.labelTitle}>{b.title}</span>
@@ -346,7 +346,7 @@ function Recommendations({ onOpenBook }: { onOpenBook: (key: string) => void }) 
       <div className={store.strip}>
         {recs.map((r) => (
           <button key={r.book.key} type="button" className={store.stripItem} onClick={() => onOpenBook(r.book.key)}>
-            <BookFace title={r.book.title} author={r.book.author} cover={r.book.cover_thumb_url ?? r.book.cover_url}>
+            <BookFace title={r.book.title} author={r.book.author} cover={r.book.cover_thumb_url ?? r.book.cover_url} seed={r.book.key}>
               <span className={store.faceBadges}>
                 {r.book.pb_rating !== null && <PbBadge value={r.book.pb_rating} />}
                 {r.book.ext_rating !== null && <ExtBadge rating={r.book.ext_rating} source={r.book.ext_source} />}
@@ -420,7 +420,7 @@ function Notebook({ aiAvailable, focus }: { aiAvailable: boolean; focus: string 
         <div className={styles.notebook}>
           {ordered.map((e) => (
             <article key={e.key} className={styles.entry} id={`note-${e.key}`}>
-              <BookFace title={e.title} author={e.author} cover={e.cover_url} />
+              <BookFace title={e.title} author={e.author} cover={e.cover_url} seed={e.work_key} />
               <div style={{ minWidth: 0 }}>
                 <h3>{e.title}</h3>
                 <p className={styles.entryMeta}>

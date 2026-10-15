@@ -83,10 +83,11 @@ function CoverCard({ book, sub, done, showTime, onClick }: { book: Book; sub: st
   const look = useBookCover(book.title);
   const { t } = useI18n();
   const time = book.minutes >= 60 ? (book.minutes % 60 ? t('ms.hm', { h: Math.floor(book.minutes / 60), m: book.minutes % 60 }) : t('ms.h', { h: Math.floor(book.minutes / 60) })) : t('ms.m', { m: book.minutes });
+  const title = look.title ?? book.title;
   return (
-    <button type="button" className={styles.m3Book} onClick={onClick} aria-label={`${book.title} · ${time}`}>
+    <button type="button" className={styles.m3Book} onClick={onClick} aria-label={`${title} · ${time}`}>
       <span className={styles.m3Cover} aria-hidden="true">
-        {look.cover ? <img src={look.cover} alt="" loading="lazy" /> : <em lang={/[а-яёәіңғүұқөһ]/i.test(book.title) ? 'ru' : 'en'}>{book.title.trim()}</em>}
+        {look.cover ? <img src={look.cover} alt="" loading="lazy" /> : <em lang={/[а-яёәіңғүұқөһ]/i.test(title) ? 'ru' : 'en'}>{title.trim()}</em>}
       </span>
       {showTime && <b>{time}</b>}
       <small className={done ? styles.m3Done : ''}>{sub}</small>
@@ -97,15 +98,16 @@ function CoverCard({ book, sub, done, showTime, onClick }: { book: Book; sub: st
 /** A book in the sheet: a real cover (or its title set plainly), the title, its status, the time on the right. */
 function SheetBook({ book, status, done, tag, meta, time }: { book: Book; status: string; done: boolean; tag?: string; meta: string; time: string }) {
   const look = useBookCover(book.title);
+  const title = look.title ?? book.title;
   return (
     <div className={styles.s3Book}>
       <span className={styles.s3Cover} aria-hidden="true">
         {/* the title is printed beside it, so a cover-less book shows its first letter only */}
-        {look.cover ? <img src={look.cover} alt="" loading="lazy" /> : <em>{book.title.trim().charAt(0).toUpperCase()}</em>}
+        {look.cover ? <img src={look.cover} alt="" loading="lazy" /> : <em>{title.trim().charAt(0).toUpperCase()}</em>}
       </span>
       <span className={styles.s3BookBody}>
         <b>
-          {book.title}
+          {title}
           {tag && <em className={styles.s3Tag}>{tag}</em>}
         </b>
         <span className={styles.s3BookTime}>{time}</span>

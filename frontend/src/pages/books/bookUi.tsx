@@ -35,11 +35,14 @@ export function ExtBadge({ rating, source }: { rating: number; source: string | 
   );
 }
 
-/** A book's front: its real cover, or one painted in the colours the 3D shelf gives the same title. */
-export function BookFace({ title, author, cover, children }: { title: string; author: string | null; cover: string | null; children?: ReactNode }) {
+/**
+ * A book's front: its real cover, or one painted in the colours the 3D shelf gives the same book — `seed` is the
+ * shared library's key of the book, the one the shelf paints it from.
+ */
+export function BookFace({ title, author, cover, seed, children }: { title: string; author: string | null; cover: string | null; seed?: string | null; children?: ReactNode }) {
   const [broken, setBroken] = useState(false);
   const src = apiUrl(cover);
-  const palette = paletteFor(title.trim().toLowerCase());
+  const palette = paletteFor(seed || title.trim().toLowerCase());
   return (
     <span className={styles.face}>
       {src && !broken ? (

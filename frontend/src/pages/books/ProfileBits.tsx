@@ -27,7 +27,7 @@ export function ProfileListings({ userId, isSelf, titleClass }: { userId: string
       <div className={styles.strip}>
         {shown.slice(0, 12).map((l) => (
           <Link key={l.id} to={`/market?listing=${l.id}`} className={styles.stripItem}>
-            <BookFace title={l.title} author={l.author} cover={l.photo_url ?? l.cover_thumb_url ?? l.cover_url}>
+            <BookFace title={l.title} author={l.author} cover={l.photo_url ?? l.cover_thumb_url ?? l.cover_url} seed={l.work_key}>
               {l.status !== 'active' && <span className={styles.soldVeil}>{t(`mkt.status.${l.status}`)}</span>}
             </BookFace>
             <span className={styles.labelTitle}>{l.title}</span>

@@ -181,7 +181,7 @@ export function MarketPage() {
               keyOf={(l) => l.id}
               onOpen={(l) => setParam({ listing: l.id })}
               face={(l) => (
-                <BookFace title={l.title} author={l.author} cover={l.photo_url ?? l.cover_thumb_url ?? l.cover_url}>
+                <BookFace title={l.title} author={l.author} cover={l.photo_url ?? l.cover_thumb_url ?? l.cover_url} seed={l.work_key}>
                   <span className={styles.faceBadges}>{l.pb_rating !== null && <PbBadge value={l.pb_rating} />}</span>
                   {(l.status === 'sold' || l.status === 'reserved' || l.status === 'hidden') && (
                     <span className={styles.soldVeil}>{t(`mkt.status.${l.status}`)}</span>

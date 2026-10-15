@@ -77,7 +77,7 @@ export function ListingSheet({ listingId, onClose, onEdit, onChanged }: SheetPro
       {listing && (
         <>
           <div className={styles.hero}>
-            <BookFace title={listing.title} author={listing.author} cover={cover} />
+            <BookFace title={listing.title} author={listing.author} cover={cover} seed={listing.work_key} />
             <div>
               <h2 className={styles.heroTitle}>{listing.title}</h2>
               {listing.author && <p className={styles.heroAuthor}>{listing.author}</p>}

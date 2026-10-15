@@ -210,8 +210,8 @@ export function PublicProfilePage() {
                       {shelf.map((book, i) => (
                         <div key={i} className={styles.shelfItem}>
                           <div className={styles.shelfCover}>
-                            {book.cover_data ? (
-                              <img src={book.cover_data} alt="" className={styles.shelfCoverImg} />
+                            {book.cover_url || book.cover_data ? (
+                              <img src={book.cover_url ? (apiUrl(book.cover_url) ?? '') : (book.cover_data ?? '')} alt="" className={styles.shelfCoverImg} />
                             ) : (
                               <span className={styles.shelfCoverText}>
                                 {book.file_format.toUpperCase()}

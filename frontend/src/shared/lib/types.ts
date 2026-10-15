@@ -579,6 +579,8 @@ export type ShelfBook = {
   author: string | null;
   file_format: 'pdf' | 'epub';
   cover_data: string | null;
+  /** The shared library's cover of the book, which wins over the file's own. */
+  cover_url?: string | null;
   progress_percent: number;
   last_read_at: string | null;
 };
@@ -634,6 +636,8 @@ export type BookcaseBook = {
   minutes_read?: number;
   days_read?: number;
   match_key: string | null;
+  /** The book of the shared library this copy is: its card and its painted colours. */
+  work_key?: string | null;
   fellow_readers: number;
   has_file: boolean;
   file_format: 'pdf' | 'epub' | null;

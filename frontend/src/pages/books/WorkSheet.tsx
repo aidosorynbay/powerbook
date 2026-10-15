@@ -84,7 +84,7 @@ export function WorkSheet({ workKey, title, onClose, onChanged, review }: Props)
       {work && (
         <>
           <div className={styles.hero}>
-            <BookFace title={work.title} author={work.author} cover={work.cover_url} />
+            <BookFace title={work.title} author={work.author} cover={work.cover_url} seed={work.key} />
             <div>
               <h2 className={styles.heroTitle}>{work.title}</h2>
               {work.author && <p className={styles.heroAuthor}>{work.author}</p>}

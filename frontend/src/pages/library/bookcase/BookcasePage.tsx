@@ -69,8 +69,9 @@ function formatSize(bytes: number): string {
   return `${(bytes / MB).toFixed(1)} MB`;
 }
 
+/** What a cover-less book is painted from: the shared library's book first, so it has the colours of its card. */
 function seedOf(book: BookcaseBook): string {
-  return book.match_key || book.title.trim().toLowerCase();
+  return book.work_key || book.match_key || book.title.trim().toLowerCase();
 }
 
 /**

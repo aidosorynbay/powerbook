@@ -167,7 +167,7 @@ export function CatalogPage() {
               keyOf={(b) => b.key}
               onOpen={(b) => open(b.key)}
               face={(b) => (
-                <BookFace title={b.title} author={b.author} cover={b.cover_thumb_url ?? b.cover_url}>
+                <BookFace title={b.title} author={b.author} cover={b.cover_thumb_url ?? b.cover_url} seed={b.key}>
                   <span className={styles.faceBadges}>
                     {b.pb_rating !== null && <PbBadge value={b.pb_rating} />}
                     {b.ext_rating !== null && <ExtBadge rating={b.ext_rating} source={b.ext_source} />}
