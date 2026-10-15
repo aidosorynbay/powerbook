@@ -55,6 +55,8 @@ class ShelfBookOut(BaseModel):
     author: str | None
     file_format: str
     cover_data: str | None
+    # The shared library's cover of the book (book_face), which wins over the file's own.
+    cover_url: str | None = None
     progress_percent: int
     last_read_at: datetime | None
 
@@ -127,6 +129,8 @@ class BookcaseBookOut(BaseModel):
     days_read: int = 0
     # Comparison key used to find other readers of the same book.
     match_key: str | None
+    # The book of the shared library this copy is (app.services.book_face), when it is one.
+    work_key: str | None = None
     fellow_readers: int
 
     has_file: bool

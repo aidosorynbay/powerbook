@@ -407,17 +407,16 @@ class BookcaseService:
                 twin.days_read += vol.days_read
                 volumes.remove(vol)
 
-        # One book, one author. A copy that is a book of the shared library shows the library's word on who wrote it,
-        # not its own comment's, file's or spelling's lookup's: «Три товарища» was Remarque's on some shelves and
-        # another name on others. Only an author the reader typed in themselves stays theirs; a pinned copy kept the
-        # author the library had when it was pinned, and follows the library since.
+        # One book, one face (book_face): a copy that is a book of the shared library shows the library's title
+        # spelling, author and cover, not its own comment's, file's or spelling's lookup's — «Три товарища» had
+        # two authors on different shelves and another cover on the founder's shelf than on the library's card.
+        # Only what the reader chose for this copy stays theirs.
+        from app.services import book_face
+
         for vol in volumes:
-            override = overrides.get(vol.key)
-            if override is not None and override.author and not override.work_key:
-                continue
-            work = idx.find(held.get(vol.key)) or idx.find(vol.match_key) or idx.find(catalog.work_key(vol.title))
-            if work is not None and work.author:
-                vol.author = work.author
+            work = book_face.work_of(idx, held.get(vol.key), vol.match_key, title=vol.title)
+            if work is not None:
+                book_face.dress(vol, work, overrides.get(vol.key))
 
         # «Убрать с полки»: what the reader said is no book (a day's comment) is off the shelf. They alone still get
         # it, marked, to bring it back.

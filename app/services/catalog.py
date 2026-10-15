@@ -84,6 +84,13 @@ class Work:
     author_fixed: bool = False
     # The cover lookups of its spellings (book_covers keys).
     cover_keys: set[str] = field(default_factory=set)
+    # How the book looks under each title its copies carry, by face_key ("cyr:tritovarisha"): (spelling, cover image
+    # or None). «три товарища!!» and «Три товарища» are one title with one face; a translation, a second volume or
+    # the same words in Latin letters each keep their own. Every copy on every shelf shows its title's face
+    # (app.services.book_face); `title` and `image` are the face of the book's own title.
+    faces: dict[str, tuple[str, str | None]] = field(default_factory=dict)
+    # The Google Books page of each cover image, for the link under it.
+    cover_links: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -120,6 +127,8 @@ class _Entry:
     at: date | None
     # The title the reader said this copy is («Какая это книга?»).
     pinned_title: str | None = None
+    # The edition picture the reader picked for this copy (not a photo of it: that stays on their shelf).
+    picked_image: str | None = None
     # The author hint was typed in an author field (a book added by hand), not read off a day's comment.
     author_typed: bool = False
 
@@ -141,6 +150,16 @@ class _Union:
         ra, rb = self.find(a), self.find(b)
         if ra != rb:
             self.parent[rb] = ra
+
+
+def _top(counted: Counter[str]) -> str | None:
+    return counted.most_common(1)[0][0] if counted else None
+
+
+def face_key(title: str) -> str:
+    """Which face of a book a copy shows: the same words in the same letters («три товарища!!» and
+    «Три товарища»), as the cover lookups are keyed."""
+    return covers.cover_key(covers.clean_title(title) or title)
 
 
 def work_key(title: str) -> str | None:
@@ -194,6 +213,18 @@ def _build(db: Session) -> CatalogIndex:
             nodes.append(f"@{source}:{source_id}")
         pins[(user_id, volume_key)] = (nodes, pinned_title)
 
+    # Covers readers picked from the catalogues for their copies: the strongest word on what the book looks like.
+    picks = {
+        (u, vk): image
+        for u, vk, image in db.execute(
+            select(ShelfOverride.user_id, ShelfOverride.volume_key, ShelfOverride.image).where(
+                ShelfOverride.cover_mode == "image",
+                ShelfOverride.image.is_not(None),
+                ShelfOverride.source.in_(("google", "openlibrary")),
+            )
+        ).all()
+    }
+
     # what readers took off their shelves as no book at all («Убрать с полки»)
     hidden = {(u, vk) for u, vk in db.execute(
         select(ShelfOverride.user_id, ShelfOverride.volume_key).where(ShelfOverride.hidden.is_(True))
@@ -206,8 +237,9 @@ def _build(db: Session) -> CatalogIndex:
         if volume_key and ((account, volume_key) in hidden or (fold.get(account, account), volume_key) in hidden):
             return
         nodes = [k for k in dict.fromkeys([raw_key, canonical_key(clean)]) if k]
-        pinned_title = None
+        pinned_title = picked = None
         if volume_key:
+            picked = picks.get((account, volume_key)) or picks.get((fold.get(account, account), volume_key))
             # A claimed archive book sits on its claimant's shelf, so their pin counts for it too.
             pinned = pins.get((account, volume_key)) or pins.get((fold.get(account, account), volume_key))
             if pinned:
@@ -228,6 +260,7 @@ def _build(db: Session) -> CatalogIndex:
                 at=_as_date(at),
                 pinned_title=pinned_title,
                 author_typed=typed,
+                picked_image=picked,
             )
         )
 
@@ -301,6 +334,12 @@ def _build(db: Session) -> CatalogIndex:
         looked_up: set[str] = set()
         heard: set[tuple[uuid.UUID, str]] = set()
         images: Counter[str] = Counter()
+        # the same per title its copies carry, for each copy's face; covers readers picked apart from the lookups'
+        face_titles: dict[str, Counter[str]] = defaultdict(Counter)
+        face_images: dict[str, Counter[str]] = defaultdict(Counter)
+        picked: Counter[str] = Counter()
+        face_picked: dict[str, Counter[str]] = defaultdict(Counter)
+        links: dict[str, str] = {}
         source_url = None
         for e in group:
             row = e.cover
@@ -308,10 +347,23 @@ def _build(db: Session) -> CatalogIndex:
                 # The reader said which book this is: their copy's old spelling
                 # does not get to name it («Граф Монте-Кристо 2» joining
                 # «Граф Монте-Кристо» must not rename it).
-                titles[e.pinned_title] += 2
+                shown, weight = e.pinned_title, 2
             else:
                 # The corrected spelling counts double: it is the book's own.
-                titles[(row.title if row is not None and row.title else e.title)] += 2 if row is not None else 1
+                shown, weight = (row.title if row is not None and row.title else e.title), (2 if row is not None else 1)
+            titles[shown] += weight
+            face = face_key(shown)
+            face_titles[face][shown] += weight
+            # What the copy looks like: the edition its reader picked, or else its spelling's lookup. A person's
+            # choice outranks any number of lookups, which only guess.
+            if e.picked_image:
+                picked[e.picked_image] += 1
+                face_picked[face][e.picked_image] += 1
+            elif row is not None and row.image:
+                images[row.image] += 1
+                face_images[face][row.image] += 1
+                if row.source == "google" and row.source_id:
+                    links.setdefault(row.image, f"https://books.google.com/books?id={row.source_id}")
             # Who wrote it: one lookup is one opinion, however many readers spelled the title its way, and each
             # reader's own word after the title counts once, for as much as it looks like an author's name.
             if row is not None and row.author and row.key not in looked_up:
@@ -321,8 +373,6 @@ def _build(db: Session) -> CatalogIndex:
             if hint and (e.person, hint.casefold()) not in heard:
                 heard.add((e.person, hint.casefold()))
                 said.extend(_hint_votes(hint, known, typed=e.author_typed))
-            if row is not None and row.image:
-                images[row.image] += 1
             if source_url is None and row is not None and row.source == "google" and row.source_id:
                 source_url = f"https://books.google.com/books?id={row.source_id}"
         title = titles.most_common(1)[0][0]
@@ -333,17 +383,25 @@ def _build(db: Session) -> CatalogIndex:
         script = names.script_of(title)
         rivals = names.people(said, prominence=known.prominence)
         author = (rivals[0].written(script) or rivals[0].written()) if rivals else None
+        faces = {
+            face: (counted.most_common(1)[0][0], _top(face_picked[face]) or _top(face_images[face]))
+            for face, counted in face_titles.items()
+        }
+        # The card shows its own title's face, so its cover is never a translation's or another volume's edition.
+        image = faces.get(face_key(title), (None, None))[1] or _top(picked) or _top(images)
         work = Work(
             key=primary,
             members=members,
             title=title,
             author=author,
-            image=images.most_common(1)[0][0] if images else None,
-            source_url=source_url,
+            image=image,
+            source_url=links.get(image or "") or source_url,
             author_rivals=[(p.written(script) or p.written() or p.names[0], round(p.weight, 2)) for p in rivals]
             if len(rivals) > 1
             else [],
             cover_keys={covers.cover_key(e.title) for e in group},
+            faces=faces,
+            cover_links=links,
         )
         for e in group:
             work.readers.add(e.person)
