@@ -24,7 +24,7 @@ type Detail = Record<string, string>;
 
 const INKS: readonly Ink[] = ['light', 'dark'];
 type Mode = 'room' | 'photo';
-const MODES: readonly Mode[] = ['room', 'photo'];
+const MODES: readonly Mode[] = ['photo', 'room'];
 
 /** One Analytics event per sticker, so GA4's own Events report compares them with no custom dimensions set up. */
 const EVENT: Record<StickerKind, string> = {
@@ -88,9 +88,9 @@ export function StoryShare({ card, link, onSent, children }: { card: MyDayCard; 
   const [copied, setCopied] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
-  // On the reading room, to any app; or the sticker alone, for one's own photo in a story: the transparent slide
-  // Strava's runners swipe to, here a switch, so the four stickers stay the month's test (2026-10-15).
-  const [mode, setMode] = useState<Mode>(() => remembered('pb.share.mode', MODES, 'room'));
+  // The sticker alone, for one's own photo in a story (Strava's runners' favourite, so it comes first), or the picture
+  // on the reading room, to any app: a switch, so the four stickers stay the month's test (the founder, 2026-10-15).
+  const [mode, setMode] = useState<Mode>(() => remembered('pb.share.mode', MODES, 'photo'));
   const assets = useRef<StickerAssets | null>(null);
   const urls = useRef<string[]>([]);
   const story = useRef<{ key: string; file: File } | null>(null);
@@ -227,6 +227,11 @@ export function StoryShare({ card, link, onSent, children }: { card: MyDayCard; 
         setCopied(copiedKey);
         setFailed(false);
         done('sticker', 'copy');
+        // One tap, as on Strava: on a phone the story camera opens at once, and Instagram offers the sticker itself.
+        if (phone && mode === 'photo') {
+          track('share_open_instagram', { auto: true });
+          window.location.href = 'instagram://story-camera';
+        }
       },
       () => setFailed(true)
     );
@@ -340,7 +345,7 @@ export function StoryShare({ card, link, onSent, children }: { card: MyDayCard; 
         </a>
       ) : (
         <button type="button" className={`${styles.primary} ${styles.share}`} onClick={copyable ? copy : save} disabled={!current}>
-          {copied === copiedKey ? `✓ ${t('shareDay.stickerCopied')}` : t(copyable ? 'shareDay.copySticker' : 'shareDay.saveSticker')}
+          {copied === copiedKey ? `✓ ${t('shareDay.stickerCopied')}` : t(!copyable ? 'shareDay.saveSticker' : phone ? 'shareDay.toInstagram' : 'shareDay.copySticker')}
         </button>
       )}
 
@@ -366,7 +371,7 @@ export function StoryShare({ card, link, onSent, children }: { card: MyDayCard; 
             </p>
           ) : (
             <p className={styles.hint} role={failed ? 'alert' : undefined}>
-              {t(failed ? 'shareDay.copyFailed' : 'shareDay.photoHint')}
+              {t(failed ? 'shareDay.copyFailed' : phone && copyable ? 'shareDay.photoHintPhone' : 'shareDay.photoHint')}
             </p>
           )}
         </>
