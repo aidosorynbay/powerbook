@@ -1,13 +1,12 @@
 import { FormEvent, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth, useI18n, apiPost, type TokenResponse } from '@/shared/lib';
 import { Button, Card, Container, Logo, PageTransition, PasswordInput } from '@/shared/ui';
 import styles from './LoginPage.module.css';
 
 export function LoginPage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const { t } = useI18n();
 
   // «Этот Telegram уже зарегистрирован — войдите» brings the handle along.
@@ -16,6 +15,9 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const claimArmed = searchParams.get('redirect') === '/claim';
+  const redirect = searchParams.get('redirect');
+  // a member's home is the circle: after logging in they went to the front page and on from there (GA4: 52 times in 14 days)
+  const next = redirect && redirect.startsWith('/') && !redirect.startsWith('//') && redirect !== '/' ? redirect : '/round';
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -32,14 +34,15 @@ export function LoginPage() {
     }
 
     if (data) {
+      // On to `next` below, once the account has loaded: a jump made right here reached pages that need an
+      // account before it existed (/round?feedback=1 went on to /join, /archive back to this form).
       login(data.access_token);
-      const redirect = searchParams.get('redirect');
-      // a member's home is the circle: after logging in they went to the front page and on from there (GA4: 52 times in 14 days)
-      const safeRedirect = redirect && redirect.startsWith('/') && !redirect.startsWith('//') && redirect !== '/' ? redirect : '/round';
-      navigate(safeRedirect);
     }
     setIsSubmitting(false);
   };
+
+  // Signed in, just now or already: on to where the reader was going.
+  if (isAuthenticated) return <Navigate to={next} replace />;
 
   return (
     <PageTransition>

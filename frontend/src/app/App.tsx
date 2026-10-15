@@ -22,6 +22,10 @@ function ToLogin() {
   return <Navigate to={`/login?redirect=${encodeURIComponent(pathname + search)}`} replace />;
 }
 
+/** powerbook.kz/feedback, the founder's link for asking readers what they think: the round with
+ * «Как вам PowerBook?» open, after signing in where the link opens signed out (Telegram's own browser). */
+const FEEDBACK_ROUND = '/round?feedback=1';
+
 /** The round, opened by someone without an account (it is shared around):
  * the invitation page, which says what a circle is and how to get in. */
 function ToJoin() {
@@ -83,6 +87,10 @@ function AppRoutes() {
         <Route
           path="/round"
           element={isAuthenticated ? <DashboardPage /> : <ToJoin />}
+        />
+        <Route
+          path="/feedback"
+          element={<Navigate to={isAuthenticated ? FEEDBACK_ROUND : `/login?redirect=${encodeURIComponent(FEEDBACK_ROUND)}`} replace />}
         />
         <Route
           path="/archive"
@@ -163,7 +171,7 @@ function AppRoutes() {
         />
         <Route
           path="/login"
-          element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
+          element={<LoginPage />}
         />
         <Route
           path="/forgot-password"
