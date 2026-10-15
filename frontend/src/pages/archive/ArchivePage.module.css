@@ -271,9 +271,11 @@
   color: var(--color-bg-primary);
 }
 
+/* a missed day: neutral, as on the circle's calendar (brand book 15.10.2026) */
 .red {
-  background: var(--color-danger);
-  color: var(--color-bg-primary);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  box-shadow: inset 0 0 0 1px var(--color-border-primary);
 }
 
 .future {

@@ -53,6 +53,7 @@ function getDayColorClass(
   isLastDay: boolean,
   s: Record<string, string>,
   joinedDay?: string | null,
+  todayStr?: string,
 ): string {
   if (isLastDay) return s.dayLastDay;
 
@@ -67,7 +68,11 @@ function getDayColorClass(
   // theirs to fill in. Red there greeted every late joiner with a row of
   // failures on their very first visit.
   if (joinedDay && dateStr < joinedDay) return s.dayBeforeJoin;
-  return s.dayRed;
+  // Today is not missed yet: an open cell, its orange ring added where the calendar is drawn.
+  if (todayStr && dateStr === todayStr) return s.dayOpen;
+  // A missed day is a quiet neutral cell, not red: red sat 4.1 ΔE from the orange and read as a failure on the
+  // screen members open every day (brand book, founder 15.10.2026).
+  return s.dayMissed;
 }
 
 function ProgressRing({ pct, trackColor, fillColor, children }: {
@@ -1185,7 +1190,7 @@ export function DashboardPage() {
                             {isParticipant && !inRegistrationWindow ? (
                               <span className={styles.statusShort} aria-label={statusLabel}>
                                 <i className={styles.statusDot} aria-hidden="true" />
-                                <span className={styles.statusShortText}>{statusLabel.replace(/^(Раунд|Round)\s+/i, '').replace(/^./, (c) => c.toUpperCase())}</span>
+                                <span className={styles.statusShortText}>{statusLabel.replace(/^(Раунд|Round|Круг|Circle|Айналым)\s+/i, '').replace(/^./, (c) => c.toUpperCase())}</span>
                               </span>
                             ) : (
                               statusLabel
@@ -1321,7 +1326,7 @@ export function DashboardPage() {
                   {t('dashboard.legend2')}
                 </span>
                 <span className={styles.legendItem}>
-                  <span className={`${styles.legendDot} ${styles.legendRed}`} />
+                  <span className={`${styles.legendDot} ${styles.legendMissed}`} />
                   {t('dashboard.legendMissed')}
                 </span>
                 {emptyBeforeJoin > 0 && (
@@ -1696,8 +1701,9 @@ export function DashboardPage() {
                             return <div key={`empty-${idx}`} className={`${styles.calendarDay} ${styles.empty}`} />;
                           }
                           const cellIsLastDay = cell.day === lastDayOfMonth;
-                          const colorClass = getDayColorClass(cell.minutes, cell.date, cellIsLastDay, styles)
-                          + (cell.in_round ? '' : ` ${styles.outOfRound}`);
+                          const colorClass = getDayColorClass(cell.minutes, cell.date, cellIsLastDay, styles, undefined, todayStr)
+                          + (cell.in_round ? '' : ` ${styles.outOfRound}`)
+                          + (cell.date === todayStr ? ` ${styles.dayToday}` : '');
                           return (
                             <div
                               key={cell.date}
@@ -1757,7 +1763,7 @@ export function DashboardPage() {
                       <button type="button" className={styles.calLegend} onClick={() => setLegendOpen(true)} aria-label={t('cal.legendAsk')}>
                         {calendarView === 'mine' ? (
                           <span className={styles.calLegendRow}>
-                            <i className={styles.lgG} />30+<i className={styles.lgY} />2–29<i className={styles.lgR} />&lt;2<em>&#9733;</em><u />
+                            <i className={styles.lgG} />30+<i className={styles.lgY} />2–29<i className={styles.lgM} />&lt;2<em>&#9733;</em><u />
                           </span>
                         ) : (
                           <span className={styles.calLegendRow}>
@@ -1848,7 +1854,8 @@ export function DashboardPage() {
                             </div>
                           );
                         }
-                        const colorClass = getDayColorClass(cell.minutes, cell.date, cellIsLastDay, styles, joinedDay);
+                        const colorClass = getDayColorClass(cell.minutes, cell.date, cellIsLastDay, styles, joinedDay, todayStr)
+                          + (cell.date === todayStr ? ` ${styles.dayToday}` : '');
                         const lastDayClickable = cellIsLastDay && correctionsOpen;
                         const canClick = !cellIsLastDay || lastDayClickable;
                         return (
@@ -1999,7 +2006,7 @@ export function DashboardPage() {
             <ul className={styles.legendList}>
               <li><i className={styles.lgG} />{t('cal.mine30')}</li>
               <li><i className={styles.lgY} />{t('cal.mine2')}</li>
-              <li><i className={styles.lgR} />{t('cal.mine0')}</li>
+              <li><i className={styles.lgM} />{t('cal.mine0')}</li>
               <li><em>&#9733;</em>{t('cal.mineStar')}</li>
               <li><u />{t('cal.mineDot')}</li>
               <li><i className={styles.lgToday} />{t('cal.mineToday')}</li>
