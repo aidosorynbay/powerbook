@@ -1721,13 +1721,18 @@
 .underSave .toRoom {
   flex: 1 1 0;
   min-width: 0;
+  gap: 5px;
   margin: 0;
-  padding: 10px 8px;
+  padding: 10px 4px;
+  /* two words on half a phone: the type gives a little before anything is squeezed */
+  font-size: min(var(--font-size-sm), 3.6vw);
   white-space: nowrap;
 }
+/* the icon keeps its size: squeezed, it shrank to a speck */
+.underSave .toRoom svg { flex: none; }
 /* the day has just reached its 30: the share button is the one to press */
 /* a narrow phone: the words, not the icon */
-@media (max-width: 380px) {
+@media (max-width: 340px) {
   .underSave .toRoom svg { display: none; }
 }
 .toShareLit {
