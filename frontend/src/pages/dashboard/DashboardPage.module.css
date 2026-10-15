@@ -1690,3 +1690,25 @@
   border-color: var(--color-border-accent);
   background: var(--color-bg-secondary);
 }
+/* «Поделиться днём» beside «В читальный зал», under «Сохранить» */
+.underSave {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.underSave .toRoom {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 8px;
+  white-space: nowrap;
+}
+/* the day has just reached its 30: the share button is the one to press */
+/* a narrow phone: the words, not the icon */
+@media (max-width: 380px) {
+  .underSave .toRoom svg { display: none; }
+}
+.toShareLit {
+  border-color: var(--color-accent-primary, #f26a35);
+  color: var(--color-accent-primary, #f26a35);
+}

@@ -961,19 +961,25 @@ export function DashboardPage() {
       }
       // The moment a runner posts the run: the day has just reached its 30 minutes.
       if (before < DAILY_GOAL_MINUTES && minutes >= DAILY_GOAL_MINUTES) setGoalJustMet(true);
-      // The story sheet comes up by itself only on a milestone (the first day counted, a streak of 3/7/14/21, a book
-      // finished, the circle's last day); any other day it is the quiet «Поделиться днём» link (the council, 2026-10-13).
+      // The story sheet comes up by itself the way Strava's does after a run: on the save that brings the day to its 30
+      // minutes (and on a book finished, or the circle's last day), once a day. Only 3 of 110 readers found it by its
+      // icon, 17 when it came to them (GA4, 5–15 Oct; the founder and the council, 2026-10-15).
       const prev = (calendar?.days ?? []).filter((d) => d.date < todayStr && d.in_round !== false).sort((a, b) => a.date.localeCompare(b.date));
       let streak = minutes >= DAILY_GOAL_MINUTES ? 1 : 0;
       if (streak) for (let i = prev.length - 1; i >= 0 && prev[i].minutes >= DAILY_GOAL_MINUTES; i--) streak++;
-      const reason =
-        before < DAILY_GOAL_MINUTES && minutes >= DAILY_GOAL_MINUTES && !prev.some((d) => d.minutes >= DAILY_GOAL_MINUTES) ? 'first_day'
-        : before < DAILY_GOAL_MINUTES && [3, 7, 14, 21].includes(streak) ? `streak_${streak}`
+      const goalNow = before < DAILY_GOAL_MINUTES && minutes >= DAILY_GOAL_MINUTES;
+      let shownToday = false;
+      try { shownToday = localStorage.getItem('pb.share.auto') === todayStr; } catch { /* private mode */ }
+      const reason = shownToday ? null
+        : goalNow && !prev.some((d) => d.minutes >= DAILY_GOAL_MINUTES) ? 'first_day'
+        : goalNow && [3, 7, 14, 21].includes(streak) ? `streak_${streak}`
+        : goalNow ? 'goal'
         : finished && !todayData?.book_finished ? 'book_finished'
         : isLastDay && minutes > 0 && before === 0 ? 'last_day'
         : null;
       if (reason) {
         track('share_prompt_shown', { reason });
+        try { localStorage.setItem('pb.share.auto', todayStr); } catch { /* private mode */ }
         // after the drop has joined the pool (or 8 s at most), so the sheet never covers it
         void Promise.race([dropDone.catch(() => {}), new Promise((r) => window.setTimeout(r, 8000))]).then(() =>
           window.setTimeout(() => setSharing(todayStr), 300),
@@ -1450,17 +1456,6 @@ export function DashboardPage() {
                                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /></svg>
                                   {(todayComment || todayData?.comment) && <i className={rt.railDot} />}
                                 </button>
-                                {((todayData?.minutes ?? 0) > 0 || readBefore) && (
-                                  <button
-                                    type="button"
-                                    className={rt.railBtn}
-                                    aria-label={t('today.share')}
-                                    title={t('today.share')}
-                                    onClick={() => { setSharing(todayStr); track('share_open', { from: 'rail' }); }}
-                                  >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 8 5-5 5 5" /><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>
-                                  </button>
-                                )}
                               </div>
                             </div>
                             <MinutesDial
@@ -1481,17 +1476,30 @@ export function DashboardPage() {
                                 ) : isSavingToday ? t('dashboard.saving') : t('dashboard.save')}
                               </Button>
                               {roundDaysLeft > 0 && roundDaysLeft <= 5 && <p className={rt.daysLeft}>{t('member.daysLeft', { n: roundDaysLeft })}</p>}
-                              {/* 31 of 69 members read in the room (GA4, 1–14 Oct), and it sat two screens below: one tap down to its door */}
-                              <button
-                                type="button"
-                                className={styles.toRoom}
-                                onClick={() => {
-                                  track('room_door_tap', { from: 'dial' });
-                                  document.querySelector('[data-room-door]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                }}
-                              >
-                                {t('nav2.toRoom')} <span aria-hidden="true">↓</span>
-                              </button>
+                              <div className={styles.underSave}>
+                                {/* a word under «Сохранить», not an icon in the rail: the icon was found by 3 of 110 (GA4, 5–15 Oct) */}
+                                {((todayData?.minutes ?? 0) > 0 || readBefore) && (
+                                  <button
+                                    type="button"
+                                    className={`${styles.toRoom} ${goalLit ? styles.toShareLit : ''}`}
+                                    onClick={() => { setSharing(todayStr); track('share_open', { from: 'under_save' }); }}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 8 5-5 5 5" /><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>
+                                    {t('today.share')}
+                                  </button>
+                                )}
+                                {/* 31 of 69 members read in the room (GA4, 1–14 Oct), and it sat two screens below: one tap down to its door */}
+                                <button
+                                  type="button"
+                                  className={styles.toRoom}
+                                  onClick={() => {
+                                    track('room_door_tap', { from: 'dial' });
+                                    document.querySelector('[data-room-door]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                  }}
+                                >
+                                  {t('nav2.toRoom')} <span aria-hidden="true">↓</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
                           {!wide && monthStats}

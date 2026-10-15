@@ -102,49 +102,128 @@
   text-align: center;
 }
 
-.name {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-}
-
-.on .name {
-  color: var(--color-text-primary);
-}
-
-/* White or black, for a dark photo or a bright one: in the corner of the story on show. */
+/* White or black, for a dark photo or a bright one: only for the sticker without a background. */
 .inks {
-  position: absolute;
-  top: calc(4px + var(--frame-h) - 46px);
-  left: calc(50% + var(--frame-w) / 2 - 80px);
   display: flex;
-  gap: 6px;
-  padding: 5px 6px;
-  border-radius: 999px;
-  background: rgba(10, 8, 6, 0.55);
-  backdrop-filter: blur(6px);
+  justify-content: center;
+  gap: 8px;
 }
 
 .ink {
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px 0 8px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-xs);
   cursor: pointer;
 }
 
-.inkLight {
+.ink i {
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(127, 127, 127, 0.6);
+  border-radius: 50%;
+}
+
+.inkLight i {
   background: #fff;
 }
 
-.inkDark {
+.inkDark i {
   background: #1b1612;
 }
 
 .ink[aria-pressed='true'] {
   border-color: var(--color-accent-primary);
-  box-shadow: 0 0 0 2px var(--color-accent-primary);
+  color: var(--color-text-primary);
+}
+
+/* Which of the pictures is on show: a dot each, as under any story carousel. */
+.pips {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.pips i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-border-primary);
+}
+
+.pips .pipOn {
+  background: var(--color-text-primary);
+}
+
+.share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 14px;
+  font-size: var(--font-size-base);
+}
+
+/* Everything that is not the one button. */
+.more {
+  margin-top: 10px;
+  text-align: left;
+}
+
+.more summary {
+  display: flex;
+  justify-content: center;
+  min-height: 40px;
+  align-items: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  list-style: none;
+  cursor: pointer;
+}
+
+.more summary::-webkit-details-marker {
+  display: none;
+}
+
+.more summary::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  margin: -3px 0 0 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.more[open] summary::after {
+  margin-top: 4px;
+  transform: rotate(-135deg);
+}
+
+.moreBody {
+  display: grid;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.moreLabel {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+  text-align: center;
+  text-wrap: pretty;
 }
 
 .actions {

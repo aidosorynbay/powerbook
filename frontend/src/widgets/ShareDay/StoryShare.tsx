@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { track, useI18n, type MyDayCard, type ShareChannel } from '@/shared/lib';
 import {
   STICKERS,
@@ -73,7 +73,7 @@ function download(file: File) {
  * For someone without a photo there is the whole picture, the sticker over
  * the reading room.
  */
-export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: string; onSent: (channel: ShareChannel, detail: Detail) => void }) {
+export function StoryShare({ card, link, onSent, children }: { card: MyDayCard; link: string; onSent: (channel: ShareChannel, detail: Detail) => void; children?: ReactNode }) {
   const { t, locale } = useI18n();
   // A reader's first sticker is picked at random, then kept: whichever one the
   // sheet opened on would otherwise win the month's count in Analytics.
@@ -96,6 +96,8 @@ export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: stri
   const touch = useMemo(() => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches, []);
   const phone = useMemo(() => typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent), []);
   const data = useMemo(() => stickerData(card, t, locale, localToday()), [card, t, locale]);
+  const shownKind = useRef(kind);
+  shownKind.current = kind;
 
   // Fonts that arrive after the first drawing: draw again with them.
   useEffect(() => {
@@ -112,7 +114,9 @@ export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: stri
       assets.current ??= await loadStickerAssets();
       const next: Partial<Record<StickerKind, Drawn>> = {};
       const made: string[] = [];
-      for (const k of STICKERS) {
+      // The sticker on show first, and on screen as soon as it is drawn: no «Рисуем…» for the other three.
+      const first = shownKind.current;
+      for (const k of [first, ...STICKERS.filter((x) => x !== first)]) {
         if (!live) break;
         const canvas = drawSticker(k, data, ink, assets.current);
         const blob = await toBlob(canvas, 'image/png');
@@ -120,6 +124,7 @@ export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: stri
         const url = URL.createObjectURL(blob);
         made.push(url);
         next[k] = { blob, url };
+        if (live) setDrawn((d) => ({ ...d, [k]: next[k] }));
       }
       if (!live) {
         made.forEach((u) => URL.revokeObjectURL(u));
@@ -284,56 +289,71 @@ export function StoryShare({ card, link, onSent }: { card: MyDayCard; link: stri
                     <span className={styles.drawing}>{t('shareDay.drawing')}</span>
                   )}
                 </span>
-                <span className={styles.name}>{t(`sticker.${k}`)}</span>
               </button>
             );
           })}
         </div>
-        <div className={styles.inks}>
-          {INKS.map((i) => (
-            <button
-              key={i}
-              type="button"
-              className={`${styles.ink} ${i === 'light' ? styles.inkLight : styles.inkDark}`}
-              aria-pressed={ink === i}
-              aria-label={t(i === 'light' ? 'shareDay.inkLight' : 'shareDay.inkDark')}
-              title={t(i === 'light' ? 'shareDay.inkLight' : 'shareDay.inkDark')}
-              onClick={() => setInk(i)}
-            />
+        <div className={styles.pips} aria-hidden="true">
+          {STICKERS.map((k) => (
+            <i key={k} className={k === kind ? styles.pipOn : undefined} />
           ))}
         </div>
       </div>
 
-      <div className={styles.actions}>
-        {copyable && (
-          <button type="button" className={styles.primary} onClick={copy} disabled={!current}>
-            {copied === copiedKey ? `✓ ${t('shareDay.stickerCopied')}` : t('shareDay.copySticker')}
-          </button>
-        )}
-        <div className={styles.pair}>
-          <button type="button" className={copyable ? styles.secondary : styles.primary} onClick={save} disabled={!current}>
-            {t('shareDay.saveSticker')}
-          </button>
-          <button type="button" className={styles.secondary} onClick={shareWhole} disabled={!current || busy}>
-            {t('shareDay.sharePicture')}
-          </button>
-        </div>
-      </div>
+      {/* One button, as on Strava: the picture as it is shown, to the phone's own share sheet (Instagram, Telegram,
+          WhatsApp are all in it). Everything else waits under «Другие способы» (the council, 2026-10-15). */}
+      <button type="button" className={`${styles.primary} ${styles.share}`} onClick={shareWhole} disabled={!current || busy}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 8 5-5 5 5" /><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>
+        {t('shareDay.share')}
+      </button>
 
-      {copied === copiedKey ? (
-        <div className={styles.howto} role="status" ref={howto}>
-          <p>{t('shareDay.howTo')}</p>
-          {phone && (
-            <a className={styles.insta} href="instagram://story-camera">
-              {t('shareDay.openInstagram')}
-            </a>
+      <details className={styles.more} onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && track('day_share_more')}>
+        <summary>{t('shareDay.otherWays')}</summary>
+        <div className={styles.moreBody}>
+          <p className={styles.moreLabel}>{t('shareDay.bareLabel')}</p>
+          <div className={styles.pair}>
+            {copyable && (
+              <button type="button" className={styles.secondary} onClick={copy} disabled={!current}>
+                {copied === copiedKey ? `✓ ${t('shareDay.stickerCopied')}` : t('shareDay.copySticker')}
+              </button>
+            )}
+            <button type="button" className={styles.secondary} onClick={save} disabled={!current}>
+              {t('shareDay.saveSticker')}
+            </button>
+          </div>
+          <div className={styles.inks}>
+            {INKS.map((i) => (
+              <button
+                key={i}
+                type="button"
+                className={`${styles.ink} ${i === 'light' ? styles.inkLight : styles.inkDark}`}
+                aria-pressed={ink === i}
+                onClick={() => setInk(i)}
+              >
+                <i aria-hidden="true" />
+                {t(i === 'light' ? 'shareDay.inkLight' : 'shareDay.inkDark')}
+              </button>
+            ))}
+          </div>
+          {copied === copiedKey ? (
+            <div className={styles.howto} role="status" ref={howto}>
+              <p>{t('shareDay.howTo')}</p>
+              {phone && (
+                <a className={styles.insta} href="instagram://story-camera">
+                  {t('shareDay.openInstagram')}
+                </a>
+              )}
+            </div>
+          ) : (
+            failed && (
+              <p className={styles.hint} role="alert">
+                {t('shareDay.copyFailed')}
+              </p>
+            )
           )}
+          {children}
         </div>
-      ) : (
-        <p className={styles.hint} role={failed ? 'alert' : undefined}>
-          {t(failed ? 'shareDay.copyFailed' : 'shareDay.stickerHint')}
-        </p>
-      )}
+      </details>
     </div>
   );
 }
