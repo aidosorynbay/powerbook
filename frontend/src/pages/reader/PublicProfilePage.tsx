@@ -31,6 +31,10 @@ function getMusicEmbedUrl(url: string): string | null {
   return null;
 }
 
+
+// Messages between readers: parked until the club has 80+ active readers (app/core/config.py, buddy_chat_enabled).
+const CHAT_BETWEEN_READERS = false;
+
 export function PublicProfilePage() {
   const { userId } = useParams<{ userId: string }>();
   const { t, locale } = useI18n();
@@ -131,8 +135,9 @@ export function PublicProfilePage() {
                         {profile.is_buddy ? t('profile.removeBuddy') : t('profile.addBuddy')}
                       </Button>
                     )}
-                    {/* writing happens on the site now, not in Telegram (2026-10-15): to a buddy */}
-                    {!profile.is_archive && !profile.is_self && profile.is_buddy && userId && (
+                    {/* writing to a buddy on the site (2026-10-15): parked until the club is bigger, with the server's
+                        buddy_chat_enabled */}
+                    {CHAT_BETWEEN_READERS && !profile.is_archive && !profile.is_self && profile.is_buddy && userId && (
                       <Link to={`/messages?u=${userId}`} className={styles.claimLink}>
                         <Button variant="primary" size="sm">{t('chat.write')}</Button>
                       </Link>

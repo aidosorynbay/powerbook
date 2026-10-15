@@ -4,11 +4,12 @@ from __future__ import annotations
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_admin
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.user import User
 from app.services import buddy_chat, checkins
@@ -92,6 +93,12 @@ def skip(checkin_id: uuid.UUID, db: Session = Depends(get_db), admin: User = Dep
 # ---------- between readers («buddy»), app/services/buddy_chat.py ----------
 
 
+def _chat_on() -> None:
+    """Parked until the club is bigger (settings.buddy_chat_enabled)."""
+    if not settings.buddy_chat_enabled:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+
 class ConsentIn(BaseModel):
     age_16: bool
     agree: bool
@@ -106,40 +113,40 @@ class ReportIn(BaseModel):
 
 
 @router.get("/chat/consent")
-def chat_consent(db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+def chat_consent(db: Session = Depends(get_db), _: None = Depends(_chat_on), user: User = Depends(get_current_user)) -> dict:
     return {"consented": buddy_chat.consented(db, user.id), "version": buddy_chat.CONSENT_VERSION}
 
 
 @router.post("/chat/consent")
-def give_chat_consent(payload: ConsentIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+def give_chat_consent(payload: ConsentIn, db: Session = Depends(get_db), _: None = Depends(_chat_on), user: User = Depends(get_current_user)) -> dict:
     return buddy_chat.give_consent(db, user, age_16=payload.age_16, agree=payload.agree)
 
 
 @router.get("/chat")
-def chats(db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> list[dict]:
+def chats(db: Session = Depends(get_db), _: None = Depends(_chat_on), user: User = Depends(get_current_user)) -> list[dict]:
     return buddy_chat.conversations(db, user)
 
 
 @router.get("/chat/{other_id}")
-def chat(other_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+def chat(other_id: uuid.UUID, db: Session = Depends(get_db), _: None = Depends(_chat_on), user: User = Depends(get_current_user)) -> dict:
     return buddy_chat.conversation(db, user, other_id)
 
 
 @router.post("/chat/{other_id}")
-def send_chat(other_id: uuid.UUID, payload: TextIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+def send_chat(other_id: uuid.UUID, payload: TextIn, db: Session = Depends(get_db), _: None = Depends(_chat_on), user: User = Depends(get_current_user)) -> dict:
     return buddy_chat.send(db, user, other_id, payload.text)
 
 
 @router.post("/chat/{other_id}/accept")
-def accept_chat(other_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+def accept_chat(other_id: uuid.UUID, db: Session = Depends(get_db), _: None = Depends(_chat_on), user: User = Depends(get_current_user)) -> dict:
     return buddy_chat.accept(db, user, other_id)
 
 
 @router.post("/chat/{other_id}/block")
-def block_chat(other_id: uuid.UUID, payload: BlockIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+def block_chat(other_id: uuid.UUID, payload: BlockIn, db: Session = Depends(get_db), _: None = Depends(_chat_on), user: User = Depends(get_current_user)) -> dict:
     return buddy_chat.block(db, user, other_id, payload.on)
 
 
 @router.post("/chat/{other_id}/report")
-def report_chat(other_id: uuid.UUID, payload: ReportIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+def report_chat(other_id: uuid.UUID, payload: ReportIn, db: Session = Depends(get_db), _: None = Depends(_chat_on), user: User = Depends(get_current_user)) -> dict:
     return buddy_chat.report(db, user, other_id, payload.reason)

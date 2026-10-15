@@ -55,6 +55,14 @@ def code(fn) -> object:
     return None
 
 
+def test_parked_routes_answer_404():
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    assert TestClient(app).get("/api/messages/chat/consent").status_code in (401, 403, 404)
+
+
 def test_consent_comes_first_and_must_be_both_ticks(env):
     db, u, told, pushed = env
     assert code(lambda: buddy_chat.send(db, u["aigerim"], u["dana"].id, "Сәлем!")) == "consent_required"

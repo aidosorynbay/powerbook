@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     # superadmin. CHECKIN_AUTO=true sends without the founder's morning tap.
     checkin_from_username: str = ""
     checkin_auto: bool = False
+    # Messages between readers (app/services/buddy_chat.py): built and lawful, but parked until the
+    # club has 80+ active readers (the council and the founder, 2026-10-15). Off: its routes are 404.
+    buddy_chat_enabled: bool = False
 
     # Google Books API key for cover lookups (app/services/covers.py). Empty
     # means the keyless public feed, which works but searches less well.
