@@ -94,7 +94,8 @@ export function ShareDay({ day: opened, roundId, onClose }: { day: string; round
   /** Counted, and the day page opened, once the day has gone out. Nothing waits on it. */
   const sent = (channel: ShareChannel, detail: Record<string, string> = {}) => {
     if (!card) return;
-    track('day_share', { method: channel, minutes: card.minutes, streak: card.streak, days_ago: daysAgo(card.day, today), ...detail });
+    // A sticker on the clipboard is not yet a post: it is counted apart, so «day_share» means something went out.
+    track(detail.action === 'copy' ? 'day_share_copy' : 'day_share', { method: channel, minutes: card.minutes, streak: card.streak, days_ago: daysAgo(card.day, today), ...detail });
     // A sticker's template, action and ink go to our own count too (/admin → «Стикеры»).
     apiPost('/share/day', { round_id: card.round_id, day: card.day, channel, ...detail }, { requireAuth: true, keepalive: true });
   };
