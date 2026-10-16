@@ -1,7 +1,7 @@
 /** Reading leagues in the app: the card in the profile, the collection of
  * bookmarks, the slim bookmark beside a name, and the once-only «new league»
  * screen with its story. The rules live in app/services/leagues.py. */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { apiGet, track, useI18n, type League, type LeagueTierKey, type Locale } from '@/shared/lib';
 import { Sheet } from '@/widgets/RoundToday';
@@ -80,10 +80,12 @@ export function LeagueMark({ tier, name, since, px }: { tier: LeagueTierKey; nam
 }
 
 /** The slim bookmark worn beside a reader's name; on an avatar, its tail peeks out from under the photo. */
-export function LeagueGlyph({ tier, onAvatar = false }: { tier: LeagueTierKey; onAvatar?: boolean }) {
+export function LeagueGlyph({ tier, onAvatar = false, px }: { tier: LeagueTierKey; onAvatar?: boolean; px?: number }) {
   const { t } = useI18n();
   const html = useMemo(() => (onAvatar ? tailSvg : glyphSvg)(tier as Tier), [tier, onAvatar]);
-  return <span className={onAvatar ? styles.onAvatar : styles.glyph} title={t(`league.${tier}`)} role="img" aria-label={t(`league.${tier}`)} dangerouslySetInnerHTML={{ __html: html }} />;
+  // the tail is 12 px wide on a 40 px face; bigger faces pass their own width
+  const style = onAvatar && px ? ({ '--tail': `${px}px` } as CSSProperties) : undefined;
+  return <span className={onAvatar ? styles.onAvatar : styles.glyph} style={style} title={t(`league.${tier}`)} role="img" aria-label={t(`league.${tier}`)} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 export function useLeague() {

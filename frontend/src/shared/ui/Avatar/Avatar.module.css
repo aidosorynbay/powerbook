@@ -34,3 +34,6 @@
   height: 100px;
   font-size: var(--font-size-3xl);
 }
+
+/* the picture with something tucked under it: the badge sits behind (z-index -1) */
+.worn { position: relative; isolation: isolate; display: inline-flex; flex-shrink: 0; }

@@ -107,6 +107,9 @@ class SocialService:
         return out
 
     def directory(self) -> list[DirectoryEntryOut]:
+        from app.services.leagues import leagues_by_user
+
+        leagues = leagues_by_user(self.db)
         out = []
         for u in self.users.list_real_users():
             arch_key, arch_weekday = self._archetype_ref(u.id)
@@ -126,6 +129,7 @@ class SocialService:
                     recommendation_text=u.recommendation_text,
                     recent_books=recent_books,
                     badges_earned=badges_earned,
+                    league=leagues.get(u.id),
                 )
             )
         return out + self._archive_directory()
@@ -168,7 +172,10 @@ class SocialService:
 
         is_buddy = self.buddies.get(user_id=viewer_id, buddy_user_id=target.id) is not None
 
+        from app.services.leagues import leagues_by_user
+
         return PublicProfileOut(
+            league=leagues_by_user(self.db).get(target.id),
             user_id=str(target.id),
             username=target.username,
             display_name=target.display_name,

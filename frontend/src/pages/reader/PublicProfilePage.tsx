@@ -9,6 +9,7 @@ import { paletteFor, dimensionsFor } from '@/pages/library/bookcase/bookArt';
 import { bookCount } from '@/pages/library/bookcase/plural';
 import styles from './PublicProfilePage.module.css';
 import { ProfileListings } from '../books/ProfileBits';
+import { LeagueGlyph } from '@/widgets/League';
 
 function getMusicEmbedUrl(url: string): string | null {
   try {
@@ -100,7 +101,7 @@ export function PublicProfilePage() {
             ) : (
               <>
                 <div className={styles.hero}>
-                  <Avatar src={profile.avatar_data} name={profile.display_name} size="xl" />
+                  <Avatar src={profile.avatar_data} name={profile.display_name} size="xl" badge={profile.league && <LeagueGlyph tier={profile.league} onAvatar px={24} />} />
                   <div className={styles.name}>{profile.display_name}</div>
                   {profile.archetype_key && (
                     <div className={styles.archetype}>

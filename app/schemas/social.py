@@ -20,6 +20,8 @@ class DirectoryEntryOut(BaseModel):
     is_archive: bool = False
     archive_usernames: list[str] = []
     rounds_count: int = 0
+    # the league's bookmark tail under the avatar (bronze … exlibris), none below a league
+    league: str | None = None
     total_minutes: int = 0
     books_count: int = 0
 
@@ -39,6 +41,7 @@ class PublicProfileOut(BaseModel):
     rounds_participated: int
     books_finished: int
     badges_earned: int
+    league: str | None = None
     badges: list[BadgeOut]
     recent_books: list[str]
     favorite_books: list[str]

@@ -4,8 +4,8 @@
 .mark { display: inline-block; flex: none; line-height: 0; }
 .mark :global(svg) { overflow: visible; }
 
-.onAvatar { position: absolute; left: 50%; top: calc(100% - 5px); width: 12px; height: 19px; margin-left: -6px; z-index: -1; line-height: 0; pointer-events: none; }
-.onAvatar :global(svg) { display: block; }
+.onAvatar { --tail: 12px; position: absolute; left: 50%; top: calc(100% - var(--tail) * 0.42); width: var(--tail); height: calc(var(--tail) * 19 / 12); margin-left: calc(var(--tail) / -2); z-index: -1; line-height: 0; pointer-events: none; }
+.onAvatar :global(svg) { display: block; width: 100%; height: 100%; }
 .glyph { display: inline-flex; flex: none; width: 8px; height: 22px; margin-right: 8px; vertical-align: -5px; line-height: 0; }
 
 /* the profile card */

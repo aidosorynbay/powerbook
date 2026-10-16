@@ -4,6 +4,7 @@ import { useI18n, apiGet, type Buddy, type DirectoryEntry } from '@/shared/lib';
 import { Container, PageTransition, Avatar, BookCard, Icon } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import styles from './DirectoryPage.module.css';
+import { LeagueGlyph } from '@/widgets/League';
 
 export function DirectoryPage() {
   const { t } = useI18n();
@@ -119,7 +120,7 @@ export function DirectoryPage() {
                     }
                   >
                     <div className={styles.readerTop}>
-                      <Avatar src={entry.avatar_data} name={entry.display_name} size="md" />
+                      <Avatar src={entry.avatar_data} name={entry.display_name} size="md" badge={entry.league && <LeagueGlyph tier={entry.league} onAvatar px={14} />} />
                       <div className={styles.readerIdentity}>
                         <div className={styles.readerName}>{entry.display_name}</div>
                         {entry.archetype_key && (

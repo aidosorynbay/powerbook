@@ -491,6 +491,7 @@ export type YearlyRosterResponse = {
 
 // Social: directory, public profiles, reading buddies
 export type DirectoryEntry = {
+  league?: LeagueTierKey | null;
   user_id: string;
   username: string;
   display_name: string;
@@ -510,6 +511,7 @@ export type DirectoryEntry = {
 };
 
 export type PublicProfile = {
+  league?: LeagueTierKey | null;
   user_id: string;
   username: string;
   display_name: string;
