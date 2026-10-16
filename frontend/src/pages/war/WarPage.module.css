@@ -152,3 +152,9 @@
 .annRules i { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 800; color: #0b1c26; background: #ffb07a; }
 .annCta { position: relative; width: 100%; max-width: 420px; padding: 14px; border-radius: 14px; font-weight: 800; font-size: 16px; color: #fff; background: #f26430; }
 .annCount { position: relative; margin-top: 8px; font-size: 12px; color: #8fa3af; }
+
+/* who has signed up, by name, before the split */
+.joinedBox { width: 100%; margin-top: 14px; text-align: left; }
+.joinedList { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.joinedList li { display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 99px; background: var(--color-bg-card); border: 1px solid var(--color-border-primary); font-size: 14px; font-weight: 600; color: var(--color-text-primary); }
+.joinedList .av { width: 26px; height: 26px; font-size: 12px; }

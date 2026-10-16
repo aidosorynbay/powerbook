@@ -154,11 +154,19 @@ export function WarPage() {
                       </Link>
                     )}
                     <div className={styles.count}>{t('war.joinedCount', { n: war.joined_count })}</div>
-                    <div className={styles.faces}>
-                      {war.joined.slice(0, 40).map((p) => (
-                        <Avatar key={p.user_id} p={p} />
-                      ))}
-                    </div>
+                    {war.joined.length > 0 && (
+                      <div className={styles.joinedBox}>
+                        <h4 className={styles.h4}>{t('war.joinedList')}</h4>
+                        <ul className={styles.joinedList}>
+                          {war.joined.map((p) => (
+                            <li key={p.user_id}>
+                              <Avatar p={p} />
+                              <span>{p.display_name}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     {war.is_admin && (
                       <button type="button" className={styles.admin} onClick={() => window.confirm(t('war.splitConfirm', { n: war.joined_count })) && act('/war/split', 'war_split')} disabled={busy || war.joined_count < 2}>
                         {t('war.split', { n: war.joined_count })}
