@@ -1,0 +1,113 @@
+"""«Битва кланов»: sign-up, the even split, strikes and shields from the circle's own days."""
+from __future__ import annotations
+
+from datetime import date
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+import app.models  # noqa: F401
+from app.core.security import create_access_token
+from app.db.base import Base
+from app.db.session import get_db
+from app.main import create_app
+from app.models.clan_war import ClanWar
+from app.models.enums import Gender, RoundParticipantStatus, RoundStatus, SystemRole
+from app.models.group import Group
+from app.models.round import ReadingLog, Round, RoundParticipant
+from app.models.user import User
+from app.services import clan_war, leagues
+
+
+@pytest.fixture()
+def env(monkeypatch):
+    leagues.reset_cache()
+    monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 18))
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+
+    @event.listens_for(engine, "connect")
+    def _fk(dbapi_conn, _):
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
+
+    Base.metadata.create_all(engine)
+    db = sessionmaker(bind=engine, autoflush=False, autocommit=False)()
+    admin = User(username="madiyar", display_name="Madiyar", password_hash="x", gender=Gender.male, system_role=SystemRole.admin)
+    readers = [User(username=f"r{i}", display_name=f"R{i}", password_hash="x", gender=Gender.female) for i in range(4)]
+    db.add_all([admin, *readers])
+    db.flush()
+    group = Group(name="PowerBook", slug="powerbook", owner_user_id=admin.id)
+    db.add(group)
+    db.flush()
+    rnd = Round(group_id=group.id, year=2026, month=10, status=RoundStatus.registration_open)
+    db.add(rnd)
+    db.flush()
+    for u in readers:
+        db.add(RoundParticipant(round_id=rnd.id, user_id=u.id, status=RoundParticipantStatus.active))
+    db.add(ClanWar(start_date=date(2026, 10, 17), end_date=date(2026, 10, 30), status="signup"))
+    db.commit()
+
+    app = create_app()
+
+    def _db():
+        yield db
+
+    app.dependency_overrides[get_db] = _db
+    yield db, TestClient(app), admin, readers, rnd
+    leagues.reset_cache()
+
+
+def h(u):
+    return {"Authorization": f"Bearer {create_access_token(subject=str(u.id))}"}
+
+
+def read(db, rnd, u, d):
+    db.add(ReadingLog(round_id=rnd.id, user_id=u.id, date=d, minutes=40, score=1))
+    db.commit()
+
+
+def test_anyone_watches_readers_join_and_the_founder_splits(env):
+    db, c, admin, readers, rnd = env
+    assert c.get("/api/war").json()["status"] == "signup"
+    for u in readers:
+        assert c.post("/api/war/join", headers=h(u)).status_code == 200
+    body = c.get("/api/war").json()
+    assert body["joined_count"] == 4 and len(body["joined"]) == 4
+    assert c.post("/api/war/split", headers=h(readers[0])).status_code == 403
+    body = c.post("/api/war/split", headers=h(admin)).json()
+    assert body["status"] == "live"
+    assert [t["size"] for t in body["teams"]] == [2, 2]
+    assert c.post("/api/war/leave", headers=h(readers[0])).status_code == 409
+
+
+def test_strikes_and_shields(env):
+    db, c, admin, readers, rnd = env
+    for u in readers:
+        c.post("/api/war/join", headers=h(u))
+    body = c.post("/api/war/split", headers=h(admin)).json()
+    team_of = {m["display_name"]: t["key"] for t in body["teams"] for m in t["members"]}
+    light = [u for u in readers if team_of[u.display_name] == "lighthouse"]
+    sail = [u for u in readers if team_of[u.display_name] == "sail"]
+    # day 1: the whole lighthouse reads (shield up); half the sail reads
+    for u in light:
+        read(db, rnd, u, date(2026, 10, 17))
+    read(db, rnd, sail[0], date(2026, 10, 17))
+    body = c.get("/api/war", headers=h(light[0])).json()
+    t = {x["key"]: x for x in body["teams"]}
+    per_day = 100 / 14
+    assert t["lighthouse"]["days"][0] == {"date": "2026-10-17", "hits": 2, "size": 2, "shield": True}
+    assert t["sail"]["days"][0]["shield"] is False
+    assert t["sail"]["hp"] == round(100 - per_day, 1)  # struck in full
+    assert t["lighthouse"]["hp"] == round(100 - 0.5 * per_day * 0.5, 1)  # half the sail struck, into a shield
+    assert body["me"] == {"joined": True, "team": "lighthouse", "hits": 1, "days": 2}
+
+
+def test_a_late_reader_joins_the_smaller_team(env):
+    db, c, admin, readers, rnd = env
+    for u in readers[:3]:
+        c.post("/api/war/join", headers=h(u))
+    c.post("/api/war/split", headers=h(admin))
+    body = c.post("/api/war/join", headers=h(readers[3])).json()
+    assert [t["size"] for t in body["teams"]] == [2, 2]

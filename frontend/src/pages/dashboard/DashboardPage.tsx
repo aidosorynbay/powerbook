@@ -26,6 +26,7 @@ import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews, useHelpOn } from '@/widgets';
 import { LeaguePromo, useLeague } from '@/widgets/League';
+import { WarCard } from '@/pages/war';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
 import { FeedbackPrompt, feedbackDue, feedbackDueHere, type FeedbackSource } from '@/widgets/FeedbackPrompt';
@@ -1399,6 +1400,7 @@ export function DashboardPage() {
 
                       {/* «Хей, как вы?» from the founder after three quiet days (app/services/checkins.py); while it is
                           up, the other lines about a break stay quiet: one voice at a time */}
+                      <WarCard />
                       <CheckinCard
                         onShown={setCheckinShown}
                         onForgot={() => openLogModal(yesterdayStr, calendar?.days.find((d) => d.date === yesterdayStr)?.minutes ?? 0)}
