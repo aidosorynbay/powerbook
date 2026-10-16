@@ -3994,7 +3994,7 @@ const translations = {
     'war.more': '+ тағы {n}',
     'war.startIn': '00:00-де басталады, қалды',
     'war.contrib': 'Шайқастағы үлесің: {books}',
-    'war.title': 'Кландар шайқасы',
+    'war.title': 'Тайпалар шайқасы',
     'war.kicker': 'Жарыс · {dates}',
     'war.day': '{total} күннің {n}-і',
     'war.over': 'Шайқас аяқталды',
