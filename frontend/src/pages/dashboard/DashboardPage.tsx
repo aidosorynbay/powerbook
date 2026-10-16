@@ -931,8 +931,9 @@ export function DashboardPage() {
         // today's circle total counting up (2026-10-15). Only once the circle's day is known: never «казна: 45 мин».
         const delta = minutes - before;
         const circleBefore = roster ? circleMinutes.get(todayStr) ?? 0 : null;
-        let fly = true;
-        try { fly = localStorage.getItem('pb.treasuryDrop') !== todayStr; } catch { /* private mode: fly every time */ }
+        // the drop falls on every save that adds minutes, not only the day's first: 30 → 0 → 30 had the founder waiting
+        // for a drop that never came (2026-10-16)
+        const fly = true;
         dropDone = flyMinutes(dialRect, () => document.querySelector<HTMLElement>(`[data-day="${todayStr}"]`), minutes, minutes >= DAILY_GOAL_MINUTES).then((cell) => {
           if (!cell || delta <= 0 || circleBefore === null) return;
           const fmt = (m: number) => (m >= 60 ? (m % 60 ? t('ms.hm', { h: Math.floor(m / 60), m: m % 60 }) : t('ms.h', { h: Math.floor(m / 60) })) : t('ms.m', { m }));
@@ -985,9 +986,11 @@ export function DashboardPage() {
       if (reason) {
         track('share_prompt_shown', { reason });
         try { localStorage.setItem('pb.share.auto', todayStr); } catch { /* private mode */ }
-        // after the drop has joined the pool (or 8 s at most), so the sheet never covers it
-        void Promise.race([dropDone.catch(() => {}), new Promise((r) => window.setTimeout(r, 8000))]).then(() =>
-          window.setTimeout(() => setSharing(todayStr), 300),
+        // after the drop has joined the pool and the total has counted up, so the sheet never covers it. On the day's
+        // 30 the room's «30 минут» comes first and the drop only after it: 8 s was too short a guard, the sheet came up
+        // over the falling drop (the founder's phone, 2026-10-16); 16 s is only for a drop that never ends
+        void Promise.race([dropDone.catch(() => {}), new Promise((r) => window.setTimeout(r, 16000))]).then(() =>
+          window.setTimeout(() => setSharing(todayStr), 900),
         );
       } else if (minutes > 0) {
         // no milestone today: offer the reminder for this same time tomorrow, once the drop has settled — and only
@@ -999,7 +1002,7 @@ export function DashboardPage() {
             // One prompt per save: with no reminder to offer, now and then «Как вам PowerBook?» (a few days read, once
             // a month on any device), once the drop is in the pool, never over another sheet, with the same guard.
             const daysRead = prev.filter((d) => d.minutes > 0).length + 1;
-            const settled = Promise.race([dropDone.catch(() => {}), new Promise((r) => window.setTimeout(r, 8000))]);
+            const settled = Promise.race([dropDone.catch(() => {}), new Promise((r) => window.setTimeout(r, 16000))]);
             void Promise.all([feedbackDue(daysRead), settled]).then(([ask]) => {
               if (!ask) return;
               window.setTimeout(() => {
@@ -1010,7 +1013,7 @@ export function DashboardPage() {
             });
             return;
           }
-          void Promise.race([dropDone.catch(() => {}), new Promise((r) => window.setTimeout(r, 8000))]).then(() =>
+          void Promise.race([dropDone.catch(() => {}), new Promise((r) => window.setTimeout(r, 16000))]).then(() =>
             window.setTimeout(() => {
               if (document.visibilityState !== 'visible' || Date.now() - savedAt > 30_000) return;
               track('reminder_offer', { action: 'shown' });

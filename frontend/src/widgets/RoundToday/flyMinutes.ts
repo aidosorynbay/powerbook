@@ -143,7 +143,7 @@ export interface TreasuryDrop {
   plus: string;
   label: string;
   total: (m: number) => string;
-  /** the drop falls only on the day's first save; later saves get the pool alone */
+  /** false: the pool alone, no drop */
   fly: boolean;
   /** the drop really fell (GA4) */
   onSeen: () => void;
@@ -338,14 +338,19 @@ export async function dropToTreasury(d: TreasuryDrop) {
     .finished.catch(() => {});
 
   // 3. it joins the pool: sinks in and spreads; the surface dips and swells back, a ripple runs both ways
-  drop.animate(
-    [
-      { transform: `translateY(${yHit}px) scale(.74, 1.42)` },
-      { transform: `translateY(${yHit + R * 1.6}px) scale(1.5, .7)`, offset: 0.45 },
-      { transform: `translateY(${yHit + R * 2.4}px) scale(2.2, .3)` },
-    ],
-    { duration: 300, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' },
-  );
+  // it spreads inside the pool, never past its lower edge: sunk deeper it hung under the pool as a hump while the
+  // total counted (2026-10-16)
+  const sink = Math.min(R * 2.4, R * 0.2 + p.height * 0.4);
+  drop
+    .animate(
+      [
+        { transform: `translateY(${yHit}px) scale(.74, 1.42)` },
+        { transform: `translateY(${yHit + sink * 0.6}px) scale(1.5, .7)`, offset: 0.45 },
+        { transform: `translateY(${yHit + sink}px) scale(2.2, .3)` },
+      ],
+      { duration: 300, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' },
+    )
+    .finished.then(() => drop.remove(), () => drop.remove());
   body.style.transformOrigin = `${cx - L + 20}px 0`;
   body.animate(
     [
@@ -359,13 +364,18 @@ export async function dropToTreasury(d: TreasuryDrop) {
   );
   for (const dir of [-1, 1]) {
     const wave = blob(cx - R, p.top - R * 0.6, R * 2, R * 1.4, '50%', poolColor);
-    wave.animate(
-      [
-        { transform: 'translateX(0) scale(1, 1)' },
-        { transform: `translateX(${dir * reach}px) scale(.5, .4)` },
-      ],
-      { duration: 620, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' },
-    );
+    // the ripple runs out and sinks back under the surface: left standing at its end it stayed on the pool as two
+    // humps for as long as the total counted (the founder: «кривость» of the treasury, 2026-10-16)
+    wave
+      .animate(
+        [
+          { transform: 'translate(0, 0) scale(1, 1)' },
+          { transform: `translate(${dir * reach * 0.6}px, 0) scale(.7, .6)`, offset: 0.55 },
+          { transform: `translate(${dir * reach}px, ${R * 1.6}px) scale(.35, .3)` },
+        ],
+        { duration: 620, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' },
+      )
+      .finished.then(() => wave.remove(), () => wave.remove());
   }
   thud(true);
 
