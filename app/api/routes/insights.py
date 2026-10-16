@@ -15,7 +15,7 @@ from app.schemas.insights import (
     BookshelfEntryOut,
     CelebrityMatchOut,
     HallOfFameOut,
-    LeagueTierOut,
+    LeagueOut,
     ManualBookIn,
     ManualBookOut,
     PercentileOut,
@@ -108,13 +108,9 @@ def get_badges(db: Session = Depends(get_db), user=Depends(get_current_user)) ->
     return InsightsService(db).badges(user_id=user.id)
 
 
-@router.get("/league", response_model=LeagueTierOut)
-def get_league(
-    round_id: uuid.UUID | None = Query(default=None),
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user),
-) -> LeagueTierOut:
-    return InsightsService(db).league(user_id=user.id, round_id=round_id)
+@router.get("/league", response_model=LeagueOut)
+def get_league(db: Session = Depends(get_db), user=Depends(get_current_user)) -> LeagueOut:
+    return InsightsService(db).league(user_id=user.id)
 
 
 @router.get("/wrapped", response_model=WrappedOut)

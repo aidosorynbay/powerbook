@@ -30,7 +30,7 @@ from app.schemas.insights import (
     HallOfFameCategoryOut,
     HallOfFameEntryOut,
     HallOfFameOut,
-    LeagueTierOut,
+    LeagueOut,
     PercentileOut,
     PopularBookOut,
     ReadingTwinOut,
@@ -670,60 +670,12 @@ class InsightsService:
         group = group_service.get_by_slug(slug=DEFAULT_GROUP_SLUG)
         return group_service.get_current_round(group_id=group.id)
 
-    def league(self, *, user_id: uuid.UUID, round_id: uuid.UUID | None) -> LeagueTierOut:
-        from app.repositories.participants import RoundParticipantRepository
+    def league(self, *, user_id: uuid.UUID) -> LeagueOut:
+        from app.services.leagues import my_league
 
-        ids = self._effective_ids(user_id)
-        # Leagues are a live, this-month mechanic — always the actual current
-        # circle, never "whichever round you last happened to participate in".
-        rnd = self.repo.round_by_id(round_id=round_id) if round_id else self._current_round()
-        if rnd is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active circle this month")
-
-        participants = RoundParticipantRepository(self.db).list_for_round(round_id=rnd.id)
-        ids_set = set(ids)
-        mine_participant = next((p for p in participants if p.user_id in ids_set), None)
-        if mine_participant is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You are not participating in this circle")
-
-        scores = self.repo.scores_for_round(round_id=rnd.id)
-        # Rank everyone actually enrolled in the circle, not just people who
-        # already logged a day — otherwise early risers this month look like
-        # the only participants and tiers are computed off a tiny sample.
-        ranked = sorted(
-            ((p.user_id, scores.get(p.user_id, 0)) for p in participants),
-            key=lambda x: -x[1],
-        )
-        n = len(ranked)
-        tier_size = max(1, n // 3)
-        tiers = {}
-        for i, (uid, _) in enumerate(ranked):
-            if i < tier_size:
-                tiers[uid] = ("Gold", 1)
-            elif i < tier_size * 2:
-                tiers[uid] = ("Silver", 2)
-            else:
-                tiers[uid] = ("Bronze", 3)
-
-        mine_id = mine_participant.user_id
-        my_tier, my_rank = tiers[mine_id]
-        members = []
-        for uid, (tier, _) in tiers.items():
-            if tier != my_tier:
-                continue
-            info = self.repo.display_name_and_telegram(user_id=uid)
-            if info:
-                members.append({"user_id": str(uid), "display_name": info[0], "telegram_id": info[1], "score": scores.get(uid, 0)})
-        members.sort(key=lambda m: -m["score"])
-
-        return LeagueTierOut(
-            round_id=str(rnd.id),
-            round_label=self.repo.round_label(rnd),
-            tier=my_tier,
-            tier_rank=my_rank,
-            your_score=scores.get(mine_id, 0),
-            members=members[:30],
-        )
+        return LeagueOut(**my_league(
+            self.db, user_id=user_id, current=self._current_round(), effective_ids=self._effective_ids(user_id)
+        ))
 
     # ---------- wrapped ----------
 

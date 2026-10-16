@@ -408,6 +408,11 @@ class ReadingService:
             day_from=rnd.first_day_date if rnd else None,
             day_to=rnd.last_day_date if rnd else None,
         )
+        from app.services.leagues import leagues_by_user
+
+        leagues = leagues_by_user(self.db)
+        for row in data:
+            row["league"] = leagues.get(uuid.UUID(row["user_id"]))
         data.sort(key=lambda x: (-x["total_score"], x["display_name"]))
         return data
 

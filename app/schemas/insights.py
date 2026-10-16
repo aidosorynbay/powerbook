@@ -87,13 +87,45 @@ class BadgeOut(BaseModel):
     progress_target: int
 
 
-class LeagueTierOut(BaseModel):
+class LeagueRoundOut(BaseModel):
     round_id: str
-    round_label: str
+    year: int
+    month: int
+    scored: int
+    total: int
+
+
+class LeagueGoalOut(BaseModel):
     tier: str
-    tier_rank: int
-    your_score: int
-    members: list[dict]
+    days: int
+    reachable: bool = True
+
+
+class LeagueProgressOut(LeagueRoundOut):
+    left: int
+    next: LeagueGoalOut | None = None
+    keep: LeagueGoalOut | None = None
+
+
+class LeagueHeldOut(BaseModel):
+    tier: str
+    year: int
+    month: int
+
+
+class LeagueOut(BaseModel):
+    """The reader's league (bronze → ex libris), why, and the bookmarks kept."""
+
+    tier: str | None
+    warning: bool
+    since_year: int | None
+    circles: int
+    diamond_open: bool
+    exlibris_in: int | None = None
+    based_on: LeagueRoundOut | None
+    promoted_round_id: str | None
+    progress: LeagueProgressOut | None
+    collection: list[LeagueHeldOut]
 
 
 class WrappedOut(BaseModel):

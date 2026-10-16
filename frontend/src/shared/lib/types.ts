@@ -69,6 +69,8 @@ export type LeaderboardEntry = {
   days_read: number;
   /** The version of the reader's picture at /social/avatar/<id>, or null when they have none. */
   avatar?: string | null;
+  /** The league the reader wears beside their name, if any. */
+  league?: LeagueTierKey | null;
 };
 
 // Calendar
@@ -377,20 +379,23 @@ export type Badge = {
   progress_target: number;
 };
 
-export type LeagueMember = {
-  user_id: string;
-  display_name: string;
-  telegram_id: string | null;
-  score: number;
-};
+export type LeagueTierKey = 'bronze' | 'silver' | 'gold' | 'diamond' | 'exlibris';
 
-export type LeagueTier = {
-  round_id: string;
-  round_label: string;
-  tier: string;
-  tier_rank: number;
-  your_score: number;
-  members: LeagueMember[];
+export type LeagueRound = { round_id: string; year: number; month: number; scored: number; total: number };
+export type LeagueGoal = { tier: LeagueTierKey; days: number; reachable?: boolean };
+
+/** GET /insights/league: the reader's league, why, what keeps or lifts it, and the bookmarks kept. */
+export type League = {
+  tier: LeagueTierKey | null;
+  warning: boolean;
+  since_year: number | null;
+  circles: number;
+  diamond_open: boolean;
+  exlibris_in: number | null;
+  based_on: LeagueRound | null;
+  promoted_round_id: string | null;
+  progress: (LeagueRound & { left: number; next: LeagueGoal | null; keep: LeagueGoal | null }) | null;
+  collection: { tier: LeagueTierKey; year: number; month: number }[];
 };
 
 export type Wrapped = {

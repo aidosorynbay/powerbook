@@ -15,7 +15,7 @@ import {
   type CelebrityMatch,
   type BadgeData,
   type BadgeStats,
-  type LeagueTier,
+  type League,
   isStandalone,
   track,
 } from '@/shared/lib';
@@ -23,6 +23,7 @@ import { Avatar, Card, Container, PageTransition, ProgressBar, Button, BookCard,
 import { Header, Footer, ClaimPicker, WrappedCard, BookTime, InviteFriends, HelpSheet, useHelpOn } from '@/widgets';
 import { paletteFor, dimensionsFor } from '@/pages/library/bookcase/bookArt';
 import { bookCount } from '@/pages/library/bookcase/plural';
+import { LeagueCard, LeaguePromo } from '@/widgets/League';
 import styles from './InsightsPage.module.css';
 import { ProfileListings } from '../books/ProfileBits';
 
@@ -102,7 +103,7 @@ export function InsightsPage() {
   const [twins, setTwins] = useState<ReadingTwin[]>([]);
   const [celebrities, setCelebrities] = useState<CelebrityMatch[]>([]);
   const [badges, setBadges] = useState<BadgeData[]>([]);
-  const [league, setLeague] = useState<LeagueTier | null>(null);
+  const [league, setLeague] = useState<League | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAllBadges, setShowAllBadges] = useState(false);
   const [openBadge, setOpenBadge] = useState<BadgeData | null>(null);
@@ -239,7 +240,7 @@ export function InsightsPage() {
       apiGet<ReadingTwin[]>('/insights/twins?limit=5', { requireAuth: true }),
       apiGet<CelebrityMatch[]>('/insights/celebrity-match', { requireAuth: true }),
       apiGet<BadgeData[]>('/insights/badges', { requireAuth: true }),
-      apiGet<LeagueTier>('/insights/league', { requireAuth: true }),
+      apiGet<League>('/insights/league', { requireAuth: true }),
     ]);
     if (p.data) setProfile(p.data);
     if (a.data) setArchetype(a.data);
@@ -331,6 +332,9 @@ export function InsightsPage() {
                     <StatTile value={profile.books_finished} label={t('insights.booksFinished')} />
                   </div>
                 )}
+
+                {league && user && <LeagueCard league={league} name={user.display_name || user.username} />}
+                {league && user && <LeaguePromo league={league} name={user.display_name || user.username} />}
 
                 <nav className={styles.rows} aria-label={t('nav.profile')}>
                   <Link to="/reading" className={styles.row}>

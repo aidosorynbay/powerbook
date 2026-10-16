@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { getApiBaseUrl, track, useI18n } from '@/shared/lib';
 import type { CalendarDay, LeaderboardEntry, RosterEntry } from '@/shared/lib';
 import { ReadingReminder, type ReminderState } from '@/widgets/ReadingReminder';
+import { LeagueGlyph } from '@/widgets/League/League';
 import { usePulse, type PulsePhase } from './pulse';
 import styles from './RoundToday.module.css';
 
@@ -149,6 +150,7 @@ export function ReadersSheet({
               </span>
               <span className={styles.rn}>
                 <span className={styles.tg}>
+                  {e.league && <LeagueGlyph tier={e.league} />}
                   {e.display_name}
                   {me ? ` ${t('readers.you')}` : ''}
                 </span>

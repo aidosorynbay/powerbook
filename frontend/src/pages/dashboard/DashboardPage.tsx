@@ -25,6 +25,7 @@ import {
 import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews, useHelpOn } from '@/widgets';
+import { LeaguePromo, useLeague } from '@/widgets/League';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
 import { FeedbackPrompt, feedbackDue, feedbackDueHere, type FeedbackSource } from '@/widgets/FeedbackPrompt';
@@ -133,6 +134,7 @@ type LastDayPhase = 'normal' | 'correction' | 'registration';
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const league = useLeague();
   const { t, locale } = useI18n();
 
   const weekdays = useMemo(() => [
@@ -2001,6 +2003,7 @@ export function DashboardPage() {
 
       {/* «Читатели круга» and «что значат цвета», from below (members, 2026-10-13) */}
       <ReminderOffer open={reminderOffer} onClose={() => setReminderOffer(false)} />
+      {league && user && <LeaguePromo league={league} name={user.display_name || user.username} />}
       <ReadersSheet
         open={readersOpen}
         onClose={() => setReadersOpen(false)}
