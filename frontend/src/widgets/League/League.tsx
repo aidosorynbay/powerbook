@@ -79,13 +79,21 @@ export function LeagueMark({ tier, name, since, px }: { tier: LeagueTierKey; nam
   return <span className={styles.mark} style={{ width: px, height: px * 3 }} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-/** The slim bookmark worn beside a reader's name; on an avatar, its tail peeks out from under the photo. */
-export function LeagueGlyph({ tier, onAvatar = false, px, face }: { tier: LeagueTierKey; onAvatar?: boolean; px?: number; face?: number }) {
+/** The slim bookmark worn beside a reader's name; on a face, the league's ring with the bookmark's tail under it. */
+export function LeagueGlyph({ tier, onAvatar = false, face }: { tier: LeagueTierKey; onAvatar?: boolean; face?: number }) {
   const { t } = useI18n();
   const html = useMemo(() => (onAvatar ? tailSvg : glyphSvg)(tier as Tier), [tier, onAvatar]);
-  // the tail is 12 px wide on a 40 px face; bigger faces pass both sizes
-  const style = onAvatar && (px || face) ? ({ ...(px && { '--tail': `${px}px` }), ...(face && { '--face': `${face}px` }) } as CSSProperties) : undefined;
-  return <span className={onAvatar ? styles.onAvatar : styles.glyph} style={style} title={t(`league.${tier}`)} role="img" aria-label={t(`league.${tier}`)} dangerouslySetInnerHTML={{ __html: html }} />;
+  const label = t(`league.${tier}`);
+  if (!onAvatar) {
+    return <span className={styles.glyph} title={label} role="img" aria-label={label} dangerouslySetInnerHTML={{ __html: html }} />;
+  }
+  const style = face ? ({ '--face': `${face}px` } as CSSProperties) : undefined;
+  return (
+    <span className={`${styles.onAvatar} ${styles[tier]}`} style={style} title={label} role="img" aria-label={label}>
+      <span className={styles.tail} dangerouslySetInnerHTML={{ __html: html }} />
+      {tier === 'exlibris' && <span className={styles.rim} />}
+    </span>
+  );
 }
 
 export function useLeague() {

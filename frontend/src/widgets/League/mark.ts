@@ -117,23 +117,20 @@ export function glyphSvg(t: Tier): string {
   return `<svg width="7.4" height="22" viewBox="0 0 100 300" style="overflow:visible;filter:${glow}" aria-hidden="true"><defs><linearGradient id="${k}" x1="0" y1="0" x2="1" y2=".5"><stop offset="0" stop-color="${rl}"/><stop offset=".45" stop-color="${rd}"/><stop offset="1" stop-color="${rl}"/></linearGradient></defs><path d="M8 0H92Q100 0 100 8V300L50 270L0 300V8Q0 0 8 0Z" fill="url(#${k})" stroke="${ex ? '#e2b04a' : 'none'}" stroke-width="10"/><rect x="16" y="60" width="68" height="140" fill="#000" opacity=".45"/><circle cx="50" cy="28" r="12" fill="#F26430"/></svg>`;
 }
 
-/** The bookmark's tail that peeks out from under a reader's avatar, as from a book (founder's pick, 2026-10-17):
- * 12×19, a cylinder of the league's metal, shaded at the top where it goes under the page, swallowtail below. */
+/** The bookmark's tail that hangs from under the league ring on a reader's face (founder + council, 2026-10-17):
+ * 6×12, lit from the left like the ring, swallowtail below; ex libris is black with a gold edge. */
 const TAIL: Record<Tier, [string, string, string]> = {
-  bronze: ['#5a3217', '#e3a777', '#9a5f35'],
-  silver: ['#4a5259', '#f3f6f9', '#9aa3ab'],
-  gold: ['#7a5200', '#ffe28a', '#c99419'],
-  diamond: ['#2c6189', '#effaff', '#86c6ec'],
-  exlibris: ['#050403', '#3d362f', '#151210'],
+  bronze: ['#5e3218', '#e8b894', '#c98a5e'],
+  silver: ['#6f7a84', '#ffffff', '#e9eef2'],
+  gold: ['#9c6f1e', '#fff1b8', '#f6d77a'],
+  diamond: ['#2a7fb8', '#ffffff', '#bfefff'],
+  exlibris: ['#050505', '#2a2a2a', '#111111'],
 };
 export function tailSvg(t: Tier): string {
   const [d, l, m] = TAIL[t];
   const k = `lgt${++uid}`;
-  const ex = t === 'exlibris';
-  const edge = ex ? '#E3C56F' : 'rgba(0,0,0,.35)';
-  const groove = ex ? '#E3C56F' : 'rgba(0,0,0,.28)';
-  const shape = 'M.5 0H11.5V18.5L6 15L.5 18.5Z';
-  return `<svg width="12" height="19" viewBox="0 0 12 19" aria-hidden="true"><defs><linearGradient id="${k}" x1="0" x2="1"><stop offset="0" stop-color="${d}"/><stop offset=".38" stop-color="${l}"/><stop offset=".62" stop-color="${m}"/><stop offset="1" stop-color="${d}"/></linearGradient><linearGradient id="${k}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset=".3" stop-color="#000" stop-opacity="0"/></linearGradient></defs><path d="${shape}" fill="url(#${k})" stroke="${edge}" stroke-width="${ex ? 0.9 : 0.5}"/><path d="${shape}" fill="url(#${k}s)"/><line x1="3.2" y1="5" x2="3.2" y2="14" stroke="${groove}" stroke-width=".6"/><line x1="8.8" y1="5" x2="8.8" y2="14" stroke="${groove}" stroke-width=".6"/>${ex ? '<circle cx="6" cy="10" r="1.1" fill="#F26430"/>' : ''}</svg>`;
+  const edge = t === 'exlibris' ? 'stroke="#D4AF37" stroke-width=".7"' : 'stroke="rgba(0,0,0,.25)" stroke-width=".4"';
+  return `<svg viewBox="0 0 6 12" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="${k}" x1="0" x2="1"><stop offset="0" stop-color="${l}"/><stop offset=".25" stop-color="${m}"/><stop offset="1" stop-color="${d}"/></linearGradient></defs><path d="M.3 0H5.7V11.7L3 8.7L.3 11.7Z" fill="url(#${k})" ${edge}/><line x1="1" y1="1" x2="1" y2="9" stroke="rgba(255,255,255,.5)" stroke-width=".6"/></svg>`;
 }
 
 /** The engraving as a data: URL, for an SVG that is drawn to a canvas (it cannot fetch). */
