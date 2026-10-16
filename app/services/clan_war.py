@@ -1,16 +1,16 @@
 """«Битва кланов»: two teams, 14 days, the circle's own days of reading.
 
-- Attack: every day a member reads 30+ minutes (the circle's scored day)
-  strikes the other team's fortress. A day's strike is the share of the team
-  that read, so a team of 12 and a team of 10 hit equally hard.
-- Shield: a day when 80% of a team read, the other team's strikes that day
-  do half the damage.
-- Each fortress starts at 100; one full day of the whole team reading takes
-  100/14 off the other. After the last day the stronger fortress wins.
+- A point: every member who has a scored day (30+ minutes, logged on the
+  circle's dial) before 00:00 brings their team one point for that day.
+- At 00:00 (Astana) the day is locked: each of the team's points is one
+  strike, and each strike knocks one brick out of the other team's fortress.
+  Logs entered after midnight for a locked day change nothing.
+- A fortress holds as many bricks as the other team could strike in 14 days
+  (its members × days), so a team of 12 and a team of 10 fight evenly.
+  After the last day the fortress with the larger share of bricks standing wins.
 
-Members count from the day they joined, so a late joiner does not pull the
-team's past days down. Only team numbers are public; a member sees their own.
-Nothing here touches the circle's table, points or winners.
+Members count from the day they joined. Only team numbers are public; a
+member sees their own points. Nothing here touches the circle's table.
 """
 from __future__ import annotations
 
@@ -23,14 +23,12 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.constants import ROUND_TZ
-from app.models.clan_war import ClanWar, ClanWarMember
+from app.models.clan_war import ClanWar, ClanWarDay, ClanWarMember
 from app.models.enums import SystemRole
 from app.models.round import ReadingLog
 from app.models.user import User
 
 TEAMS = ["lighthouse", "sail"]
-SHIELD_SHARE = 0.8
-SHIELD_FACTOR = 0.5
 
 
 def _today() -> date:
@@ -89,10 +87,66 @@ def _reads(db: Session, user_ids: list[uuid.UUID], war: ClanWar) -> set[tuple[uu
     return {(u, d) for u, d in rows}
 
 
+def _team_rows(members):
+    by_team: list[list] = [[], []]
+    for row in members:
+        if row[0].team in (0, 1):
+            by_team[row[0].team].append(row)
+    return by_team
+
+
+def _count(team, war: ClanWar, d: date, reads) -> tuple[int, int]:
+    active = [m for m, _, _ in team if _joined_day(m, war) <= d]
+    return sum(1 for m in active if (m.user_id, d) in reads), len(active)
+
+
+def lock_days(db: Session, war: ClanWar | None = None, today: date | None = None) -> int:
+    """Lock every finished war day not locked yet (run each minute; safe to repeat)."""
+    war = war or current_war(db)
+    if war is None or war.status != "live":
+        return 0
+    today = today or _today()
+    done = {(d, t) for d, t in db.execute(
+        select(ClanWarDay.date, ClanWarDay.team).where(ClanWarDay.war_id == war.id)
+    ).all()}
+    days = [d for d in _days(war, today - timedelta(days=1)) if any((d, t) not in done for t in (0, 1))]
+    if not days:
+        return 0
+    members = _members(db, war)
+    by_team = _team_rows(members)
+    reads = _reads(db, [m.user_id for m, _, _ in members], war)
+    n = 0
+    for d in days:
+        for t in (0, 1):
+            if (d, t) in done:
+                continue
+            hits, size = _count(by_team[t], war, d, reads)
+            db.add(ClanWarDay(war_id=war.id, date=d, team=t, hits=hits, size=size))
+            n += 1
+    try:
+        db.commit()
+    except Exception:  # the other worker locked it first
+        db.rollback()
+        return 0
+    return n
+
+
+def scheduled() -> None:
+    from app.db.session import get_session_factory
+
+    db = get_session_factory()()
+    try:
+        lock_days(db)
+    finally:
+        db.close()
+
+
 def state(db: Session, viewer: User | None) -> dict:
     war = _war_or_404(db)
     today = _today()
     total_days = (war.end_date - war.start_date).days + 1
+    if war.status == "live":
+        lock_days(db, war, today)
     members = _members(db, war)
     phase = war.status
     if phase == "live" and today > war.end_date:
@@ -118,53 +172,59 @@ def state(db: Session, viewer: User | None) -> dict:
     if war.status == "signup":
         return out
 
-    days = _days(war, today)
+    by_team = _team_rows(members)
+    locked = {
+        (d, t): (h, sz)
+        for d, t, h, sz in db.execute(
+            select(ClanWarDay.date, ClanWarDay.team, ClanWarDay.hits, ClanWarDay.size).where(ClanWarDay.war_id == war.id)
+        ).all()
+    }
     reads = _reads(db, [m.user_id for m, _, _ in members], war)
-    by_team: list[list[tuple[ClanWarMember, User, int | None]]] = [[], []]
-    for row in members:
-        if row[0].team in (0, 1):
-            by_team[row[0].team].append(row)
+    all_days = [war.start_date + timedelta(days=i) for i in range(total_days)]
+    live_today = war.start_date <= today <= war.end_date
 
-    daily = []  # per team: list of (hits, size, shield)
-    for team in by_team:
-        line = []
-        for d in days:
-            active = [m for m, _, _ in team if _joined_day(m, war) <= d]
-            hits = sum(1 for m in active if (m.user_id, d) in reads)
-            size = len(active)
-            shield = size > 0 and hits >= math.ceil(SHIELD_SHARE * size)
-            line.append((hits, size, shield))
-        daily.append(line)
-
-    per_day = 100.0 / total_days
-    hp = [100.0, 100.0]
-    for i in range(len(days)):
-        for t in (0, 1):
-            other = 1 - t
-            hits, size, _ = daily[other][i]
-            if size:
-                dmg = hits / size * per_day * (SHIELD_FACTOR if daily[t][i][2] else 1.0)
-                hp[t] -= dmg
-    hp = [max(0.0, round(h, 1)) for h in hp]
+    lines: list[list[dict]] = [[], []]
+    strikes = [0, 0]
+    sizes_by_day: list[list[int]] = [[], []]
+    for t in (0, 1):
+        current = len(by_team[t])
+        for d in all_days:
+            if (d, t) in locked:
+                h, sz = locked[(d, t)]
+                lines[t].append({"date": d.isoformat(), "hits": h, "size": sz, "locked": True})
+                strikes[t] += h
+                sizes_by_day[t].append(sz)
+            elif d == today and live_today:
+                h, sz = _count(by_team[t], war, d, reads)
+                lines[t].append({"date": d.isoformat(), "hits": h, "size": sz, "locked": False})
+                sizes_by_day[t].append(current)
+            else:
+                sizes_by_day[t].append(current)
 
     for t in (0, 1):
+        other = 1 - t
+        bricks = sum(sizes_by_day[other])  # what the other team could strike in all the days
+        left = max(0, bricks - strikes[other])
         out["teams"].append(
             {
                 "key": TEAMS[t],
                 "size": len(by_team[t]),
-                "hp": hp[t],
+                "bricks": bricks,
+                "bricks_left": left,
+                "hp": round(100.0 * left / bricks, 1) if bricks else 100.0,
+                "points": strikes[t],
+                "today": next((x["hits"] for x in lines[t] if not x["locked"]), None),
                 "members": [person(u, a) for _, u, a in by_team[t]],
-                "days": [
-                    {"date": d.isoformat(), "hits": h, "size": s, "shield": sh}
-                    for d, (h, s, sh) in zip(days, daily[t])
-                ],
+                "days": lines[t],
             }
         )
     if me is not None and me.team is not None:
-        mine = [d for d in days if (me.user_id, d) in reads]
+        mine = [d for d in all_days if d <= today and (me.user_id, d) in reads and d >= _joined_day(me, war)]
         out["me"]["hits"] = len(mine)
-        out["me"]["days"] = len([d for d in days if d >= _joined_day(me, war)])
+        out["me"]["days"] = len([d for d in all_days if _joined_day(me, war) <= d <= min(today, war.end_date)])
+        out["me"]["today"] = (me.user_id, today) in reads
     if phase == "done":
+        hp = [x["hp"] for x in out["teams"]]
         out["winner"] = TEAMS[0] if hp[0] > hp[1] else TEAMS[1] if hp[1] > hp[0] else "draw"
     return out
 

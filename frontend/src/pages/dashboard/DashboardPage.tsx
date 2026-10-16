@@ -26,7 +26,7 @@ import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews, useHelpOn } from '@/widgets';
 import { LeaguePromo, useLeague } from '@/widgets/League';
-import { WarCard } from '@/pages/war';
+import { RoundWarSwitch, WarCard } from '@/pages/war';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
 import { FeedbackPrompt, feedbackDue, feedbackDueHere, type FeedbackSource } from '@/widgets/FeedbackPrompt';
@@ -1102,6 +1102,7 @@ export function DashboardPage() {
 
         <main className={styles.main}>
         <Container>
+          <RoundWarSwitch />
           {!(isParticipant && !inRegistrationWindow) && (
             <div className={styles.header}>
               <div className={styles.greeting}>

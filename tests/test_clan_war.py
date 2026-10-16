@@ -82,26 +82,35 @@ def test_anyone_watches_readers_join_and_the_founder_splits(env):
     assert c.post("/api/war/leave", headers=h(readers[0])).status_code == 409
 
 
-def test_strikes_and_shields(env):
+def test_points_lock_at_midnight_and_knock_out_bricks(env, monkeypatch):
     db, c, admin, readers, rnd = env
+    monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 17))
     for u in readers:
         c.post("/api/war/join", headers=h(u))
     body = c.post("/api/war/split", headers=h(admin)).json()
     team_of = {m["display_name"]: t["key"] for t in body["teams"] for m in t["members"]}
     light = [u for u in readers if team_of[u.display_name] == "lighthouse"]
     sail = [u for u in readers if team_of[u.display_name] == "sail"]
-    # day 1: the whole lighthouse reads (shield up); half the sail reads
+    # 17 Oct: the whole lighthouse reads (2 points), half the sail (1 point)
     for u in light:
         read(db, rnd, u, date(2026, 10, 17))
     read(db, rnd, sail[0], date(2026, 10, 17))
-    body = c.get("/api/war", headers=h(light[0])).json()
+    monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 18))
+    body = c.get("/api/war", headers=h(light[0])).json()  # it is the 18th: the 17th is locked
     t = {x["key"]: x for x in body["teams"]}
-    per_day = 100 / 14
-    assert t["lighthouse"]["days"][0] == {"date": "2026-10-17", "hits": 2, "size": 2, "shield": True}
-    assert t["sail"]["days"][0]["shield"] is False
-    assert t["sail"]["hp"] == round(100 - per_day, 1)  # struck in full
-    assert t["lighthouse"]["hp"] == round(100 - 0.5 * per_day * 0.5, 1)  # half the sail struck, into a shield
-    assert body["me"] == {"joined": True, "team": "lighthouse", "hits": 1, "days": 2}
+    assert t["lighthouse"]["days"][0] == {"date": "2026-10-17", "hits": 2, "size": 2, "locked": True}
+    assert t["sail"]["bricks"] == 28 and t["sail"]["bricks_left"] == 26  # 2 members × 14 days, 2 strikes
+    assert t["lighthouse"]["bricks_left"] == 27
+    assert t["lighthouse"]["points"] == 2 and t["lighthouse"]["today"] == 0
+    assert body["me"]["hits"] == 1 and body["me"]["days"] == 2 and body["me"]["today"] is False
+    # a late log for the locked day changes nothing
+    read(db, rnd, sail[1], date(2026, 10, 17))
+    t = {x["key"]: x for x in c.get("/api/war").json()["teams"]}
+    assert t["lighthouse"]["bricks_left"] == 27
+    # today's points show live, and strike only after midnight
+    read(db, rnd, sail[1], date(2026, 10, 18))
+    t = {x["key"]: x for x in c.get("/api/war").json()["teams"]}
+    assert t["sail"]["today"] == 1 and t["lighthouse"]["bricks_left"] == 27
 
 
 def test_a_late_reader_joins_the_smaller_team(env):

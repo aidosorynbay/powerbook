@@ -43,3 +43,21 @@ class ClanWarMember(TimestampMixin, Base):
     )
     # 0 = «Маяк», 1 = «Парус»; empty until the split
     team: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+
+
+class ClanWarDay(Base):
+    """A war day, locked at 00:00 (Astana): how many of a team read 30+ minutes
+    that day (its strikes) and how many it had. Logs entered later for that
+    day no longer change it."""
+
+    __tablename__ = "clan_war_days"
+    __table_args__ = (UniqueConstraint("war_id", "date", "team", name="uq_clan_war_day"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    war_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("clan_wars.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    team: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    hits: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    size: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)

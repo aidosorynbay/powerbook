@@ -3,7 +3,7 @@
  * so the two can never disagree. Each place also lights for the pages that now live inside it.
  */
 export const MEMBER_TABS = [
-  { path: '/round', icon: 'clock', label: 'nav.round', also: [] as string[] },
+  { path: '/round', icon: 'clock', label: 'nav.round', also: ['/war'] as string[] },
   { path: '/results', icon: 'calendar', label: 'nav2.results', also: ['/archive', '/hall-of-fame'] },
   { path: '/insights', icon: 'user', label: 'nav.profile', also: ['/profile', '/readers', '/reading', '/suggestions', '/get', '/messages'] },
   { path: '/library', icon: 'book', label: 'nav.library', also: ['/books', '/market'] },

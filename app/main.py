@@ -180,6 +180,19 @@ async def lifespan(app: FastAPI):
         coalesce=True,
         next_run_time=datetime.now() + timedelta(seconds=30),
     )
+    # «Битва кланов»: each war day is locked right after 00:00 (Astana); the
+    # unique (war, date, team) keeps the two workers from locking it twice.
+    from app.services import clan_war
+
+    scheduler.add_job(
+        clan_war.scheduled,
+        "interval",
+        minutes=1,
+        id="clan_war_days",
+        max_instances=1,
+        coalesce=True,
+        next_run_time=datetime.now() + timedelta(seconds=45),
+    )
     scheduler.start()
     logger.info("Round lifecycle scheduler started")
     # The bot's «Одобрить» / «Отказать» buttons come back by its webhook.

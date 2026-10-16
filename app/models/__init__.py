@@ -9,7 +9,7 @@ from app.models.book_review import BookReview
 from app.models.book_review_reply import BookReviewReply
 from app.models.buddy import ReadingBuddy
 from app.models.claim import UsernameClaim
-from app.models.clan_war import ClanWar, ClanWarMember
+from app.models.clan_war import ClanWar, ClanWarDay, ClanWarMember
 from app.models.group import Group, GroupMember
 from app.models.library import LibraryBook
 from app.models.manual_book import ManualBook
@@ -33,6 +33,7 @@ from app.models.waitlist import WaitlistEntry
 
 __all__ = [
     "ClanWar",
+    "ClanWarDay",
     "ClanWarMember",
     "BookReviewReply",
     "BookWatch",

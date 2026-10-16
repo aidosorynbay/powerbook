@@ -1,17 +1,19 @@
-/** «Битва кланов»: two teams, «Маяк» and «Парус», 14 days. Every day of 30+
- * minutes strikes the other fortress; a day when 80% of a team read raises its
- * shield. Open to anyone; only team numbers are public (app/services/clan_war.py). */
-import { useCallback, useEffect, useState } from 'react';
+/** «Битва кланов»: two teams, «Маяк» and «Парус», 14 days. Every member who
+ * logs 30+ minutes before 00:00 brings a point; at midnight each point strikes a
+ * brick out of the other fortress. Open to anyone; only team numbers are public
+ * (app/services/clan_war.py). Lives as the second tab of «Круг». */
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiGet, apiPost, getApiBaseUrl, track, useAuth, useI18n } from '@/shared/lib';
 import { Container, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import { Sheet } from '@/widgets/RoundToday';
+import { fortressSvg } from './fortress';
 import styles from './WarPage.module.css';
 
 type Person = { user_id: string; display_name: string; avatar: string | null };
-type Day = { date: string; hits: number; size: number; shield: boolean };
-type Team = { key: 'lighthouse' | 'sail'; size: number; hp: number; members: Person[]; days: Day[] };
+type Day = { date: string; hits: number; size: number; locked: boolean };
+type Team = { key: 'lighthouse' | 'sail'; size: number; hp: number; bricks: number; bricks_left: number; points: number; today: number | null; members: Person[]; days: Day[] };
 export type War = {
   id: string;
   start_date: string;
@@ -22,7 +24,7 @@ export type War = {
   day: number;
   joined_count: number;
   is_admin: boolean;
-  me: { joined: boolean; team: Team['key'] | null; hits?: number; days?: number };
+  me: { joined: boolean; team: Team['key'] | null; hits?: number; days?: number; today?: boolean };
   joined: Person[];
   teams: Team[];
   winner: Team['key'] | 'draw' | null;
@@ -54,43 +56,55 @@ function dateRange(war: War, locale: string) {
   return `${f(war.start_date).replace(/\D+$/, '')}–${f(war.end_date)}`;
 }
 
-function Fortress({ team, war, mine, lead }: { team: Team; war: War; mine: boolean; lead: boolean }) {
+/** The battlefield: two brick fortresses under the night sky, banners flying. */
+function Field({ war }: { war: War }) {
   const { t } = useI18n();
-  const today = team.days[team.days.length - 1];
+  const [a, b] = war.teams;
+  const lastLocked = (team: Team) => [...team.days].reverse().find((d) => d.locked);
+  const svgs = useMemo(() => {
+    const fall = (attacker: Team, defender: Team) => {
+      const last = lastLocked(attacker);
+      if (!last || !last.hits || !defender.bricks) return 0;
+      return Math.max(1, Math.min(8, Math.round((last.hits / defender.bricks) * 180)));
+    };
+    return [fortressSvg(a.key, a.hp, fall(b, a)), fortressSvg(b.key, b.hp, fall(a, b))];
+  }, [a, b]);
   return (
-    <div className={`${styles.fort} ${mine ? styles.mine : ''} ${lead ? styles.lead : ''}`}>
-      <div className={styles.art} style={{ backgroundImage: `url(${ART[team.key]})` }} />
-      <div className={styles.fortBody}>
-        <div className={styles.teamName}>{t(`war.team.${team.key}`)}</div>
-        <div className={styles.hp}>
-          <b>{Math.round(team.hp)}</b>
-          <small>{t('war.hp')}</small>
-        </div>
-        <div className={styles.hpBar}>
-          <i style={{ width: `${team.hp}%` }} />
-        </div>
-        {today && war.status === 'live' && (
-          <div className={styles.today}>
-            {t('war.todayHits', { n: today.hits, size: today.size })}
-            {today.shield && <span className={styles.shieldTag}>{t('war.shield')}</span>}
-          </div>
-        )}
-        <div className={styles.track} aria-label={t('war.track')}>
-          {Array.from({ length: war.days_total }, (_, i) => {
-            const d = team.days[i];
-            const share = d && d.size ? d.hits / d.size : 0;
-            return (
-              <i
-                key={i}
-                className={d ? (d.shield ? styles.cellShield : styles.cellDay) : styles.cellAhead}
-                style={d && !d.shield ? { opacity: 0.25 + 0.75 * share } : undefined}
-                title={d ? `${d.date}: ${d.hits}/${d.size}` : undefined}
-              />
-            );
-          })}
-        </div>
-        <div className={styles.size}>{t('war.members', { n: team.size })}</div>
+    <div className={styles.field}>
+      <div className={styles.stars} />
+      <div className={styles.ground} />
+      {war.me.team && <span className={styles.you}>{t(`war.youIn.${war.me.team}`)}</span>}
+      {war.status === 'live' && (
+        <>
+          <span className={styles.vs}>VS</span>
+          <i className={`${styles.shot} ${styles.shotA}`} />
+          <i className={`${styles.shot} ${styles.shotB}`} />
+        </>
+      )}
+      <div className={styles.fortsRow}>
+        <div dangerouslySetInnerHTML={{ __html: svgs[0] }} />
+        <div dangerouslySetInnerHTML={{ __html: svgs[1] }} />
       </div>
+      <div className={styles.labels}>
+        {[a, b].map((x) => (
+          <div key={x.key}>
+            <b>{t(`war.team.${x.key}`)}</b>
+            <span>{x.bricks_left}</span>
+            <small>/ {x.bricks}</small>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** «Мой круг | Битва»: the war is the second tab of the circle, never the first. */
+export function WarSwitch({ active }: { active: 'round' | 'war' }) {
+  const { t } = useI18n();
+  return (
+    <div className={styles.seg} role="tablist">
+      <Link to="/round" role="tab" aria-selected={active === 'round'} className={active === 'round' ? styles.segOn : ''}>{t('war.tabRound')}</Link>
+      <Link to="/war" role="tab" aria-selected={active === 'war'} className={active === 'war' ? styles.segOn : ''}>{t('war.tabWar')}</Link>
     </div>
   );
 }
@@ -122,6 +136,7 @@ export function WarPage() {
               <div className={styles.loading}>{t('dashboard.loading')}</div>
             ) : (
               <>
+                {isAuthenticated && <WarSwitch active="war" />}
                 <div className={styles.kicker}>{t('war.kicker', { dates: dateRange(war, locale) })}</div>
                 <h1 className={styles.title}>{t('war.title')}</h1>
                 {war.status !== 'signup' && <div className={styles.day}>{war.status === 'done' ? t('war.over') : t('war.day', { n: war.day, total: war.days_total })}</div>}
@@ -171,24 +186,64 @@ export function WarPage() {
                         {war.winner === 'draw' ? t('war.draw') : t('war.won', { team: t(`war.team.${war.winner}`) })}
                       </div>
                     )}
-                    <div className={styles.forts}>
+                    {war.me.team && war.status === 'live' && (
+                      <div className={styles.meLine}>
+                        <span>{war.me.today ? t('war.meDone', { team: t(`war.team.${war.me.team}`) }) : t('war.meNot')}</span>
+                        {!war.me.today && <Link to="/round">{t('war.toDial')}</Link>}
+                      </div>
+                    )}
+                    <Field war={war} />
+                    {war.status === 'live' && (
+                      <div className={styles.todayBox}>
+                        <div className={styles.todayRow}>
+                          {war.teams.map((x) => (
+                            <span key={x.key}><b>{x.today ?? 0}</b> {t('war.pts')} · {t(`war.team.${x.key}`)}</span>
+                          ))}
+                        </div>
+                        <div className={styles.lockNote}>{t('war.lockNote')}</div>
+                      </div>
+                    )}
+                    {(() => {
+                      const y = war.teams.map((x) => [...x.days].reverse().find((d) => d.locked));
+                      return y[0] && y[1] ? (
+                        <p className={styles.yesterday}>
+                          {t('war.yesterday', { a: t(`war.team.${war.teams[0].key}`), n: y[0].hits, b: t(`war.team.${war.teams[1].key}`), m: y[1].hits })}
+                        </p>
+                      ) : null;
+                    })()}
+                    <h4 className={styles.h4}>{t('war.track')}</h4>
+                    <div className={styles.strip}>
+                      {war.teams.map((x) => (
+                        <div key={x.key} className={styles.stripRow}>
+                          <span>{t(`war.team.${x.key}`)}</span>
+                          <div className={styles.cells}>
+                            {Array.from({ length: war.days_total }, (_, i) => {
+                              const d = x.days[i];
+                              const share = d && d.size ? d.hits / d.size : 0;
+                              return (
+                                <i key={i} className={d ? (d.locked ? styles.cellDone : styles.cellToday) : ''} style={d ? { ['--a' as string]: String(0.25 + 0.75 * share) } : undefined} title={d ? `${d.date}: ${d.hits}/${d.size}` : undefined}>
+                                  {d ? d.hits : ''}
+                                </i>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {war.me.team && (
+                      <div className={styles.myPart}>{t('war.myPart', { team: t(`war.team.${war.me.team}`), n: war.me.hits ?? 0, days: war.me.days ?? 0 })}</div>
+                    )}
+                    <div className={styles.rosterBtns}>
                       {war.teams.map((team) => (
-                        <button key={team.key} type="button" className={styles.fortBtn} onClick={() => setRoster(team.key)}>
-                          <Fortress team={team} war={war} mine={war.me.team === team.key} lead={team.hp > (war.teams.find((x) => x.key !== team.key)?.hp ?? 0)} />
+                        <button key={team.key} type="button" onClick={() => setRoster(team.key)}>
+                          {t(`war.team.${team.key}`)} · {t('war.members', { n: team.size })} ›
                         </button>
                       ))}
                     </div>
-                    {war.me.team ? (
-                      <div className={styles.myPart}>
-                        {t('war.myPart', { team: t(`war.team.${war.me.team}`), n: war.me.hits ?? 0, days: war.me.days ?? 0 })}
-                      </div>
-                    ) : (
-                      war.status === 'live' &&
-                      isAuthenticated && (
-                        <button type="button" className={styles.primary} onClick={() => act('/war/join', 'war_join_late')} disabled={busy}>
-                          {t('war.joinLate')}
-                        </button>
-                      )
+                    {!war.me.team && war.status === 'live' && isAuthenticated && (
+                      <button type="button" className={styles.primary} onClick={() => act('/war/join', 'war_join_late')} disabled={busy}>
+                        {t('war.joinLate')}
+                      </button>
                     )}
                   </>
                 )}
@@ -210,7 +265,6 @@ export function WarPage() {
           <li>{t('war.rule2')}</li>
           <li>{t('war.rule3')}</li>
           <li>{t('war.rule4')}</li>
-          <li>{t('war.rule5')}</li>
         </ul>
         <button type="button" className={styles.close} onClick={() => setRules(false)}>{t('lg.done')}</button>
       </Sheet>
@@ -231,6 +285,13 @@ export function WarPage() {
   );
 }
 
+/** At the top of «Круг» while a war is on: the switch to its tab. */
+export function RoundWarSwitch() {
+  const { war } = useWar();
+  if (!war || war.status === 'done') return null;
+  return <WarSwitch active="round" />;
+}
+
 /** On the round tab: the war in one line, a door to its page. */
 export function WarCard() {
   const { t } = useI18n();
@@ -247,7 +308,7 @@ export function WarCard() {
             ? war.me.joined
               ? t('war.cardIn', { n: war.joined_count })
               : t('war.cardJoin', { n: war.joined_count })
-            : t('war.cardLive', { a: Math.round(a?.hp ?? 0), b: Math.round(b?.hp ?? 0), n: war.day, total: war.days_total })}
+            : t('war.cardLive', { a: a?.bricks_left ?? 0, b: b?.bricks_left ?? 0, n: war.day, total: war.days_total })}
         </small>
       </span>
       <span className={styles.cardArt} style={{ backgroundImage: `url(${ART.sail})` }} />
