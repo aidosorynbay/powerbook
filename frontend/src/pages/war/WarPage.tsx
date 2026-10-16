@@ -50,9 +50,10 @@ function Avatar({ p }: { p: Person }) {
   );
 }
 
-function dateRange(war: War, locale: string) {
-  const f = (s: string) => new Intl.DateTimeFormat(locale === 'kk' ? 'kk-KZ' : locale, { day: 'numeric', month: 'long' }).format(new Date(`${s}T12:00:00`));
-  return `${f(war.start_date).replace(/\D+$/, '')}–${f(war.end_date)}`;
+function dateRange(war: War, t: (k: string) => string) {
+  const [, m1, d1] = war.start_date.split('-').map(Number);
+  const [, m2, d2] = war.end_date.split('-').map(Number);
+  return m1 === m2 ? `${d1}–${d2} ${t(`month.gen.${m2}`)}` : `${d1} ${t(`month.gen.${m1}`)} – ${d2} ${t(`month.gen.${m2}`)}`;
 }
 
 /** Which of the four pictures a library shows: its shelves fill as the team reads. */
@@ -77,8 +78,8 @@ function Field({ war }: { war: War }) {
         </div>
       ))}
       {war.me.team && <span className={styles.you}>{t(`war.youIn.${war.me.team}`)}</span>}
-      {lead && war.status !== 'signup' && <span className={`${styles.lead} ${lead === 'lighthouse' ? styles.leadA : styles.leadB}`}>{t('war.ahead')}</span>}
-      <span className={styles.vs}>VS</span>
+      {lead && war.status !== 'signup' && <span className={`${styles.aheadTag} ${lead === 'lighthouse' ? styles.leadA : styles.leadB}`}>{t('war.ahead')}</span>}
+      <span className={styles.fieldVs}>VS</span>
     </div>
   );
 }
@@ -122,7 +123,7 @@ export function WarPage() {
             ) : (
               <>
                 {isAuthenticated && <WarSwitch active="war" />}
-                <div className={styles.kicker}>{t('war.kicker', { dates: dateRange(war, locale) })}</div>
+                <div className={styles.kicker}>{t('war.kicker', { dates: dateRange(war, t) })}</div>
                 <h1 className={styles.title}>{t('war.title')}</h1>
                 {war.status !== 'signup' && <div className={styles.day}>{war.status === 'done' ? t('war.over') : t('war.day', { n: war.day, total: war.days_total })}</div>}
 
