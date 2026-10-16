@@ -305,7 +305,12 @@ export async function dropToTreasury(d: TreasuryDrop) {
   };
   // the cell's own shape (hidden under the cell) so the drop is born from it; the pool's surface; the drop
   const source = blob(c.left + 3, c.top + 3, c.width - 6, c.height - 6, getComputedStyle(cell).borderRadius || '10px', dropColor);
-  const body = blob(L - 20, p.top, Rt - L + 40, p.height, '16px', poolColor);
+  // the surface lies under the pool and never reaches past it: 20 px wider than the pool, it stood out of its edge as a
+  // step whenever today was near the calendar's side (the founder's screenshot, Friday, 2026-10-16); kept off the
+  // pool's rounded corners and its lower edge, where the liquid's own rounding showed
+  const bodyL = Math.max(L - 20, p.left + 18);
+  const bodyR = Math.min(Rt + 20, p.right - 18);
+  const body = blob(bodyL, p.top, Math.max(0, bodyR - bodyL), p.height - 10, '0 0 16px 16px', poolColor);
   const drop = blob(cx - R, c.bottom - R * 2.2, R * 2, R * 2, '50%', dropColor);
   host.appendChild(layer);
   const raised = cell.style.zIndex;
@@ -351,7 +356,7 @@ export async function dropToTreasury(d: TreasuryDrop) {
       { duration: 300, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' },
     )
     .finished.then(() => drop.remove(), () => drop.remove());
-  body.style.transformOrigin = `${cx - L + 20}px 0`;
+  body.style.transformOrigin = `${cx - bodyL}px 0`;
   body.animate(
     [
       { transform: 'scale(1, 1)' },
@@ -364,14 +369,16 @@ export async function dropToTreasury(d: TreasuryDrop) {
   );
   for (const dir of [-1, 1]) {
     const wave = blob(cx - R, p.top - R * 0.6, R * 2, R * 1.4, '50%', poolColor);
+    // as far as the pool goes on that side: by the calendar's edge it ran out past the pool's corner
+    const run = Math.max(0, Math.min(reach, dir < 0 ? cx - p.left - R - 18 : p.right - cx - R - 18));
     // the ripple runs out and sinks back under the surface: left standing at its end it stayed on the pool as two
     // humps for as long as the total counted (the founder: «кривость» of the treasury, 2026-10-16)
     wave
       .animate(
         [
           { transform: 'translate(0, 0) scale(1, 1)' },
-          { transform: `translate(${dir * reach * 0.6}px, 0) scale(.7, .6)`, offset: 0.55 },
-          { transform: `translate(${dir * reach}px, ${R * 1.6}px) scale(.35, .3)` },
+          { transform: `translate(${dir * run * 0.6}px, 0) scale(.7, .6)`, offset: 0.55 },
+          { transform: `translate(${dir * run}px, ${R * 1.6}px) scale(.35, .3)` },
         ],
         { duration: 620, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' },
       )
