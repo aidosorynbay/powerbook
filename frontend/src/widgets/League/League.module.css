@@ -4,6 +4,7 @@
 .mark { display: inline-block; flex: none; line-height: 0; }
 .mark :global(svg) { overflow: visible; }
 
+.onAvatar { position: absolute; top: -7px; right: 3px; width: 8px; height: 22px; line-height: 0; pointer-events: none; }
 .glyph { display: inline-flex; flex: none; width: 8px; height: 22px; margin-right: 8px; vertical-align: -5px; line-height: 0; }
 
 /* the profile card */

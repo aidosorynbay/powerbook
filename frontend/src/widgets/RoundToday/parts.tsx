@@ -147,10 +147,11 @@ export function ReadersSheet({
                 ) : (
                   (e.display_name || '?').trim().charAt(0).toUpperCase()
                 )}
+                {/* the league's bookmark peeks out of the avatar, as from a book */}
+                {e.league && <LeagueGlyph tier={e.league} onAvatar />}
               </span>
               <span className={styles.rn}>
                 <span className={styles.tg}>
-                  {e.league && <LeagueGlyph tier={e.league} />}
                   {e.display_name}
                   {me ? ` ${t('readers.you')}` : ''}
                 </span>

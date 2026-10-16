@@ -80,10 +80,10 @@ export function LeagueMark({ tier, name, since, px }: { tier: LeagueTierKey; nam
 }
 
 /** The slim bookmark worn beside a reader's name. */
-export function LeagueGlyph({ tier }: { tier: LeagueTierKey }) {
+export function LeagueGlyph({ tier, onAvatar = false }: { tier: LeagueTierKey; onAvatar?: boolean }) {
   const { t } = useI18n();
   const html = useMemo(() => glyphSvg(tier as Tier), [tier]);
-  return <span className={styles.glyph} title={t(`league.${tier}`)} role="img" aria-label={t(`league.${tier}`)} dangerouslySetInnerHTML={{ __html: html }} />;
+  return <span className={onAvatar ? styles.onAvatar : styles.glyph} title={t(`league.${tier}`)} role="img" aria-label={t(`league.${tier}`)} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 export function useLeague() {
