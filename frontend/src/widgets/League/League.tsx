@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiGet, track, useI18n, type League, type LeagueTierKey, type Locale } from '@/shared/lib';
 import { Sheet } from '@/widgets/RoundToday';
-import { TIERS, TIER_PCT, engravingDataUrl, glyphSvg, markSvg, type Tier } from './mark';
+import { TIERS, TIER_PCT, engravingDataUrl, glyphSvg, markSvg, tailSvg, type Tier } from './mark';
 import styles from './League.module.css';
 
 const FONT_HREF =
@@ -79,10 +79,10 @@ export function LeagueMark({ tier, name, since, px }: { tier: LeagueTierKey; nam
   return <span className={styles.mark} style={{ width: px, height: px * 3 }} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-/** The slim bookmark worn beside a reader's name. */
+/** The slim bookmark worn beside a reader's name; on an avatar, its tail peeks out from under the photo. */
 export function LeagueGlyph({ tier, onAvatar = false }: { tier: LeagueTierKey; onAvatar?: boolean }) {
   const { t } = useI18n();
-  const html = useMemo(() => glyphSvg(tier as Tier), [tier]);
+  const html = useMemo(() => (onAvatar ? tailSvg : glyphSvg)(tier as Tier), [tier, onAvatar]);
   return <span className={onAvatar ? styles.onAvatar : styles.glyph} title={t(`league.${tier}`)} role="img" aria-label={t(`league.${tier}`)} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
