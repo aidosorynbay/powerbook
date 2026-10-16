@@ -278,11 +278,37 @@ export function RoundWarSwitch() {
   return <WarSwitch active="round" />;
 }
 
+/** On the round tab while sign-up is open: the race announced, with a way in. */
+export function WarAnnounce() {
+  const { t } = useI18n();
+  const { war } = useWar();
+  if (!war || war.status !== 'signup') return null;
+  return (
+    <Link to="/war" className={styles.ann} onClick={() => track('war_announce')}>
+      <span className={styles.annGlow} />
+      <span className={styles.annKicker}>{t('war.annKicker', { dates: dateRange(war, t) })}</span>
+      <span className={styles.annTitle}>{t('war.title')}</span>
+      <span className={styles.annVersus}>
+        <span className={styles.annArt} style={{ backgroundImage: `url(${ART.lighthouse})` }}><b>{t('war.team.lighthouse')}</b></span>
+        <span className={styles.annVs}>VS</span>
+        <span className={styles.annArt} style={{ backgroundImage: `url(${ART.sail})` }}><b>{t('war.team.sail')}</b></span>
+      </span>
+      <span className={styles.annRules}>
+        <span><i>1</i>{t('war.ann1')}</span>
+        <span><i>2</i>{t('war.ann2')}</span>
+        <span><i>3</i>{t('war.ann3')}</span>
+      </span>
+      <span className={styles.annCta}>{war.me.joined ? t('war.annIn') : t('war.join')}</span>
+      <span className={styles.annCount}>{t('war.joinedCount', { n: war.joined_count })}</span>
+    </Link>
+  );
+}
+
 /** On the round tab: the war in one line, a door to its page. */
 export function WarCard() {
   const { t } = useI18n();
   const { war } = useWar();
-  if (!war || war.status === 'done') return null;
+  if (!war || war.status !== 'live') return null;
   const [a, b] = war.teams;
   return (
     <Link to="/war" className={styles.card} onClick={() => track('war_card')}>
@@ -290,11 +316,7 @@ export function WarCard() {
       <span className={styles.cardText}>
         <b>{t('war.title')}</b>
         <small>
-          {war.status === 'signup'
-            ? war.me.joined
-              ? t('war.cardIn', { n: war.joined_count })
-              : t('war.cardJoin', { n: war.joined_count })
-            : t('war.cardLive', { a: a?.points ?? 0, b: b?.points ?? 0, n: war.day, total: war.days_total })}
+          {t('war.cardLive', { a: a?.points ?? 0, b: b?.points ?? 0, n: war.day, total: war.days_total })}
         </small>
       </span>
       <span className={styles.cardArt} style={{ backgroundImage: `url(${ART.sail})` }} />

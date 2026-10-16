@@ -1,1 +1,1 @@
-export { WarPage, WarCard, RoundWarSwitch, WarSwitch } from './WarPage';
+export { WarPage, WarCard, WarAnnounce, RoundWarSwitch, WarSwitch } from './WarPage';

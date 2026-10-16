@@ -79,7 +79,9 @@ def _reads(db: Session, user_ids: list[uuid.UUID], war: ClanWar) -> set[tuple[uu
     rows = db.execute(
         select(ReadingLog.user_id, ReadingLog.date).where(
             ReadingLog.user_id.in_(user_ids),
-            ReadingLog.score == 1,
+            # 30+ minutes, not the circle's stored score: the war may run into the
+            # circle's last day, which the circle keeps for corrections and never scores
+            ReadingLog.minutes >= 30,
             ReadingLog.date >= war.start_date,
             ReadingLog.date <= war.end_date,
         )
