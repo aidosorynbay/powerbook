@@ -295,6 +295,13 @@ export function WarPage() {
           <li>{t('war.rule3')}</li>
           <li>{t('war.rule4')}</li>
         </ul>
+        <div className={styles.tip}>
+          <p>{t('war.tip')}</p>
+          <div className={styles.guides}>
+            <a href="/guides/powerbook-iphone.pdf" target="_blank" rel="noopener" onClick={() => track('war_guide', { os: 'ios' })}>{t('war.guideIphone')}</a>
+            <a href="/guides/powerbook-android.pdf" target="_blank" rel="noopener" onClick={() => track('war_guide', { os: 'android' })}>{t('war.guideAndroid')}</a>
+          </div>
+        </div>
         <button type="button" className={styles.close} onClick={() => setRules(false)}>{t('lg.done')}</button>
       </Sheet>
       <Sheet open={!!rosterTeam} onClose={() => setRoster(null)} label={roster ? t(`war.team.${roster}`) : ''}>

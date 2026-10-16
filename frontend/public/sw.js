@@ -51,8 +51,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       checked(request)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(VERSION).then((cache) => cache.put('/index.html', copy));
+          // only the app's own page is the offline shell (a PDF opened from the war rules is not)
+          if ((res.headers.get('content-type') || '').includes('text/html')) {
+            const copy = res.clone();
+            caches.open(VERSION).then((cache) => cache.put('/index.html', copy));
+          }
           return res;
         })
         .catch(() => caches.match('/index.html').then((r) => r || Response.error()))
