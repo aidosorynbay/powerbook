@@ -159,25 +159,24 @@
   .promo, .promoMark { animation: none; }
 }
 
-/* the reader's bookmark in the book on «Сегодня»: stands out of the cover's top edge, a little tilted;
-   the row above the cover makes room (RoundToday .withMark), the cover sits over its lower part */
+/* the reader's bookmark on «Сегодня» (founder's pick «F», 2026-10-17): it lies on the face of the book along the
+   right edge, a little above the top, its shadow on the cover; RoundToday .withMark makes room above */
 .inBook {
   position: absolute;
-  left: 40px;
-  top: 0;
-  z-index: 0;
-  width: 24px;
-  height: 72px;
+  left: 44px;
+  top: 2px;
+  z-index: 2;
+  width: 22px;
+  height: 66px;
   padding: 0;
   border: 0;
   background: none;
   line-height: 0;
   cursor: pointer;
-  transform: rotate(4deg);
-  transform-origin: 50% 100%;
+  filter: drop-shadow(-2px 3px 3px rgba(0, 0, 0, 0.6));
   -webkit-tap-highlight-color: transparent;
 }
-.inBook::after { content: ''; position: absolute; inset: -8px -12px 40px; } /* the visible part is small: a finger-sized target */
+.inBook::after { content: ''; position: absolute; inset: -6px -8px; } /* a finger-sized target */
 .inBook span { display: block; transition: transform 0.2s ease; }
 .inBook:hover span { transform: translateY(-2px); }
 .inBookGhost span { filter: grayscale(1) brightness(0.6); opacity: 0.55; }

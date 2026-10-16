@@ -269,14 +269,14 @@ function CollectionSheet({ open, onClose, league, name, head = false }: { open: 
   );
 }
 
-/** The reader's own league, a real bookmark standing out of the top of the book on «Сегодня» (founder, 2026-10-17);
+/** The reader's own league, a real bookmark lying on the face of the book on «Сегодня» (founder, 2026-10-17);
  * grey when there is no league yet. A tap opens the league: what it is, how to rise, the story to share. */
 export function LeagueInBook({ league, name }: { league: League; name: string }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   useLeagueFonts();
   const tier = league.tier;
-  const html = useMemo(() => markSvg((tier ?? 'bronze') as Tier, 24, null), [tier]);
+  const html = useMemo(() => markSvg((tier ?? 'bronze') as Tier, 22, null), [tier]);
   return (
     <>
       <button
