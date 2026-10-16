@@ -528,10 +528,19 @@
 
 /* a missed day by its hatch, as the calendar draws it */
 .legendDot.legendMissed {
+  display: inline-grid;
+  place-items: center;
   background:
     repeating-linear-gradient(-45deg, var(--color-missed-hatch) 0 1px, transparent 1px 3px),
     var(--color-bg-secondary);
   border: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.legendDot.legendMissed::after {
+  content: '–';
 }
 
 .legendDot.legendFuture {
@@ -1620,11 +1629,19 @@
 }
 .lgG { background: var(--color-success-fill); }
 .lgY { background: var(--color-warning-fill); }
-/* the missed day by its sign, as the calendar draws it */
+/* the missed day as the calendar draws it: «–», on its hatch in the sheet (the row beside the calendar is too small
+   for lines, so there it is the sign alone) */
 .lgM { font-style: normal; line-height: 1; color: var(--color-text-secondary); }
 .lgM::after { content: '–'; }
 .calLegendRow .lgM { display: inline-grid; place-items: center; border-radius: 0; }
-.legendList .lgM { display: grid; place-items: center; background: var(--color-bg-secondary); font-size: 15px; }
+.legendList .lgM {
+  display: grid;
+  place-items: center;
+  background:
+    repeating-linear-gradient(-45deg, var(--color-missed-hatch) 0 1.5px, transparent 1.5px 6px),
+    var(--color-bg-secondary);
+  font-size: 15px;
+}
 .calLegendRow .lgC { width: 11px; height: 11px; border-radius: 3px; margin: 0; }
 .lgC,
 .circleSum {
