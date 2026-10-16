@@ -220,7 +220,6 @@ export function WarPage() {
                       <div className={styles.vsArt} style={{ backgroundImage: `url(${ART.sail})` }}><span>{t('war.team.sail')}</span></div>
                     </div>
                     <div className={styles.col}>
-                      {isAuthenticated && war.me.guest && <p className={styles.guestNote}>{t('war.guestNote')}</p>}
                       <ol className={styles.steps}>
                         <li><i>1</i>{t('war.ann1')}</li>
                         <li><i>2</i>{t('war.ann2')}</li>
