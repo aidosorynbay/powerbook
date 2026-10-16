@@ -51,6 +51,8 @@
     --color-danger-fill: #E8695A;
     --color-on-status: #0B1C26;
     --color-on-status-dot: rgba(255, 255, 255, 0.8);
+    /* a missed day's hatch: thin lines on the cell, no colour (the council, 16.10.2026) */
+    --color-missed-hatch: rgba(255, 255, 255, 0.08);
 
     /* Bars that float over the page. */
     --color-header-bg: rgba(11, 28, 38, 0.8);
@@ -221,6 +223,7 @@
     --color-danger-fill: #E48A79;
     --color-on-status: #0B1C26;
     --color-on-status-dot: rgba(37, 35, 31, 0.55);
+    --color-missed-hatch: rgba(37, 35, 31, 0.09);
 
     --color-header-bg: rgba(238, 232, 219, 0.9);
     --color-page-rgb: 238, 232, 219;

@@ -526,16 +526,12 @@
   background: var(--color-warning-fill);
 }
 
-/* a missed day by its sign, as the calendar draws it */
+/* a missed day by its hatch, as the calendar draws it */
 .legendDot.legendMissed {
-  display: inline-grid;
-  place-items: center;
-  color: var(--color-text-secondary);
-  line-height: 1;
-}
-
-.legendDot.legendMissed::after {
-  content: '–';
+  background:
+    repeating-linear-gradient(-45deg, var(--color-missed-hatch) 0 1px, transparent 1px 3px),
+    var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
 }
 
 .legendDot.legendFuture {
@@ -643,11 +639,14 @@
   color: var(--color-on-status);
 }
 
-/* a missed day: a quiet neutral cell that says what it is where its minutes would be — «–» nothing logged, «+»
-   yesterday or the day before, one tap to write them in (the council, 15.10.2026). Dashed is «before you joined»;
-   red is for errors only (brand book 15.10.2026) */
+/* a missed day: thin grey lines across the cell, so it reads as a day that passed, not one still ahead, and «–»
+   where its minutes would be (the councils, 15 and 16.10.2026). Grey, never orange: orange is today and the buttons.
+   The lines lean the other way from the last day's wider stripes; dashed is «before you joined»; red is for errors
+   only (brand book 15.10.2026) */
 .calendarDay.dayMissed {
-  background: var(--color-bg-secondary);
+  background:
+    repeating-linear-gradient(-45deg, var(--color-missed-hatch) 0 1.5px, transparent 1.5px 6px),
+    var(--color-bg-secondary);
   color: var(--color-text-secondary);
 }
 
