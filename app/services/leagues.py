@@ -52,9 +52,9 @@ THRESHOLDS = {1: 0.50, 2: 0.70, 3: 0.86, 4: 0.96}
 DIAMOND_FROM_CIRCLE = 3
 EXLIBRIS_RUN = 3
 INACTIVE_OUT = 3
-# Leagues switch on with the first circle most readers logged on the site
-# (October 2026); before its results are out nobody wears one.
-LEAGUES_FROM: tuple[int, int] | None = (2026, 10)
+# A circle from which leagues are worn (None = from the archive on). The
+# founder switched them on at once, 2026-10-17: the archive since 2021 counts.
+LEAGUES_FROM: tuple[int, int] | None = None
 _DONE = (RoundStatus.closed, RoundStatus.results_published)
 _TTL = 300.0
 
