@@ -334,6 +334,41 @@ def take_back_review(db: Session, review_id: uuid.UUID) -> None:
 # ---------- the bell ----------
 
 
+# ---------- a word about the site itself ----------
+
+# «Разделов стало четыре» (2bd0db5, 2026-10-15 08:59 UTC): said once in the bell to whoever knew the old menu;
+# the link plays where everything went (WhatsNew). Said for a month, then the bell forgets it.
+SITE_UPDATE = {"key": "nav4", "before": datetime(2026, 10, 15, 9, 0, tzinfo=timezone.utc),
+               "until": datetime(2026, 11, 15, tzinfo=timezone.utc)}
+# readers already told, so the bell's every-minute ask costs one query per reader per worker, not one per ask
+_told: set[uuid.UUID] = set()
+
+
+def announce_update(db: Session, user: User) -> None:
+    """Once per reader: the bell says the site changed. Never breaks the bell."""
+    if user.id in _told:
+        return
+    try:
+        joined = user.created_at
+        if joined is not None and joined.tzinfo is None:
+            joined = joined.replace(tzinfo=timezone.utc)
+        if _now() >= SITE_UPDATE["until"] or joined is None or joined >= SITE_UPDATE["before"]:
+            _told.add(user.id)
+            return
+        seen = db.execute(
+            select(Notification.id).where(
+                Notification.user_id == user.id, Notification.kind == "site_update", Notification.dedupe == SITE_UPDATE["key"]
+            )
+        ).first()
+        if not seen:
+            db.add(Notification(user_id=user.id, kind="site_update", data={"key": SITE_UPDATE["key"]}, dedupe=SITE_UPDATE["key"]))
+            db.commit()
+        _told.add(user.id)
+    except Exception:  # noqa: BLE001 — the bell answers whatever happens here
+        db.rollback()
+        logger.exception("site update notice failed")
+
+
 def unread_count(db: Session, user_id: uuid.UUID) -> int:
     return db.execute(
         select(func.count()).where(Notification.user_id == user_id, Notification.read_at.is_(None))

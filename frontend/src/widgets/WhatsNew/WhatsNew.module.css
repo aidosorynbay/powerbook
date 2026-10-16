@@ -25,3 +25,131 @@
   border-radius: 50%;
   background: var(--color-success);
 }
+
+/* ---------- «Обновление»: the old names fall into the four tabs (2026-10-16) ---------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-primary);
+  background: var(--color-accent-primary-muted);
+  animation: wnBadge 900ms cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+}
+
+.film {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.olds {
+  height: 70px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 6px;
+}
+
+.old {
+  /* «Параметрлер» is a touch wider than a phone's column: it may lean into the gap */
+  max-width: calc(100% + 6px);
+  padding: 2px 5px;
+  border-radius: 6px;
+  border: 1px dashed var(--color-border-primary);
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* fades in where it used to be, then drops into its tab */
+  animation:
+    wnOldIn 300ms ease-out calc(var(--j) * 70ms) both,
+    wnOldFall 520ms cubic-bezier(0.55, 0, 0.8, 0.4) calc(700ms + var(--i) * 380ms + var(--j) * 90ms) forwards;
+}
+
+.tab {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 9px 2px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-muted);
+  font-size: 11.5px;
+  font-weight: var(--font-weight-semibold);
+  animation: wnTabPop 520ms cubic-bezier(0.2, 0.9, 0.3, 1.5) calc(1050ms + var(--i) * 380ms) both;
+}
+.tab span {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.again {
+  display: block;
+  margin: 2px auto 12px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@keyframes wnBadge {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes wnOldIn {
+  from { transform: translateY(-6px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes wnOldFall {
+  from { transform: none; opacity: 1; }
+  to { transform: translateY(50px) scale(0.35); opacity: 0; }
+}
+@keyframes wnTabPop {
+  0% { transform: scale(1); }
+  45% {
+    transform: scale(1.14);
+    color: var(--color-accent-primary);
+    border-color: var(--color-accent-primary);
+    box-shadow: 0 0 0 6px var(--color-accent-primary-muted);
+  }
+  100% {
+    transform: none;
+    color: var(--color-accent-primary);
+    border-color: var(--color-border-accent);
+    background: var(--color-accent-primary-muted);
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge, .old, .tab { animation: none; }
+  .old { display: none; }
+  .tab { color: var(--color-accent-primary); border-color: var(--color-border-accent); background: var(--color-accent-primary-muted); }
+}

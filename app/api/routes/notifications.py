@@ -19,11 +19,13 @@ def recent(
     user: User = Depends(get_current_user),
 ) -> list[NotificationOut]:
     """The header bell: newest first."""
+    notify.announce_update(db, user)
     return [NotificationOut(**n) for n in notify.recent(db, user.id, limit=limit)]
 
 
 @router.get("/unread-count")
 def unread_count(db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+    notify.announce_update(db, user)
     return {"count": notify.unread_count(db, user.id)}
 
 

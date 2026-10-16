@@ -247,3 +247,16 @@ def test_answers_under_a_review_are_a_little_chat(env):
     assert c.delete(f"/api/books/reviews/{review_id}", headers=env.h(env.erlan)).status_code == 204
     assert c.get(f"/api/books/reviews/{review_id}/replies", headers=env.h(env.erlan)).status_code == 404
     assert env.db.query(Notification).filter_by(kind="review_reply").count() == 0
+
+
+def test_the_site_update_is_said_once_to_who_knew_the_old_menu(env):
+    """«Разделов стало четыре»: once in the bell for a reader from before 2026-10-15, never for a newcomer."""
+    from app.services import notify
+
+    env.dana.created_at = datetime(2025, 3, 1)
+    env.db.commit()
+    notify._told.clear()
+    assert env.client.get("/api/notifications/unread-count", headers=env.h(env.dana)).json()["count"] == 1
+    notify._told.clear()  # another worker asks too: still once
+    assert _kinds(env, env.dana).count("site_update") == 1
+    assert "site_update" not in _kinds(env, env.erlan)  # signed up just now

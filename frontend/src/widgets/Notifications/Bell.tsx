@@ -12,7 +12,7 @@ const POLL_MS = 60_000;
 // The switches, in the order the server lists them.
 const KINDS = ['checkin', 'buddy_message', 'new_circle', 'new_review', 'review_reply', 'watch_listing', 'watch_finished', 'wanted_by', 'guest_read'] as const;
 
-const ICONS: Record<string, IconName> = { checkin: 'chat', checkin_reply: 'chat', new_circle: 'calendar', new_review: 'chat', review_reply: 'chat', watch_listing: 'tag', wanted_by: 'users', guest_read: 'gift' };
+const ICONS: Record<string, IconName> = { checkin: 'chat', checkin_reply: 'chat', new_circle: 'calendar', new_review: 'chat', review_reply: 'chat', watch_listing: 'tag', wanted_by: 'users', guest_read: 'gift', site_update: 'sparkle' };
 
 /** Where a notification leads, and what it says. */
 function useWords() {
@@ -74,6 +74,10 @@ function useWords() {
         text: t(d.gender === 'male' ? 'notif.guestM' : 'notif.guestF', { reader: String(d.reader ?? ''), minutes: Number(d.minutes ?? 0) }),
         to: '/insights#invite',
       };
+    }
+    if (n.kind === 'site_update') {
+      // once, about the site itself: the link plays where everything went (WhatsNew)
+      return { text: t('notif.siteUpdate'), to: '/round?whatsnew=1' };
     }
     return { text: title, to: '/books' };
   };
