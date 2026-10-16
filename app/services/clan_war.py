@@ -2,12 +2,12 @@
 
 - A point: every member who has a scored day (30+ minutes, logged on the
   circle's dial) before 00:00 brings their team one point for that day.
-- At 00:00 (Astana) the day is locked: each of the team's points is one
-  strike, and each strike knocks one brick out of the other team's fortress.
-  Logs entered after midnight for a locked day change nothing.
-- A fortress holds as many bricks as the other team could strike in 14 days
-  (its members × days), so a team of 12 and a team of 10 fight evenly.
-  After the last day the fortress with the larger share of bricks standing wins.
+- At 00:00 (Astana) the day is locked: each of the team's points is a book
+  put on the team's library shelves. Logs entered after midnight for a locked
+  day change nothing.
+- The shelves hold a place for every member's every day (members × days), so
+  a team of 12 and a team of 10 compete evenly; after the last day the fullest
+  library wins. (The fortress numbers — bricks — are kept alongside.)
 
 Members count from the day they joined. Only team numbers are public; a
 member sees their own points. Nothing here touches the circle's table.
@@ -205,6 +205,7 @@ def state(db: Session, viewer: User | None) -> dict:
         other = 1 - t
         bricks = sum(sizes_by_day[other])  # what the other team could strike in all the days
         left = max(0, bricks - strikes[other])
+        shelf = sum(sizes_by_day[t])  # the team's own library: a place for every member's every day
         out["teams"].append(
             {
                 "key": TEAMS[t],
@@ -213,6 +214,8 @@ def state(db: Session, viewer: User | None) -> dict:
                 "bricks_left": left,
                 "hp": round(100.0 * left / bricks, 1) if bricks else 100.0,
                 "points": strikes[t],
+                "shelf": shelf,
+                "fill": round(100.0 * strikes[t] / shelf, 1) if shelf else 0.0,
                 "today": next((x["hits"] for x in lines[t] if not x["locked"]), None),
                 "members": [person(u, a) for _, u, a in by_team[t]],
                 "days": lines[t],
@@ -224,8 +227,9 @@ def state(db: Session, viewer: User | None) -> dict:
         out["me"]["days"] = len([d for d in all_days if _joined_day(me, war) <= d <= min(today, war.end_date)])
         out["me"]["today"] = (me.user_id, today) in reads
     if phase == "done":
-        hp = [x["hp"] for x in out["teams"]]
-        out["winner"] = TEAMS[0] if hp[0] > hp[1] else TEAMS[1] if hp[1] > hp[0] else "draw"
+        # the fullest library wins (books against the places on its shelves)
+        fill = [x["fill"] for x in out["teams"]]
+        out["winner"] = TEAMS[0] if fill[0] > fill[1] else TEAMS[1] if fill[1] > fill[0] else "draw"
     return out
 
 

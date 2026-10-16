@@ -102,6 +102,7 @@ def test_points_lock_at_midnight_and_knock_out_bricks(env, monkeypatch):
     assert t["sail"]["bricks"] == 28 and t["sail"]["bricks_left"] == 26  # 2 members × 14 days, 2 strikes
     assert t["lighthouse"]["bricks_left"] == 27
     assert t["lighthouse"]["points"] == 2 and t["lighthouse"]["today"] == 0
+    assert t["lighthouse"]["shelf"] == 28 and t["lighthouse"]["fill"] == round(100 * 2 / 28, 1)
     assert body["me"]["hits"] == 1 and body["me"]["days"] == 2 and body["me"]["today"] is False
     # a late log for the locked day changes nothing
     read(db, rnd, sail[1], date(2026, 10, 17))

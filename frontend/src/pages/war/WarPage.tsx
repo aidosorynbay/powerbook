@@ -2,18 +2,17 @@
  * logs 30+ minutes before 00:00 brings a point; at midnight each point strikes a
  * brick out of the other fortress. Open to anyone; only team numbers are public
  * (app/services/clan_war.py). Lives as the second tab of «Круг». */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiGet, apiPost, getApiBaseUrl, track, useAuth, useI18n } from '@/shared/lib';
 import { Container, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import { Sheet } from '@/widgets/RoundToday';
-import { fortressSvg } from './fortress';
 import styles from './WarPage.module.css';
 
 type Person = { user_id: string; display_name: string; avatar: string | null };
 type Day = { date: string; hits: number; size: number; locked: boolean };
-type Team = { key: 'lighthouse' | 'sail'; size: number; hp: number; bricks: number; bricks_left: number; points: number; today: number | null; members: Person[]; days: Day[] };
+type Team = { key: 'lighthouse' | 'sail'; size: number; hp: number; bricks: number; bricks_left: number; points: number; shelf: number; fill: number; today: number | null; members: Person[]; days: Day[] };
 export type War = {
   id: string;
   start_date: string;
@@ -56,44 +55,30 @@ function dateRange(war: War, locale: string) {
   return `${f(war.start_date).replace(/\D+$/, '')}–${f(war.end_date)}`;
 }
 
-/** The battlefield: two brick fortresses under the night sky, banners flying. */
+/** Which of the four pictures a library shows: its shelves fill as the team reads. */
+const stage = (fill: number) => (fill < 25 ? 1 : fill < 50 ? 2 : fill < 75 ? 3 : 4);
+
+/** Two cozy library corners, in the reading room's style: every point a book on the team's shelves. */
 function Field({ war }: { war: War }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [a, b] = war.teams;
-  const lastLocked = (team: Team) => [...team.days].reverse().find((d) => d.locked);
-  const svgs = useMemo(() => {
-    const fall = (attacker: Team, defender: Team) => {
-      const last = lastLocked(attacker);
-      if (!last || !last.hits || !defender.bricks) return 0;
-      return Math.max(1, Math.min(8, Math.round((last.hits / defender.bricks) * 180)));
-    };
-    return [fortressSvg(a.key, a.hp, fall(b, a)), fortressSvg(b.key, b.hp, fall(a, b))];
-  }, [a, b]);
+  const lead = a.fill === b.fill ? null : a.fill > b.fill ? a.key : b.key;
+  const books = (n: number) => (locale === 'ru' ? `${n} ${t(n % 10 === 1 && n % 100 !== 11 ? 'war.book1' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'war.book2' : 'war.book5')}` : `${n} ${t('war.book5')}`);
   return (
     <div className={styles.field}>
-      <div className={styles.stars} />
-      <div className={styles.ground} />
-      {war.me.team && <span className={styles.you}>{t(`war.youIn.${war.me.team}`)}</span>}
-      {war.status === 'live' && (
-        <>
-          <span className={styles.vs}>VS</span>
-          <i className={`${styles.shot} ${styles.shotA}`} />
-          <i className={`${styles.shot} ${styles.shotB}`} />
-        </>
-      )}
-      <div className={styles.fortsRow}>
-        <div dangerouslySetInnerHTML={{ __html: svgs[0] }} />
-        <div dangerouslySetInnerHTML={{ __html: svgs[1] }} />
-      </div>
-      <div className={styles.labels}>
-        {[a, b].map((x) => (
-          <div key={x.key}>
+      {[a, b].map((x) => (
+        <div key={x.key} className={`${styles.side} ${x.key === 'lighthouse' ? styles.sideA : styles.sideB}`}>
+          <img src={`/war/${x.key}-${stage(x.fill)}.jpg`} alt="" />
+          <div className={styles.sideLbl}>
             <b>{t(`war.team.${x.key}`)}</b>
-            <span>{x.bricks_left}</span>
-            <small>/ {x.bricks}</small>
+            <span>{t('war.booksOf', { books: books(x.points), shelf: x.shelf })}</span>
+            <div className={styles.fillBar}><i style={{ width: `${Math.min(100, x.fill)}%` }} /></div>
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
+      {war.me.team && <span className={styles.you}>{t(`war.youIn.${war.me.team}`)}</span>}
+      {lead && war.status !== 'signup' && <span className={`${styles.lead} ${lead === 'lighthouse' ? styles.leadA : styles.leadB}`}>{t('war.ahead')}</span>}
+      <span className={styles.vs}>VS</span>
     </div>
   );
 }
@@ -308,7 +293,7 @@ export function WarCard() {
             ? war.me.joined
               ? t('war.cardIn', { n: war.joined_count })
               : t('war.cardJoin', { n: war.joined_count })
-            : t('war.cardLive', { a: a?.bricks_left ?? 0, b: b?.bricks_left ?? 0, n: war.day, total: war.days_total })}
+            : t('war.cardLive', { a: a?.points ?? 0, b: b?.points ?? 0, n: war.day, total: war.days_total })}
         </small>
       </span>
       <span className={styles.cardArt} style={{ backgroundImage: `url(${ART.sail})` }} />
