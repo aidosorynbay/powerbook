@@ -1,13 +1,16 @@
 /** «Битва кланов»: two teams, «Маяк» and «Парус», 14 days. Every member who
- * logs 30+ minutes before 00:00 brings a point; at midnight each point strikes a
- * brick out of the other fortress. Open to anyone; only team numbers are public
- * (app/services/clan_war.py). Lives as the second tab of «Круг». */
+ * logs 30+ minutes before 00:00 brings a point; at midnight each point becomes a
+ * book in the team's shared library. Open to anyone; only team numbers are public
+ * (app/services/clan_war.py). Lives as the second tab of «Круг».
+ * Layout after the council of 2026-10-17: one subtitle line, the pictures as the
+ * hero, each team in its own colour, one status line, one strip; nothing twice. */
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiGet, apiPost, getApiBaseUrl, track, useAuth, useI18n } from '@/shared/lib';
 import { Container, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import { Sheet } from '@/widgets/RoundToday';
+import { loadLeagueFonts } from '@/widgets/League';
 import styles from './WarPage.module.css';
 
 type Person = { user_id: string; display_name: string; avatar: string | null };
@@ -78,27 +81,41 @@ function dateRange(war: War, t: (k: string) => string) {
 /** Which of the four pictures a library shows: its shelves fill as the team reads. */
 const stage = (fill: number) => (fill < 25 ? 1 : fill < 50 ? 2 : fill < 75 ? 3 : 4);
 
-/** Two cozy library corners, in the reading room's style: every point a book on the team's shelves. */
-function Field({ war }: { war: War }) {
+function useBooks() {
   const { t, locale } = useI18n();
-  const [a, b] = war.teams;
-  const lead = a.fill === b.fill ? null : a.fill > b.fill ? a.key : b.key;
-  const books = (n: number) => (locale === 'ru' ? `${n} ${t(n % 10 === 1 && n % 100 !== 11 ? 'war.book1' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'war.book2' : 'war.book5')}` : `${n} ${t('war.book5')}`);
+  return (n: number) =>
+    locale === 'ru'
+      ? `${n} ${t(n % 10 === 1 && n % 100 !== 11 ? 'war.book1' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'war.book2' : 'war.book5')}`
+      : `${n} ${t('war.book5')}`;
+}
+
+/** Two cozy library corners, each in its team's colour; a tap opens the team. */
+function Field({ war, live, onTeam }: { war: War; live: boolean; onTeam: (k: Team['key']) => void }) {
+  const { t } = useI18n();
+  const books = useBooks();
   return (
     <div className={styles.field}>
-      {[a, b].map((x) => (
-        <div key={x.key} className={`${styles.side} ${x.key === 'lighthouse' ? styles.sideA : styles.sideB}`}>
+      {war.teams.map((x) => (
+        <button
+          key={x.key}
+          type="button"
+          className={`${styles.side} ${x.key === 'lighthouse' ? styles.sideA : styles.sideB} ${war.me.team === x.key ? styles.mine : ''}`}
+          onClick={() => onTeam(x.key)}
+        >
           <img src={`/war-art/${x.key}-${stage(x.fill)}.jpg`} alt="" />
-          <div className={styles.sideLbl}>
+          {war.me.team === x.key && <span className={styles.tag}>{t('war.yourTeam')}</span>}
+          <span className={styles.sideLbl}>
             <b>{t(`war.team.${x.key}`)}</b>
-            <span>{t('war.booksOf', { books: books(x.points), shelf: x.shelf })}</span>
-            <div className={styles.fillBar}><i style={{ width: `${Math.min(100, x.fill)}%` }} /></div>
-          </div>
-        </div>
+            <span>
+              {books(x.points)}
+              {live && x.today ? <em> · +{x.today} {t('war.todayShort')}</em> : null}
+            </span>
+            <i className={styles.fillBar}><i style={{ width: `${Math.max(2, Math.min(100, x.fill))}%` }} /></i>
+            <small>{t('war.squad', { n: x.size })}</small>
+          </span>
+        </button>
       ))}
-      {war.me.team && <span className={styles.you}>{t(`war.youIn.${war.me.team}`)}</span>}
-      {lead && war.status !== 'signup' && <span className={`${styles.aheadTag} ${lead === 'lighthouse' ? styles.leadA : styles.leadB}`}>{t('war.ahead')}</span>}
-      <span className={styles.fieldVs}>VS</span>
+      <span className={styles.vsDisc}>VS</span>
     </div>
   );
 }
@@ -115,14 +132,19 @@ export function WarSwitch({ active }: { active: 'round' | 'war' }) {
 }
 
 export function WarPage() {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const { isAuthenticated } = useAuth();
   const { war, setWar } = useWar();
   const [busy, setBusy] = useState(false);
   const [rules, setRules] = useState(false);
   const [roster, setRoster] = useState<Team['key'] | null>(null);
+  const [allNames, setAllNames] = useState(false);
   const signupLeft = useLeft(war?.signup_until);
   const startLeft = useLeft(war?.starts_at);
+  const books = useBooks();
+  useEffect(() => {
+    loadLeagueFonts();
+  }, []);
 
   const act = async (path: string, event: string) => {
     setBusy(true);
@@ -133,158 +155,155 @@ export function WarPage() {
   };
 
   const rosterTeam = war?.teams.find((x) => x.key === roster);
+  const prestart = war?.status === 'live' && startLeft > 0;
+  const running = war?.status === 'live' && startLeft === 0;
+  const sub = !war
+    ? ''
+    : war.status === 'signup' || prestart
+      ? t('war.subSignup', { dates: dateRange(war, t) })
+      : war.status === 'done'
+        ? `${dateRange(war, t)} · ${t('war.over')}`
+        : t('war.subLive', { dates: dateRange(war, t), n: war.day, total: war.days_total });
+  const NAMES = 12;
+
   return (
     <PageTransition>
       <div className={styles.page}>
         <Header />
         <main className={styles.main}>
-          <Container size="sm">
+          <Container size="md">
             {!war ? (
               <div className={styles.loading}>{t('dashboard.loading')}</div>
             ) : (
-              <>
+              <div className={styles.stack}>
                 {isAuthenticated && <WarSwitch active="war" />}
-                <div className={styles.kicker}>{t('war.kicker', { dates: dateRange(war, t) })}</div>
-                <h1 className={styles.title}>{t('war.title')}</h1>
-                {war.status !== 'signup' && war.day > 0 && <div className={styles.day}>{war.status === 'done' ? t('war.over') : t('war.day', { n: war.day, total: war.days_total })}</div>}
+                <header className={styles.head}>
+                  <div>
+                    <h1 className={styles.title}>{t('war.title')}</h1>
+                    <div className={styles.sub}>{sub}</div>
+                  </div>
+                  <button type="button" className={styles.rulesLink} onClick={() => setRules(true)}>
+                    {t('war.rulesShort')} <span aria-hidden="true">›</span>
+                  </button>
+                </header>
 
                 {war.status === 'signup' ? (
-                  <section className={styles.signup}>
+                  <section className={styles.grid}>
                     <div className={styles.versus}>
                       <div className={styles.vsArt} style={{ backgroundImage: `url(${ART.lighthouse})` }}><span>{t('war.team.lighthouse')}</span></div>
-                      <b className={styles.vs}>VS</b>
+                      <span className={styles.vsDisc}>VS</span>
                       <div className={styles.vsArt} style={{ backgroundImage: `url(${ART.sail})` }}><span>{t('war.team.sail')}</span></div>
                     </div>
-                    <p className={styles.lead}>{t('war.pitch')}</p>
-                    <button type="button" className={styles.rulesBtn} onClick={() => setRules(true)}>
-                      {t('war.rules')} <span aria-hidden="true">›</span>
-                    </button>
-                    <div className={styles.timer}>
-                      {signupLeft > 0 ? (
-                        <>
-                          <span>{t('war.signupUntil')}</span>
-                          <b>{clock(signupLeft)}</b>
-                          <small>{t('war.autoSplit')}</small>
-                        </>
-                      ) : (
-                        <span>{t('war.splitting')}</span>
+                    <div className={styles.col}>
+                      <ol className={styles.steps}>
+                        <li><i>1</i>{t('war.ann1')}</li>
+                        <li><i>2</i>{t('war.ann2')}</li>
+                        <li><i>3</i>{t('war.ann3')}</li>
+                      </ol>
+                      <div className={styles.panel}>
+                        {war.me.joined ? (
+                          <div className={styles.cardTop}>
+                            <b className={styles.ok}>{t('war.youreIn')}</b>
+                            <button type="button" className={styles.quiet} onClick={() => act('/war/leave', 'war_leave')} disabled={busy}>{t('war.leave')}</button>
+                          </div>
+                        ) : signupLeft > 0 ? (
+                          isAuthenticated ? (
+                            <button type="button" className={styles.primary} onClick={() => act('/war/join', 'war_join')} disabled={busy}>{t('war.join')}</button>
+                          ) : (
+                            <Link to={`/login?redirect=${encodeURIComponent('/war')}`} className={styles.primary}>{t('war.join')}</Link>
+                          )
+                        ) : null}
+                        {signupLeft > 0 ? (
+                          <div className={styles.count}>
+                            <span>{t('war.signupLeft')}</span>
+                            <b>{clock(signupLeft)}</b>
+                            <small>{t('war.autoSplit')}</small>
+                          </div>
+                        ) : (
+                          <div className={styles.count}><span>{t('war.splitting')}</span></div>
+                        )}
+                      </div>
+                      {war.joined.length > 0 && (
+                        <div>
+                          <h4 className={styles.h4}>{t('war.joinedHead', { n: war.joined_count })}</h4>
+                          <ul className={styles.joinedList}>
+                            {(allNames ? war.joined : war.joined.slice(0, NAMES)).map((p) => (
+                              <li key={p.user_id}><Avatar p={p} /><span>{p.display_name}</span></li>
+                            ))}
+                            {!allNames && war.joined.length > NAMES && (
+                              <li><button type="button" className={styles.more} onClick={() => setAllNames(true)}>{t('war.more', { n: war.joined.length - NAMES })}</button></li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                      {war.is_admin && (
+                        <button type="button" className={styles.admin} onClick={() => window.confirm(t('war.splitConfirm', { n: war.joined_count })) && act('/war/split', 'war_split')} disabled={busy || war.joined_count < 2}>
+                          {t('war.split', { n: war.joined_count })}
+                        </button>
                       )}
                     </div>
-                    {isAuthenticated ? (
-                      war.me.joined ? (
-                        <>
-                          <div className={styles.joinedNote}>{t('war.youreIn')}</div>
-                          <button type="button" className={styles.linkBtn} onClick={() => act('/war/leave', 'war_leave')} disabled={busy}>
-                            {t('war.leave')}
-                          </button>
-                        </>
-                      ) : signupLeft > 0 ? (
-                        <button type="button" className={styles.primary} onClick={() => act('/war/join', 'war_join')} disabled={busy}>
-                          {t('war.join')}
-                        </button>
-                      ) : null
-                    ) : (
-                      <Link to={`/login?redirect=${encodeURIComponent('/war')}`} className={styles.primary}>
-                        {t('war.join')}
-                      </Link>
-                    )}
-                    <div className={styles.count}>{t('war.joinedCount', { n: war.joined_count })}</div>
-                    {war.joined.length > 0 && (
-                      <div className={styles.joinedBox}>
-                        <h4 className={styles.h4}>{t('war.joinedList')}</h4>
-                        <ul className={styles.joinedList}>
-                          {war.joined.map((p) => (
-                            <li key={p.user_id}>
-                              <Avatar p={p} />
-                              <span>{p.display_name}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {war.is_admin && (
-                      <button type="button" className={styles.admin} onClick={() => window.confirm(t('war.splitConfirm', { n: war.joined_count })) && act('/war/split', 'war_split')} disabled={busy || war.joined_count < 2}>
-                        {t('war.split', { n: war.joined_count })}
-                      </button>
-                    )}
                   </section>
                 ) : (
-                  <>
-                    {war.winner && (
-                      <div className={styles.winner}>
-                        {war.winner === 'draw' ? t('war.draw') : t('war.won', { team: t(`war.team.${war.winner}`) })}
-                      </div>
-                    )}
-                    {war.status === 'live' && startLeft > 0 && (
-                      <div className={styles.timer}>
-                        <span>{t('war.teamsReady')}</span>
-                        <b>{clock(startLeft)}</b>
-                        <small>{war.me.team ? t('war.getReady', { team: t(`war.team.${war.me.team}`) }) : t('war.closed')}</small>
-                      </div>
-                    )}
-                    {war.me.team && war.status === 'live' && startLeft === 0 && (
-                      <div className={styles.meLine}>
-                        <span>{war.me.today ? t('war.meDone', { team: t(`war.team.${war.me.team}`) }) : t('war.meNot')}</span>
-                        {!war.me.today && <Link to="/round">{t('war.toDial')}</Link>}
-                      </div>
-                    )}
-                    <Field war={war} />
-                    {war.status === 'live' && startLeft === 0 && (
-                      <div className={styles.todayBox}>
-                        <div className={styles.todayRow}>
-                          {war.teams.map((x) => (
-                            <span key={x.key}><b>{x.today ?? 0}</b> {t('war.pts')} · {t(`war.team.${x.key}`)}</span>
-                          ))}
-                        </div>
-                        <div className={styles.lockNote}>{t('war.lockNote')}</div>
-                      </div>
-                    )}
-                    <button type="button" className={styles.rulesBtn} onClick={() => setRules(true)}>
-                      {t('war.rules')} <span aria-hidden="true">›</span>
-                    </button>
-                    {(() => {
-                      const y = war.teams.map((x) => [...x.days].reverse().find((d) => d.locked));
-                      return y[0] && y[1] ? (
-                        <p className={styles.yesterday}>
-                          {t('war.yesterday', { a: t(`war.team.${war.teams[0].key}`), n: y[0].hits, b: t(`war.team.${war.teams[1].key}`), m: y[1].hits })}
-                        </p>
-                      ) : null;
-                    })()}
-                    <h4 className={styles.h4}>{t('war.track')}</h4>
-                    <div className={styles.strip}>
-                      {war.teams.map((x) => (
-                        <div key={x.key} className={styles.stripRow}>
-                          <span>{t(`war.team.${x.key}`)}</span>
-                          <div className={styles.cells}>
-                            {Array.from({ length: war.days_total }, (_, i) => {
-                              const d = x.days[i];
-                              const share = d && d.size ? d.hits / d.size : 0;
-                              return (
-                                <i key={i} className={d ? (d.locked ? styles.cellDone : styles.cellToday) : ''} style={d ? { ['--a' as string]: String(0.25 + 0.75 * share) } : undefined} title={d ? `${d.date}: ${d.hits}/${d.size}` : undefined}>
-                                  {d ? d.hits : ''}
-                                </i>
-                              );
-                            })}
+                  <section className={styles.grid}>
+                    <Field war={war} live={running} onTeam={setRoster} />
+                    <div className={styles.col}>
+                      {war.winner && (
+                        <div className={styles.winner}>{war.winner === 'draw' ? t('war.draw') : t('war.won', { team: t(`war.team.${war.winner}`) })}</div>
+                      )}
+                      {prestart && (
+                        <div className={styles.panel}>
+                          <div className={styles.count}>
+                            <span>{t('war.startIn')}</span>
+                            <b>{clock(startLeft)}</b>
+                            <small>{war.me.team ? t('war.getReady') : t('war.closed')}</small>
                           </div>
                         </div>
-                      ))}
+                      )}
+                      {running && war.me.team && (
+                        <div className={`${styles.status} ${war.me.today ? '' : styles.statusTodo}`}>
+                          <div>
+                            <b>{war.me.today ? t('war.meDone', { team: t(`war.team.${war.me.team}`) }) : t('war.meNot')}</b>
+                            <small>{t('war.contrib', { books: books(war.me.hits ?? 0) })}</small>
+                          </div>
+                          {!war.me.today && <Link to="/round" className={styles.go}>{t('war.toDial')}</Link>}
+                        </div>
+                      )}
+                      {running && !war.me.team && <p className={styles.note}>{t('war.closed')}</p>}
+                      {!prestart && (
+                        <div>
+                          <h4 className={styles.h4}>{t('war.track')}</h4>
+                          <div className={styles.strip}>
+                            {war.teams.map((x) => (
+                              <div key={x.key} className={`${styles.stripRow} ${x.key === 'lighthouse' ? styles.sideA : styles.sideB}`}>
+                                <span>{t(`war.team.${x.key}`)}</span>
+                                <div className={styles.cells}>
+                                  {Array.from({ length: war.days_total }, (_, i) => {
+                                    const d = x.days[i];
+                                    const share = d && d.size ? d.hits / d.size : 0;
+                                    return (
+                                      <i
+                                        key={i}
+                                        className={d ? (d.locked ? styles.cellDone : styles.cellToday) : ''}
+                                        style={d ? { ['--a' as string]: String(0.4 + 0.6 * share) } : undefined}
+                                        title={d ? `${d.date}: ${d.hits}/${d.size}` : undefined}
+                                      >
+                                        {d ? d.hits : ''}
+                                      </i>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {running && <p className={styles.note}>{t('war.lockNote')}</p>}
+                        </div>
+                      )}
                     </div>
-                    {war.me.team && (
-                      <div className={styles.myPart}>{t('war.myPart', { team: t(`war.team.${war.me.team}`), n: war.me.hits ?? 0, days: war.me.days ?? 0 })}</div>
-                    )}
-                    <div className={styles.rosterBtns}>
-                      {war.teams.map((team) => (
-                        <button key={team.key} type="button" onClick={() => setRoster(team.key)}>
-                          {t(`war.team.${team.key}`)} · {t('war.members', { n: team.size })} ›
-                        </button>
-                      ))}
-                    </div>
-                    {!war.me.team && war.status === 'live' && <p className={styles.yesterday}>{t('war.closed')}</p>}
-                  </>
+                  </section>
                 )}
 
                 {war.prize && <div className={styles.prize}>{t('war.prize')}: {war.prize}</div>}
-              </>
+              </div>
             )}
           </Container>
         </main>
@@ -310,7 +329,7 @@ export function WarPage() {
       <Sheet open={!!rosterTeam} onClose={() => setRoster(null)} label={roster ? t(`war.team.${roster}`) : ''}>
         {rosterTeam && (
           <>
-            <h3 className={styles.sheetTitle}>{t(`war.team.${rosterTeam.key}`)}</h3>
+            <h3 className={styles.sheetTitle}>{t(`war.team.${rosterTeam.key}`)} · {rosterTeam.size}</h3>
             <ul className={styles.roster}>
               {rosterTeam.members.map((p) => (
                 <li key={p.user_id}><Avatar p={p} />{p.display_name}</li>
