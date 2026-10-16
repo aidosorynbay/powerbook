@@ -158,3 +158,33 @@
 @media (prefers-reduced-motion: reduce) {
   .promo, .promoMark { animation: none; }
 }
+
+/* the reader's bookmark in the book on «Сегодня»: stands out of the cover's top edge, a little tilted;
+   the row above the cover makes room (RoundToday .withMark), the cover sits over its lower part */
+.inBook {
+  position: absolute;
+  left: 40px;
+  top: 0;
+  z-index: 0;
+  width: 24px;
+  height: 72px;
+  padding: 0;
+  border: 0;
+  background: none;
+  line-height: 0;
+  cursor: pointer;
+  transform: rotate(4deg);
+  transform-origin: 50% 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+.inBook::after { content: ''; position: absolute; inset: -8px -12px 40px; } /* the visible part is small: a finger-sized target */
+.inBook span { display: block; transition: transform 0.2s ease; }
+.inBook:hover span { transform: translateY(-2px); }
+.inBookGhost span { filter: grayscale(1) brightness(0.6); opacity: 0.55; }
+
+/* the sheet's head when it opens from the bookmark */
+.head { display: flex; gap: 20px; align-items: center; margin: 0 0 22px; padding: 4px 0 20px; border-bottom: 1px solid var(--color-border-primary); }
+.headMark { flex: none; padding-top: 6px; }
+.headBody { min-width: 0; flex: 1; }
+.headTier { margin-top: 2px; font: italic 700 32px/1.05 'Cormorant Garamond', Georgia, serif; color: var(--color-text-primary); }
+.headShare { margin-top: 14px; width: 100%; padding: 12px; font-size: 15px; }

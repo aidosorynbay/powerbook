@@ -25,7 +25,7 @@ import {
 import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews, useHelpOn } from '@/widgets';
-import { LeaguePromo, useLeague } from '@/widgets/League';
+import { LeagueInBook, LeaguePromo, useLeague } from '@/widgets/League';
 import { RoundWarSwitch, WarAnnounce, WarCard } from '@/pages/war';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
@@ -1431,7 +1431,8 @@ export function DashboardPage() {
                         >
                           <div className={rt.pane}>
                             {/* the book: its cover large, the ⇄ on it to change the book (the founder's idea, the council's sizes) */}
-                            <div className={rt.bookRow}>
+                            <div className={`${rt.bookRow} ${league?.live && user ? rt.withMark : ''}`}>
+                              {league?.live && user && <LeagueInBook league={league} name={user.display_name || user.username} />}
                               <button type="button" className={rt.coverBtn} onClick={() => setDetailsOpen((o) => !o)} aria-expanded={detailsOpen} aria-label={t('today.changeBook')}>
                                 {bookCover.cover ? (
                                   <img className={rt.coverBig} src={bookCover.cover} alt="" />

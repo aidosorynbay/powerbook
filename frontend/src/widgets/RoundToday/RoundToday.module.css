@@ -773,3 +773,7 @@
 .newCircleResults:hover {
   color: var(--color-text-primary);
 }
+
+/* the reader's league bookmark stands out of the book's top edge (League .inBook) */
+.withMark { position: relative; padding-top: 30px; }
+.withMark .coverBtn { z-index: 1; }

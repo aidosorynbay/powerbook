@@ -108,6 +108,38 @@ export function useLeague() {
   return league;
 }
 
+/** What keeps or lifts the league this circle, in one line. */
+function leagueLine(league: League, t: (k: string, v?: Record<string, string | number>) => string, days: (n: number) => string) {
+  const p = league.progress;
+  if (p?.keep) {
+    return { warn: true, line: p.keep.reachable ? t('lg.keep', { tier: t(`league.${p.keep.tier}`), days: days(p.keep.days) }) : t('lg.keepLost') };
+  }
+  if (p?.next) return { warn: false, line: t('lg.next', { tier: t(`league.${p.next.tier}`), days: days(p.next.days) }) };
+  if (league.exlibris_in) return { warn: false, line: t('lg.exlibrisIn', { n: league.exlibris_in }) };
+  return { warn: false, line: null as string | null };
+}
+
+/** The story of the league (1080×1920): shared where the phone can, downloaded where it cannot. */
+async function shareLeagueStory(league: League, name: string, t: (k: string, v?: Record<string, string | number>) => string, locale: Locale, ready?: File | null) {
+  const tier = league.tier;
+  const f = ready ?? (await drawLeagueStory(league, name, t, locale));
+  if (f && navigator.canShare?.({ files: [f] })) {
+    try {
+      await navigator.share({ files: [f] });
+      track('league_share', { tier: tier ?? '', method: 'share' });
+    } catch {
+      /* closed the sheet */
+    }
+  } else if (f) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(f);
+    a.download = f.name;
+    a.click();
+    window.setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    track('league_share', { tier: tier ?? '', method: 'download' });
+  }
+}
+
 /** The profile's league: the bookmark, why, what keeps or lifts it this circle, and the door to the collection. */
 export function LeagueCard({ league, name }: { league: League; name: string }) {
   const { t, locale } = useI18n();
@@ -118,16 +150,7 @@ export function LeagueCard({ league, name }: { league: League; name: string }) {
   const tier = league.tier;
   const month = p ? monthName(p.year, p.month, locale) : '';
   const basis = league.based_on;
-  let line: string | null = null;
-  let warn = false;
-  if (p?.keep) {
-    warn = true;
-    line = p.keep.reachable ? t('lg.keep', { tier: t(`league.${p.keep.tier}`), days: days(p.keep.days) }) : t('lg.keepLost');
-  } else if (p?.next) {
-    line = t('lg.next', { tier: t(`league.${p.next.tier}`), days: days(p.next.days) });
-  } else if (league.exlibris_in) {
-    line = t('lg.exlibrisIn', { n: league.exlibris_in });
-  }
+  const { line, warn } = leagueLine(league, t, days);
   const share = p ? Math.min(100, (p.scored / Math.max(1, p.total)) * 100) : 0;
 
   return (
@@ -165,11 +188,55 @@ export function LeagueCard({ league, name }: { league: League; name: string }) {
   );
 }
 
-function CollectionSheet({ open, onClose, league, name }: { open: boolean; onClose: () => void; league: League; name: string }) {
+function CollectionSheet({ open, onClose, league, name, head = false }: { open: boolean; onClose: () => void; league: League; name: string; head?: boolean }) {
   const { t, locale } = useI18n();
+  const days = useDays();
+  const [busy, setBusy] = useState(false);
   const held = new Map(league.collection.map((h) => [h.tier, h]));
+  const tier = league.tier;
+  const b = league.based_on;
+  const { line, warn } = leagueLine(league, t, days);
+  const share = async () => {
+    setBusy(true);
+    try {
+      await loadLeagueFonts();
+      await shareLeagueStory(league, name, t, locale);
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
-    <Sheet open={open} onClose={onClose} label={t('lg.mine')}>
+    <Sheet open={open} onClose={onClose} label={head ? t('lg.yours') : t('lg.mine')}>
+      {/* opened from the bookmark in the book: your league first, and the story to share it */}
+      {head && (
+        <div className={styles.head}>
+          {tier ? (
+            <>
+              <div className={styles.headMark}>
+                <LeagueMark tier={tier} name={name} since={league.since_year} px={60} />
+              </div>
+              <div className={styles.headBody}>
+                <div className={styles.kicker}>{t('lg.yours')}</div>
+                <div className={styles.headTier}>{t(`league.${tier}`)}</div>
+                {b && b.scored > 0 && (
+                  <div className={styles.cardBasis}>{t('lg.promoBasis', { n: b.scored, total: b.total, inMonth: t(`month.in.${b.month}`) })}</div>
+                )}
+                {line && <div className={`${styles.cardLine} ${warn ? styles.warn : ''}`}>{line}</div>}
+                <button type="button" className={`${styles.primary} ${styles.headShare}`} onClick={share} disabled={busy}>
+                  {t('lg.share')}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className={styles.headBody}>
+              <div className={styles.kicker}>{t('lg.yours')}</div>
+              <div className={styles.headTier}>—</div>
+              <div className={styles.cardBasis}>{t('lg.none')}</div>
+              {line && <div className={styles.cardLine}>{line}</div>}
+            </div>
+          )}
+        </div>
+      )}
       <h3 className={styles.sheetTitle}>{t('lg.mine')}</h3>
       <p className={styles.sheetLead}>{t('lg.mineHint')}</p>
       <div className={styles.grid}>
@@ -199,6 +266,32 @@ function CollectionSheet({ open, onClose, league, name }: { open: boolean; onClo
         {t('lg.done')}
       </button>
     </Sheet>
+  );
+}
+
+/** The reader's own league, a real bookmark standing out of the top of the book on «Сегодня» (founder, 2026-10-17);
+ * grey when there is no league yet. A tap opens the league: what it is, how to rise, the story to share. */
+export function LeagueInBook({ league, name }: { league: League; name: string }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  useLeagueFonts();
+  const tier = league.tier;
+  const html = useMemo(() => markSvg((tier ?? 'bronze') as Tier, 24, null), [tier]);
+  return (
+    <>
+      <button
+        type="button"
+        className={`${styles.inBook} ${tier ? '' : styles.inBookGhost}`}
+        aria-label={tier ? `${t('lg.yours')}: ${t(`league.${tier}`)}` : t('lg.rules')}
+        onClick={() => {
+          setOpen(true);
+          track('league_open', { from: 'book', tier: tier ?? 'none' });
+        }}
+      >
+        <span dangerouslySetInnerHTML={{ __html: html }} />
+      </button>
+      <CollectionSheet open={open} onClose={() => setOpen(false)} league={league} name={name} head />
+    </>
   );
 }
 
@@ -252,22 +345,7 @@ export function LeaguePromo({ league, name }: { league: League | null; name: str
   const share = async () => {
     setBusy(true);
     try {
-      const f = file.current ?? (await drawLeagueStory(league, name, t, locale));
-      if (f && navigator.canShare?.({ files: [f] })) {
-        try {
-          await navigator.share({ files: [f] });
-          track('league_share', { tier, method: 'share' });
-        } catch {
-          /* closed the sheet */
-        }
-      } else if (f) {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(f);
-        a.download = f.name;
-        a.click();
-        window.setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-        track('league_share', { tier, method: 'download' });
-      }
+      await shareLeagueStory(league, name, t, locale, file.current);
     } finally {
       setBusy(false);
     }
