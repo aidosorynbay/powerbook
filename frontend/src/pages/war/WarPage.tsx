@@ -156,6 +156,9 @@ export function WarPage() {
                       <div className={styles.vsArt} style={{ backgroundImage: `url(${ART.sail})` }}><span>{t('war.team.sail')}</span></div>
                     </div>
                     <p className={styles.lead}>{t('war.pitch')}</p>
+                    <button type="button" className={styles.rulesBtn} onClick={() => setRules(true)}>
+                      {t('war.rules')} <span aria-hidden="true">›</span>
+                    </button>
                     <div className={styles.timer}>
                       {signupLeft > 0 ? (
                         <>
@@ -236,6 +239,9 @@ export function WarPage() {
                         <div className={styles.lockNote}>{t('war.lockNote')}</div>
                       </div>
                     )}
+                    <button type="button" className={styles.rulesBtn} onClick={() => setRules(true)}>
+                      {t('war.rules')} <span aria-hidden="true">›</span>
+                    </button>
                     {(() => {
                       const y = war.teams.map((x) => [...x.days].reverse().find((d) => d.locked));
                       return y[0] && y[1] ? (
@@ -278,9 +284,6 @@ export function WarPage() {
                 )}
 
                 {war.prize && <div className={styles.prize}>{t('war.prize')}: {war.prize}</div>}
-                <button type="button" className={styles.rulesBtn} onClick={() => setRules(true)}>
-                  {t('war.rules')} <span aria-hidden="true">›</span>
-                </button>
               </>
             )}
           </Container>
