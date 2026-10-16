@@ -116,6 +116,7 @@ class LeagueHeldOut(BaseModel):
 class LeagueOut(BaseModel):
     """The reader's league (bronze → ex libris), why, and the bookmarks kept."""
 
+    live: bool = True
     tier: str | None
     warning: bool
     since_year: int | None

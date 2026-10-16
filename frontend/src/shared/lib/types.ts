@@ -386,6 +386,8 @@ export type LeagueGoal = { tier: LeagueTierKey; days: number; reachable?: boolea
 
 /** GET /insights/league: the reader's league, why, what keeps or lifts it, and the bookmarks kept. */
 export type League = {
+  /** False until the first league circle (October 2026) has finished: nothing is shown. */
+  live: boolean;
   tier: LeagueTierKey | null;
   warning: boolean;
   since_year: number | null;

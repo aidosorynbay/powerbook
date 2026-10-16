@@ -2003,7 +2003,7 @@ export function DashboardPage() {
 
       {/* «Читатели круга» and «что значат цвета», from below (members, 2026-10-13) */}
       <ReminderOffer open={reminderOffer} onClose={() => setReminderOffer(false)} />
-      {league && user && <LeaguePromo league={league} name={user.display_name || user.username} />}
+      {league?.live && user && <LeaguePromo league={league} name={user.display_name || user.username} />}
       <ReadersSheet
         open={readersOpen}
         onClose={() => setReadersOpen(false)}

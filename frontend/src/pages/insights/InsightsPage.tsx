@@ -333,8 +333,8 @@ export function InsightsPage() {
                   </div>
                 )}
 
-                {league && user && <LeagueCard league={league} name={user.display_name || user.username} />}
-                {league && user && <LeaguePromo league={league} name={user.display_name || user.username} />}
+                {league?.live && user && <LeagueCard league={league} name={user.display_name || user.username} />}
+                {league?.live && user && <LeaguePromo league={league} name={user.display_name || user.username} />}
 
                 <nav className={styles.rows} aria-label={t('nav.profile')}>
                   <Link to="/reading" className={styles.row}>

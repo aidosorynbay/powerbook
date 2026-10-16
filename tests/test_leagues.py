@@ -73,7 +73,8 @@ def test_ex_libris_is_three_diamonds_in_a_row_and_can_fall():
 
 
 @pytest.fixture()
-def env():
+def env(monkeypatch):
+    monkeypatch.setattr(leagues, "LEAGUES_FROM", (2026, 9))
     leagues.reset_cache()
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 
@@ -159,3 +160,13 @@ def test_the_board_carries_each_readers_league(env):
     rows = client.get(f"/api/rounds/{octo.id}/leaderboard", headers=_auth(me)).json()
     by_name = {r["display_name"]: r["league"] for r in rows}
     assert by_name == {"Madik": "diamond", "Aru": "gold"}
+
+
+def test_nothing_shows_before_the_first_league_circle_has_finished(env, monkeypatch):
+    db, client, me, other, octo = env
+    monkeypatch.setattr(leagues, "LEAGUES_FROM", (2026, 10))
+    leagues.reset_cache()
+    body = client.get("/api/insights/league", headers=_auth(me)).json()
+    assert body["live"] is False and body["tier"] is None and body["collection"] == []
+    rows = client.get(f"/api/rounds/{octo.id}/leaderboard", headers=_auth(me)).json()
+    assert all(r["league"] is None for r in rows)

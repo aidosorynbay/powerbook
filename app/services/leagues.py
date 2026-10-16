@@ -52,6 +52,9 @@ THRESHOLDS = {1: 0.50, 2: 0.70, 3: 0.86, 4: 0.96}
 DIAMOND_FROM_CIRCLE = 3
 EXLIBRIS_RUN = 3
 INACTIVE_OUT = 3
+# Leagues switch on with the first circle most readers logged on the site
+# (October 2026); before its results are out nobody wears one.
+LEAGUES_FROM: tuple[int, int] | None = (2026, 10)
 _DONE = (RoundStatus.closed, RoundStatus.results_published)
 _TTL = 300.0
 
@@ -167,6 +170,16 @@ def _finished_circles(db: Session, group_id: uuid.UUID) -> list[_Circle]:
     return out
 
 
+def live(db: Session) -> bool:
+    """Whether leagues are on: the circle they start with has finished."""
+    if LEAGUES_FROM is None:
+        return True
+    group_id = _group_id(db)
+    if group_id is None:
+        return False
+    return any((c.rnd.year, c.rnd.month) >= LEAGUES_FROM for c in _finished_circles(db, group_id))
+
+
 def compute_all(db: Session) -> dict[uuid.UUID, LeagueState]:
     """Every reader's league after the last finished circle, keyed by the real
     account (archive nicknames folded into whoever claimed them)."""
@@ -174,6 +187,8 @@ def compute_all(db: Session) -> dict[uuid.UUID, LeagueState]:
     if group_id is None:
         return {}
     circles = _finished_circles(db, group_id)
+    if LEAGUES_FROM is not None and not any((c.rnd.year, c.rnd.month) >= LEAGUES_FROM for c in circles):
+        return {}
     claims = _claim_map(db)
     key = (tuple(c.rnd.id for c in circles), hash(frozenset(claims.items())))
     if _Cache.key == key and time.monotonic() - _Cache.at < _TTL:
@@ -257,7 +272,8 @@ def _today() -> date:
 def my_league(db: Session, *, user_id: uuid.UUID, current: Round | None, effective_ids: list[uuid.UUID]) -> dict:
     """What the profile shows: the league, why, what keeps or lifts it this
     circle, and the bookmarks collected so far."""
-    st = compute_all(db).get(user_id) or LeagueState()
+    on = live(db)
+    st = (compute_all(db).get(user_id) if on else None) or LeagueState()
     level = st.level
     last = db.get(Round, st.last_round) if st.last_round else None
 
@@ -303,6 +319,7 @@ def my_league(db: Session, *, user_id: uuid.UUID, current: Round | None, effecti
 
     order = {t: i for i, t in enumerate(TIERS)}
     return {
+        "live": on,
         "tier": tier_key(level),
         "warning": st.weak >= 1 and level > 0,
         "since_year": st.since_year,
