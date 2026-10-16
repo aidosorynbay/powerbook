@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 import uuid
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -82,27 +82,37 @@ def _days(war: ClanWar, today: date) -> list[date]:
     return [war.start_date + timedelta(days=i) for i in range(max(0, n))]
 
 
+def _on_time(d: date, created: datetime | None) -> bool:
+    """A day counts for the war only if it was logged before that day's midnight (Astana).
+    A late log still counts for the circle, never for the war."""
+    if created is None:
+        return True
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    return created < datetime.combine(d + timedelta(days=1), time(0, 0), tzinfo=ROUND_TZ)
+
+
 def _reads(db: Session, user_ids: list[uuid.UUID], war: ClanWar) -> set[tuple[uuid.UUID, date]]:
-    """Days of 30+ minutes: from the circle's logs, and from the war page for guests."""
+    """Days of 30+ minutes logged before their own midnight: from the circle's logs,
+    and from the war page for guests."""
     if not user_ids:
         return set()
-    window = (war.start_date, war.end_date)
     rows = db.execute(
-        select(ReadingLog.user_id, ReadingLog.date).where(
+        select(ReadingLog.user_id, ReadingLog.date, ReadingLog.created_at).where(
             ReadingLog.user_id.in_(user_ids),
             # 30+ minutes, not the circle's stored score: the war may run into the
             # circle's last day, which the circle keeps for corrections and never scores
             ReadingLog.minutes >= 30,
-            ReadingLog.date >= window[0],
-            ReadingLog.date <= window[1],
+            ReadingLog.date >= war.start_date,
+            ReadingLog.date <= war.end_date,
         )
     ).all()
     guest = db.execute(
-        select(ClanWarRead.user_id, ClanWarRead.date).where(
+        select(ClanWarRead.user_id, ClanWarRead.date, ClanWarRead.created_at).where(
             ClanWarRead.war_id == war.id, ClanWarRead.user_id.in_(user_ids), ClanWarRead.minutes >= 30
         )
     ).all()
-    return {(u, d) for u, d in rows} | {(u, d) for u, d in guest}
+    return {(u, d) for u, d, c in [*rows, *guest] if _on_time(d, c)}
 
 
 def in_circle(db: Session, user_id: uuid.UUID, war: ClanWar) -> bool:

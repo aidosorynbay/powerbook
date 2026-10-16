@@ -153,3 +153,22 @@ def test_a_guest_from_outside_the_circle_logs_on_the_war_page(env, monkeypatch):
     # nothing of it in the circle
     assert db.query(RoundParticipant).filter_by(user_id=guest.id).count() == 0
     assert db.query(ReadingLog).filter_by(user_id=guest.id).count() == 0
+
+
+def test_a_day_logged_after_its_midnight_counts_for_the_circle_not_the_war(env, monkeypatch):
+    db, c, admin, readers, rnd = env
+    monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 17))
+    for u in readers:
+        c.post("/api/war/join", headers=h(u))
+    c.post("/api/war/split", headers=h(admin))
+    from datetime import timezone as tz
+    # the 17th logged at 00:20 on the 18th (Astana) = 19:20 UTC on the 17th
+    db.add(ReadingLog(round_id=rnd.id, user_id=readers[0].id, date=date(2026, 10, 17), minutes=45, score=1,
+                      created_at=datetime(2026, 10, 17, 19, 20, tzinfo=tz.utc)))
+    # the 17th logged at 23:50 the same evening (Astana) = 18:50 UTC
+    db.add(ReadingLog(round_id=rnd.id, user_id=readers[1].id, date=date(2026, 10, 17), minutes=45, score=1,
+                      created_at=datetime(2026, 10, 17, 18, 50, tzinfo=tz.utc)))
+    db.commit()
+    monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 18))
+    body = c.get("/api/war").json()
+    assert sum(t["days"][0]["hits"] for t in body["teams"]) == 1
