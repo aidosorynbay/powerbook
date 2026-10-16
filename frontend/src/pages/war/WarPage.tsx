@@ -68,7 +68,7 @@ function Field({ war }: { war: War }) {
     <div className={styles.field}>
       {[a, b].map((x) => (
         <div key={x.key} className={`${styles.side} ${x.key === 'lighthouse' ? styles.sideA : styles.sideB}`}>
-          <img src={`/war/${x.key}-${stage(x.fill)}.jpg`} alt="" />
+          <img src={`/war-art/${x.key}-${stage(x.fill)}.jpg`} alt="" />
           <div className={styles.sideLbl}>
             <b>{t(`war.team.${x.key}`)}</b>
             <span>{t('war.booksOf', { books: books(x.points), shelf: x.shelf })}</span>
