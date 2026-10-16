@@ -22,11 +22,30 @@ export type War = {
   days_total: number;
   day: number;
   joined_count: number;
+  signup_until: string;
+  starts_at: string;
   is_admin: boolean;
   me: { joined: boolean; team: Team['key'] | null; hits?: number; days?: number; today?: boolean };
   joined: Person[];
   teams: Team[];
   winner: Team['key'] | 'draw' | null;
+};
+
+/** Seconds left until an ISO moment, ticking each second; 0 once it has passed. */
+function useLeft(iso: string | undefined) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  return iso ? Math.max(0, Math.floor((new Date(iso).getTime() - now) / 1000)) : 0;
+}
+
+const clock = (sec: number) => {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const x = sec % 60;
+  return `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}`;
 };
 
 const ART: Record<Team['key'], string> = { lighthouse: '/leagues/diamond.jpg', sail: '/leagues/bronze.jpg' };
@@ -102,6 +121,8 @@ export function WarPage() {
   const [busy, setBusy] = useState(false);
   const [rules, setRules] = useState(false);
   const [roster, setRoster] = useState<Team['key'] | null>(null);
+  const signupLeft = useLeft(war?.signup_until);
+  const startLeft = useLeft(war?.starts_at);
 
   const act = async (path: string, event: string) => {
     setBusy(true);
@@ -125,7 +146,7 @@ export function WarPage() {
                 {isAuthenticated && <WarSwitch active="war" />}
                 <div className={styles.kicker}>{t('war.kicker', { dates: dateRange(war, t) })}</div>
                 <h1 className={styles.title}>{t('war.title')}</h1>
-                {war.status !== 'signup' && <div className={styles.day}>{war.status === 'done' ? t('war.over') : t('war.day', { n: war.day, total: war.days_total })}</div>}
+                {war.status !== 'signup' && war.day > 0 && <div className={styles.day}>{war.status === 'done' ? t('war.over') : t('war.day', { n: war.day, total: war.days_total })}</div>}
 
                 {war.status === 'signup' ? (
                   <section className={styles.signup}>
@@ -135,6 +156,17 @@ export function WarPage() {
                       <div className={styles.vsArt} style={{ backgroundImage: `url(${ART.sail})` }}><span>{t('war.team.sail')}</span></div>
                     </div>
                     <p className={styles.lead}>{t('war.pitch')}</p>
+                    <div className={styles.timer}>
+                      {signupLeft > 0 ? (
+                        <>
+                          <span>{t('war.signupUntil')}</span>
+                          <b>{clock(signupLeft)}</b>
+                          <small>{t('war.autoSplit')}</small>
+                        </>
+                      ) : (
+                        <span>{t('war.splitting')}</span>
+                      )}
+                    </div>
                     {isAuthenticated ? (
                       war.me.joined ? (
                         <>
@@ -143,11 +175,11 @@ export function WarPage() {
                             {t('war.leave')}
                           </button>
                         </>
-                      ) : (
+                      ) : signupLeft > 0 ? (
                         <button type="button" className={styles.primary} onClick={() => act('/war/join', 'war_join')} disabled={busy}>
                           {t('war.join')}
                         </button>
-                      )
+                      ) : null
                     ) : (
                       <Link to={`/login?redirect=${encodeURIComponent('/war')}`} className={styles.primary}>
                         {t('war.join')}
@@ -180,14 +212,21 @@ export function WarPage() {
                         {war.winner === 'draw' ? t('war.draw') : t('war.won', { team: t(`war.team.${war.winner}`) })}
                       </div>
                     )}
-                    {war.me.team && war.status === 'live' && (
+                    {war.status === 'live' && startLeft > 0 && (
+                      <div className={styles.timer}>
+                        <span>{t('war.teamsReady')}</span>
+                        <b>{clock(startLeft)}</b>
+                        <small>{war.me.team ? t('war.getReady', { team: t(`war.team.${war.me.team}`) }) : t('war.closed')}</small>
+                      </div>
+                    )}
+                    {war.me.team && war.status === 'live' && startLeft === 0 && (
                       <div className={styles.meLine}>
                         <span>{war.me.today ? t('war.meDone', { team: t(`war.team.${war.me.team}`) }) : t('war.meNot')}</span>
                         {!war.me.today && <Link to="/round">{t('war.toDial')}</Link>}
                       </div>
                     )}
                     <Field war={war} />
-                    {war.status === 'live' && (
+                    {war.status === 'live' && startLeft === 0 && (
                       <div className={styles.todayBox}>
                         <div className={styles.todayRow}>
                           {war.teams.map((x) => (
@@ -234,11 +273,7 @@ export function WarPage() {
                         </button>
                       ))}
                     </div>
-                    {!war.me.team && war.status === 'live' && isAuthenticated && (
-                      <button type="button" className={styles.primary} onClick={() => act('/war/join', 'war_join_late')} disabled={busy}>
-                        {t('war.joinLate')}
-                      </button>
-                    )}
+                    {!war.me.team && war.status === 'live' && <p className={styles.yesterday}>{t('war.closed')}</p>}
                   </>
                 )}
 
@@ -290,7 +325,8 @@ export function RoundWarSwitch() {
 export function WarAnnounce() {
   const { t } = useI18n();
   const { war } = useWar();
-  if (!war || war.status !== 'signup') return null;
+  const left = useLeft(war?.signup_until);
+  if (!war || war.status !== 'signup' || left <= 0) return null;
   return (
     <Link to="/war" className={styles.ann} onClick={() => track('war_announce')}>
       <span className={styles.annGlow} />
@@ -307,7 +343,7 @@ export function WarAnnounce() {
         <span><i>3</i>{t('war.ann3')}</span>
       </span>
       <span className={styles.annCta}>{war.me.joined ? t('war.annIn') : t('war.join')}</span>
-      <span className={styles.annCount}>{t('war.joinedCount', { n: war.joined_count })}</span>
+      <span className={styles.annCount}>{t('war.joinedCount', { n: war.joined_count })} · {t('war.signupUntil')} {clock(left)}</span>
     </Link>
   );
 }
@@ -324,7 +360,7 @@ export function WarCard() {
       <span className={styles.cardText}>
         <b>{t('war.title')}</b>
         <small>
-          {t('war.cardLive', { a: a?.points ?? 0, b: b?.points ?? 0, n: war.day, total: war.days_total })}
+          {war.day === 0 ? t('war.cardSoon') : t('war.cardLive', { a: a?.points ?? 0, b: b?.points ?? 0, n: war.day, total: war.days_total })}
         </small>
       </span>
       <span className={styles.cardArt} style={{ backgroundImage: `url(${ART.sail})` }} />

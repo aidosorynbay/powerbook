@@ -1,7 +1,7 @@
 """«Битва кланов»: sign-up, the even split, strikes and shields from the circle's own days."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,6 +14,7 @@ from app.core.security import create_access_token
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import create_app
+from app.core.constants import ROUND_TZ
 from app.models.clan_war import ClanWar
 from app.models.enums import Gender, RoundParticipantStatus, RoundStatus, SystemRole
 from app.models.group import Group
@@ -26,6 +27,7 @@ from app.services import clan_war, leagues
 def env(monkeypatch):
     leagues.reset_cache()
     monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 18))
+    monkeypatch.setattr(clan_war, "_now", lambda: datetime(2026, 10, 16, 12, 0, tzinfo=ROUND_TZ))
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 
     @event.listens_for(engine, "connect")
@@ -96,6 +98,7 @@ def test_points_lock_at_midnight_and_knock_out_bricks(env, monkeypatch):
         read(db, rnd, u, date(2026, 10, 17))
     read(db, rnd, sail[0], date(2026, 10, 17))
     monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 18))
+    monkeypatch.setattr(clan_war, "_now", lambda: datetime(2026, 10, 16, 12, 0, tzinfo=ROUND_TZ))
     body = c.get("/api/war", headers=h(light[0])).json()  # it is the 18th: the 17th is locked
     t = {x["key"]: x for x in body["teams"]}
     assert t["lighthouse"]["days"][0] == {"date": "2026-10-17", "hits": 2, "size": 2, "locked": True}
@@ -114,10 +117,20 @@ def test_points_lock_at_midnight_and_knock_out_bricks(env, monkeypatch):
     assert t["sail"]["today"] == 1 and t["lighthouse"]["bricks_left"] == 27
 
 
-def test_a_late_reader_joins_the_smaller_team(env):
+def test_sign_up_closes_at_20_and_the_teams_split_themselves(env, monkeypatch):
     db, c, admin, readers, rnd = env
     for u in readers[:3]:
-        c.post("/api/war/join", headers=h(u))
-    c.post("/api/war/split", headers=h(admin))
-    body = c.post("/api/war/join", headers=h(readers[3])).json()
-    assert [t["size"] for t in body["teams"]] == [2, 2]
+        assert c.post("/api/war/join", headers=h(u)).status_code == 200
+    monkeypatch.setattr(clan_war, "_now", lambda: datetime(2026, 10, 16, 20, 0, 30, tzinfo=ROUND_TZ))
+    assert c.post("/api/war/join", headers=h(readers[3])).status_code == 409  # too late
+    monkeypatch.setattr(clan_war, "get_session_factory", None, raising=False)
+    from app.db import session as session_mod
+
+    monkeypatch.setattr(session_mod, "get_session_factory", lambda: (lambda: db))
+    monkeypatch.setattr(db, "close", lambda: None)
+    clan_war.scheduled()
+    body = c.get("/api/war").json()
+    assert body["status"] == "live"
+    assert sorted(t["size"] for t in body["teams"]) == [1, 2]
+    clan_war.scheduled()  # a second worker finds it split already: nothing happens
+    assert c.get("/api/war").json()["status"] == "live"

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -29,6 +29,15 @@ from app.models.round import ReadingLog
 from app.models.user import User
 
 TEAMS = ["lighthouse", "sail"]
+SIGNUP_CLOSES = time(20, 0)  # on the eve of the start, Astana time: the split, then four hours to get ready
+
+
+def _now() -> datetime:
+    return datetime.now(tz=ROUND_TZ)
+
+
+def signup_deadline(war: ClanWar) -> datetime:
+    return datetime.combine(war.start_date - timedelta(days=1), SIGNUP_CLOSES, tzinfo=ROUND_TZ)
 
 
 def _today() -> date:
@@ -138,6 +147,12 @@ def scheduled() -> None:
 
     db = get_session_factory()()
     try:
+        war = current_war(db)
+        if war is not None and war.status == "signup" and _now() >= signup_deadline(war):
+            try:
+                split(db, None)
+            except HTTPException:
+                db.rollback()  # the other worker split it
         lock_days(db)
     finally:
         db.close()
@@ -165,6 +180,8 @@ def state(db: Session, viewer: User | None) -> dict:
         "days_total": total_days,
         "day": max(0, min(total_days, (today - war.start_date).days + 1)),
         "joined_count": len(members),
+        "signup_until": signup_deadline(war).isoformat(),
+        "starts_at": datetime.combine(war.start_date, time(0, 0), tzinfo=ROUND_TZ).isoformat(),
         "is_admin": bool(viewer and viewer.system_role in {SystemRole.admin, SystemRole.superadmin}),
         "me": {"joined": me is not None, "team": TEAMS[me.team] if me is not None and me.team is not None else None},
         "joined": [person(u, a) for m, u, a in members] if war.status == "signup" else [],
@@ -237,25 +254,13 @@ def state(db: Session, viewer: User | None) -> dict:
 
 def join(db: Session, user: User) -> dict:
     war = _war_or_404(db)
-    if war.status == "done" or _today() > war.end_date:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="The war is over")
+    if war.status != "signup" or _now() >= signup_deadline(war):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Sign-up is closed")
     exists = db.execute(
         select(ClanWarMember).where(ClanWarMember.war_id == war.id, ClanWarMember.user_id == user.id)
     ).scalar_one_or_none()
     if exists is None:
-        team = None
-        if war.status == "live":
-            # after the split a newcomer joins the smaller team (the weaker one on a tie)
-            sizes = [0, 0]
-            for m, _, _ in _members(db, war):
-                if m.team in (0, 1):
-                    sizes[m.team] += 1
-            if sizes[0] != sizes[1]:
-                team = 0 if sizes[0] < sizes[1] else 1
-            else:
-                hp = [t["hp"] for t in state(db, None)["teams"]]
-                team = 0 if hp[0] <= hp[1] else 1
-        db.add(ClanWarMember(war_id=war.id, user_id=user.id, team=team))
+        db.add(ClanWarMember(war_id=war.id, user_id=user.id, team=None))
         db.commit()
     return state(db, user)
 
@@ -273,13 +278,22 @@ def leave(db: Session, user: User) -> dict:
     return state(db, user)
 
 
-def split(db: Session, admin: User) -> dict:
-    """Two even teams: the strongest readers (league, then last circle's days) dealt in turn, A B B A A B …"""
+def split(db: Session, admin: User | None) -> dict:
+    """Two even teams: the strongest readers (league, then last circle's days) dealt in turn, A B B A A B …
+    Done by the scheduler at 20:00 on the eve of the start, or by the founder's button before that."""
+    from sqlalchemy import update
+
     from app.services.leagues import compute_all
 
     war = _war_or_404(db)
-    if war.status != "signup":
+    # one worker only: whoever flips signup → live first does the dealing
+    claimed = db.execute(
+        update(ClanWar).where(ClanWar.id == war.id, ClanWar.status == "signup").values(status="live")
+    ).rowcount
+    if not claimed:
+        db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Teams are already split")
+    db.refresh(war)
     members = [m for m, _, _ in _members(db, war)]
     leagues = compute_all(db)
 
