@@ -4,7 +4,21 @@
 .mark { display: inline-block; flex: none; line-height: 0; }
 .mark :global(svg) { overflow: visible; }
 
-.onAvatar { --tail: 12px; position: absolute; left: 50%; top: calc(100% - var(--tail) * 0.42); width: var(--tail); height: calc(var(--tail) * 19 / 12); margin-left: calc(var(--tail) / -2); z-index: -1; line-height: 0; pointer-events: none; }
+/* the tail hangs behind the face: whatever falls inside the circle is masked away, ~10 px of it shows below */
+.onAvatar {
+  --tail: 12px;
+  --face: 40px;
+  position: absolute;
+  left: 50%;
+  top: calc(var(--face) - var(--tail) * 0.75);
+  width: var(--tail);
+  height: calc(var(--tail) * 19 / 12);
+  margin-left: calc(var(--tail) / -2);
+  line-height: 0;
+  pointer-events: none;
+  -webkit-mask: radial-gradient(circle calc(var(--face) / 2 + 0.5px) at 50% calc(var(--tail) * 0.75 - var(--face) / 2), transparent 99%, #000 100%);
+  mask: radial-gradient(circle calc(var(--face) / 2 + 0.5px) at 50% calc(var(--tail) * 0.75 - var(--face) / 2), transparent 99%, #000 100%);
+}
 .onAvatar :global(svg) { display: block; width: 100%; height: 100%; }
 .glyph { display: inline-flex; flex: none; width: 8px; height: 22px; margin-right: 8px; vertical-align: -5px; line-height: 0; }
 
