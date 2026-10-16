@@ -23,9 +23,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.constants import ROUND_TZ
-from app.models.clan_war import ClanWar, ClanWarDay, ClanWarMember
+from app.models.clan_war import ClanWar, ClanWarDay, ClanWarMember, ClanWarRead
 from app.models.enums import SystemRole
-from app.models.round import ReadingLog
+from app.models.round import ReadingLog, Round, RoundParticipant
 from app.models.user import User
 
 TEAMS = ["lighthouse", "sail"]
@@ -83,19 +83,62 @@ def _days(war: ClanWar, today: date) -> list[date]:
 
 
 def _reads(db: Session, user_ids: list[uuid.UUID], war: ClanWar) -> set[tuple[uuid.UUID, date]]:
+    """Days of 30+ minutes: from the circle's logs, and from the war page for guests."""
     if not user_ids:
         return set()
+    window = (war.start_date, war.end_date)
     rows = db.execute(
         select(ReadingLog.user_id, ReadingLog.date).where(
             ReadingLog.user_id.in_(user_ids),
             # 30+ minutes, not the circle's stored score: the war may run into the
             # circle's last day, which the circle keeps for corrections and never scores
             ReadingLog.minutes >= 30,
-            ReadingLog.date >= war.start_date,
-            ReadingLog.date <= war.end_date,
+            ReadingLog.date >= window[0],
+            ReadingLog.date <= window[1],
         )
     ).all()
-    return {(u, d) for u, d in rows}
+    guest = db.execute(
+        select(ClanWarRead.user_id, ClanWarRead.date).where(
+            ClanWarRead.war_id == war.id, ClanWarRead.user_id.in_(user_ids), ClanWarRead.minutes >= 30
+        )
+    ).all()
+    return {(u, d) for u, d in rows} | {(u, d) for u, d in guest}
+
+
+def in_circle(db: Session, user_id: uuid.UUID, war: ClanWar) -> bool:
+    """Whether the reader is in the circle the war runs in (they log on its dial)."""
+    from app.repositories.claims import ClaimsRepository
+
+    ids = ClaimsRepository(db).effective_user_ids(user_id=user_id)
+    return db.execute(
+        select(RoundParticipant.id)
+        .join(Round, Round.id == RoundParticipant.round_id)
+        .where(Round.year == war.start_date.year, Round.month == war.start_date.month, RoundParticipant.user_id.in_(ids))
+        .limit(1)
+    ).first() is not None
+
+
+def log_guest(db: Session, user: User, minutes: int) -> dict:
+    """A guest's minutes for today, on the war page (replaces today's figure)."""
+    war = _war_or_404(db)
+    today = _today()
+    member = db.execute(
+        select(ClanWarMember).where(ClanWarMember.war_id == war.id, ClanWarMember.user_id == user.id)
+    ).scalar_one_or_none()
+    if member is None or war.status != "live" or not (war.start_date <= today <= war.end_date):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Not in a running war")
+    if in_circle(db, user.id, war):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Log on the circle's dial")
+    minutes = max(0, min(1440, int(minutes)))
+    row = db.execute(
+        select(ClanWarRead).where(ClanWarRead.war_id == war.id, ClanWarRead.user_id == user.id, ClanWarRead.date == today)
+    ).scalar_one_or_none()
+    if row is None:
+        db.add(ClanWarRead(war_id=war.id, user_id=user.id, date=today, minutes=minutes))
+    else:
+        row.minutes = minutes
+    db.commit()
+    return state(db, user)
 
 
 def _team_rows(members):
@@ -183,7 +226,11 @@ def state(db: Session, viewer: User | None) -> dict:
         "signup_until": signup_deadline(war).isoformat(),
         "starts_at": datetime.combine(war.start_date, time(0, 0), tzinfo=ROUND_TZ).isoformat(),
         "is_admin": bool(viewer and viewer.system_role in {SystemRole.admin, SystemRole.superadmin}),
-        "me": {"joined": me is not None, "team": TEAMS[me.team] if me is not None and me.team is not None else None},
+        "me": {
+            "joined": me is not None,
+            "team": TEAMS[me.team] if me is not None and me.team is not None else None,
+            "guest": bool(viewer) and not in_circle(db, viewer.id, war),
+        },
         "joined": [person(u, a) for m, u, a in members] if war.status == "signup" else [],
         "teams": [],
         "winner": None,
@@ -245,6 +292,13 @@ def state(db: Session, viewer: User | None) -> dict:
         out["me"]["hits"] = len(mine)
         out["me"]["days"] = len([d for d in all_days if _joined_day(me, war) <= d <= min(today, war.end_date)])
         out["me"]["today"] = (me.user_id, today) in reads
+        if out["me"]["guest"]:
+            row = db.execute(
+                select(ClanWarRead.minutes).where(
+                    ClanWarRead.war_id == war.id, ClanWarRead.user_id == me.user_id, ClanWarRead.date == today
+                )
+            ).scalar_one_or_none()
+            out["me"]["minutes"] = int(row or 0)
     if phase == "done":
         # the fullest library wins (books against the places on its shelves)
         fill = [x["fill"] for x in out["teams"]]

@@ -37,3 +37,13 @@ class PrizeIn(BaseModel):
 @router.put("/prize")
 def put_prize(body: PrizeIn, db: Session = Depends(get_db), admin=Depends(require_admin)) -> dict:
     return clan_war.set_prize(db, body.prize)
+
+
+class ReadIn(BaseModel):
+    minutes: int
+
+
+@router.post("/read")
+def war_read(body: ReadIn, db: Session = Depends(get_db), user=Depends(get_current_user)) -> dict:
+    """Minutes for today from a war member outside the month's circle."""
+    return clan_war.log_guest(db, user, body.minutes)

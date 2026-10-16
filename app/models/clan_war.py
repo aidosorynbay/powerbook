@@ -61,3 +61,22 @@ class ClanWarDay(Base):
     team: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     hits: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     size: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+
+
+class ClanWarRead(TimestampMixin, Base):
+    """Reading logged on the war page by a member who is not in the month's
+    circle (a guest brought in by the war). It counts for the war only and never
+    enters the circle's table; circle members log on the circle's dial."""
+
+    __tablename__ = "clan_war_reads"
+    __table_args__ = (UniqueConstraint("war_id", "user_id", "date", name="uq_clan_war_read"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    war_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("clan_wars.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    minutes: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)

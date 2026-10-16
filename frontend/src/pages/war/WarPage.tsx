@@ -28,7 +28,7 @@ export type War = {
   signup_until: string;
   starts_at: string;
   is_admin: boolean;
-  me: { joined: boolean; team: Team['key'] | null; hits?: number; days?: number; today?: boolean };
+  me: { joined: boolean; team: Team['key'] | null; guest?: boolean; minutes?: number; hits?: number; days?: number; today?: boolean };
   joined: Person[];
   teams: Team[];
   winner: Team['key'] | 'draw' | null;
@@ -120,6 +120,31 @@ function Field({ war, live, onTeam }: { war: War; live: boolean; onTeam: (k: Tea
   );
 }
 
+/** For a war member outside the month's circle: today's minutes, right here (never in the circle). */
+function GuestLog({ war, onSaved }: { war: War; onSaved: (w: War) => void }) {
+  const { t } = useI18n();
+  const [val, setVal] = useState(String(war.me.minutes || ''));
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    const minutes = parseInt(val, 10);
+    if (Number.isNaN(minutes)) return;
+    setBusy(true);
+    const { data } = await apiPost<War>('/war/read', { minutes }, { requireAuth: true });
+    if (data) onSaved(data);
+    track('war_guest_read', { minutes });
+    setBusy(false);
+  };
+  return (
+    <div className={styles.guestLog}>
+      <label>
+        <span>{t('war.guestQ')}</span>
+        <input type="number" inputMode="numeric" min={0} max={1440} value={val} onChange={(e) => setVal(e.target.value)} placeholder="30" />
+      </label>
+      <button type="button" className={styles.go} onClick={save} disabled={busy || val === ''}>{t('war.guestSave')}</button>
+    </div>
+  );
+}
+
 /** «Мой круг | Битва»: the war is the second tab of the circle, never the first. */
 export function WarSwitch({ active }: { active: 'round' | 'war' }) {
   const { t } = useI18n();
@@ -195,6 +220,7 @@ export function WarPage() {
                       <div className={styles.vsArt} style={{ backgroundImage: `url(${ART.sail})` }}><span>{t('war.team.sail')}</span></div>
                     </div>
                     <div className={styles.col}>
+                      {isAuthenticated && war.me.guest && <p className={styles.guestNote}>{t('war.guestNote')}</p>}
                       <ol className={styles.steps}>
                         <li><i>1</i>{t('war.ann1')}</li>
                         <li><i>2</i>{t('war.ann2')}</li>
@@ -265,9 +291,10 @@ export function WarPage() {
                             <b>{war.me.today ? t('war.meDone', { team: t(`war.team.${war.me.team}`) }) : t('war.meNot')}</b>
                             <small>{t('war.contrib', { books: books(war.me.hits ?? 0) })}</small>
                           </div>
-                          {!war.me.today && <Link to="/round" className={styles.go}>{t('war.toDial')}</Link>}
+                          {!war.me.today && !war.me.guest && <Link to="/round" className={styles.go}>{t('war.toDial')}</Link>}
                         </div>
                       )}
+                      {running && war.me.team && war.me.guest && <GuestLog war={war} onSaved={setWar} />}
                       {running && !war.me.team && <p className={styles.note}>{t('war.closed')}</p>}
                       {!prestart && (
                         <div>

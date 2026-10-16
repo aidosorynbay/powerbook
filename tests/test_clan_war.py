@@ -134,3 +134,22 @@ def test_sign_up_closes_at_20_and_the_teams_split_themselves(env, monkeypatch):
     assert sorted(t["size"] for t in body["teams"]) == [1, 2]
     clan_war.scheduled()  # a second worker finds it split already: nothing happens
     assert c.get("/api/war").json()["status"] == "live"
+
+
+def test_a_guest_from_outside_the_circle_logs_on_the_war_page(env, monkeypatch):
+    db, c, admin, readers, rnd = env
+    guest = User(username="guest", display_name="Guest", password_hash="x", gender=Gender.female)
+    db.add(guest)
+    db.commit()
+    monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 17))
+    assert c.post("/api/war/join", headers=h(guest)).json()["me"]["guest"] is True
+    c.post("/api/war/join", headers=h(readers[0]))
+    c.post("/api/war/split", headers=h(admin))
+    assert c.post("/api/war/read", json={"minutes": 40}, headers=h(readers[0])).status_code == 409  # circle members use the dial
+    body = c.post("/api/war/read", json={"minutes": 35}, headers=h(guest)).json()
+    assert body["me"]["today"] is True and body["me"]["minutes"] == 35
+    team = next(t for t in body["teams"] if any(m["display_name"] == "Guest" for m in t["members"]))
+    assert team["today"] == 1
+    # nothing of it in the circle
+    assert db.query(RoundParticipant).filter_by(user_id=guest.id).count() == 0
+    assert db.query(ReadingLog).filter_by(user_id=guest.id).count() == 0
