@@ -130,3 +130,8 @@
 .fillBar i { display: block; height: 100%; border-radius: 9px; background: linear-gradient(90deg, #f26430, #ffb07a); }
 .aheadTag { position: absolute; top: 34px; z-index: 5; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 3px 8px; border-radius: 99px; background: #e2b04a; color: #1b1206; }
 .leadA { left: 10px; } .leadB { right: 10px; top: 10px; }
+
+/* Clear the fixed bottom tab bar (plus the iPhone home indicator), so the rules at the foot can be reached. */
+@media (max-width: 900px) {
+  .page { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+}
