@@ -1560,8 +1560,11 @@
   justify-content: space-between;
   gap: var(--spacing-2);
   margin-bottom: var(--spacing-2);
+  /* the legend fits the card, not the screen: on a computer the calendar sits in a narrow column, and in Kazakh
+     «Менікі · Айналым» is wider — the legend ran out over the card's edge (founder's screenshot, 2026-10-16) */
+  container-type: inline-size;
 }
-.calSeg { display: flex; gap: 6px; }
+.calSeg { display: flex; gap: 6px; flex: none; }
 .calSeg button {
   font: inherit;
   font-size: var(--font-size-sm);
@@ -1591,6 +1594,7 @@
   padding: 6px 0 6px 4px;
   cursor: pointer;
   white-space: nowrap;
+  min-width: 0;
 }
 .calLegendRow { display: inline-flex; align-items: center; gap: 4px; }
 .calLegendRow i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-left: 3px; }
@@ -1661,6 +1665,16 @@
   .calLegendRow em, .calLegendRow u { display: none; }
 }
 @media (max-width: 360px) {
+  .calLegendRow { display: none; }
+}
+/* the same steps by the room the card has: first the star and the dot go, then the colours (the «i» keeps them) */
+@container (max-width: 400px) {
+  .calSeg button { padding: 6px 11px; font-size: 13px; }
+  .calLegend { font-size: 10.5px; gap: 4px; }
+  .calLegendRow { gap: 3px; }
+  .calLegendRow em, .calLegendRow u { display: none; }
+}
+@container (max-width: 300px) {
   .calLegendRow { display: none; }
 }
 
