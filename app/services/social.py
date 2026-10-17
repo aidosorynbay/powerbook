@@ -177,7 +177,7 @@ class SocialService:
 
         return PublicProfileOut(
             league=leagues_by_user(self.db).get(target.id),
-            featured_award=awards.public_featured(self.db, target.id),
+            featured_award=awards.worn_by(self.db, target.id),
             user_id=str(target.id),
             username=target.username,
             display_name=target.display_name,

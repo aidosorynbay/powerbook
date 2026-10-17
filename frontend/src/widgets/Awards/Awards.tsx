@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { apiGet, apiPost, track, useI18n, type AwardEarned, type Awards, type Locale } from '@/shared/lib';
+import { apiGet, apiPost, refreshWornPins, track, useI18n, type AwardEarned, type Awards, type Locale } from '@/shared/lib';
 import { Sheet } from '@/widgets/RoundToday';
 import { dayLink } from '@/widgets/ShareDay';
 import { loadLeagueFonts } from '@/widgets/League';
@@ -123,10 +123,107 @@ function share01(tr: string, now: number, next: number) {
   return Math.max(0, Math.min(1, tr === 'together' ? now / (next * MILLION) : now / next));
 }
 
-/** An award worn by the avatar: only the pin, cut out of its cloth. */
-export function WornPin({ k, size }: { k: string; size: number }) {
+/** What the avatar wears: an award key, null = automatic, "none" = nothing. */
+async function wearPin(key: string | null) {
+  await apiPost('/insights/awards/feature', { key }, { requireAuth: true });
+  track(key === 'none' ? 'award_unwear' : key ? 'award_wear' : 'award_wear_auto', { key: key ?? '' });
+  refreshWornPins();
+}
+
+/** One's own pin by the avatar, as a button: tapping it opens the choice. No pin worn: a quiet empty slot. */
+export function OwnPin({ awards, onChange }: { awards: Awards; onChange?: () => void }) {
   const { t } = useI18n();
-  return <img className={styles.wornPin} src={pinCut(k)} width={size} height={size} alt={nameOf(t, k)} draggable={false} />;
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className={styles.ownPin} onClick={() => setOpen(true)} aria-label={t('aw.wearTitle')}>
+        {awards.featured ? <img src={pinCut(awards.featured)} alt="" draggable={false} /> : <span className={styles.ownPinEmpty} aria-hidden="true" />}
+      </button>
+      {open && <WearSheet awards={awards} onClose={() => setOpen(false)} onChange={onChange} />}
+    </>
+  );
+}
+
+/** The choice of the pin by the avatar: automatic, none, or any award held — one sheet, opened from the pin itself. */
+export function WearSheet({ awards, onClose, onChange }: { awards: Awards; onClose: () => void; onChange?: () => void }) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const pick = async (key: string | null) => {
+    setBusy(true);
+    try {
+      await wearPin(key);
+      onChange?.();
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  };
+  const mode = awards.featured_mode;
+  const auto = awards.featured_auto;
+  return (
+    <Sheet open onClose={onClose} label={t('aw.wearTitle')}>
+      <h3 className={styles.sheetTitle}>{t('aw.wearTitle')}</h3>
+      <p className={styles.sheetLead}>{t('aw.wearLead')}</p>
+      <div className={styles.wearOptions}>
+        <button type="button" className={`${styles.wearRow} ${mode === 'auto' ? styles.wearOn : ''}`} onClick={() => pick(null)} disabled={busy}>
+          {auto ? <img src={pinCut(auto)} alt="" /> : <span className={styles.ownPinEmpty} />}
+          <span>
+            <b>{t('aw.wearAuto')}</b>
+            <small>{auto ? t('aw.wearAutoHint', { name: nameOf(t, auto) }) : t('aw.wearAutoEmpty')}</small>
+          </span>
+        </button>
+        <button type="button" className={`${styles.wearRow} ${mode === 'none' ? styles.wearOn : ''}`} onClick={() => pick('none')} disabled={busy}>
+          <span className={styles.ownPinEmpty} />
+          <span>
+            <b>{t('aw.wearNone')}</b>
+            <small>{t('aw.wearNoneHint')}</small>
+          </span>
+        </button>
+      </div>
+      {awards.earned.length > 0 && (
+        <>
+          <h4 className={styles.trackTitle}>{t('aw.wearPick')}</h4>
+          <div className={styles.grid}>
+            {awards.earned.map((e) => (
+              <button
+                type="button"
+                key={e.key}
+                className={`${styles.cell} ${mode === 'chosen' && awards.featured === e.key ? styles.cellWorn : ''}`}
+                onClick={() => pick(e.key)}
+                disabled={busy}
+              >
+                <AwardPin k={e.key} size={64} />
+                <b>{nameOf(t, e.key)}</b>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      <button type="button" className={styles.close} onClick={onClose}>
+        {t('lg.done')}
+      </button>
+    </Sheet>
+  );
+}
+
+/** Someone else's pin, tapped on their profile: what it is and what it takes — no rarity, no comparison. */
+export function PinCard({ k, onClose }: { k: string | null; onClose: () => void }) {
+  const { t } = useI18n();
+  if (!k) return null;
+  return (
+    <Sheet open onClose={onClose} label={nameOf(t, k)}>
+      <div className={styles.detail}>
+        <div className={styles.detailPin}>
+          <AwardPin k={k} size={200} big />
+        </div>
+        <h3 className={styles.detailName}>{nameOf(t, k)}</h3>
+        <p className={styles.detailCond}>{condOf(t, k)}</p>
+        <button type="button" className={styles.close} onClick={onClose}>
+          {t('lg.done')}
+        </button>
+      </div>
+    </Sheet>
+  );
 }
 
 /** Five dots, as in the logo, as many filled as the pin is rare (1 = most readers have it). Quiet: no number, no percent. */
@@ -374,12 +471,11 @@ export function AwardDetail({ award, onClose, awards, name, username, readOnly =
   const { track: tr, n } = trackOf(award);
   const gm = tr === 'genre' ? awards.genre_minutes?.[award.slice(6)] ?? 0 : 0;
   const st = tr === 'genre' ? { track: 'genre', value: gm, now: gm, next: GENRE_MINUTES } : awards.tracks.find((x) => x.track === tr);
-  const worn = awards.featured === award && awards.featured_chosen;
+  const worn = awards.featured === award && awards.featured_mode === 'chosen';
   const wear = async () => {
     setBusy(true);
     try {
-      await apiPost('/insights/awards/feature', { key: worn ? null : award }, { requireAuth: true });
-      track(worn ? 'award_unwear' : 'award_wear', { key: award });
+      await wearPin(worn ? null : award);
       onChange?.();
     } finally {
       setBusy(false);

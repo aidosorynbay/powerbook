@@ -100,7 +100,7 @@ export function ReviewThread({ reviewId, count: initialCount, startOpen = false 
             <ul className={styles.replyList}>
               {replies.map((r) => (
                 <li key={r.id} className={styles.reply}>
-                  <Avatar src={r.avatar_data} name={r.display_name} size="sm" />
+                  <Avatar src={r.avatar_data} name={r.display_name} size="sm" userId={r.user_id} />
                   <div>
                     <div className={styles.replyHead}>
                       <Link to={`/readers/${r.user_id}`}>{r.is_viewer ? `${r.display_name} (${t('work.you')})` : r.display_name}</Link>

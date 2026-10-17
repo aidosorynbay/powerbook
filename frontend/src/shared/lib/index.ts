@@ -32,6 +32,9 @@ export { isReaderPath } from './routes';
 // Analytics (Google Analytics 4)
 export { initAnalytics, initClarity, setAnalyticsUser, track, trackSectionView } from './analytics';
 
+// The award pin worn by each avatar
+export { enableWornPins, refreshWornPins, useWornPin, pinCutUrl } from './wornPins';
+
 // Image utilities
 export { resizeImageToDataUrl } from './imageResize';
 

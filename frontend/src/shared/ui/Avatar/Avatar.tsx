@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { colorFromSeed } from '@/shared/lib';
+import { colorFromSeed, pinCutUrl, useWornPin } from '@/shared/lib';
 import styles from './Avatar.module.css';
 
 interface AvatarProps {
@@ -8,11 +8,15 @@ interface AvatarProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   /** Worn on the picture, tucked under it (the league's bookmark tail). */
   badge?: ReactNode;
-  /** An award pin worn at the lower right, cut out of its cloth. */
+  /** The reader's id: their worn award pin then stands at the picture's right (see shared/lib/wornPins). */
+  userId?: string | null;
+  /** The pin by hand instead (a button on one's own profile); `null` = none even if they wear one. */
   pin?: ReactNode;
 }
 
-export function Avatar({ src, name, size = 'md', badge, pin }: AvatarProps) {
+export function Avatar({ src, name, size = 'md', badge, userId, pin }: AvatarProps) {
+  const worn = useWornPin(pin === undefined ? userId : null);
+  const side = pin !== undefined ? pin : worn ? <img src={pinCutUrl(worn)} alt="" draggable={false} /> : null;
   const initial = name.trim().charAt(0).toUpperCase() || '?';
   const classNames = [styles.avatar, styles[size]].join(' ');
 
@@ -27,12 +31,19 @@ export function Avatar({ src, name, size = 'md', badge, pin }: AvatarProps) {
       </div>
     );
   }
-  if (!badge && !pin) return face;
-  return (
+  const dressed = badge ? (
     <span className={styles.worn}>
       {face}
       {badge}
-      {pin && <span className={styles.pinSlot}>{pin}</span>}
+    </span>
+  ) : (
+    face
+  );
+  if (!side) return dressed;
+  return (
+    <span className={styles.withPin}>
+      {dressed}
+      <span className={`${styles.pinSide} ${styles[`pin_${size}`]} ${pin !== undefined ? styles.pinLive : ''}`}>{side}</span>
     </span>
   );
 }

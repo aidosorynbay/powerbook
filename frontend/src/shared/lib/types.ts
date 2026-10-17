@@ -393,9 +393,11 @@ export type Awards = {
   secret_total: number;
   /** the reader's own minutes by genre (topic key → minutes), most read first */
   genre_minutes: Record<string, number>;
-  /** the pin worn by the avatar: the reader's choice, else the newest; `featured_chosen`: they picked it themselves */
+  /** the pin worn by the avatar (null: none); mode: automatic, chosen by the reader, or «Не носить» */
   featured: string | null;
-  featured_chosen: boolean;
+  featured_mode: 'auto' | 'chosen' | 'none';
+  /** the pin the automatic choice gives (rarest held, never a secret) */
+  featured_auto: string | null;
   /** the step of the days ladder the reader stands on, e.g. "days_100" */
   title: string | null;
   /** nothing has been shown yet: the first opening shows the whole collection at once */

@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Suspense, lazy, useEffect } from 'react';
 import * as Sentry from '@sentry/react';
-import { AuthProvider, useAuth, I18nProvider, useI18n, isReaderPath, setAnalyticsUser } from '@/shared/lib';
+import { AuthProvider, useAuth, I18nProvider, useI18n, isReaderPath, setAnalyticsUser, enableWornPins } from '@/shared/lib';
+import { awardsOn } from '@/widgets/Awards';
 import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage, JoinPage, ReaderDayPage, GetPage, AboutPage, MessagesPage, WarPage } from '@/pages';
 import { ArchivePrompt, BottomNav, GuestKept, JoinPrompt, LastCallNotice, WhatsNew } from '@/widgets';
 import '@/app/styles/theme.css';
@@ -53,6 +54,8 @@ function AppRoutes() {
   // count how many readers an error hits.
   useEffect(() => {
     Sentry.setUser(user ? { id: user.id } : null);
+    // the award pins by the avatars: shown to whoever sees the awards (admins until FOR_EVERYONE)
+    enableWornPins(awardsOn(user));
     setAnalyticsUser(user ? user.id : null);
     if (user) {
       try {

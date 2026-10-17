@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { getApiBaseUrl, track, useI18n } from '@/shared/lib';
+import { getApiBaseUrl, pinCutUrl, track, useI18n, useWornPin } from '@/shared/lib';
 import type { CalendarDay, LeaderboardEntry, RosterEntry } from '@/shared/lib';
 import { ReadingReminder, type ReminderState } from '@/widgets/ReadingReminder';
 import { LeagueGlyph } from '@/widgets/League/League';
 import { usePulse, type PulsePhase } from './pulse';
 import styles from './RoundToday.module.css';
+
+/** The award pin a reader wears, at the right of their face in the circle's list (shared/lib/wornPins). */
+function ReaderPin({ userId }: { userId: string }) {
+  const k = useWornPin(userId);
+  return k ? <img className={styles.avPin} src={pinCutUrl(k)} alt="" draggable={false} /> : null;
+}
 
 export const pulseClass = (p: PulsePhase) =>
   p === 'fast' ? `${styles.pulse} ${styles.pulseFast}` : p === 'slow' ? `${styles.pulse} ${styles.pulseSlow}` : p === 'dot' ? `${styles.pulse} ${styles.pulseDot}` : '';
@@ -149,6 +155,7 @@ export function ReadersSheet({
                 )}
                 {/* the league's bookmark peeks out of the avatar, as from a book */}
                 {e.league && <LeagueGlyph tier={e.league} onAvatar />}
+                <ReaderPin userId={e.user_id} />
               </span>
               <span className={styles.rn}>
                 <span className={styles.tg}>

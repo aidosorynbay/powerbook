@@ -38,5 +38,15 @@
 /* the picture with something tucked under it: the badge sits behind (z-index -1) */
 .worn { position: relative; isolation: isolate; display: inline-flex; flex-shrink: 0; }
 
-/* an award pin worn at the picture's lower right, half over the edge */
-.pinSlot { position: absolute; right: -8px; bottom: -6px; display: flex; z-index: 1; pointer-events: none; }
+/* the picture and, at its right, the award pin it wears (the league ring stays on the picture alone) */
+.withPin { display: inline-flex; align-items: flex-end; flex-shrink: 0; }
+
+/* the award pin worn at the picture's right, standing on the same line, a little over its edge */
+.pinSide { position: relative; z-index: 1; align-self: flex-end; display: flex; width: var(--pin); height: var(--pin);
+  margin-left: calc(var(--pin) * -0.3); margin-bottom: calc(var(--pin) * -0.05); pointer-events: none; }
+.pinSide img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45)); }
+.pinLive { pointer-events: auto; }
+.pin_sm { --pin: 18px; }
+.pin_md { --pin: 26px; }
+.pin_lg { --pin: 36px; }
+.pin_xl { --pin: 48px; }

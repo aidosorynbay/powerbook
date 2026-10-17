@@ -133,6 +133,12 @@ def get_genres(db: Session = Depends(get_db), user=Depends(get_current_user)) ->
     return [GenreOut(topic=g.topic, minutes=g.minutes, books=g.books, share=g.share) for g in genres.profile(db, ids)]
 
 
+@router.get("/awards/worn")
+def worn_awards(db: Session = Depends(get_db), _user=Depends(get_current_user)) -> dict[str, str]:
+    """The pin each reader wears by their avatar, for every avatar on the site."""
+    return awards.worn_all(db)
+
+
 @router.post("/awards/feature")
 def feature_award(payload: AwardsFeatureIn, db: Session = Depends(get_db), user=Depends(get_current_user)) -> dict:
     try:

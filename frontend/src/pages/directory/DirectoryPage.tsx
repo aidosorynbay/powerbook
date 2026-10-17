@@ -120,7 +120,7 @@ export function DirectoryPage() {
                     }
                   >
                     <div className={styles.readerTop}>
-                      <Avatar src={entry.avatar_data} name={entry.display_name} size="md" badge={entry.league && <LeagueGlyph tier={entry.league} onAvatar face={48} />} />
+                      <Avatar src={entry.avatar_data} name={entry.display_name} size="md" userId={entry.user_id} badge={entry.league && <LeagueGlyph tier={entry.league} onAvatar face={48} />} />
                       <div className={styles.readerIdentity}>
                         <div className={styles.readerName}>{entry.display_name}</div>
                         {entry.archetype_key && (

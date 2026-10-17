@@ -164,9 +164,10 @@ class AwardsOut(BaseModel):
     holders: dict[str, int]
     secret_total: int
     genre_minutes: dict[str, int] = {}
-    # the pin worn by the avatar: the reader's choice or else the newest; `featured_chosen` = they picked it
+    # the pin worn by the avatar (None: none shown); mode "auto" | "chosen" | "none"; `featured_auto` = the automatic one
     featured: str | None = None
-    featured_chosen: bool = False
+    featured_mode: str = "auto"
+    featured_auto: str | None = None
     title: str | None
     first_time: bool
     since: int | None = None

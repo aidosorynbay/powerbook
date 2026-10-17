@@ -300,6 +300,7 @@ class _Everyone:
     holders: dict[str, int] = {}
     readers: int = 0
     treasury: tuple[int, dict[int, date]] = (0, {})
+    earned: dict[uuid.UUID, dict[str, date]] = {}
 
 
 def _everyone(db: Session) -> type[_Everyone]:
@@ -312,15 +313,56 @@ def _everyone(db: Session) -> type[_Everyone]:
     neutral = streaks.circle_last_days(db)
     treasury = treasury_marks(db)
     holders: dict[str, int] = defaultdict(int)
+    earned: dict[uuid.UUID, dict[str, date]] = {}
     readers = 0
-    for p in people.values():
+    for uid, p in people.items():
         if sum(p.minutes.values()) <= 0:
             continue
         readers += 1
-        for k in evaluate(p, rounds, neutral, treasury).earned:
+        earned[uid] = evaluate(p, rounds, neutral, treasury).earned
+        for k in earned[uid]:
             holders[k] += 1
-    _Everyone.holders, _Everyone.readers, _Everyone.treasury, _Everyone.at = dict(holders), readers, treasury, time.monotonic()
+    _Everyone.holders, _Everyone.readers, _Everyone.treasury, _Everyone.earned = dict(holders), readers, treasury, earned
+    _Everyone.at = time.monotonic()
     return _Everyone
+
+
+# The pin worn by default when the reader has not chosen one: "rarest" or "newest". The founder picks from a
+# picture of the whole hall drawn both ways (council, 2026-10-18). Secrets are never picked by themselves.
+AUTO_PIN = "rarest"
+
+
+def auto_pin(on: dict[str, date], holders: dict[str, int]) -> str | None:
+    order = {a.key: i for i, a in enumerate(CATALOG)}
+    keys = [k for k in on if k in BY_KEY and not BY_KEY[k].secret]
+    if AUTO_PIN == "newest":
+        return max(keys, key=lambda k: (on[k], order[k]), default=None)
+    return min(keys, key=lambda k: (holders.get(k, 0), -order[k]), default=None)
+
+
+def worn_all(db: Session) -> dict[str, str]:
+    """user id → the pin worn by their avatar on the site: their own choice, else the automatic one.
+    Readers who hid their awards or chose «Не носить» wear none — it is never sent."""
+    ev = _everyone(db)
+    chosen: dict[uuid.UUID, str] = {}
+    held: dict[uuid.UUID, dict[str, date]] = defaultdict(dict)
+    for uid, k, d, featured in db.execute(select(ReaderAward.user_id, ReaderAward.key, ReaderAward.earned_on, ReaderAward.featured)).all():
+        held[uid][k] = d
+        if featured:
+            chosen[uid] = k
+    off = set(
+        db.execute(
+            select(NotificationPref.user_id).where(NotificationPref.kind.in_(("awards", PIN_PREF)), NotificationPref.enabled.is_(False))
+        ).scalars()
+    )
+    out: dict[str, str] = {}
+    for uid in set(ev.earned) | set(held):
+        if uid in off:
+            continue
+        k = chosen.get(uid) or auto_pin({**ev.earned.get(uid, {}), **held[uid]}, ev.holders)
+        if k:
+            out[str(uid)] = k
+    return out
 
 
 def rarity(holders: int, readers: int) -> int:
@@ -365,11 +407,12 @@ def mine(db: Session, *, user_id: uuid.UUID, effective_ids: list[uuid.UUID]) -> 
 
     on = {k: r.earned_on for k, r in held.items()}
     chosen = next((k for k, r in held.items() if r.featured), None)
+    pin_off = _pin_off(db, user_id)
     unseen = {k for k, r in held.items() if r.seen_at is None}
-    return _showcase(res, everyone, on, unseen, first_time=not shown_before, effective_ids=effective_ids, hidden=is_hidden(db, user_id), chosen=chosen)
+    return _showcase(res, everyone, on, unseen, first_time=not shown_before, effective_ids=effective_ids, hidden=is_hidden(db, user_id), chosen=chosen, pin_off=pin_off)
 
 
-def _showcase(res: Result, everyone: type[_Everyone], on: dict[str, date], unseen: set[str], *, first_time: bool, effective_ids: list[uuid.UUID], hidden: bool, chosen: str | None = None) -> dict:
+def _showcase(res: Result, everyone: type[_Everyone], on: dict[str, date], unseen: set[str], *, first_time: bool, effective_ids: list[uuid.UUID], hidden: bool, chosen: str | None = None, pin_off: bool = False) -> dict:
     tracks = []
     for track, ns in TRACKS.items():
         value = res.values.get(track, 0)
@@ -389,17 +432,18 @@ def _showcase(res: Result, everyone: type[_Everyone], on: dict[str, date], unsee
         for a in CATALOG
         if a.key in on
     ]
-    # worn by the avatar: the reader's choice, else the newest (by day, then by the catalog's order)
-    order = {a.key: i for i, a in enumerate(CATALOG)}
-    newest = max(on, key=lambda k: (on[k], order.get(k, 0)), default=None)
+    # worn by the avatar: the reader's choice, else the automatic one; «Не носить» = none
+    auto = auto_pin(on, everyone.holders)
+    mode = "none" if pin_off else "chosen" if chosen else "auto"
     days = res.values.get("days", 0)
     title = next((n for n in reversed(TRACKS["days"]) if days >= n), None)
     return {
         "earned": earned,
         "tracks": tracks,
         "holders": {a.key: everyone.holders.get(a.key, 0) for a in CATALOG if not a.secret},
-        "featured": None if hidden else (chosen or newest),
-        "featured_chosen": bool(chosen) and not hidden,
+        "featured": None if hidden or pin_off else (chosen or auto),
+        "featured_mode": mode,
+        "featured_auto": auto,
         "secret_total": sum(1 for a in CATALOG if a.secret),
         # the reader's own minutes by genre (the personal statistics the genre pins grow from)
         "genre_minutes": dict(sorted(res.genre_minutes.items(), key=lambda kv: -kv[1])),
@@ -441,22 +485,33 @@ def peek(db: Session, *, user_id: uuid.UUID, effective_ids: list[uuid.UUID]) -> 
     return _showcase(res, everyone, on, set(), first_time=False, effective_ids=effective_ids, hidden=False)
 
 
+PIN_PREF = "awards_pin"  # a notification_prefs row: enabled False = «Не носить» (no pin by the avatar anywhere)
+
+
+def _pin_off(db: Session, user_id: uuid.UUID) -> bool:
+    row = db.get(NotificationPref, (user_id, PIN_PREF))
+    return row is not None and not row.enabled
+
+
 def set_featured(db: Session, *, user_id: uuid.UUID, key: str | None) -> str | None:
-    """Wear this award by the avatar (None: back to the newest). Only an award the reader holds."""
+    """What the avatar wears: an award the reader holds, None = automatic, "none" = no pin at all."""
     held = _held(db, user_id)
-    if key is not None and key not in held:
+    if key not in (None, "none") and key not in held:
         raise ValueError("not held")
     for k, row in held.items():
         row.featured = k == key
+    row = db.get(NotificationPref, (user_id, PIN_PREF))
+    if row is None:
+        db.add(NotificationPref(user_id=user_id, kind=PIN_PREF, enabled=key != "none"))
+    else:
+        row.enabled = key != "none"
     db.commit()
     return key
 
 
-def public_featured(db: Session, user_id: uuid.UUID) -> str | None:
-    """What others see by a reader's avatar: only a pin they chose themselves, never the quiet default."""
-    if is_hidden(db, user_id):
-        return None
-    return db.execute(select(ReaderAward.key).where(ReaderAward.user_id == user_id, ReaderAward.featured.is_(True))).scalar_one_or_none()
+def worn_by(db: Session, user_id: uuid.UUID) -> str | None:
+    """The pin one reader wears, as everyone sees it."""
+    return worn_all(db).get(str(user_id))
 
 
 def mark_seen(db: Session, *, user_id: uuid.UUID, keys: list[str]) -> int:

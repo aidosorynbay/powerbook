@@ -10,7 +10,8 @@ import { bookCount } from '@/pages/library/bookcase/plural';
 import styles from './PublicProfilePage.module.css';
 import { ProfileListings } from '../books/ProfileBits';
 import { LeagueGlyph } from '@/widgets/League';
-import { AwardsPeek, WornPin, awardsOn } from '@/widgets/Awards';
+import { AwardsPeek, PinCard, awardsOn } from '@/widgets/Awards';
+import { pinCutUrl } from '@/shared/lib';
 
 function getMusicEmbedUrl(url: string): string | null {
   try {
@@ -43,6 +44,7 @@ export function PublicProfilePage() {
   const { t, locale } = useI18n();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [pinOpen, setPinOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isTogglingBuddy, setIsTogglingBuddy] = useState(false);
   const [showBadges, setShowBadges] = useState(false);
@@ -103,7 +105,11 @@ export function PublicProfilePage() {
             ) : (
               <>
                 <div className={styles.hero}>
-                  <Avatar src={profile.avatar_data} name={profile.display_name} size="xl" pin={profile.featured_award && awardsOn(viewer) ? <WornPin k={profile.featured_award} size={46} /> : undefined} badge={profile.league && <LeagueGlyph tier={profile.league} onAvatar face={100} />} />
+                  <Avatar src={profile.avatar_data} name={profile.display_name} size="xl" pin={profile.featured_award && awardsOn(viewer) ? (
+                    <button type="button" className={styles.pinBtn} onClick={() => setPinOpen(true)} aria-label={profile.featured_award}>
+                      <img src={pinCutUrl(profile.featured_award)} alt="" draggable={false} />
+                    </button>
+                  ) : null} badge={profile.league && <LeagueGlyph tier={profile.league} onAvatar face={100} />} />
                   <div className={styles.name}>{profile.display_name}</div>
                   {profile.archetype_key && (
                     <div className={styles.archetype}>
@@ -337,6 +343,7 @@ export function PublicProfilePage() {
         </div>,
         document.body
       )}
+      {pinOpen && profile?.featured_award && <PinCard k={profile.featured_award} onClose={() => setPinOpen(false)} />}
     </PageTransition>
   );
 }

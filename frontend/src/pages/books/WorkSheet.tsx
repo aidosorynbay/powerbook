@@ -202,7 +202,7 @@ export function WorkSheet({ workKey, title, onClose, onChanged, review }: Props)
                 {work.reviews.map((r) => (
                   <li key={r.id} id={`review-${r.id}`} className={`${styles.review} ${r.id === review ? styles.reviewNew : ''}`}>
                     <div className={styles.reviewHead}>
-                      <Avatar src={r.avatar_data} name={r.display_name} size="sm" />
+                      <Avatar src={r.avatar_data} name={r.display_name} size="sm" userId={r.user_id} />
                       <Link to={`/readers/${r.user_id}`}>{r.is_viewer ? `${r.display_name} (${t('work.you')})` : r.display_name}</Link>
                       <PbBadge value={r.rating} />
                     </div>
@@ -242,7 +242,7 @@ export function WorkSheet({ workKey, title, onClose, onChanged, review }: Props)
                 {work.readers_list.map((r) => (
                   <li key={r.user_id}>
                     <Link to={`/readers/${r.user_id}`}>
-                      <Avatar src={r.avatar_data} name={r.display_name} size="sm" />
+                      <Avatar src={r.avatar_data} name={r.display_name} size="sm" userId={r.user_id} />
                       <span>{r.is_viewer ? t('work.you') : r.display_name}</span>
                     </Link>
                   </li>

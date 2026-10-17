@@ -301,21 +301,33 @@ def test_genre_minutes_come_from_the_books_and_make_a_pin(env, monkeypatch):
     assert "variety_3" not in got  # two genres so far
 
 
-def test_the_pin_by_the_avatar_is_the_newest_until_the_reader_picks_one(env):
+def test_the_pin_by_the_avatar_is_automatic_until_the_reader_picks_one_or_none(env):
     db, client, me, other, octo = env
+    awards.reset_cache()
     body = client.get("/api/insights/awards", headers=_auth(me)).json()
-    newest = max(body["earned"], key=lambda a: a["on"])
-    assert body["featured"] in {a["key"] for a in body["earned"] if a["on"] == newest["on"]}
-    assert body["featured_chosen"] is False
-    assert awards.public_featured(db, me.id) is None  # others never see the automatic one
-    r = client.post("/api/insights/awards/feature", json={"key": "days_30"}, headers=_auth(me))
-    assert r.status_code == 200
+    held = {a["key"] for a in body["earned"]}
+    assert body["featured_mode"] == "auto" and body["featured"] == body["featured_auto"]
+    assert body["featured"] in held and not awards.BY_KEY[body["featured"]].secret  # secrets never picked by themselves
+    worn = client.get("/api/insights/awards/worn", headers=_auth(other)).json()
+    assert worn[str(me.id)] == body["featured"]  # everyone sees the same pin
+    assert client.post("/api/insights/awards/feature", json={"key": "days_30"}, headers=_auth(me)).status_code == 200
     body = client.get("/api/insights/awards", headers=_auth(me)).json()
-    assert body["featured"] == "days_30" and body["featured_chosen"] is True
-    assert awards.public_featured(db, me.id) == "days_30"
+    assert body["featured"] == "days_30" and body["featured_mode"] == "chosen"
+    assert awards.worn_by(db, me.id) == "days_30"
     assert client.post("/api/insights/awards/feature", json={"key": "days_1000"}, headers=_auth(me)).status_code == 400
+    client.post("/api/insights/awards/feature", json={"key": "none"}, headers=_auth(me))
+    body = client.get("/api/insights/awards", headers=_auth(me)).json()
+    assert body["featured"] is None and body["featured_mode"] == "none"
+    assert str(me.id) not in client.get("/api/insights/awards/worn", headers=_auth(other)).json()  # never sent
     client.post("/api/insights/awards/feature", json={"key": None}, headers=_auth(me))
-    assert client.get("/api/insights/awards", headers=_auth(me)).json()["featured_chosen"] is False
-    client.post("/api/insights/awards/feature", json={"key": "days_30"}, headers=_auth(me))
+    assert client.get("/api/insights/awards", headers=_auth(me)).json()["featured_mode"] == "auto"
     client.post("/api/insights/awards/hidden", json={"hidden": True}, headers=_auth(me))
-    assert awards.public_featured(db, me.id) is None  # hidden awards stay hidden everywhere
+    assert awards.worn_by(db, me.id) is None  # hidden awards stay hidden everywhere
+
+
+def test_the_automatic_pin_is_the_rarest_or_the_newest_and_never_a_secret(monkeypatch):
+    on = {"days_1": date(2021, 4, 1), "first_year": date(2021, 4, 1), "streak_30": date(2021, 5, 1), "days_30": date(2026, 9, 1)}
+    holders = {"days_1": 50, "first_year": 1, "streak_30": 4, "days_30": 30}
+    assert awards.auto_pin(on, holders) == "streak_30"
+    monkeypatch.setattr(awards, "AUTO_PIN", "newest")
+    assert awards.auto_pin(on, holders) == "days_30"
