@@ -443,6 +443,8 @@ def deliver(db: Session, now: datetime | None = None) -> int:
 
 
 def tick(db: Session, now: datetime | None = None) -> None:
+    if settings.checkin_paused:
+        return
     plan(db, now)
     deliver(db, now)
 

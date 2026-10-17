@@ -196,6 +196,16 @@ def test_a_list_nobody_approved_goes_again_on_its_own(env, monkeypatch):
     assert checkins.deliver(db, at(16, 20)) >= 1
 
 
+def test_paused_nothing_is_planned_or_sent(env, monkeypatch):
+    db, u, october, told, pushed = env
+    monkeypatch.setattr(settings, "checkin_paused", True)
+    checkins.tick(db, at(15, 20))
+    assert db.execute(select(Checkin.id)).first() is None and told == [] and pushed == []
+    monkeypatch.setattr(settings, "checkin_paused", False)
+    checkins.tick(db, at(15, 20))
+    assert db.execute(select(Checkin.id)).first() is not None
+
+
 def test_never_in_the_circles_first_days(env):
     db, u, october, told, pushed = env
     assert checkins.plan(db, at(3, 10)) == []

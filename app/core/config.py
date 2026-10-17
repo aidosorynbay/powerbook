@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     checkin_from_username: str = ""
     checkin_auto: bool = True
     checkin_voice: str = "powerbook"
+    # PAUSED (2026-10-17): the founder wrote to everyone in Telegram himself and asked to close the
+    # subject for now. While true, nothing is planned or sent and the bot sends no list; answers to
+    # messages already delivered still work. CHECKIN_PAUSED=false starts it again.
+    checkin_paused: bool = True
     # Messages between readers (app/services/buddy_chat.py): built and lawful, but parked until the
     # club has 80+ active readers (the council and the founder, 2026-10-15). Off: its routes are 404.
     buddy_chat_enabled: bool = False
