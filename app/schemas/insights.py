@@ -129,6 +129,46 @@ class LeagueOut(BaseModel):
     collection: list[LeagueHeldOut]
 
 
+class AwardEarnedOut(BaseModel):
+    key: str
+    on: date
+    holders: int
+    new: bool
+
+
+class AwardTrackOut(BaseModel):
+    track: str
+    value: int
+    # where the reader stands now towards the next pin (the streak still going; elsewhere = value;
+    # for "together" the minutes of the whole treasury, its steps counted in millions)
+    now: int
+    next: int | None
+
+
+class AwardsOut(BaseModel):
+    """The reader's own awards (app/services/awards.py): earned ones with the day
+    and how many readers hold them, each track's step, and what is new."""
+
+    earned: list[AwardEarnedOut]
+    tracks: list[AwardTrackOut]
+    holders: dict[str, int]
+    secret_total: int
+    title: str | None
+    first_time: bool
+    since: int | None = None
+    has_archive: bool = False
+    # «Скрыть награды»: no windows, a quiet line in the profile
+    hidden: bool = False
+
+
+class AwardsSeenIn(BaseModel):
+    keys: list[str] = Field(max_length=100)
+
+
+class AwardsHiddenIn(BaseModel):
+    hidden: bool
+
+
 class WrappedOut(BaseModel):
     year: int
     total_minutes: int

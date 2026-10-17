@@ -1,4 +1,5 @@
 from app.models.ai_digest import AiDigest
+from app.models.award import ReaderAward
 from app.models.book_author import BookAuthor
 from app.models.book_chat import BookChat
 from app.models.book_cover import BookCover
@@ -79,6 +80,7 @@ __all__ = [
     "WaitlistEntry",
     "DayShare",
     "StickerUse",
+    "ReaderAward",
     "ReaderFeedback",
     "FeedbackAsk",
     "Checkin",

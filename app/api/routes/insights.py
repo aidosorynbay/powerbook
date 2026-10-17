@@ -5,12 +5,15 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_admin
 from app.db.session import get_db
 from app.schemas.insights import (
     BadgeStatsOut,
     AllTimeProfileOut,
     ArchetypeOut,
+    AwardsHiddenIn,
+    AwardsOut,
+    AwardsSeenIn,
     BadgeOut,
     BookshelfEntryOut,
     CelebrityMatchOut,
@@ -23,6 +26,8 @@ from app.schemas.insights import (
     ReadingTwinOut,
     WrappedOut,
 )
+from app.repositories.claims import ClaimsRepository
+from app.services import awards
 from app.services.insights import InsightsService
 
 router = APIRouter(prefix="/insights", tags=["insights"])
@@ -111,6 +116,29 @@ def get_badges(db: Session = Depends(get_db), user=Depends(get_current_user)) ->
 @router.get("/league", response_model=LeagueOut)
 def get_league(db: Session = Depends(get_db), user=Depends(get_current_user)) -> LeagueOut:
     return InsightsService(db).league(user_id=user.id)
+
+
+@router.get("/awards", response_model=AwardsOut)
+def get_awards(db: Session = Depends(get_db), user=Depends(get_current_user)) -> AwardsOut:
+    ids = ClaimsRepository(db).effective_user_ids(user_id=user.id)
+    return AwardsOut(**awards.mine(db, user_id=user.id, effective_ids=ids))
+
+
+@router.post("/awards/seen")
+def mark_awards_seen(payload: AwardsSeenIn, db: Session = Depends(get_db), user=Depends(get_current_user)) -> dict:
+    return {"added": awards.mark_seen(db, user_id=user.id, keys=payload.keys)}
+
+
+@router.post("/awards/hidden")
+def hide_awards(payload: AwardsHiddenIn, db: Session = Depends(get_db), user=Depends(get_current_user)) -> dict:
+    return {"hidden": awards.set_hidden(db, user_id=user.id, hidden=payload.hidden)}
+
+
+@router.get("/awards/of/{user_id}", response_model=AwardsOut)
+def peek_awards(user_id: uuid.UUID, db: Session = Depends(get_db), admin=Depends(require_admin)) -> AwardsOut:
+    """Another reader's awards, for the founder checking them against the old tables (nothing is written)."""
+    ids = ClaimsRepository(db).effective_user_ids(user_id=user_id)
+    return AwardsOut(**awards.peek(db, user_id=user_id, effective_ids=ids))
 
 
 @router.get("/wrapped", response_model=WrappedOut)
