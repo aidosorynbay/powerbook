@@ -42,7 +42,9 @@ cd frontend && npx tsc -b && npx vite build  # types + build
 
 Two tests depend on the current date and fail regardless of changes
 (`test_books_market.py::test_reading_overview_recommendations_and_notebook`,
-`test_reading_room.py::test_the_day_in_the_chat`); confirm a failure also happens on
+`test_reading_room.py::test_the_day_in_the_chat`); since 18 Oct 2026 three `test_clan_war.py` tests fail too
+(they patch `_today` but the logs get the real `created_at`, so «logged before midnight» turns false);
+`test_watch_notify.py::test_answers_under_a_review_are_a_little_chat` is flaky. Confirm a failure also happens on
 `master` before calling it pre-existing. For UI changes, run the app locally and look at
 it in a browser, phone width (390px) included.
 
@@ -78,6 +80,13 @@ it in a browser, phone width (390px) included.
   watchers come from the catalog work (`work.readers`, `idx.by_person`, the copy's `work_key`), never from
   comparing spellings — the guard test fails on a new module that turns titles into keys itself.
 - Existing members stay free forever; monetisation ideas must not take away what they have.
+- **Awards** («Мои награды», enamel pins): `app/services/awards.py` works them out from `reading_logs` (score 1 =
+  a day of 30+ minutes, archive nicknames folded in) and writes each one to `reader_awards` the first time it is
+  found — never delete those rows: an award once given stays. Catalog: `TRACKS`/`SPECIAL` there, mirrored in
+  `frontend/src/widgets/Awards/catalog.ts`; texts are `aw.*` in i18n; pictures are `frontend/public/award-pins/`
+  (`<key>.webp` 768 px, `s/<key>.webp` 256 px; a folder named like a page would shadow the route). The UI is
+  admins-only while `FOR_EVERYONE` in `widgets/Awards/Awards.tsx` is false. Research and council behind it:
+  `~/Desktop/powerbook-sync/reports/nagrady_*.md`.
 - **Reading room pictures:** `frontend/public/reading-room/` and `widgets/ReadingRoom/casts.js` are built on the
   founder's Mac by `~/powerbook-sync/prototypes/reading-room/` (not in git): `seg_birefnet.py` → `dump_owners.py` →
   `sam_masks.py` → `build_figures.py` → `build_lids.py` → `casts_js.py`. The top-left corner of each `*-people.png`

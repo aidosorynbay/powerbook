@@ -17,6 +17,9 @@ import styles from './Awards.module.css';
 
 type T = (k: string, p?: Record<string, string | number>) => string;
 
+/** How many holders still make an award rare enough to say so. */
+const RARE = 40;
+
 /** Shown to admins first, as «?» was (founder, 2026-10-16): flip to show every reader. */
 export const FOR_EVERYONE = false;
 export function awardsOn(user: { system_role?: string } | null | undefined): boolean {
@@ -58,7 +61,9 @@ function useWords() {
     const daysWord = (n: number) => t(plural(locale, n, 'lg.day1', 'lg.day2', 'lg.day5'));
     // company, not a place: «вы и ещё 12 читателей»; never a percent, never «из 916»; under five others no number
     // (with 53 readers in a circle, «вы и ещё 2» points at people — council, 2026-10-18)
-    const company = (n: number) => {
+    // and only for the rare ones: «вы и ещё 900» says nothing (research, 2026-10-18)
+    const company = (n: number): string | null => {
+      if (n > RARE) return null;
       const others = Math.max(0, n - 1);
       if (others === 0) return t('aw.onlyYou');
       if (others < 5) return t('aw.withFew');
@@ -310,7 +315,11 @@ export function AwardDetail({ award, onClose, awards, name, username, readOnly =
         {e ? (
           <>
             <p className={styles.detailMeta}>{t('aw.earnedOn', { date: w.date(e.on) })}</p>
-            <p className={styles.detailMeta}>{readOnly ? w.already(e.holders) : w.company(e.holders)}</p>
+            {readOnly ? (
+              <p className={styles.detailMeta}>{w.already(e.holders)}</p>
+            ) : (
+              w.company(e.holders) && <p className={styles.detailMeta}>{w.company(e.holders)}</p>
+            )}
             {!readOnly && (
               <button type="button" className={styles.primary} onClick={share} disabled={busy}>
                 {t('aw.share')}
@@ -457,7 +466,8 @@ export function AwardsMoment({ awards, name, username, onSeen }: { awards: Award
       </div>
       <div className={styles.nightName}>{nameOf(t, e.key)}</div>
       <div className={styles.nightCond}>{condOf(t, e.key)}</div>
-      <div className={styles.nightMeta}>{w.company(e.holders)}</div>
+      <div className={styles.nightMeta}>{t('aw.earnedOn', { date: w.date(e.on) })}</div>
+      {w.company(e.holders) && <div className={styles.nightMeta}>{w.company(e.holders)}</div>}
       <div className={styles.nightActions}>
         <button type="button" className={styles.primary} onClick={() => shareOne(e)} disabled={busy}>
           {t('aw.share')}
