@@ -812,6 +812,7 @@ const translations = {
     'dashboard.legendStar': 'Книга прочитана',
     'dashboard.legendComment': 'Есть комментарий',
     'dashboard.circleCalendar': 'Календарь круга',
+    'dashboard.rosterCount': 'отметил {n} человек|отметили {n} человека|отметили {n} человек',
     'dashboard.hideComment': 'Скрыть комментарий от других',
 
     // Results
@@ -3512,6 +3513,7 @@ const translations = {
     'dashboard.legendStar': 'Кітап оқылды',
     'dashboard.legendComment': 'Түсініктеме бар',
     'dashboard.circleCalendar': 'Айналым күнтізбесі',
+    'dashboard.rosterCount': '{n} адам белгіледі',
     'dashboard.hideComment': 'Түсініктемені басқалардан жасыру',
 
     // Results
@@ -6212,6 +6214,7 @@ const translations = {
     'dashboard.legendStar': 'Book finished',
     'dashboard.legendComment': 'Has comment',
     'dashboard.circleCalendar': 'Circle calendar',
+    'dashboard.rosterCount': '{n} reader logged|{n} readers logged',
     'dashboard.hideComment': 'Hide comment from others',
 
     // Results

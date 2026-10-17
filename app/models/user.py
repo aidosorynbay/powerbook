@@ -3,7 +3,9 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Boolean, Enum, ForeignKey, String, Text, Uuid, func
+from datetime import datetime
+
+from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, String, Text, Uuid, func
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -60,6 +62,12 @@ class User(TimestampMixin, Base):
     # shown it is theirs, and holding the unique column locked the real owner
     # out of registering. Only a label to match claims by; never unique.
     archive_nick: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True, default=None)
+
+    # How the reader opens PowerBook: "browser", or "standalone" / "ios_standalone" for the app on the home screen.
+    # app_first_open_at is the first time it was opened that way; kept even if the icon is deleted later.
+    display_mode: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)
+    display_mode_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    app_first_open_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 
     @hybrid_property
     def telegram_handle(self) -> str | None:

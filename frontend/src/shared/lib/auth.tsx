@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
 import { getApiBaseUrl, getAuthToken } from './api';
+import { getDisplayMode } from './install';
 import { STORAGE_KEY_TOKEN } from './constants';
 import { readToken, rememberToken } from './api';
 import type { User } from './types';
@@ -23,6 +24,25 @@ function claimsOf(token: string): { iat?: number; pv?: string } | null {
     return JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')));
   } catch {
     return null;
+  }
+}
+
+/** Tells the server once per visit how PowerBook is opened (browser, or the app on the home screen). */
+async function reportDisplayMode(apiBaseUrl: string, token: string): Promise<void> {
+  try {
+    if (sessionStorage.getItem('pb.dmSent') === '1') return;
+    sessionStorage.setItem('pb.dmSent', '1');
+  } catch {
+    /* storage blocked: report anyway */
+  }
+  try {
+    await fetch(`${apiBaseUrl}/auth/display-mode`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: getDisplayMode() }),
+    });
+  } catch {
+    /* offline: the next visit */
   }
 }
 
@@ -100,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else if (u !== 'offline') {
       setUser(u);
       void renew(token);
+      void reportDisplayMode(apiBaseUrl, token);
     }
     setIsLoading(false);
   }, [token, fetchUser, renew]);

@@ -3,8 +3,9 @@ from __future__ import annotations
 import hashlib
 import hmac
 import time
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -55,6 +56,25 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
 @router.get("/me", response_model=UserOut)
 def me(current_user=Depends(get_current_user)) -> UserOut:
     return UserOut.model_validate(current_user)
+
+
+_DISPLAY_MODES = {"browser", "standalone", "ios_standalone"}
+
+
+@router.post("/display-mode", status_code=204)
+def save_display_mode(
+    mode: str = Body(..., embed=True), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> None:
+    """How the reader opened PowerBook just now: in a browser, or as the app on the home screen. Kept on the user so
+    «how many installed it» is one query, not a guess from analytics."""
+    if mode not in _DISPLAY_MODES:
+        raise HTTPException(status_code=422, detail="Unknown display mode")
+    now = datetime.now(timezone.utc)
+    current_user.display_mode = mode
+    current_user.display_mode_at = now
+    if mode != "browser" and current_user.app_first_open_at is None:
+        current_user.app_first_open_at = now
+    db.commit()
 
 
 @router.post("/refresh", response_model=TokenResponse)

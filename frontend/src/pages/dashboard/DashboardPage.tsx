@@ -2190,7 +2190,10 @@ export function DashboardPage() {
       {rosterModalDate && createPortal(
         <div className={styles.modal} onClick={closeRosterModal}>
           <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <div className={styles.modalTitle}>{rosterModalDate}</div>
+            <div className={styles.modalTitle}>
+              {rosterModalDate}
+              <span className={styles.modalCount}>{t('dashboard.rosterCount', { n: roster?.days[rosterModalDate]?.length ?? 0 })}</span>
+            </div>
             <ul className={styles.rosterList}>
               {(roster?.days[rosterModalDate] ?? []).map(entry => (
                 <li key={entry.user_id} className={styles.rosterRow}>
