@@ -45,7 +45,7 @@ function Face({ m }: { m: Msg }) {
 }
 
 export function TeamChat() {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const [chat, setChat] = useState<TeamChatState | null>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -131,7 +131,7 @@ export function TeamChat() {
           const same = !newDay && prev && prev.kind === 'user' && m.kind === 'user' && prev.user_id === m.user_id;
           return (
             <div key={m.id}>
-              {newDay && <div className={styles.chatDay}>{new Date(m.at).toLocaleDateString(locale === 'en' ? 'en-GB' : locale === 'kk' ? 'kk-KZ' : 'ru-RU', { day: 'numeric', month: 'long' })}</div>}
+              {newDay && <div className={styles.chatDay}>{`${new Date(m.at).getDate()} ${t(`month.gen.${new Date(m.at).getMonth() + 1}`)}`}</div>}
               {m.kind === 'bot' ? (
                 <div className={styles.chatBot}>{bot(m)}</div>
               ) : (

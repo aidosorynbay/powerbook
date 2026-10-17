@@ -139,7 +139,7 @@ function Field({ war, live, onTeam }: { war: War; live: boolean; onTeam: (k: Tea
  * shows the same number); a guest's stays with the war. Between 00:00 and 04:00 a circle reader first picks the
  * day: yesterday goes to the circle only, the war's day having closed at midnight. */
 function MinutesLog({ war, onSaved }: { war: War; onSaved: (w: War) => void }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const ask = !!war.me.ask_day;
   const [day, setDay] = useState<'today' | 'yesterday' | null>(ask ? null : 'today');
   const figure = (d: 'today' | 'yesterday' | null) => (d === 'yesterday' ? war.me.minutes_yesterday : d === 'today' ? war.me.minutes : 0) || 0;
@@ -154,7 +154,8 @@ function MinutesLog({ war, onSaved }: { war: War; onSaved: (w: War) => void }) {
   const label = (offset: number) => {
     const [y, m, d] = war.start_date.split('-').map(Number);
     const x = new Date(Date.UTC(y, m - 1, d + war.day - 1 - offset));
-    return x.toLocaleDateString(locale === 'en' ? 'en-GB' : locale === 'kk' ? 'kk-KZ' : 'ru-RU', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+    // the site's own month names: Chrome has none for kk-KZ and wrote «M10 17»
+    return `${x.getUTCDate()} ${t(`month.gen.${x.getUTCMonth() + 1}`)}`;
   };
   const save = async () => {
     const minutes = parseInt(val, 10);
