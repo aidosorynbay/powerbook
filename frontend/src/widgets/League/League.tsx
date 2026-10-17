@@ -47,13 +47,10 @@ function useLeagueFonts() {
   }, []);
 }
 
-export function monthName(year: number, month: number, locale: Locale): string {
-  try {
-    const s = new Intl.DateTimeFormat(locale === 'kk' ? 'kk-KZ' : locale, { month: 'long' }).format(new Date(year, month - 1, 15));
-    return s.charAt(0).toLowerCase() + s.slice(1);
-  } catch {
-    return String(month);
-  }
+/** The month in the site's own words: Chrome writes «M10» for kk-KZ, so the league card read «Лига · М10» (2026-10-18). */
+export function monthName(month: number, t: (k: string) => string): string {
+  const s = t(`month.${month}`);
+  return s.charAt(0).toLowerCase() + s.slice(1);
 }
 
 function useDays() {
@@ -148,7 +145,7 @@ export function LeagueCard({ league, name }: { league: League; name: string }) {
   useLeagueFonts();
   const p = league.progress;
   const tier = league.tier;
-  const month = p ? monthName(p.year, p.month, locale) : '';
+  const month = p ? monthName(p.month, t) : '';
   const basis = league.based_on;
   const { line, warn } = leagueLine(league, t, days);
   const share = p ? Math.min(100, (p.scored / Math.max(1, p.total)) * 100) : 0;
@@ -250,7 +247,7 @@ function CollectionSheet({ open, onClose, league, name, head = false }: { open: 
                 <LeagueMark tier={tier} name={name} since={league.since_year} px={78} />
               </div>
               <b>{t(`league.${tier}`)}</b>
-              <small>{h ? `${monthName(h.year, h.month, locale)} ${h.year}` : need}</small>
+              <small>{h ? `${monthName(h.month, t)} ${h.year}` : need}</small>
             </div>
           );
         })}
