@@ -159,14 +159,12 @@ def _load(db: Session, finished: set[uuid.UUID], who: Callable[[uuid.UUID], uuid
         if rid in finished:
             people[who(uid)].circles.add(rid)
 
-    # the first clan war (October 2026): everyone who signed up, once it began
+    # the first clan war (October 2026): everyone who took part, handed out once the war is over,
+    # dated the day it ended (founder, 2026-10-18: «только после битвы»)
     war = db.execute(select(ClanWar).order_by(ClanWar.start_date).limit(1)).scalar_one_or_none()
-    if war is not None and _today() >= war.start_date:
-        for uid, joined in db.execute(
-            where(select(ClanWarMember.user_id, ClanWarMember.created_at), ClanWarMember.user_id).where(ClanWarMember.war_id == war.id)
-        ).all():
-            j = _local(joined)
-            people[who(uid)].war.append(max(war.start_date, j.date()) if j else war.start_date)
+    if war is not None and _today() > war.end_date:
+        for (uid,) in db.execute(where(select(ClanWarMember.user_id), ClanWarMember.user_id).where(ClanWarMember.war_id == war.id)).all():
+            people[who(uid)].war.append(war.end_date)
 
     return dict(people)
 

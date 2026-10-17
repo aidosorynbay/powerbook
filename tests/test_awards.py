@@ -168,7 +168,7 @@ def test_the_showcase_folds_the_archive_and_dates_every_award(env):
     assert got["book_day"] == "2021-04-23"
     assert got["first_year"] == "2021-04-01"
     assert got["comeback"] == "2026-08-01"
-    assert got["war_1"] == "2026-10-18"
+    assert "war_1" not in got  # the war (18–31 October) is still on
     assert "new_year" not in got
     assert all(a["new"] for a in body["earned"]) and body["first_time"] is True
     # rarity counts people, the claimed nickname inside its claimant
@@ -198,11 +198,19 @@ def test_a_new_day_shows_at_once(env):
     assert after["tracks"][0]["value"] == 42
 
 
-def test_the_war_award_waits_for_the_war_to_begin(env, monkeypatch):
+def test_the_war_award_comes_after_the_war_and_is_dated_its_last_day(env, monkeypatch):
     db, client, me, other, octo = env
-    monkeypatch.setattr(awards, "_today", lambda: date(2026, 10, 17))
-    got = {a["key"] for a in client.get("/api/insights/awards", headers=_auth(me)).json()["earned"]}
-    assert "war_1" not in got
+    for today in (date(2026, 10, 17), date(2026, 10, 31)):  # before it, and on its last day
+        monkeypatch.setattr(awards, "_today", lambda today=today: today)
+        awards.reset_cache()
+        got = {a["key"] for a in client.get("/api/insights/awards", headers=_auth(me)).json()["earned"]}
+        assert "war_1" not in got
+    monkeypatch.setattr(awards, "_today", lambda: date(2026, 11, 1))
+    awards.reset_cache()
+    mine = {a["key"]: a["on"] for a in client.get("/api/insights/awards", headers=_auth(me)).json()["earned"]}
+    assert mine["war_1"] == "2026-10-31"
+    got = {a["key"] for a in client.get("/api/insights/awards", headers=_auth(other)).json()["earned"]}
+    assert "war_1" not in got  # signed up for nothing
 
 
 def test_an_award_once_given_stays(env):
