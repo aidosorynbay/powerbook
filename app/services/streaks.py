@@ -31,6 +31,22 @@ def _bridged(earlier: date, later: date, neutral: frozenset[date]) -> bool:
     return True
 
 
+def first_reached(days: list[date], targets: list[int], neutral: frozenset[date] = frozenset()) -> dict[int, date]:
+    """The day each run length was first reached, by the same rules: a run of
+    100 is dated on its hundredth day, whichever run got there first."""
+    ordered = sorted(set(days) - neutral)
+    out: dict[int, date] = {}
+    run = 0
+    prev: date | None = None
+    for d in ordered:
+        run = run + 1 if prev is not None and _bridged(prev, d, neutral) else 1
+        prev = d
+        for t in targets:
+            if run >= t and t not in out:
+                out[t] = d
+    return out
+
+
 def longest_and_current(days: list[date], neutral: frozenset[date] = frozenset(), today: date | None = None) -> tuple[int, int]:
     """The longest run of days and the run still going today (or yesterday).
 
