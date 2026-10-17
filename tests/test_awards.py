@@ -40,6 +40,15 @@ def test_days_are_dated_on_the_day_the_number_was_reached():
     assert res.values["days"] == 29
 
 
+def test_minutes_are_dated_on_the_day_the_total_was_reached():
+    p = Person(minutes={date(2026, 9, 1): 600, date(2026, 9, 2): 500, date(2026, 9, 3): 4000})
+    res = evaluate(p, [], frozenset())
+    assert res.earned["minutes_1000"] == date(2026, 9, 2)
+    assert res.earned["minutes_5000"] == date(2026, 9, 3)
+    assert "minutes_10000" not in res.earned
+    assert res.values["minutes"] == 5100
+
+
 def test_a_streak_runs_across_the_neutral_last_day_and_is_dated_when_reached():
     aug, sep = _round(2026, 8), _round(2026, 9)
     read = [d for d in aug.day_list + sep.day_list if d not in (aug.last_day_date, sep.last_day_date)]

@@ -69,6 +69,8 @@ class Award:
 TRACKS: dict[str, list[int]] = {
     # days of 30+ minutes, the ladder from a line to a library
     "days": [1, 30, 100, 200, 365, 500, 1000],
+    # every minute read, since the first one (founder, 2026-10-18: the hours stay, counted in minutes)
+    "minutes": [1000, 5000, 10000, 25000, 50000],
     # days of 30+ minutes in a row (a circle's last day neither counts nor breaks it); four steps, not six
     # (council, 2026-10-18): fewer and further apart, and Kazakh has one word for candle and lamp
     "streak": [7, 30, 100, 365],
@@ -191,6 +193,13 @@ def evaluate(p: Person, rounds: list[Round], neutral: frozenset[date], treasury:
         if len(counted) >= n:
             earned[f"days_{n}"] = counted[n - 1]
 
+    run = 0
+    todo = list(TRACKS["minutes"])
+    for d in sorted(p.minutes):
+        run += p.minutes[d]
+        while todo and run >= todo[0]:
+            earned[f"minutes_{todo.pop(0)}"] = d
+
     longest, current = streaks.longest_and_current(counted, neutral, _today()) if counted else (0, 0)
     for n, d in streaks.first_reached(counted, TRACKS["streak"], neutral).items():
         earned[f"streak_{n}"] = d
@@ -236,6 +245,7 @@ def evaluate(p: Person, rounds: list[Round], neutral: frozenset[date], treasury:
     values = {
         "since": first_minute.year if first_minute else 0,
         "days": len(counted),
+        "minutes": sum(p.minutes.values()),
         "streak": longest,
         # the run still going: the next streak pin needs a run that long, so progress is measured by it
         "streak_now": current,

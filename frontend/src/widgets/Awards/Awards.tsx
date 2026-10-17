@@ -112,6 +112,7 @@ const condOf = (t: T, key: string) => t(`aw.${key}.cond`);
 /** Where a track stands towards its next pin, in its own words. */
 function progressLine(t: T, w: Words, tr: string, now: number, next: number): string {
   if (tr === 'days') return t('aw.left.days', { left: w.days(next - now) });
+  if (tr === 'minutes') return t('aw.left.minutes', { left: w.num(next - now) });
   if (tr === 'streak') return t('aw.left.streak', { now: w.num(now), next: w.num(next) });
   if (tr === 'clean') return t('aw.left.clean', { now: w.num(now), next: w.num(next) });
   return t('aw.left.together', { now: w.millions(now), next: w.num(next) });
@@ -266,6 +267,7 @@ export function AwardsSheet({ open, onClose, awards, onPick, onHide, title }: {
           </div>
         )}
       </section>
+      <p className={styles.trackHint}>{t('aw.aiNote')}</p>
       <button type="button" className={styles.close} onClick={onClose}>
         {t('lg.done')}
       </button>

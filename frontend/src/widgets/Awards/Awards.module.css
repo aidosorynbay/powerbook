@@ -22,7 +22,7 @@
 }
 button.pin { cursor: pointer; }
 button.pin:active { transform: scale(0.96); }
-.pin img { width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(1.18); }
+.pin img { width: 100%; height: 100%; object-fit: cover; display: block; }
 /* not yet earned: the shape of the pin, without its colour */
 .locked img { filter: grayscale(1) brightness(0.42) contrast(1.15); opacity: 0.8; }
 :root[data-theme='light'] .pin { box-shadow: 0 1px 2px rgba(11, 28, 38, 0.18); }

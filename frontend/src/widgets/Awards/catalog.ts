@@ -3,12 +3,14 @@
 
 export const TRACKS: Record<string, number[]> = {
   days: [1, 30, 100, 200, 365, 500, 1000],
+  // every minute read, since the first one
+  minutes: [1000, 5000, 10000, 25000, 50000],
   streak: [7, 30, 100, 365],
   clean: [1, 3, 5, 10, 20],
   // millions of minutes in the shared treasury
   together: [1, 2, 3, 5, 10],
 };
-export const TRACK_ORDER = ['days', 'streak', 'clean', 'together'] as const;
+export const TRACK_ORDER = ['days', 'minutes', 'streak', 'clean', 'together'] as const;
 export const SPECIAL = ['book_day', 'new_year', 'full_year', 'comeback', 'first_year', 'war_1'];
 export const MILLION = 1_000_000;
 
