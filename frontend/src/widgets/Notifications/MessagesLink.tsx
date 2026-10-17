@@ -6,11 +6,14 @@ import styles from './Bell.module.css';
 
 export const READ_EVENT = 'pb:messages-read';
 
+/** Parked (2026-10-17): the founder took the messages function off the interface until it is built properly. */
+const MESSAGES_ICON = false;
+
 /**
  * Beside the bell: the way back to the conversation with the founder («Хей, как вы?»). A reader sees it once there
  * is a conversation; the founder always, with how many answers wait for him.
  */
-export function MessagesLink({ className = '' }: { className?: string }) {
+function MessagesIcon({ className = '' }: { className?: string }) {
   const { t } = useI18n();
   const { isAuthenticated } = useAuth();
   const { pathname } = useLocation();
@@ -39,4 +42,8 @@ export function MessagesLink({ className = '' }: { className?: string }) {
       {state.count > 0 && <span className={styles.badge}>{state.count > 9 ? '9+' : state.count}</span>}
     </Link>
   );
+}
+
+export function MessagesLink({ className = '' }: { className?: string }) {
+  return MESSAGES_ICON ? <MessagesIcon className={className} /> : null;
 }
