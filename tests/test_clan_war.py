@@ -145,7 +145,7 @@ def test_a_guest_from_outside_the_circle_logs_on_the_war_page(env, monkeypatch):
     assert c.post("/api/war/join", headers=h(guest)).json()["me"]["guest"] is True
     c.post("/api/war/join", headers=h(readers[0]))
     c.post("/api/war/split", headers=h(admin))
-    assert c.post("/api/war/read", json={"minutes": 40}, headers=h(readers[0])).status_code == 409  # circle members use the dial
+    assert c.post("/api/war/read", json={"minutes": 35, "day": "yesterday"}, headers=h(guest)).status_code == 409  # guests: today only
     body = c.post("/api/war/read", json={"minutes": 35}, headers=h(guest)).json()
     assert body["me"]["today"] is True and body["me"]["minutes"] == 35
     team = next(t for t in body["teams"] if any(m["display_name"] == "Guest" for m in t["members"]))
@@ -172,3 +172,40 @@ def test_a_day_logged_after_its_midnight_counts_for_the_circle_not_the_war(env, 
     monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 18))
     body = c.get("/api/war").json()
     assert sum(t["days"][0]["hits"] for t in body["teams"]) == 1
+
+
+def test_a_circle_reader_logs_on_the_war_page_into_the_circles_own_day(env, monkeypatch):
+    """The war page's form writes the very row the dial writes: one number in both places, comment and finish kept."""
+    db, c, admin, readers, rnd = env
+    monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 17))
+    c.post("/api/war/join", headers=h(readers[0]))
+    c.post("/api/war/join", headers=h(readers[1]))
+    c.post("/api/war/split", headers=h(admin))
+    db.add(ReadingLog(round_id=rnd.id, user_id=readers[0].id, date=date(2026, 10, 17), minutes=10, score=0,
+                      comment="Дюна", is_comment_private=False))
+    db.commit()
+    body = c.post("/api/war/read", json={"minutes": 40}, headers=h(readers[0])).json()
+    assert body["me"]["today"] is True and body["me"]["minutes"] == 40
+    rows = db.query(ReadingLog).filter_by(user_id=readers[0].id).all()
+    assert len(rows) == 1 and rows[0].minutes == 40 and rows[0].comment == "Дюна"
+    me = next(t for t in body["teams"] if any(m["display_name"] == "R0" for m in t["members"]))
+    assert [p["display_name"] for p in body["me"]["shelf_today"]] == ["R0"]
+    assert me["today"] == 1
+    # a day-time save cannot go to yesterday
+    assert c.post("/api/war/read", json={"minutes": 30, "day": "yesterday"}, headers=h(readers[0])).status_code == 409
+
+
+def test_after_midnight_a_circle_reader_is_asked_which_day(env, monkeypatch):
+    db, c, admin, readers, rnd = env
+    monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 17))
+    c.post("/api/war/join", headers=h(readers[0]))
+    c.post("/api/war/join", headers=h(readers[1]))
+    c.post("/api/war/split", headers=h(admin))
+    monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 18))
+    monkeypatch.setattr(clan_war, "_now", lambda: datetime(2026, 10, 18, 0, 40, tzinfo=ROUND_TZ))
+    body = c.get("/api/war", headers=h(readers[0])).json()
+    assert body["me"]["ask_day"] is True and body["me"]["minutes_yesterday"] == 0
+    body = c.post("/api/war/read", json={"minutes": 45, "day": "yesterday"}, headers=h(readers[0])).json()
+    row = db.query(ReadingLog).filter_by(user_id=readers[0].id).one()
+    assert row.date == date(2026, 10, 17) and row.minutes == 45  # the circle has it
+    assert body["me"]["minutes_yesterday"] == 45 and body["me"]["today"] is False

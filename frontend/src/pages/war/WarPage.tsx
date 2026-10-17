@@ -10,10 +10,12 @@ import { apiGet, apiPost, getApiBaseUrl, track, useAuth, useI18n } from '@/share
 import { Container, PageTransition } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import { Sheet } from '@/widgets/RoundToday';
-import { loadLeagueFonts } from '@/widgets/League';
+import { LeagueGlyph, loadLeagueFonts } from '@/widgets/League';
+import type { LeagueTierKey } from '@/shared/lib/types';
+import { TeamChat } from './TeamChat';
 import styles from './WarPage.module.css';
 
-type Person = { user_id: string; display_name: string; avatar: string | null };
+type Person = { user_id: string; display_name: string; avatar: string | null; league?: LeagueTierKey | null };
 type Day = { date: string; hits: number; size: number; locked: boolean };
 type Team = { key: 'lighthouse' | 'sail'; size: number; hp: number; bricks: number; bricks_left: number; points: number; shelf: number; fill: number; today: number | null; members: Person[]; days: Day[] };
 export type War = {
@@ -28,7 +30,7 @@ export type War = {
   signup_until: string;
   starts_at: string;
   is_admin: boolean;
-  me: { joined: boolean; team: Team['key'] | null; guest?: boolean; minutes?: number; hits?: number; days?: number; today?: boolean };
+  me: { joined: boolean; team: Team['key'] | null; guest?: boolean; minutes?: number; hits?: number; days?: number; today?: boolean; shelf_today?: Person[]; ask_day?: boolean; minutes_yesterday?: number };
   joined: Person[];
   teams: Team[];
   winner: Team['key'] | 'draw' | null;
@@ -60,14 +62,27 @@ export function useWar() {
   }, []);
   useEffect(() => {
     load();
+    // a page left open across 00:00 moves to the new day by itself (and the locked one shows its books)
+    const tick = window.setInterval(() => document.visibilityState === 'visible' && load(), 60000);
+    const back = () => document.visibilityState === 'visible' && load();
+    document.addEventListener('visibilitychange', back);
+    // the circle's dial saved minutes: the card and the page show the book at once
+    window.addEventListener('pb:minutes-saved', load);
+    return () => {
+      window.clearInterval(tick);
+      document.removeEventListener('visibilitychange', back);
+      window.removeEventListener('pb:minutes-saved', load);
+    };
   }, [load]);
   return { war, setWar, load };
 }
 
-function Avatar({ p }: { p: Person }) {
+/** A face with the reader's league ring and bookmark tail, as everywhere else on the site. */
+export function Avatar({ p }: { p: Person }) {
   return (
     <span className={styles.av} title={p.display_name}>
       {p.avatar ? <img src={`${getApiBaseUrl()}/social/avatar/${p.user_id}?v=${p.avatar}`} alt="" loading="lazy" /> : (p.display_name || '?').trim().charAt(0).toUpperCase()}
+      {p.league && <LeagueGlyph tier={p.league} onAvatar face={32} />}
     </span>
   );
 }
@@ -120,27 +135,61 @@ function Field({ war, live, onTeam }: { war: War; live: boolean; onTeam: (k: Tea
   );
 }
 
-/** For a war member outside the month's circle: today's minutes, right here (never in the circle). */
-function GuestLog({ war, onSaved }: { war: War; onSaved: (w: War) => void }) {
-  const { t } = useI18n();
-  const [val, setVal] = useState(String(war.me.minutes || ''));
+/** «Сколько минут ты читал сегодня?» for every member. A circle reader's figure is the circle's own (the dial
+ * shows the same number); a guest's stays with the war. Between 00:00 and 04:00 a circle reader first picks the
+ * day: yesterday goes to the circle only, the war's day having closed at midnight. */
+function MinutesLog({ war, onSaved }: { war: War; onSaved: (w: War) => void }) {
+  const { t, locale } = useI18n();
+  const ask = !!war.me.ask_day;
+  const [day, setDay] = useState<'today' | 'yesterday' | null>(ask ? null : 'today');
+  const figure = (d: 'today' | 'yesterday' | null) => (d === 'yesterday' ? war.me.minutes_yesterday : d === 'today' ? war.me.minutes : 0) || 0;
+  const [val, setVal] = useState(String(figure(day) || ''));
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(false);
+  const pick = (d: 'today' | 'yesterday') => {
+    setDay(d);
+    setVal(String(figure(d) || ''));
+  };
+  // the war's own today (Astana), not the phone's clock
+  const label = (offset: number) => {
+    const [y, m, d] = war.start_date.split('-').map(Number);
+    const x = new Date(Date.UTC(y, m - 1, d + war.day - 1 - offset));
+    return x.toLocaleDateString(locale === 'en' ? 'en-GB' : locale === 'kk' ? 'kk-KZ' : 'ru-RU', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  };
   const save = async () => {
     const minutes = parseInt(val, 10);
-    if (Number.isNaN(minutes)) return;
+    if (Number.isNaN(minutes) || !day) return;
     setBusy(true);
-    const { data } = await apiPost<War>('/war/read', { minutes }, { requireAuth: true });
-    if (data) onSaved(data);
-    track('war_guest_read', { minutes });
+    setErr(false);
+    const { data } = await apiPost<War>('/war/read', { minutes, day }, { requireAuth: true });
+    if (data) {
+      onSaved(data);
+      window.dispatchEvent(new Event('pb:minutes-saved'));
+    } else setErr(true);
+    track('war_read', { minutes, day, guest: !!war.me.guest });
     setBusy(false);
   };
   return (
-    <div className={styles.guestLog}>
-      <label>
-        <span>{t('war.guestQ')}</span>
-        <input type="number" inputMode="numeric" min={0} max={1440} value={val} onChange={(e) => setVal(e.target.value)} placeholder="30" />
-      </label>
-      <button type="button" className={styles.go} onClick={save} disabled={busy || val === ''}>{t('war.guestSave')}</button>
+    <div className={styles.logBox}>
+      {ask && (
+        <div className={styles.whichDay}>
+          <span>{t('war.whichDay')}</span>
+          <div>
+            <button type="button" className={day === 'yesterday' ? styles.dayOn : ''} onClick={() => pick('yesterday')}>{t('war.yesterdayChip', { d: label(1) })}</button>
+            <button type="button" className={day === 'today' ? styles.dayOn : ''} onClick={() => pick('today')}>{t('war.todayChip', { d: label(0) })}</button>
+          </div>
+          {day === 'yesterday' && <small>{t('war.yesterdayNote')}</small>}
+        </div>
+      )}
+      <div className={styles.guestLog}>
+        <label>
+          <span>{day === 'yesterday' ? t('war.minutesQYesterday') : t('war.guestQ')}</span>
+          <input type="number" inputMode="numeric" min={0} max={1440} value={val} onChange={(e) => setVal(e.target.value)} placeholder="30" disabled={!day} />
+        </label>
+        <button type="button" className={styles.go} onClick={save} disabled={busy || val === '' || !day}>{t('war.guestSave')}</button>
+      </div>
+      {!war.me.guest && <small className={styles.syncNote}>{t('war.syncNote')}</small>}
+      {err && <small className={styles.syncNote}>{t('war.saveErr')}</small>}
     </div>
   );
 }
@@ -190,6 +239,46 @@ export function WarPage() {
         ? `${dateRange(war, t)} · ${t('war.over')}`
         : t('war.subLive', { dates: dateRange(war, t), n: war.day, total: war.days_total });
   const NAMES = 12;
+
+  const facesEl = !war ? null : (running && war.me.team && (war.me.shelf_today?.length ?? 0) > 0 && (
+                        <div className={styles.faces}>
+                          <span>{t('war.shelfToday', { team: t(`war.teamGen.${war.me.team}`) })}</span>
+                          <ul>
+                            {war.me.shelf_today!.map((p) => (
+                              <li key={p.user_id}><Link to={`/readers/${p.user_id}`} title={p.display_name}><Avatar p={p} /><small>{p.display_name}</small></Link></li>
+                            ))}
+                          </ul>
+                        </div>
+                      ));
+  const stripEl = !war ? null : (!prestart && (
+                        <div>
+                          <h4 className={styles.h4}>{t('war.track')}</h4>
+                          <div className={styles.strip}>
+                            {war.teams.map((x) => (
+                              <div key={x.key} className={`${styles.stripRow} ${x.key === 'lighthouse' ? styles.sideA : styles.sideB}`}>
+                                <span>{t(`war.team.${x.key}`)}</span>
+                                <div className={styles.cells}>
+                                  {Array.from({ length: war.days_total }, (_, i) => {
+                                    const d = x.days[i];
+                                    const share = d && d.size ? d.hits / d.size : 0;
+                                    return (
+                                      <i
+                                        key={i}
+                                        className={d ? (d.locked ? styles.cellDone : styles.cellToday) : ''}
+                                        style={d ? { ['--a' as string]: String(0.4 + 0.6 * share) } : undefined}
+                                        title={d ? `${d.date}: ${d.hits}/${d.size}` : undefined}
+                                      >
+                                        {d ? d.hits : ''}
+                                      </i>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {running && <p className={styles.note}>{t('war.lockNote')}</p>}
+                        </div>
+                      ));
 
   return (
     <PageTransition>
@@ -253,7 +342,7 @@ export function WarPage() {
                           <h4 className={styles.h4}>{t('war.joinedHead', { n: war.joined_count })}</h4>
                           <ul className={styles.joinedList}>
                             {(allNames ? war.joined : war.joined.slice(0, NAMES)).map((p) => (
-                              <li key={p.user_id}><Avatar p={p} /><span>{p.display_name}</span></li>
+                              <li key={p.user_id}><Link to={`/readers/${p.user_id}`}><Avatar p={p} /><span>{p.display_name}</span></Link></li>
                             ))}
                             {!allNames && war.joined.length > NAMES && (
                               <li><button type="button" className={styles.more} onClick={() => setAllNames(true)}>{t('war.more', { n: war.joined.length - NAMES })}</button></li>
@@ -270,7 +359,11 @@ export function WarPage() {
                   </section>
                 ) : (
                   <section className={styles.grid}>
-                    <Field war={war} live={running} onTeam={setRoster} />
+                    {/* on a wide screen the faces and the days sit under the pictures; on a phone after today's form */}
+                    <div className={styles.col}>
+                      <Field war={war} live={running} onTeam={setRoster} />
+                      <div className={styles.wide}>{facesEl}{stripEl}</div>
+                    </div>
                     <div className={styles.col}>
                       {war.winner && (
                         <div className={styles.winner}>{war.winner === 'draw' ? t('war.draw') : t('war.won', { team: t(`war.team.${war.winner}`) })}</div>
@@ -287,43 +380,21 @@ export function WarPage() {
                       {running && war.me.team && (
                         <div className={`${styles.status} ${war.me.today ? '' : styles.statusTodo}`}>
                           <div>
-                            <b>{war.me.today ? t('war.meDone', { team: t(`war.team.${war.me.team}`) }) : t('war.meNot')}</b>
+                            <b>
+                              {war.me.today
+                                ? t('war.meDone', { team: t(`war.team.${war.me.team}`) })
+                                : war.me.minutes
+                                  ? t('war.meSome', { m: war.me.minutes, left: 30 - war.me.minutes })
+                                  : t('war.meNot')}
+                            </b>
                             <small>{t('war.contrib', { books: books(war.me.hits ?? 0) })}</small>
                           </div>
-                          {!war.me.today && !war.me.guest && <Link to="/round" className={styles.go}>{t('war.toDial')}</Link>}
                         </div>
                       )}
-                      {running && war.me.team && war.me.guest && <GuestLog war={war} onSaved={setWar} />}
+                      {running && war.me.team && <MinutesLog key={`${war.day}-${war.me.ask_day ? 1 : 0}`} war={war} onSaved={setWar} />}
                       {running && !war.me.team && <p className={styles.note}>{t('war.closed')}</p>}
-                      {!prestart && (
-                        <div>
-                          <h4 className={styles.h4}>{t('war.track')}</h4>
-                          <div className={styles.strip}>
-                            {war.teams.map((x) => (
-                              <div key={x.key} className={`${styles.stripRow} ${x.key === 'lighthouse' ? styles.sideA : styles.sideB}`}>
-                                <span>{t(`war.team.${x.key}`)}</span>
-                                <div className={styles.cells}>
-                                  {Array.from({ length: war.days_total }, (_, i) => {
-                                    const d = x.days[i];
-                                    const share = d && d.size ? d.hits / d.size : 0;
-                                    return (
-                                      <i
-                                        key={i}
-                                        className={d ? (d.locked ? styles.cellDone : styles.cellToday) : ''}
-                                        style={d ? { ['--a' as string]: String(0.4 + 0.6 * share) } : undefined}
-                                        title={d ? `${d.date}: ${d.hits}/${d.size}` : undefined}
-                                      >
-                                        {d ? d.hits : ''}
-                                      </i>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          {running && <p className={styles.note}>{t('war.lockNote')}</p>}
-                        </div>
-                      )}
+                      <div className={styles.narrow}>{facesEl}{stripEl}</div>
+                      {war.me.team && <TeamChat />}
                     </div>
                   </section>
                 )}
@@ -358,7 +429,7 @@ export function WarPage() {
             <h3 className={styles.sheetTitle}>{t(`war.team.${rosterTeam.key}`)} · {rosterTeam.size}</h3>
             <ul className={styles.roster}>
               {rosterTeam.members.map((p) => (
-                <li key={p.user_id}><Avatar p={p} />{p.display_name}</li>
+                <li key={p.user_id}><Link to={`/readers/${p.user_id}`} onClick={() => setRoster(null)}><Avatar p={p} /><span>{p.display_name}</span></Link></li>
               ))}
             </ul>
             <button type="button" className={styles.close} onClick={() => setRoster(null)}>{t('lg.done')}</button>
@@ -414,6 +485,15 @@ export function WarCard() {
       <span className={styles.cardArt} style={{ backgroundImage: `url(${ART.lighthouse})` }} />
       <span className={styles.cardText}>
         <b>{t('war.title')}</b>
+        {war.day > 0 && war.me.team && (
+          <span className={war.me.today ? styles.cardMeDone : styles.cardMe}>
+            {war.me.today
+              ? t('war.cardMeDone', { team: t(`war.teamGen.${war.me.team}`) })
+              : war.me.minutes
+                ? t('war.cardMeSome', { left: 30 - war.me.minutes, team: t(`war.teamGen.${war.me.team}`) })
+                : t('war.cardMeNot', { team: t(`war.teamGen.${war.me.team}`) })}
+          </span>
+        )}
         <small>
           {war.day === 0 ? t('war.cardSoon') : t('war.cardLive', { a: a?.points ?? 0, b: b?.points ?? 0, n: war.day, total: war.days_total })}
         </small>

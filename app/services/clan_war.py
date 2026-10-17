@@ -128,23 +128,60 @@ def in_circle(db: Session, user_id: uuid.UUID, war: ClanWar) -> bool:
     ).first() is not None
 
 
-def log_guest(db: Session, user: User, minutes: int) -> dict:
-    """A guest's minutes for today, on the war page (replaces today's figure)."""
+NIGHT_ASK_UNTIL = time(4, 0)  # after 00:00 and before this, the war page asks which day the minutes are for
+
+
+def _night(now: datetime | None = None) -> bool:
+    return (now or _now()).time() < NIGHT_ASK_UNTIL
+
+
+def _circle_round(db: Session, user_id: uuid.UUID, war: ClanWar) -> Round | None:
+    """The circle the reader logs in this month (their own participant row, as the dial uses)."""
+    return db.execute(
+        select(Round)
+        .join(RoundParticipant, RoundParticipant.round_id == Round.id)
+        .where(Round.year == war.start_date.year, Round.month == war.start_date.month, RoundParticipant.user_id == user_id)
+        .limit(1)
+    ).scalar_one_or_none()
+
+
+def log_read(db: Session, user: User, minutes: int, day: str = "today") -> dict:
+    """A day's minutes from the war page (replaces the day's figure). A circle reader's minutes go into the
+    circle's own log — the very row the dial writes, its comment and books kept — so the two never differ.
+    A guest's go to the war's table. Between 00:00 and 04:00 a circle reader may choose yesterday: it counts
+    for the circle only, the war's day having closed at midnight."""
     war = _war_or_404(db)
     today = _today()
     member = db.execute(
         select(ClanWarMember).where(ClanWarMember.war_id == war.id, ClanWarMember.user_id == user.id)
     ).scalar_one_or_none()
-    if member is None or war.status != "live" or not (war.start_date <= today <= war.end_date):
+    if member is None or member.team is None or war.status != "live" or not (war.start_date <= today <= war.end_date):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Not in a running war")
-    if in_circle(db, user.id, war):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Log on the circle's dial")
     minutes = max(0, min(1440, int(minutes)))
+    rnd = _circle_round(db, user.id, war)
+    if day == "yesterday":
+        if rnd is None or not _night():
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only today can be logged now")
+        d = today - timedelta(days=1)
+    else:
+        d = today
+    if rnd is not None:
+        from app.services.reading import ReadingService
+
+        svc = ReadingService(db)
+        before = svc.logs.get_for_user_date(round_id=rnd.id, user_id=user.id, day=d)
+        svc.log_minutes(
+            round_id=rnd.id, user_id=user.id, day=d, minutes=minutes,
+            book_finished=bool(before and before.book_finished),
+            comment=before.comment if before else None,
+            comment_private=bool(before and before.is_comment_private),
+        )
+        return state(db, user)
     row = db.execute(
-        select(ClanWarRead).where(ClanWarRead.war_id == war.id, ClanWarRead.user_id == user.id, ClanWarRead.date == today)
+        select(ClanWarRead).where(ClanWarRead.war_id == war.id, ClanWarRead.user_id == user.id, ClanWarRead.date == d)
     ).scalar_one_or_none()
     if row is None:
-        db.add(ClanWarRead(war_id=war.id, user_id=user.id, date=today, minutes=minutes))
+        db.add(ClanWarRead(war_id=war.id, user_id=user.id, date=d, minutes=minutes))
     else:
         row.minutes = minutes
     db.commit()
@@ -207,6 +244,12 @@ def scheduled() -> None:
             except HTTPException:
                 db.rollback()  # the other worker split it
         lock_days(db)
+        from app.services import clan_war_chat
+
+        try:
+            clan_war_chat.bot_tick(db)
+        except Exception:  # the bot's words never stop the war's own tick
+            db.rollback()
     finally:
         db.close()
 
@@ -222,7 +265,10 @@ def state(db: Session, viewer: User | None) -> dict:
     if phase == "live" and today > war.end_date:
         phase = "done"
     me = next((m for m, u, _ in members if viewer and m.user_id == viewer.id), None)
-    person = lambda u, a: {"user_id": str(u.id), "display_name": u.display_name, "avatar": str(a) if a else None}  # noqa: E731
+    from app.services.leagues import leagues_by_user
+
+    tiers = leagues_by_user(db)
+    person = lambda u, a: {"user_id": str(u.id), "display_name": u.display_name, "avatar": str(a) if a else None, "league": tiers.get(u.id)}  # noqa: E731
 
     out: dict = {
         "id": str(war.id),
@@ -302,13 +348,34 @@ def state(db: Session, viewer: User | None) -> dict:
         out["me"]["hits"] = len(mine)
         out["me"]["days"] = len([d for d in all_days if _joined_day(me, war) <= d <= min(today, war.end_date)])
         out["me"]["today"] = (me.user_id, today) in reads
+        # who of your own team has put today's book on the shelf (council 2026-10-17: show only what someone did,
+        # never who hasn't; roster order, not arrival order, so nobody is «last»; your own team only)
+        out["me"]["shelf_today"] = (
+            [person(u, a) for m, u, a in by_team[me.team] if (m.user_id, today) in reads] if live_today else []
+        )
+        # today's minutes, wherever they were logged: «ещё 12 мин — и книга» on the war page and the circle's card
         if out["me"]["guest"]:
             row = db.execute(
                 select(ClanWarRead.minutes).where(
                     ClanWarRead.war_id == war.id, ClanWarRead.user_id == me.user_id, ClanWarRead.date == today
                 )
             ).scalar_one_or_none()
-            out["me"]["minutes"] = int(row or 0)
+        else:
+            row = db.execute(
+                select(func.max(ReadingLog.minutes)).where(ReadingLog.user_id == me.user_id, ReadingLog.date == today)
+            ).scalar_one_or_none()
+            # in the small hours a circle reader is asked which day: yesterday's figure for the form
+            if live_today and _night():
+                out["me"]["ask_day"] = True
+                out["me"]["minutes_yesterday"] = int(
+                    db.execute(
+                        select(func.max(ReadingLog.minutes)).where(
+                            ReadingLog.user_id == me.user_id, ReadingLog.date == today - timedelta(days=1)
+                        )
+                    ).scalar_one_or_none()
+                    or 0
+                )
+        out["me"]["minutes"] = int(row or 0)
     if phase == "done":
         # the fullest library wins (books against the places on its shelves)
         fill = [x["fill"] for x in out["teams"]]

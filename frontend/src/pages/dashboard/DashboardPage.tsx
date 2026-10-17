@@ -923,6 +923,7 @@ export function DashboardPage() {
     );
     if (data) {
       track('minutes_logged', { minutes, where: 'today', book_finished: finished, books: todayBooks.length });
+      window.dispatchEvent(new Event('pb:minutes-saved'));
       // the minutes fly into today's cell of the calendar (the founder's idea, 2026-10-13)
       setJustSaved(true);
       window.setTimeout(() => setJustSaved(false), 1500);

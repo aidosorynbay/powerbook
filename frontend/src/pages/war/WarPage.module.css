@@ -67,8 +67,9 @@
 .joinedList li { display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 99px; background: var(--color-bg-card); border: 1px solid var(--color-border-primary); font-size: 14px; font-weight: 600; color: var(--color-text-primary); }
 .joinedList li:has(.more) { padding: 0; border: 0; background: none; }
 .more { padding: 8px 14px; border-radius: 99px; border: 1px dashed var(--color-border-primary); background: none; font: inherit; font-size: 14px; font-weight: 600; color: var(--color-text-secondary); cursor: pointer; }
-.av { width: 26px; height: 26px; border-radius: 50%; flex: none; display: grid; place-items: center; overflow: hidden; background: var(--color-bg-secondary); color: var(--color-text-primary); font-size: 12px; font-weight: 700; }
-.av img { width: 100%; height: 100%; object-fit: cover; }
+/* a face with its league ring; the bookmark tail hangs below, so no overflow clipping here */
+.av { position: relative; isolation: isolate; width: 32px; height: 32px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--color-bg-secondary); color: var(--color-text-primary); font-size: 13px; font-weight: 700; }
+.av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 .admin { justify-self: start; padding: 10px 14px; border-radius: 12px; border: 1px dashed var(--color-border-primary); background: none; font: inherit; color: var(--color-text-primary); cursor: pointer; }
 
 /* today: one line, orange only while there is something to do */
@@ -100,7 +101,7 @@
 /* sheets */
 .sheetTitle { margin: 0; font: italic 600 28px/1.15 'Cormorant Garamond', Georgia, serif; }
 .rules { margin: 12px 0 0; padding-left: 18px; display: grid; gap: 8px; font-size: var(--font-size-sm); line-height: 1.45; color: var(--color-text-secondary); }
-.roster { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.roster { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 14px; }
 .roster li { display: flex; align-items: center; gap: 10px; font-weight: var(--font-weight-semibold); }
 .close { width: 100%; margin-top: 18px; padding: 12px; border-radius: var(--radius-lg); border: 1px solid var(--color-border-primary); background: var(--color-bg-secondary); color: var(--color-text-primary); font: inherit; font-weight: 700; cursor: pointer; }
 .tip { margin-top: 16px; padding: 14px; border-radius: 14px; background: var(--color-bg-secondary); border: 1px solid var(--color-border-primary); }
@@ -148,9 +149,81 @@
 .joinedBox { width: 100%; margin-top: 14px; text-align: left; }
 .joinedList { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .joinedList li { display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 99px; background: var(--color-bg-card); border: 1px solid var(--color-border-primary); font-size: 14px; font-weight: 600; color: var(--color-text-primary); }
-.joinedList .av { width: 26px; height: 26px; font-size: 12px; }
 
 /* Clear the fixed bottom tab bar (plus the iPhone home indicator). */
 @media (max-width: 900px) {
   .page { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
 }
+
+/* «Чат команды»: only the team sees it; the team colour edges it, the bot speaks in numbers */
+.chat { display: grid; gap: 0; border-radius: 18px; overflow: hidden; background: var(--color-bg-card); border: 1px solid var(--color-border-primary); box-shadow: inset 0 3px 0 var(--team); }
+.chatHead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 14px 16px 10px; border-bottom: 1px solid var(--color-border-primary); }
+.chatHead b { font: italic 600 22px/1.1 'Cormorant Garamond', Georgia, serif; color: var(--color-text-primary); }
+.chatHead small { font-size: 12px; color: var(--color-text-secondary); text-align: right; }
+.chatList { display: grid; gap: 2px; align-content: start; max-height: 380px; min-height: 140px; overflow-y: auto; padding: 8px 10px 12px; overscroll-behavior: contain; }
+.chatEmpty { margin: 24px 8px; text-align: center; font-size: 14px; color: var(--color-text-secondary); }
+.chatDay { margin: 10px 0 6px; text-align: center; font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-text-secondary); }
+.chatBot { margin: 6px auto; max-width: 92%; padding: 8px 12px; border-radius: 12px; text-align: center; font-size: 13px; line-height: 1.4; color: var(--color-text-primary); background: color-mix(in srgb, var(--team) 14%, var(--color-bg-secondary)); text-wrap: balance; }
+.msg { display: grid; grid-template-columns: 32px 1fr auto; gap: 8px; align-items: start; padding: 6px 4px 2px; border-radius: 10px; }
+.msgCont { padding-top: 0; }
+.faceLink { display: block; margin-top: 2px; padding-bottom: 6px; color: inherit; text-decoration: none; }
+.avGap { width: 32px; }
+.msgBody { min-width: 0; }
+.msgMeta { display: flex; align-items: baseline; gap: 8px; }
+.msgMeta a { font-size: 13.5px; font-weight: 700; color: var(--team); text-decoration: none; }
+.msgMeta a:hover { text-decoration: underline; }
+.msgMeta a.msgMe { color: #f26430; }
+.msgMeta time { font-size: 11.5px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.msgBody p { margin: 1px 0 0; font-size: 14.5px; line-height: 1.4; color: var(--color-text-primary); overflow-wrap: anywhere; white-space: pre-wrap; }
+.msgMore { opacity: .45; border: 0; background: none; padding: 0 4px; font-size: 18px; line-height: 1; color: var(--color-text-secondary); cursor: pointer; }
+.msg:hover .msgMore { opacity: 1; }
+.compose { display: flex; gap: 8px; align-items: flex-end; padding: 10px; border-top: 1px solid var(--color-border-primary); }
+.compose textarea { flex: 1; resize: none; max-height: 120px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--color-border-primary); background: var(--color-bg-secondary); color: var(--color-text-primary); font: inherit; font-size: 16px; line-height: 1.3; field-sizing: content; }
+.sendBtn { flex: none; width: 42px; height: 42px; border-radius: 50%; border: 0; background: #f26430; color: #fff; font-size: 20px; font-weight: 800; cursor: pointer; }
+.sendBtn:disabled { opacity: .35; }
+.chatConsent { display: grid; gap: 10px; padding: 14px 16px; border-top: 1px solid var(--color-border-primary); font-size: 13.5px; line-height: 1.4; color: var(--color-text-secondary); }
+.chatConsent p { margin: 0; text-wrap: pretty; }
+.chatConsent label { display: flex; gap: 10px; align-items: flex-start; color: var(--color-text-primary); }
+.chatConsent input { margin-top: 2px; width: 18px; height: 18px; accent-color: #f26430; }
+.chatConsent .go { justify-self: start; border: 0; cursor: pointer; font: inherit; font-weight: 700; }
+.chatConsent .go:disabled { opacity: .45; }
+.chatNote { margin: 0; padding: 12px 16px; border-top: 1px solid var(--color-border-primary); font-size: 13px; color: var(--color-text-secondary); }
+.msgSheet { display: grid; gap: 0; }
+.msgSheet blockquote { margin: 4px 0 6px; padding: 10px 12px; border-radius: 12px; background: var(--color-bg-secondary); font-size: 14px; line-height: 1.4; color: var(--color-text-primary); }
+.msgSheet textarea { margin-top: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--color-border-primary); background: var(--color-bg-secondary); color: var(--color-text-primary); font: inherit; font-size: 16px; }
+.msgSheet .close { margin-top: 10px; }
+.roster a, .joinedList a { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+.joinedList a { gap: 8px; }
+.roster a:hover span, .joinedList a:hover span { text-decoration: underline; }
+/* the reader's own day on the circle's war card: orange while there is something to do, green once the book is in */
+.cardMe, .cardMeDone { font-size: 13px; font-weight: 700; line-height: 1.3; text-wrap: balance; }
+.cardMe { color: #f26430; }
+.cardMeDone { color: #3fbf7f; }
+/* today's faces on your own team's shelf: only who did, in roster order; nobody is shown as missing */
+.faces { display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; background: var(--color-bg-card); border: 1px solid var(--color-border-primary); }
+.faces > span { font-size: 13px; color: var(--color-text-secondary); }
+.faces ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px 14px; }
+.faces a { display: grid; justify-items: center; gap: 8px; width: 56px; color: var(--color-text-primary); text-decoration: none; }
+.faces .av { width: 32px; height: 32px; }
+.faces small { max-width: 56px; font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the minutes form for every member; at night a circle reader picks the day first */
+.logBox { display: grid; gap: 8px; }
+.logBox .guestLog input:disabled { opacity: .45; }
+.whichDay { display: grid; gap: 8px; padding: 14px 16px; border-radius: 16px; background: color-mix(in srgb, #f26430 8%, var(--color-bg-card)); border: 1px solid rgba(242, 100, 48, .45); }
+.whichDay > span { font-size: 14px; font-weight: 700; color: var(--color-text-primary); }
+.whichDay > div { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.whichDay button { padding: 10px 8px; border-radius: 12px; border: 1px solid var(--color-border-primary); background: var(--color-bg-secondary); color: var(--color-text-primary); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.whichDay button.dayOn { border-color: #f26430; background: #f26430; color: #fff; }
+.whichDay small, .syncNote { font-size: 12.5px; line-height: 1.4; color: var(--color-text-secondary); text-wrap: pretty; }
+.syncNote { padding: 0 4px; }
+/* the faces and the 14 days: under the pictures on a wide screen, after today's form on a phone */
+.wide, .narrow { display: grid; gap: 16px; }
+.wide { display: none; }
+@media (min-width: 900px) {
+  .wide { display: grid; }
+  .narrow { display: none; }
+  .grid { grid-template-columns: minmax(0, 1fr) minmax(340px, 1fr); }
+  .side { aspect-ratio: 5 / 6; }
+  .chatList { max-height: 46vh; }
+}
+.logBox .go:disabled { opacity: .4; cursor: default; }
