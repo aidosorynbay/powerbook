@@ -126,7 +126,7 @@ function share01(tr: string, now: number, next: number) {
 /** What the avatar wears: an award key, null = automatic, "none" = nothing. */
 async function wearPin(key: string | null) {
   await apiPost('/insights/awards/feature', { key }, { requireAuth: true });
-  track(key === 'none' ? 'award_unwear' : key ? 'award_wear' : 'award_wear_auto', { key: key ?? '' });
+  track(key === 'none' ? 'award_unwear' : key === 'daily' ? 'award_wear_daily' : key ? 'award_wear' : 'award_wear_auto', { key: key ?? '' });
   refreshWornPins();
 }
 
@@ -177,6 +177,13 @@ export function WearSheet({ awards, onClose, onChange }: { awards: Awards; onClo
           <span>
             <b>{t('aw.wearNone')}</b>
             <small>{t('aw.wearNoneHint')}</small>
+          </span>
+        </button>
+        <button type="button" className={`${styles.wearRow} ${mode === 'daily' ? styles.wearOn : ''}`} onClick={() => pick('daily')} disabled={busy || awards.earned.length < 2}>
+          {mode === 'daily' && awards.featured ? <img src={pinCut(awards.featured)} alt="" /> : <span className={styles.ownPinEmpty} />}
+          <span>
+            <b>{t('aw.wearDaily')}</b>
+            <small>{mode === 'daily' && awards.featured ? t('aw.wearDailyNow', { name: nameOf(t, awards.featured) }) : t('aw.wearDailyHint')}</small>
           </span>
         </button>
       </div>

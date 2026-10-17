@@ -395,7 +395,7 @@ export type Awards = {
   genre_minutes: Record<string, number>;
   /** the pin worn by the avatar (null: none); mode: automatic, chosen by the reader, or «Не носить» */
   featured: string | null;
-  featured_mode: 'auto' | 'chosen' | 'none';
+  featured_mode: 'auto' | 'chosen' | 'none' | 'daily';
   /** the pin the automatic choice gives (rarest held, never a secret) */
   featured_auto: string | null;
   /** the step of the days ladder the reader stands on, e.g. "days_100" */

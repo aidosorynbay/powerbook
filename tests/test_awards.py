@@ -331,3 +331,18 @@ def test_the_automatic_pin_is_the_rarest_or_the_newest_and_never_a_secret(monkey
     assert awards.auto_pin(on, holders) == "streak_30"
     monkeypatch.setattr(awards, "AUTO_PIN", "newest")
     assert awards.auto_pin(on, holders) == "days_30"
+
+
+def test_a_different_pin_each_day_when_the_reader_asks_for_it(env, monkeypatch):
+    db, client, me, other, octo = env
+    assert client.post("/api/insights/awards/feature", json={"key": "daily"}, headers=_auth(me)).status_code == 200
+    seen = []
+    for d in (date(2026, 10, 20), date(2026, 10, 21), date(2026, 10, 22)):
+        monkeypatch.setattr(awards, "_today", lambda d=d: d)
+        body = client.get("/api/insights/awards", headers=_auth(me)).json()
+        assert body["featured_mode"] == "daily" and not awards.BY_KEY[body["featured"]].secret
+        assert awards.worn_by(db, me.id) == body["featured"]
+        seen.append(body["featured"])
+    assert seen[0] != seen[1] != seen[2]  # a new one every day
+    client.post("/api/insights/awards/feature", json={"key": "days_30"}, headers=_auth(me))
+    assert client.get("/api/insights/awards", headers=_auth(me)).json()["featured_mode"] == "chosen"
