@@ -379,6 +379,30 @@ export type Badge = {
   progress_target: number;
 };
 
+/** One award the reader holds (GET /insights/awards): the day it was earned and how many readers hold it. */
+export type AwardEarned = { key: string; on: string; holders: number; new: boolean };
+/** `now` is where the reader stands towards `next` (the streak still going); "together" counts minutes, its steps millions. */
+export type AwardTrack = { track: string; value: number; now: number; next: number | null };
+
+/** GET /insights/awards: the reader's own awards (app/services/awards.py). */
+export type Awards = {
+  earned: AwardEarned[];
+  tracks: AwardTrack[];
+  /** how many readers hold each award that is not a secret */
+  holders: Record<string, number>;
+  secret_total: number;
+  /** the step of the days ladder the reader stands on, e.g. "days_100" */
+  title: string | null;
+  /** nothing has been shown yet: the first opening shows the whole collection at once */
+  first_time: boolean;
+  /** the first year with minutes, archive included */
+  since: number | null;
+  /** an archive nickname is already folded in */
+  has_archive: boolean;
+  /** «Скрыть награды»: no windows, a quiet line in the profile */
+  hidden: boolean;
+};
+
 export type LeagueTierKey = 'bronze' | 'silver' | 'gold' | 'diamond' | 'exlibris';
 
 export type LeagueRound = { round_id: string; year: number; month: number; scored: number; total: number };

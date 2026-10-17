@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
-import { useI18n, apiGet, apiPost, apiDelete, type PublicProfile, type ShelfBook } from '@/shared/lib';
+import { useAuth, useI18n, apiGet, apiPost, apiDelete, type PublicProfile, type ShelfBook } from '@/shared/lib';
 import { apiUrl } from '@/pages/books/bookUi';
 import { Container, PageTransition, Avatar, Button, Card, BookCard, ProgressBar } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
@@ -10,6 +10,7 @@ import { bookCount } from '@/pages/library/bookcase/plural';
 import styles from './PublicProfilePage.module.css';
 import { ProfileListings } from '../books/ProfileBits';
 import { LeagueGlyph } from '@/widgets/League';
+import { AwardsPeek, awardsOn } from '@/widgets/Awards';
 
 function getMusicEmbedUrl(url: string): string | null {
   try {
@@ -38,6 +39,7 @@ const CHAT_BETWEEN_READERS = false;
 
 export function PublicProfilePage() {
   const { userId } = useParams<{ userId: string }>();
+  const { user: viewer } = useAuth();
   const { t, locale } = useI18n();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -291,6 +293,10 @@ export function PublicProfilePage() {
                     <div className={styles.statLabel}>{t('profile.badgesEarned')}</div>
                   </button>
                 </div>
+                {/* awards are private: only an admin, checking them against the old tables before they go to everyone */}
+                {awardsOn(viewer) && (viewer?.system_role === 'admin' || viewer?.system_role === 'superadmin') && userId && viewer?.id !== userId && (
+                  <AwardsPeek userId={userId} name={profile.display_name} />
+                )}
               </>
             )}
           </Container>

@@ -26,6 +26,7 @@ import { useScrollReveal } from '@/shared/hooks';
 import { Button, Container, Badge, PageTransition, Icon } from '@/shared/ui';
 import { Header, Footer, ActivityRings, ReadingRoom, type ActivityRing, type RingTotal, WaitlistCard, ArchiveNews, useHelpOn } from '@/widgets';
 import { LeagueInBook, LeaguePromo, useLeague } from '@/widgets/League';
+import { AwardsMoment, awardsOn, useAwards } from '@/widgets/Awards';
 import { RoundWarSwitch, WarAnnounce, WarCard } from '@/pages/war';
 import { JoinedCount, RoundRules } from '@/widgets/JoinPrompt';
 import { InstallNudge } from '@/widgets/InstallNudge';
@@ -136,6 +137,8 @@ type LastDayPhase = 'normal' | 'correction' | 'registration';
 export function DashboardPage() {
   const { user } = useAuth();
   const league = useLeague();
+  // a new award, the moment the minutes that earned it are saved (useAwards fetches again on pb:minutes-saved)
+  const { awards, reload: reloadAwards } = useAwards(awardsOn(user));
   const { t, locale } = useI18n();
 
   const weekdays = useMemo(() => [
@@ -2010,6 +2013,7 @@ export function DashboardPage() {
       {/* «Читатели круга» and «что значат цвета», from below (members, 2026-10-13) */}
       <ReminderOffer open={reminderOffer} onClose={() => setReminderOffer(false)} />
       {league?.live && user && <LeaguePromo league={league} name={user.display_name || user.username} />}
+      {awards && user && <AwardsMoment awards={awards} name={user.display_name || user.username} username={user.username} onSeen={reloadAwards} />}
       <ReadersSheet
         open={readersOpen}
         onClose={() => setReadersOpen(false)}

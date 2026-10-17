@@ -24,6 +24,7 @@ import { Header, Footer, ClaimPicker, WrappedCard, BookTime, InviteFriends, Help
 import { paletteFor, dimensionsFor } from '@/pages/library/bookcase/bookArt';
 import { bookCount } from '@/pages/library/bookcase/plural';
 import { LeagueCard, LeaguePromo } from '@/widgets/League';
+import { AwardsCard, AwardsMoment, awardsOn, useAwards } from '@/widgets/Awards';
 import styles from './InsightsPage.module.css';
 import { ProfileListings } from '../books/ProfileBits';
 
@@ -84,6 +85,8 @@ export function InsightsPage() {
   const [inviteOpen, setInviteOpen] = useState(() => window.location.hash === '#invite');
   const [claimOpen, setClaimOpen] = useState(() => window.location.hash === '#claim');
   const isAdmin = user?.system_role === 'admin' || user?.system_role === 'superadmin';
+  const showAwards = awardsOn(user);
+  const { awards, reload: reloadAwards } = useAwards(showAwards);
   // «Правила и о нас» opens the same sheet as «?» in the header: one place for the rules, two ways in
   const helpOn = useHelpOn();
   const [helpOpen, setHelpOpen] = useState(false);
@@ -335,6 +338,12 @@ export function InsightsPage() {
 
                 {league?.live && user && <LeagueCard league={league} name={user.display_name || user.username} />}
                 {league?.live && user && <LeaguePromo league={league} name={user.display_name || user.username} />}
+                {showAwards && awards && user && (
+                  <>
+                    <AwardsCard awards={awards} name={user.display_name || user.username} username={user.username} onChange={reloadAwards} />
+                    <AwardsMoment awards={awards} name={user.display_name || user.username} username={user.username} onSeen={reloadAwards} />
+                  </>
+                )}
 
                 <nav className={styles.rows} aria-label={t('nav.profile')}>
                   <Link to="/reading" className={styles.row}>
