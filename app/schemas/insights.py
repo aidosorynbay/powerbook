@@ -129,6 +129,15 @@ class LeagueOut(BaseModel):
     collection: list[LeagueHeldOut]
 
 
+class GenreOut(BaseModel):
+    """One genre of the reader's own statistics (app/services/genres.py)."""
+
+    topic: str
+    minutes: int
+    books: int
+    share: int
+
+
 class AwardEarnedOut(BaseModel):
     key: str
     on: date
@@ -154,6 +163,7 @@ class AwardsOut(BaseModel):
     tracks: list[AwardTrackOut]
     holders: dict[str, int]
     secret_total: int
+    genre_minutes: dict[str, int] = {}
     title: str | None
     first_time: bool
     since: int | None = None

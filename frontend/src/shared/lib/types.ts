@@ -391,6 +391,8 @@ export type Awards = {
   /** how many readers hold each award that is not a secret */
   holders: Record<string, number>;
   secret_total: number;
+  /** the reader's own minutes by genre (topic key → minutes), most read first */
+  genre_minutes: Record<string, number>;
   /** the step of the days ladder the reader stands on, e.g. "days_100" */
   title: string | null;
   /** nothing has been shown yet: the first opening shows the whole collection at once */

@@ -244,3 +244,12 @@ button.pin:active { transform: scale(0.96); }
 .dots i { width: 7px; height: 7px; border-radius: 50%; box-sizing: border-box; }
 .dotOn { background: currentColor; }
 .dotOff { border: 1.4px solid currentColor; opacity: 0.35; }
+
+/* the reader's own genres: name, bar, minutes */
+.genreList { margin-top: 14px; }
+.genreTitle { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--color-text-secondary); }
+.genreRow { display: grid; grid-template-columns: minmax(0, 1.3fr) 1fr auto; align-items: center; gap: 10px; padding: 4px 0; font-size: 14px; }
+.genreRow span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.genreRow i { display: block; height: 4px; border-radius: 99px; background: var(--color-bg-secondary); overflow: hidden; }
+.genreRow i b { display: block; height: 100%; border-radius: 99px; background: var(--color-text-primary); opacity: 0.8; }
+.genreRow em { font-style: normal; font-variant-numeric: tabular-nums; color: var(--color-text-secondary); font-size: 13px; }

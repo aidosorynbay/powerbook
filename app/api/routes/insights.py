@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, require_admin
 from app.db.session import get_db
 from app.schemas.insights import (
+    GenreOut,
     BadgeStatsOut,
     AllTimeProfileOut,
     ArchetypeOut,
@@ -27,7 +28,7 @@ from app.schemas.insights import (
     WrappedOut,
 )
 from app.repositories.claims import ClaimsRepository
-from app.services import awards
+from app.services import awards, genres
 from app.services.insights import InsightsService
 
 router = APIRouter(prefix="/insights", tags=["insights"])
@@ -122,6 +123,13 @@ def get_league(db: Session = Depends(get_db), user=Depends(get_current_user)) ->
 def get_awards(db: Session = Depends(get_db), user=Depends(get_current_user)) -> AwardsOut:
     ids = ClaimsRepository(db).effective_user_ids(user_id=user.id)
     return AwardsOut(**awards.mine(db, user_id=user.id, effective_ids=ids))
+
+
+@router.get("/genres", response_model=list[GenreOut])
+def get_genres(db: Session = Depends(get_db), user=Depends(get_current_user)) -> list[GenreOut]:
+    """The reader's own genres: minutes, books and share, most read first."""
+    ids = ClaimsRepository(db).effective_user_ids(user_id=user.id)
+    return [GenreOut(topic=g.topic, minutes=g.minutes, books=g.books, share=g.share) for g in genres.profile(db, ids)]
 
 
 @router.post("/awards/seen")

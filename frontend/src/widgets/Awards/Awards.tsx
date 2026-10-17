@@ -12,7 +12,7 @@ import { apiGet, apiPost, track, useI18n, type AwardEarned, type Awards, type Lo
 import { Sheet } from '@/widgets/RoundToday';
 import { dayLink } from '@/widgets/ShareDay';
 import { loadLeagueFonts } from '@/widgets/League';
-import { MILLION, SPECIAL, TRACKS, TRACK_ORDER, pinLarge, pinSmall, trackOf } from './catalog';
+import { GENRES, GENRE_MINUTES, MILLION, SPECIAL, TRACKS, TRACK_ORDER, pinLarge, pinSmall, trackOf } from './catalog';
 import styles from './Awards.module.css';
 
 type T = (k: string, p?: Record<string, string | number>) => string;
@@ -113,6 +113,8 @@ const condOf = (t: T, key: string) => t(`aw.${key}.cond`);
 function progressLine(t: T, w: Words, tr: string, now: number, next: number): string {
   if (tr === 'days') return t('aw.left.days', { left: w.days(next - now) });
   if (tr === 'minutes') return t('aw.left.minutes', { left: w.num(next - now) });
+  if (tr === 'variety') return t('aw.left.variety', { now: w.num(now), next: w.num(next) });
+  if (tr === 'genre') return t('aw.left.genre', { now: w.num(now), next: w.num(next) });
   if (tr === 'streak') return t('aw.left.streak', { now: w.num(now), next: w.num(next) });
   if (tr === 'clean') return t('aw.left.clean', { now: w.num(now), next: w.num(next) });
   return t('aw.left.together', { now: w.millions(now), next: w.num(next) });
@@ -214,6 +216,60 @@ export function AwardsCard({ awards, name, username, onChange }: { awards: Award
   );
 }
 
+/** The genre pins held, the two closest to come, and the reader's own genres in minutes: the personal statistics
+ * the pins grow from. */
+function GenresSection({ awards, held, onPick }: { awards: Awards; held: Map<string, AwardEarned>; onPick: (k: string) => void }) {
+  const { t } = useI18n();
+  const w = useWords();
+  const gm = awards.genre_minutes ?? {};
+  const mine = GENRES.filter((g) => held.has(`genre_${g}`));
+  const next = GENRES.filter((g) => !held.has(`genre_${g}`) && (gm[g] ?? 0) > 0)
+    .sort((a, b) => gm[b] - gm[a])
+    .slice(0, 2);
+  const top = Object.entries(gm).slice(0, 5);
+  if (!mine.length && !next.length && !top.length) return null;
+  const max = Math.max(1, ...top.map(([, m]) => m));
+  return (
+    <section className={styles.track}>
+      <h4 className={styles.trackTitle}>{t('aw.track.genre')}</h4>
+      <p className={styles.trackHint}>{t('aw.track.genre.hint')}</p>
+      {(mine.length > 0 || next.length > 0) && (
+        <div className={styles.grid}>
+          {mine.map((g) => (
+            <button type="button" key={g} className={styles.cell} onClick={() => onPick(`genre_${g}`)}>
+              <AwardPin k={`genre_${g}`} size={76} />
+              <b>{nameOf(t, `genre_${g}`)}</b>
+              <small>{w.date(held.get(`genre_${g}`)!.on)}</small>
+            </button>
+          ))}
+          {next.map((g) => (
+            <button type="button" key={g} className={`${styles.cell} ${styles.cellNext}`} onClick={() => onPick(`genre_${g}`)}>
+              <AwardPin k={`genre_${g}`} size={76} locked />
+              <b>{nameOf(t, `genre_${g}`)}</b>
+              <span className={styles.miniBar} aria-hidden="true">
+                <i style={{ width: `${Math.min(1, gm[g] / GENRE_MINUTES) * 100}%` }} />
+              </span>
+              <small>{t('aw.left.genre', { now: w.num(gm[g]), next: w.num(GENRE_MINUTES) })}</small>
+            </button>
+          ))}
+        </div>
+      )}
+      {top.length > 0 && (
+        <div className={styles.genreList}>
+          <h5 className={styles.genreTitle}>{t('aw.genresMine')}</h5>
+          {top.map(([g, m]) => (
+            <div key={g} className={styles.genreRow}>
+              <span>{t(`topics.${g}`)}</span>
+              <i aria-hidden="true"><b style={{ width: `${(m / max) * 100}%` }} /></i>
+              <em>{w.num(m)}</em>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 /** Every award held, track by track, and one next step on each line — never a wall of what is missing. */
 export function AwardsSheet({ open, onClose, awards, onPick, onHide, title }: {
   open: boolean;
@@ -264,6 +320,7 @@ export function AwardsSheet({ open, onClose, awards, onPick, onHide, title }: {
           </section>
         );
       })}
+      <GenresSection awards={awards} held={held} onPick={onPick} />
       <section className={styles.track}>
         <h4 className={styles.trackTitle}>{t('aw.track.special')}</h4>
         <p className={styles.trackHint}>{t('aw.secretHint')}</p>
@@ -308,7 +365,8 @@ export function AwardDetail({ award, onClose, awards, name, username, readOnly =
   const e = award ? awards.earned.find((x) => x.key === award) : undefined;
   if (!award) return null;
   const { track: tr, n } = trackOf(award);
-  const st = awards.tracks.find((x) => x.track === tr);
+  const gm = tr === 'genre' ? awards.genre_minutes?.[award.slice(6)] ?? 0 : 0;
+  const st = tr === 'genre' ? { track: 'genre', value: gm, now: gm, next: GENRE_MINUTES } : awards.tracks.find((x) => x.track === tr);
   const share = async () => {
     if (!e) return;
     setBusy(true);

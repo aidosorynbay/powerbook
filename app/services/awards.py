@@ -53,7 +53,7 @@ from app.models.enums import ClaimStatus, RoundStatus
 from app.models.group import Group
 from app.models.notification import NotificationPref
 from app.models.round import ReadingLog, Round, RoundParticipant
-from app.services import streaks
+from app.services import genres, streaks
 
 
 
@@ -78,10 +78,20 @@ TRACKS: dict[str, list[int]] = {
     "clean": [1, 3, 5, 10, 20],
     # millions of minutes in the shared treasury
     "together": [1, 2, 3, 5, 10],
+    # distinct genres read for real (GENRE_FLOOR minutes each): «меломан»-style breadth (founder, 2026-10-18)
+    "variety": [3, 6, 10],
 }
+# One pin per genre once the reader has given it GENRE_MINUTES (founder, 2026-10-18): the topics of
+# app/services/topics.py that have a picture; the rest still count towards the variety.
+GENRES = ["classics", "modern_prose", "fantasy_scifi", "detective", "romance", "self_help", "psychology", "business",
+          "history", "science", "philosophy", "religion", "biography", "poetry", "kazakh"]
+GENRE_MINUTES = 600
+GENRE_FLOOR = 120
 SPECIAL = ["book_day", "new_year", "full_year", "comeback", "first_year", "war_1"]
 
 CATALOG: list[Award] = [Award(f"{track}_{n}", track, n) for track, ns in TRACKS.items() for n in ns] + [
+    Award(f"genre_{g}", "genre", GENRE_MINUTES) for g in GENRES
+] + [
     Award(k, "special", 1, secret=True) for k in SPECIAL
 ]
 BY_KEY = {a.key: a for a in CATALOG}
@@ -101,12 +111,14 @@ class Person:
     circles: set[uuid.UUID] = field(default_factory=set)
     first_log: dict[uuid.UUID, date] = field(default_factory=dict)
     war: list[date] = field(default_factory=list)
+    genres: dict[str, dict[date, int]] = field(default_factory=dict)  # genre → day → minutes
 
 
 @dataclass
 class Result:
     earned: dict[str, date]
     values: dict[str, int]
+    genre_minutes: dict[str, int] = field(default_factory=dict)
 
 
 def _today() -> date:
@@ -135,7 +147,7 @@ def _rounds(db: Session) -> tuple[list[Round], set[uuid.UUID]]:
     return rounds, {r.id for r in rounds if r.status in _DONE and r.group_id == group_id}
 
 
-def _load(db: Session, finished: set[uuid.UUID], who: Callable[[uuid.UUID], uuid.UUID], ids: Iterable[uuid.UUID] | None = None) -> dict[uuid.UUID, Person]:
+def _load(db: Session, finished: set[uuid.UUID], who: Callable[[uuid.UUID], uuid.UUID], topic_of: Callable[[str], str | None], ids: Iterable[uuid.UUID] | None = None) -> dict[uuid.UUID, Person]:
     """Histories folded by `who`; only the accounts in `ids` when given (one reader and their archive nicknames)."""
     only = list(ids) if ids is not None else None
 
@@ -158,6 +170,14 @@ def _load(db: Session, finished: set[uuid.UUID], who: Callable[[uuid.UUID], uuid
     for rid, uid in db.execute(where(select(RoundParticipant.round_id, RoundParticipant.user_id), RoundParticipant.user_id)).all():
         if rid in finished:
             people[who(uid)].circles.add(rid)
+
+    # minutes by genre and day (the books' main topics), folded onto the same people
+    for uid, by_genre in genres.minutes_by_day(db, topic_of, only).items():
+        p = people[who(uid)]
+        for g, days in by_genre.items():
+            mine = p.genres.setdefault(g, {})
+            for d, m in days.items():
+                mine[d] = mine.get(d, 0) + m
 
     # the first clan war (October 2026): everyone who took part, handed out once the war is over,
     # dated the day it ended (founder, 2026-10-18: «только после битвы»)
@@ -197,6 +217,27 @@ def evaluate(p: Person, rounds: list[Round], neutral: frozenset[date], treasury:
         run += p.minutes[d]
         while todo and run >= todo[0]:
             earned[f"minutes_{todo.pop(0)}"] = d
+
+    # genres: a pin per genre at GENRE_MINUTES, and the number of genres given GENRE_FLOOR minutes
+    reached: list[date] = []
+    genre_totals: dict[str, int] = {}
+    for g, days in p.genres.items():
+        run = 0
+        floor_day = None
+        for d in sorted(days):
+            run += days[d]
+            if floor_day is None and run >= GENRE_FLOOR:
+                floor_day = d
+            if g in GENRES and run >= GENRE_MINUTES:
+                earned[f"genre_{g}"] = d
+                break
+        genre_totals[g] = sum(days.values())
+        if floor_day is not None:
+            reached.append(floor_day)
+    reached.sort()
+    for n in TRACKS["variety"]:
+        if len(reached) >= n:
+            earned[f"variety_{n}"] = reached[n - 1]
 
     longest, current = streaks.longest_and_current(counted, neutral, _today()) if counted else (0, 0)
     for n, d in streaks.first_reached(counted, TRACKS["streak"], neutral).items():
@@ -244,13 +285,14 @@ def evaluate(p: Person, rounds: list[Round], neutral: frozenset[date], treasury:
         "since": first_minute.year if first_minute else 0,
         "days": len(counted),
         "minutes": sum(p.minutes.values()),
+        "variety": len(reached),
         "streak": longest,
         # the run still going: the next streak pin needs a run that long, so progress is measured by it
         "streak_now": current,
         "clean": clean,
         "together": total,
     }
-    return Result(earned=earned, values=values)
+    return Result(earned=earned, values=values, genre_minutes=genre_totals)
 
 
 class _Everyone:
@@ -266,7 +308,7 @@ def _everyone(db: Session) -> type[_Everyone]:
         return _Everyone
     claims = _claims(db)
     rounds, finished = _rounds(db)
-    people = _load(db, finished, lambda u: claims.get(u, u))
+    people = _load(db, finished, lambda u: claims.get(u, u), genres.topic_lookup(db))
     neutral = streaks.circle_last_days(db)
     treasury = treasury_marks(db)
     holders: dict[str, int] = defaultdict(int)
@@ -294,7 +336,7 @@ def reset_cache() -> None:
 def of_reader(db: Session, *, user_id: uuid.UUID, effective_ids: list[uuid.UUID]) -> Result:
     """One reader's awards, read fresh (archive nicknames they claimed folded in)."""
     rounds, finished = _rounds(db)
-    people = _load(db, finished, lambda u: user_id, effective_ids)
+    people = _load(db, finished, lambda u: user_id, genres.topic_lookup(db), effective_ids)
     return evaluate(people.get(user_id, Person()), rounds, streaks.circle_last_days(db), _everyone(db).treasury)
 
 
@@ -353,6 +395,8 @@ def _showcase(res: Result, everyone: type[_Everyone], on: dict[str, date], unsee
         "tracks": tracks,
         "holders": {a.key: everyone.holders.get(a.key, 0) for a in CATALOG if not a.secret},
         "secret_total": sum(1 for a in CATALOG if a.secret),
+        # the reader's own minutes by genre (the personal statistics the genre pins grow from)
+        "genre_minutes": dict(sorted(res.genre_minutes.items(), key=lambda kv: -kv[1])),
         "title": f"days_{title}" if title else None,
         "first_time": first_time,
         # the first year with minutes, archive included («с 2021 года»)

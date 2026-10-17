@@ -9,15 +9,21 @@ export const TRACKS: Record<string, number[]> = {
   clean: [1, 3, 5, 10, 20],
   // millions of minutes in the shared treasury
   together: [1, 2, 3, 5, 10],
+  // genres read for at least 120 minutes each
+  variety: [3, 6, 10],
 };
-export const TRACK_ORDER = ['days', 'minutes', 'streak', 'clean', 'together'] as const;
+/** One pin per genre (the topic keys of app/services/topics.py) at 600 minutes. */
+export const GENRES = ['classics', 'modern_prose', 'fantasy_scifi', 'detective', 'romance', 'self_help', 'psychology', 'business', 'history', 'science', 'philosophy', 'religion', 'biography', 'poetry', 'kazakh'];
+export const GENRE_MINUTES = 600;
+export const TRACK_ORDER = ['days', 'minutes', 'streak', 'clean', 'together', 'variety'] as const;
 export const SPECIAL = ['book_day', 'new_year', 'full_year', 'comeback', 'first_year', 'war_1'];
 export const MILLION = 1_000_000;
 
-export const ALL_KEYS: string[] = [...TRACK_ORDER.flatMap((t) => TRACKS[t].map((n) => `${t}_${n}`)), ...SPECIAL];
+export const ALL_KEYS: string[] = [...TRACK_ORDER.flatMap((t) => TRACKS[t].map((n) => `${t}_${n}`)), ...GENRES.map((g) => `genre_${g}`), ...SPECIAL];
 export const isSecret = (key: string) => SPECIAL.includes(key);
 
 export function trackOf(key: string): { track: string; n: number } {
+  if (key.startsWith('genre_')) return { track: 'genre', n: GENRE_MINUTES };
   const i = key.lastIndexOf('_');
   const n = Number(key.slice(i + 1));
   return Number.isFinite(n) && key.slice(0, i) in TRACKS ? { track: key.slice(0, i), n } : { track: 'special', n: 1 };

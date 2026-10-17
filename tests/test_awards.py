@@ -21,9 +21,9 @@ from app.models.clan_war import ClanWar, ClanWarMember
 from app.models.enums import ClaimStatus, Gender, ResultGroup, RoundParticipantStatus, RoundStatus
 from app.models.group import Group
 from app.models.reading_room import ReadingRoomSession
-from app.models.round import ReadingLog, Round, RoundParticipant, RoundResult
+from app.models.round import ReadingLog, ReadingLogBook, Round, RoundParticipant, RoundResult
 from app.models.user import User
-from app.services import awards
+from app.services import awards, genres
 from app.services.awards import Person, evaluate
 
 
@@ -52,6 +52,22 @@ def test_minutes_are_dated_on_the_day_the_total_was_reached():
 def test_rarity_is_five_steps_from_the_share_of_readers():
     assert [awards.rarity(h, 100) for h in (80, 30, 12, 5, 1)] == [1, 2, 3, 4, 5]
     assert awards.rarity(1, 0) == 5
+
+
+def test_a_genre_pin_comes_at_600_minutes_and_variety_counts_genres_with_120():
+    p = Person(genres={
+        "business": {date(2026, 9, 1): 400, date(2026, 9, 2): 250},
+        "kazakh": {date(2026, 9, 3): 119},
+        "poetry": {date(2026, 9, 4): 130},
+        "health": {date(2026, 9, 5): 200},  # no pin of its own, still a genre
+    })
+    res = evaluate(p, [], frozenset())
+    assert res.earned["genre_business"] == date(2026, 9, 2)
+    assert "genre_kazakh" not in res.earned and "genre_poetry" not in res.earned
+    assert res.values["variety"] == 3  # business, poetry, health; kazakh is 1 minute short
+    assert res.earned["variety_3"] == date(2026, 9, 5)
+    assert "variety_6" not in res.earned
+    assert res.genre_minutes["business"] == 650
 
 
 def test_a_streak_runs_across_the_neutral_last_day_and_is_dated_when_reached():
@@ -264,3 +280,22 @@ def test_an_admin_can_look_without_writing_anything(env):
     body = client.get(f"/api/insights/awards/of/{other.id}", headers=_auth(me)).json()
     assert "clean_1" in {a["key"] for a in body["earned"]} and not any(a["new"] for a in body["earned"])
     assert db.query(ReaderAward).filter(ReaderAward.user_id == other.id).count() == 0
+
+
+def test_genre_minutes_come_from_the_books_and_make_a_pin(env, monkeypatch):
+    db, client, me, other, octo = env
+    monkeypatch.setattr(genres, "topic_lookup", lambda _db: {"Теория игр": "business", "Бесы": "classics"}.get)
+    awards.reset_cache()
+    # 30 September days of 45 minutes on a business book (1 350 minutes), 3 on a classic (135)
+    logs = list(db.query(ReadingLog).filter(ReadingLog.user_id == me.id, ReadingLog.date >= date(2026, 9, 1), ReadingLog.date <= date(2026, 9, 30)))
+    logs.sort(key=lambda r: r.date)
+    for i, log in enumerate(logs):
+        title = "Бесы" if i < 3 else "Теория игр"
+        db.add(ReadingLogBook(reading_log_id=log.id, user_id=me.id, title=title, title_norm=title.casefold(), minutes=log.minutes, finished=False, position=0))
+    db.commit()
+    body = client.get("/api/insights/awards", headers=_auth(me)).json()
+    got = {a["key"]: a["on"] for a in body["earned"]}
+    assert got["genre_business"] == "2026-09-17"  # 3 days went to the classic, then the 14th day of 45 passes 600
+    assert "genre_classics" not in got
+    assert body["genre_minutes"]["business"] > 1000 and body["genre_minutes"]["classics"] == 135
+    assert "variety_3" not in got  # two genres so far
