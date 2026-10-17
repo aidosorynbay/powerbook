@@ -253,3 +253,7 @@ button.pin:active { transform: scale(0.96); }
 .genreRow i { display: block; height: 4px; border-radius: 99px; background: var(--color-bg-secondary); overflow: hidden; }
 .genreRow i b { display: block; height: 100%; border-radius: 99px; background: var(--color-text-primary); opacity: 0.8; }
 .genreRow em { font-style: normal; font-variant-numeric: tabular-nums; color: var(--color-text-secondary); font-size: 13px; }
+
+/* worn by the avatar: the pin alone, with a little shadow of its own */
+.wornPin { display: block; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5)); }
+.secondary { margin-top: 10px; background: none; border: 0; color: var(--color-text-secondary); font: inherit; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }

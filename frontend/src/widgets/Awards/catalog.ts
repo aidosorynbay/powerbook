@@ -33,3 +33,6 @@ export function trackOf(key: string): { track: string; n: number } {
  * Not under /awards: a public folder named like a page would shadow it (public/war did, 2026-10-17). */
 export const pinSmall = (key: string) => `/award-pins/s/${key}.webp`;
 export const pinLarge = (key: string) => `/award-pins/${key}.webp`;
+
+/** The pin cut out of its cloth, for wearing by an avatar (transparent). */
+export const pinCut = (key: string) => `/award-pins/c/${key}.webp`;

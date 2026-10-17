@@ -42,6 +42,8 @@ class PublicProfileOut(BaseModel):
     books_finished: int
     badges_earned: int
     league: str | None = None
+    # the award pin the reader chose to wear by their avatar (never the automatic newest)
+    featured_award: str | None = None
     badges: list[BadgeOut]
     recent_books: list[str]
     favorite_books: list[str]

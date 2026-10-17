@@ -164,12 +164,19 @@ class AwardsOut(BaseModel):
     holders: dict[str, int]
     secret_total: int
     genre_minutes: dict[str, int] = {}
+    # the pin worn by the avatar: the reader's choice or else the newest; `featured_chosen` = they picked it
+    featured: str | None = None
+    featured_chosen: bool = False
     title: str | None
     first_time: bool
     since: int | None = None
     has_archive: bool = False
     # «Скрыть награды»: no windows, a quiet line in the profile
     hidden: bool = False
+
+
+class AwardsFeatureIn(BaseModel):
+    key: str | None = Field(default=None, max_length=40)
 
 
 class AwardsSeenIn(BaseModel):

@@ -12,7 +12,7 @@ import { apiGet, apiPost, track, useI18n, type AwardEarned, type Awards, type Lo
 import { Sheet } from '@/widgets/RoundToday';
 import { dayLink } from '@/widgets/ShareDay';
 import { loadLeagueFonts } from '@/widgets/League';
-import { GENRES, GENRE_MINUTES, MILLION, SPECIAL, TRACKS, TRACK_ORDER, pinLarge, pinSmall, trackOf } from './catalog';
+import { GENRES, GENRE_MINUTES, MILLION, SPECIAL, TRACKS, TRACK_ORDER, pinCut, pinLarge, pinSmall, trackOf } from './catalog';
 import styles from './Awards.module.css';
 
 type T = (k: string, p?: Record<string, string | number>) => string;
@@ -123,6 +123,12 @@ function share01(tr: string, now: number, next: number) {
   return Math.max(0, Math.min(1, tr === 'together' ? now / (next * MILLION) : now / next));
 }
 
+/** An award worn by the avatar: only the pin, cut out of its cloth. */
+export function WornPin({ k, size }: { k: string; size: number }) {
+  const { t } = useI18n();
+  return <img className={styles.wornPin} src={pinCut(k)} width={size} height={size} alt={nameOf(t, k)} draggable={false} />;
+}
+
 /** Five dots, as in the logo, as many filled as the pin is rare (1 = most readers have it). Quiet: no number, no percent. */
 export function Rarity({ n }: { n: number }) {
   const { t } = useI18n();
@@ -211,7 +217,7 @@ export function AwardsCard({ awards, name, username, onChange }: { awards: Award
         onPick={(k) => { setPicked(k); track('award_open', { key: k, from: 'sheet' }); }}
         onHide={() => { setSheet(false); setHidden(true).then(() => onChange?.()); }}
       />
-      <AwardDetail award={picked} onClose={() => setPicked(null)} awards={awards} name={name} username={username} />
+      <AwardDetail award={picked} onClose={() => setPicked(null)} awards={awards} name={name} username={username} onChange={onChange} />
     </section>
   );
 }
@@ -351,13 +357,14 @@ export function AwardsSheet({ open, onClose, awards, onPick, onHide, title }: {
 }
 
 /** One award up close: the pin, what it is for, when it came, who else got there, and its story. */
-export function AwardDetail({ award, onClose, awards, name, username, readOnly = false }: {
+export function AwardDetail({ award, onClose, awards, name, username, readOnly = false, onChange }: {
   award: string | null;
   onClose: () => void;
   awards: Awards;
   name: string;
   username: string;
   readOnly?: boolean;
+  onChange?: () => void;
 }) {
   const { t, locale } = useI18n();
   const w = useWords();
@@ -367,6 +374,17 @@ export function AwardDetail({ award, onClose, awards, name, username, readOnly =
   const { track: tr, n } = trackOf(award);
   const gm = tr === 'genre' ? awards.genre_minutes?.[award.slice(6)] ?? 0 : 0;
   const st = tr === 'genre' ? { track: 'genre', value: gm, now: gm, next: GENRE_MINUTES } : awards.tracks.find((x) => x.track === tr);
+  const worn = awards.featured === award && awards.featured_chosen;
+  const wear = async () => {
+    setBusy(true);
+    try {
+      await apiPost('/insights/awards/feature', { key: worn ? null : award }, { requireAuth: true });
+      track(worn ? 'award_unwear' : 'award_wear', { key: award });
+      onChange?.();
+    } finally {
+      setBusy(false);
+    }
+  };
   const share = async () => {
     if (!e) return;
     setBusy(true);
@@ -396,6 +414,11 @@ export function AwardDetail({ award, onClose, awards, name, username, readOnly =
             {!readOnly && (
               <button type="button" className={styles.primary} onClick={share} disabled={busy}>
                 {t('aw.share')}
+              </button>
+            )}
+            {!readOnly && (
+              <button type="button" className={styles.secondary} onClick={wear} disabled={busy}>
+                {worn ? t('aw.unwear') : t('aw.wear')}
               </button>
             )}
           </>

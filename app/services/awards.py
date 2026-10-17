@@ -364,11 +364,12 @@ def mine(db: Session, *, user_id: uuid.UUID, effective_ids: list[uuid.UUID]) -> 
         held = _held(db, user_id)
 
     on = {k: r.earned_on for k, r in held.items()}
+    chosen = next((k for k, r in held.items() if r.featured), None)
     unseen = {k for k, r in held.items() if r.seen_at is None}
-    return _showcase(res, everyone, on, unseen, first_time=not shown_before, effective_ids=effective_ids, hidden=is_hidden(db, user_id))
+    return _showcase(res, everyone, on, unseen, first_time=not shown_before, effective_ids=effective_ids, hidden=is_hidden(db, user_id), chosen=chosen)
 
 
-def _showcase(res: Result, everyone: type[_Everyone], on: dict[str, date], unseen: set[str], *, first_time: bool, effective_ids: list[uuid.UUID], hidden: bool) -> dict:
+def _showcase(res: Result, everyone: type[_Everyone], on: dict[str, date], unseen: set[str], *, first_time: bool, effective_ids: list[uuid.UUID], hidden: bool, chosen: str | None = None) -> dict:
     tracks = []
     for track, ns in TRACKS.items():
         value = res.values.get(track, 0)
@@ -388,12 +389,17 @@ def _showcase(res: Result, everyone: type[_Everyone], on: dict[str, date], unsee
         for a in CATALOG
         if a.key in on
     ]
+    # worn by the avatar: the reader's choice, else the newest (by day, then by the catalog's order)
+    order = {a.key: i for i, a in enumerate(CATALOG)}
+    newest = max(on, key=lambda k: (on[k], order.get(k, 0)), default=None)
     days = res.values.get("days", 0)
     title = next((n for n in reversed(TRACKS["days"]) if days >= n), None)
     return {
         "earned": earned,
         "tracks": tracks,
         "holders": {a.key: everyone.holders.get(a.key, 0) for a in CATALOG if not a.secret},
+        "featured": None if hidden else (chosen or newest),
+        "featured_chosen": bool(chosen) and not hidden,
         "secret_total": sum(1 for a in CATALOG if a.secret),
         # the reader's own minutes by genre (the personal statistics the genre pins grow from)
         "genre_minutes": dict(sorted(res.genre_minutes.items(), key=lambda kv: -kv[1])),
@@ -433,6 +439,24 @@ def peek(db: Session, *, user_id: uuid.UUID, effective_ids: list[uuid.UUID]) -> 
     for k, d in res.earned.items():
         on.setdefault(k, d)
     return _showcase(res, everyone, on, set(), first_time=False, effective_ids=effective_ids, hidden=False)
+
+
+def set_featured(db: Session, *, user_id: uuid.UUID, key: str | None) -> str | None:
+    """Wear this award by the avatar (None: back to the newest). Only an award the reader holds."""
+    held = _held(db, user_id)
+    if key is not None and key not in held:
+        raise ValueError("not held")
+    for k, row in held.items():
+        row.featured = k == key
+    db.commit()
+    return key
+
+
+def public_featured(db: Session, user_id: uuid.UUID) -> str | None:
+    """What others see by a reader's avatar: only a pin they chose themselves, never the quiet default."""
+    if is_hidden(db, user_id):
+        return None
+    return db.execute(select(ReaderAward.key).where(ReaderAward.user_id == user_id, ReaderAward.featured.is_(True))).scalar_one_or_none()
 
 
 def mark_seen(db: Session, *, user_id: uuid.UUID, keys: list[str]) -> int:

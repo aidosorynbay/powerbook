@@ -37,3 +37,6 @@
 
 /* the picture with something tucked under it: the badge sits behind (z-index -1) */
 .worn { position: relative; isolation: isolate; display: inline-flex; flex-shrink: 0; }
+
+/* an award pin worn at the picture's lower right, half over the edge */
+.pinSlot { position: absolute; right: -8px; bottom: -6px; display: flex; z-index: 1; pointer-events: none; }

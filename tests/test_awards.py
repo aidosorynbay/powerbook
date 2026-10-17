@@ -299,3 +299,23 @@ def test_genre_minutes_come_from_the_books_and_make_a_pin(env, monkeypatch):
     assert "genre_classics" not in got
     assert body["genre_minutes"]["business"] > 1000 and body["genre_minutes"]["classics"] == 135
     assert "variety_3" not in got  # two genres so far
+
+
+def test_the_pin_by_the_avatar_is_the_newest_until_the_reader_picks_one(env):
+    db, client, me, other, octo = env
+    body = client.get("/api/insights/awards", headers=_auth(me)).json()
+    newest = max(body["earned"], key=lambda a: a["on"])
+    assert body["featured"] in {a["key"] for a in body["earned"] if a["on"] == newest["on"]}
+    assert body["featured_chosen"] is False
+    assert awards.public_featured(db, me.id) is None  # others never see the automatic one
+    r = client.post("/api/insights/awards/feature", json={"key": "days_30"}, headers=_auth(me))
+    assert r.status_code == 200
+    body = client.get("/api/insights/awards", headers=_auth(me)).json()
+    assert body["featured"] == "days_30" and body["featured_chosen"] is True
+    assert awards.public_featured(db, me.id) == "days_30"
+    assert client.post("/api/insights/awards/feature", json={"key": "days_1000"}, headers=_auth(me)).status_code == 400
+    client.post("/api/insights/awards/feature", json={"key": None}, headers=_auth(me))
+    assert client.get("/api/insights/awards", headers=_auth(me)).json()["featured_chosen"] is False
+    client.post("/api/insights/awards/feature", json={"key": "days_30"}, headers=_auth(me))
+    client.post("/api/insights/awards/hidden", json={"hidden": True}, headers=_auth(me))
+    assert awards.public_featured(db, me.id) is None  # hidden awards stay hidden everywhere

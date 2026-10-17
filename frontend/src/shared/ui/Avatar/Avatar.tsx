@@ -8,9 +8,11 @@ interface AvatarProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   /** Worn on the picture, tucked under it (the league's bookmark tail). */
   badge?: ReactNode;
+  /** An award pin worn at the lower right, cut out of its cloth. */
+  pin?: ReactNode;
 }
 
-export function Avatar({ src, name, size = 'md', badge }: AvatarProps) {
+export function Avatar({ src, name, size = 'md', badge, pin }: AvatarProps) {
   const initial = name.trim().charAt(0).toUpperCase() || '?';
   const classNames = [styles.avatar, styles[size]].join(' ');
 
@@ -25,11 +27,12 @@ export function Avatar({ src, name, size = 'md', badge }: AvatarProps) {
       </div>
     );
   }
-  if (!badge) return face;
+  if (!badge && !pin) return face;
   return (
     <span className={styles.worn}>
       {face}
       {badge}
+      {pin && <span className={styles.pinSlot}>{pin}</span>}
     </span>
   );
 }

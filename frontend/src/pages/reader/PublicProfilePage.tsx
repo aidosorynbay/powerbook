@@ -10,7 +10,7 @@ import { bookCount } from '@/pages/library/bookcase/plural';
 import styles from './PublicProfilePage.module.css';
 import { ProfileListings } from '../books/ProfileBits';
 import { LeagueGlyph } from '@/widgets/League';
-import { AwardsPeek, awardsOn } from '@/widgets/Awards';
+import { AwardsPeek, WornPin, awardsOn } from '@/widgets/Awards';
 
 function getMusicEmbedUrl(url: string): string | null {
   try {
@@ -103,7 +103,7 @@ export function PublicProfilePage() {
             ) : (
               <>
                 <div className={styles.hero}>
-                  <Avatar src={profile.avatar_data} name={profile.display_name} size="xl" badge={profile.league && <LeagueGlyph tier={profile.league} onAvatar face={100} />} />
+                  <Avatar src={profile.avatar_data} name={profile.display_name} size="xl" pin={profile.featured_award && awardsOn(viewer) ? <WornPin k={profile.featured_award} size={46} /> : undefined} badge={profile.league && <LeagueGlyph tier={profile.league} onAvatar face={100} />} />
                   <div className={styles.name}>{profile.display_name}</div>
                   {profile.archetype_key && (
                     <div className={styles.archetype}>

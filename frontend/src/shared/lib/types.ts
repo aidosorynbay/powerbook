@@ -393,6 +393,9 @@ export type Awards = {
   secret_total: number;
   /** the reader's own minutes by genre (topic key → minutes), most read first */
   genre_minutes: Record<string, number>;
+  /** the pin worn by the avatar: the reader's choice, else the newest; `featured_chosen`: they picked it themselves */
+  featured: string | null;
+  featured_chosen: boolean;
   /** the step of the days ladder the reader stands on, e.g. "days_100" */
   title: string | null;
   /** nothing has been shown yet: the first opening shows the whole collection at once */
@@ -538,6 +541,8 @@ export type DirectoryEntry = {
 
 export type PublicProfile = {
   league?: LeagueTierKey | null;
+  /** the award pin the reader chose to wear by their avatar */
+  featured_award?: string | null;
   user_id: string;
   username: string;
   display_name: string;

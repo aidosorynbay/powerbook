@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, String, UniqueConstraint, Uuid
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -32,3 +32,5 @@ class ReaderAward(TimestampMixin, Base):
     key: Mapped[str] = mapped_column(String(40), nullable=False)
     earned_on: Mapped[date] = mapped_column(Date, nullable=False)
     seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    # the pin the reader chose to wear by their avatar (at most one per reader); none chosen = the newest, for them only
+    featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")

@@ -24,7 +24,7 @@ import { Header, Footer, ClaimPicker, WrappedCard, BookTime, InviteFriends, Help
 import { paletteFor, dimensionsFor } from '@/pages/library/bookcase/bookArt';
 import { bookCount } from '@/pages/library/bookcase/plural';
 import { LeagueCard, LeaguePromo } from '@/widgets/League';
-import { AwardsCard, AwardsMoment, awardsOn, useAwards } from '@/widgets/Awards';
+import { AwardsCard, AwardsMoment, WornPin, awardsOn, useAwards } from '@/widgets/Awards';
 import styles from './InsightsPage.module.css';
 import { ProfileListings } from '../books/ProfileBits';
 
@@ -311,7 +311,7 @@ export function InsightsPage() {
             <div className={styles.col}>
             {/* who you are, and the gear: settings are one tap from here instead of a header icon and a menu item */}
             <div className={styles.idRow}>
-              {user && <Avatar src={user.avatar_data} name={user.display_name || user.username} size="lg" />}
+              {user && <Avatar src={user.avatar_data} name={user.display_name || user.username} size="lg" pin={showAwards && awards && !awards.hidden && awards.featured ? <WornPin k={awards.featured} size={38} /> : undefined} />}
               <div className={styles.idText}>
                 <h1 className={styles.title}>{user?.display_name || user?.username}</h1>
                 <p className={styles.subtitle}>

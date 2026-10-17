@@ -12,6 +12,7 @@ from app.schemas.insights import (
     BadgeStatsOut,
     AllTimeProfileOut,
     ArchetypeOut,
+    AwardsFeatureIn,
     AwardsHiddenIn,
     AwardsOut,
     AwardsSeenIn,
@@ -130,6 +131,14 @@ def get_genres(db: Session = Depends(get_db), user=Depends(get_current_user)) ->
     """The reader's own genres: minutes, books and share, most read first."""
     ids = ClaimsRepository(db).effective_user_ids(user_id=user.id)
     return [GenreOut(topic=g.topic, minutes=g.minutes, books=g.books, share=g.share) for g in genres.profile(db, ids)]
+
+
+@router.post("/awards/feature")
+def feature_award(payload: AwardsFeatureIn, db: Session = Depends(get_db), user=Depends(get_current_user)) -> dict:
+    try:
+        return {"featured": awards.set_featured(db, user_id=user.id, key=payload.key)}
+    except ValueError:
+        raise HTTPException(status_code=400, detail="You do not hold that award") from None
 
 
 @router.post("/awards/seen")
