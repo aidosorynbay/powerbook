@@ -49,6 +49,11 @@ def test_minutes_are_dated_on_the_day_the_total_was_reached():
     assert res.values["minutes"] == 5100
 
 
+def test_rarity_is_five_steps_from_the_share_of_readers():
+    assert [awards.rarity(h, 100) for h in (80, 30, 12, 5, 1)] == [1, 2, 3, 4, 5]
+    assert awards.rarity(1, 0) == 5
+
+
 def test_a_streak_runs_across_the_neutral_last_day_and_is_dated_when_reached():
     aug, sep = _round(2026, 8), _round(2026, 9)
     read = [d for d in aug.day_list + sep.day_list if d not in (aug.last_day_date, sep.last_day_date)]

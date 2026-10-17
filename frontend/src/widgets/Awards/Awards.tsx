@@ -121,6 +121,18 @@ function share01(tr: string, now: number, next: number) {
   return Math.max(0, Math.min(1, tr === 'together' ? now / (next * MILLION) : now / next));
 }
 
+/** Five dots, as in the logo, as many filled as the pin is rare (1 = most readers have it). Quiet: no number, no percent. */
+export function Rarity({ n }: { n: number }) {
+  const { t } = useI18n();
+  return (
+    <span className={styles.dots} role="img" aria-label={t('aw.rarity', { n })}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <i key={i} className={i <= n ? styles.dotOn : styles.dotOff} />
+      ))}
+    </span>
+  );
+}
+
 /** The profile's awards: the days of 30+ minutes as the hero with their step as a caption, the newest pins,
  * the door to all of them. */
 async function setHidden(hidden: boolean) {
@@ -317,6 +329,7 @@ export function AwardDetail({ award, onClose, awards, name, username, readOnly =
         {e ? (
           <>
             <p className={styles.detailMeta}>{t('aw.earnedOn', { date: w.date(e.on) })}</p>
+            <p className={styles.detailMeta}><Rarity n={e.rarity} /></p>
             {readOnly ? (
               <p className={styles.detailMeta}>{w.already(e.holders)}</p>
             ) : (
@@ -469,6 +482,7 @@ export function AwardsMoment({ awards, name, username, onSeen }: { awards: Award
       <div className={styles.nightName}>{nameOf(t, e.key)}</div>
       <div className={styles.nightCond}>{condOf(t, e.key)}</div>
       <div className={styles.nightMeta}>{t('aw.earnedOn', { date: w.date(e.on) })}</div>
+      <div className={styles.nightMeta}><Rarity n={e.rarity} /></div>
       {w.company(e.holders) && <div className={styles.nightMeta}>{w.company(e.holders)}</div>}
       <div className={styles.nightActions}>
         <button type="button" className={styles.primary} onClick={() => shareOne(e)} disabled={busy}>

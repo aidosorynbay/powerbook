@@ -380,7 +380,7 @@ export type Badge = {
 };
 
 /** One award the reader holds (GET /insights/awards): the day it was earned and how many readers hold it. */
-export type AwardEarned = { key: string; on: string; holders: number; new: boolean };
+export type AwardEarned = { key: string; on: string; holders: number; new: boolean; rarity: number };
 /** `now` is where the reader stands towards `next` (the streak still going); "together" counts minutes, its steps millions. */
 export type AwardTrack = { track: string; value: number; now: number; next: number | null };
 

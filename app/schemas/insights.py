@@ -134,6 +134,7 @@ class AwardEarnedOut(BaseModel):
     on: date
     holders: int
     new: bool
+    rarity: int = 1  # 1–5 stars, 5 = the rarest
 
 
 class AwardTrackOut(BaseModel):

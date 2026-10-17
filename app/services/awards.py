@@ -256,6 +256,7 @@ def evaluate(p: Person, rounds: list[Round], neutral: frozenset[date], treasury:
 class _Everyone:
     at: float = 0.0
     holders: dict[str, int] = {}
+    readers: int = 0
     treasury: tuple[int, dict[int, date]] = (0, {})
 
 
@@ -269,13 +270,21 @@ def _everyone(db: Session) -> type[_Everyone]:
     neutral = streaks.circle_last_days(db)
     treasury = treasury_marks(db)
     holders: dict[str, int] = defaultdict(int)
+    readers = 0
     for p in people.values():
         if sum(p.minutes.values()) <= 0:
             continue
+        readers += 1
         for k in evaluate(p, rounds, neutral, treasury).earned:
             holders[k] += 1
-    _Everyone.holders, _Everyone.treasury, _Everyone.at = dict(holders), treasury, time.monotonic()
+    _Everyone.holders, _Everyone.readers, _Everyone.treasury, _Everyone.at = dict(holders), readers, treasury, time.monotonic()
     return _Everyone
+
+
+def rarity(holders: int, readers: int) -> int:
+    """1 (many readers hold it) to 5 (a few): the stars on a pin. A share, never a count (founder, 2026-10-18)."""
+    share = holders / readers if readers else 0.0
+    return 1 if share >= 0.5 else 2 if share >= 0.25 else 3 if share >= 0.10 else 4 if share >= 0.03 else 5
 
 
 def reset_cache() -> None:
@@ -332,6 +341,7 @@ def _showcase(res: Result, everyone: type[_Everyone], on: dict[str, date], unsee
             # never «у 0»: the reader holds it even when the count is a few minutes old
             "holders": max(1, everyone.holders.get(a.key, 0)),
             "new": a.key in unseen,
+            "rarity": rarity(max(1, everyone.holders.get(a.key, 0)), everyone.readers),
         }
         for a in CATALOG
         if a.key in on
