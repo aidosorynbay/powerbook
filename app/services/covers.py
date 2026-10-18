@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import sys
 import threading
@@ -109,6 +110,8 @@ _DERIVATIVE = re.compile(
     r"резюме|summarized|рабочая тетрадь|аудиокнига|audiobook|sparknotes|cliffsnotes",
     re.IGNORECASE,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _is_symbol(ch: str) -> bool:
@@ -625,7 +628,11 @@ def is_derivative(candidate: _Candidate) -> bool:
 def search_any(query: str) -> list[_Candidate]:
     """Every edition the catalogues offer for a query, for a reader to choose
     from: Google first, Open Library after it for Latin titles."""
-    found = _search(query)
+    try:
+        found = _search(query)
+    except Exception:  # Google having a bad minute must not be a 500: Open Library may still answer
+        logger.warning("google books search failed", exc_info=True)
+        found = []
     if _script(query) == "lat":
         try:
             found += _search_open_library(query)

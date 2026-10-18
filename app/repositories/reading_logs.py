@@ -4,7 +4,7 @@ import uuid
 from datetime import date
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.enums import RoundParticipantStatus
 from app.models.reaction import ReadingLogReaction
@@ -51,6 +51,7 @@ class ReadingLogRepository(BaseRepository[ReadingLog]):
     ) -> list[ReadingLog]:
         stmt = (
             select(ReadingLog)
+            .options(selectinload(ReadingLog.books))
             .where(ReadingLog.round_id == round_id, ReadingLog.user_id == user_id)
             .order_by(ReadingLog.date.asc())
         )

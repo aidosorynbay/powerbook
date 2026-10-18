@@ -59,8 +59,8 @@ def _call(method: str, payload: dict) -> dict | None:
     try:
         with urllib.request.urlopen(request, timeout=10) as response:
             return json.load(response)
-    except Exception:
-        logger.exception("telegram %s failed", method)
+    except Exception:  # Telegram's 429/5xx is theirs and passes; a warning, not an error event
+        logger.warning("telegram %s failed", method, exc_info=True)
         return None
 
 
