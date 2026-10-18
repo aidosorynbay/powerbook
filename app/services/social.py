@@ -173,6 +173,7 @@ class SocialService:
 
         is_buddy = self.buddies.get(user_id=viewer_id, buddy_user_id=target.id) is not None
 
+        from app.services import awards
         from app.services.leagues import leagues_by_user
 
         return PublicProfileOut(

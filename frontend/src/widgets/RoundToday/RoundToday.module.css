@@ -650,7 +650,7 @@
 .chipRow .chip { max-width: 100%; }
 
 /* the rail at the card's top-right: reminder, comment/books, share — 44 px wide (council 2026-10-13) */
-.rail { flex: none; width: 52px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.rail { flex: none; min-width: 52px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .chipCompact { padding: 6px 9px; gap: 4px; font-size: 11.5px; max-width: none; min-height: 32px; }
 .railBtn {
   position: relative;
