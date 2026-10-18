@@ -111,10 +111,17 @@ def test_points_lock_at_midnight_and_knock_out_bricks(env, monkeypatch):
     read(db, rnd, sail[1], date(2026, 10, 17))
     t = {x["key"]: x for x in c.get("/api/war").json()["teams"]}
     assert t["lighthouse"]["bricks_left"] == 27
-    # today's points show live, and strike only after midnight
+    # today's points show live to their own team, and strike only after midnight
     read(db, rnd, sail[1], date(2026, 10, 18))
-    t = {x["key"]: x for x in c.get("/api/war").json()["teams"]}
+    t = {x["key"]: x for x in c.get("/api/war", headers=h(sail[0])).json()["teams"]}
     assert t["sail"]["today"] == 1 and t["lighthouse"]["bricks_left"] == 27
+    # the rival's running day is hidden until it closes: its count, in the number and in the strip
+    assert t["lighthouse"]["today"] is None and t["lighthouse"]["days"][-1]["hits"] is None
+    body = c.get("/api/war").json()  # a visitor without a team sees neither team's open day
+    assert all(x["today"] is None for x in body["teams"])
+    # yesterday's close is offered to the page as the midnight reveal
+    assert body["reveal"]["date"] == "2026-10-17" and body["reveal"]["n"] == 1 and body["reveal"]["final"] is False
+    assert sorted(body["reveal"]["hits"]) == [1, 2]
 
 
 def test_sign_up_closes_at_20_and_the_teams_split_themselves(env, monkeypatch):
@@ -209,3 +216,4 @@ def test_after_midnight_a_circle_reader_is_asked_which_day(env, monkeypatch):
     row = db.query(ReadingLog).filter_by(user_id=readers[0].id).one()
     assert row.date == date(2026, 10, 17) and row.minutes == 45  # the circle has it
     assert body["me"]["minutes_yesterday"] == 45 and body["me"]["today"] is False
+

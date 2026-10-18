@@ -203,7 +203,7 @@ def bot_tick(db: Session, war: ClanWar | None = None, now: datetime | None = Non
              at=close_at)
     # 21:00: the count so far, only while the shelf is not full
     if war.start_date <= today <= war.end_date and now.time() >= EVENING:
-        state = clan_war.state(db, None)
+        state = clan_war.state(db, None, unmasked=True)  # each team hears only its own count, in its own room
         for t in (0, 1):
             team = state["teams"][t]
             line = next((x for x in team["days"] if x["date"] == today.isoformat()), None)

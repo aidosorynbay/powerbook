@@ -254,7 +254,8 @@ def scheduled() -> None:
         db.close()
 
 
-def state(db: Session, viewer: User | None) -> dict:
+def state(db: Session, viewer: User | None, *, unmasked: bool = False) -> dict:
+    """`unmasked` is for the server's own use (a team's bot reading that team's count), never for a page."""
     war = _war_or_404(db)
     today = _today()
     total_days = (war.end_date - war.start_date).days + 1
@@ -318,7 +319,10 @@ def state(db: Session, viewer: User | None) -> dict:
                 sizes_by_day[t].append(sz)
             elif d == today and live_today:
                 h, sz = _count(by_team[t], war, d, reads)
-                lines[t].append({"date": d.isoformat(), "hits": h, "size": sz, "locked": False})
+                # the rival's day stays hidden until its midnight (founder 2026-10-18): a reader sees only their own team's
+                # running count; a visitor without a team sees neither
+                shown = unmasked or (me is not None and me.team == t)
+                lines[t].append({"date": d.isoformat(), "hits": h if shown else None, "size": sz, "locked": False})
                 sizes_by_day[t].append(current)
             else:
                 sizes_by_day[t].append(current)
@@ -338,11 +342,23 @@ def state(db: Session, viewer: User | None) -> dict:
                 "points": strikes[t],
                 "shelf": shelf,
                 "fill": round(100.0 * strikes[t] / shelf, 1) if shelf else 0.0,
-                "today": next((x["hits"] for x in lines[t] if not x["locked"]), None),
+                "today": next((x["hits"] for x in lines[t] if not x["locked"]), None),  # None for the rival's hidden day
                 "members": [person(u, a) for _, u, a in by_team[t]],
                 "days": lines[t],
             }
         )
+    # the day that has just closed: the page plays its midnight reveal (books flying onto the two shelves) once per reader
+    if war.status == "live" and war.start_date < today <= war.end_date + timedelta(days=1):
+        last = min(today - timedelta(days=1), war.end_date)
+        got = [next((x for x in lines[t] if x["date"] == last.isoformat() and x["locked"]), None) for t in (0, 1)]
+        if all(got):
+            out["reveal"] = {
+                "date": last.isoformat(),
+                "n": (last - war.start_date).days + 1,
+                "hits": [g["hits"] for g in got],
+                "sizes": [g["size"] for g in got],
+                "final": last == war.end_date,
+            }
     if me is not None and me.team is not None:
         mine = [d for d in all_days if d <= today and (me.user_id, d) in reads and d >= _joined_day(me, war)]
         out["me"]["hits"] = len(mine)
