@@ -2192,7 +2192,6 @@ export function DashboardPage() {
           <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
             <div className={styles.modalTitle}>
               {rosterModalDate}
-              <span className={styles.modalCount}>{t('dashboard.rosterCount', { n: roster?.days[rosterModalDate]?.length ?? 0 })}</span>
             </div>
             <ul className={styles.rosterList}>
               {(roster?.days[rosterModalDate] ?? []).map(entry => (

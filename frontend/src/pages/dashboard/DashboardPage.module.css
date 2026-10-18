@@ -808,13 +808,6 @@
   }
 }
 
-.modalCount {
-  margin-left: var(--spacing-2);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-normal, 400);
-  color: var(--color-text-muted, #8a8f98);
-}
-
 .modalTitle {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
