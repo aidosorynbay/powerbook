@@ -12,7 +12,7 @@ import { apiGet, apiPost, refreshWornPins, track, useI18n, type AwardEarned, typ
 import { Sheet } from '@/widgets/RoundToday';
 import { dayLink } from '@/widgets/ShareDay';
 import { loadLeagueFonts } from '@/widgets/League';
-import { GENRES, GENRE_MINUTES, MILLION, SPECIAL, TRACKS, TRACK_ORDER, pinCut, pinLarge, pinSmall, trackOf } from './catalog';
+import { CLOTH_STORY, GENRES, GENRE_MINUTES, MILLION, PIN_SCALE, SPECIAL, TRACKS, TRACK_ORDER, pinCut, pinLarge, pinSmall, trackOf } from './catalog';
 import styles from './Awards.module.css';
 
 type T = (k: string, p?: Record<string, string | number>) => string;
@@ -85,7 +85,8 @@ export function AwardPin({ k, size, locked = false, big = false, onClick, label 
   onClick?: () => void;
   label?: string;
 }) {
-  const style = { '--pin': `${size}px` } as CSSProperties;
+  // the box is the tap area; the bare pin inside is sized by eye (PIN_SCALE), so a match and a river look alike
+  const style = { '--pin': `${size}px`, '--k': (PIN_SCALE[k] ?? 1) * 0.86, '--mask': `url(${big ? pinLarge(k) : pinSmall(k)})` } as CSSProperties;
   const body = <img src={big ? pinLarge(k) : pinSmall(k)} alt="" loading={big ? 'eager' : 'lazy'} decoding="async" draggable={false} />;
   const cls = `${styles.pin} ${locked ? styles.locked : ''}`;
   return onClick ? (
@@ -780,29 +781,28 @@ export async function drawAwardStory(e: AwardEarned, ctx: ShareCtx): Promise<Fil
   if (!g) return null;
   g.fillStyle = '#0B1C26';
   g.fillRect(0, 0, W, H);
-
-  // the pin with its own cloth, its edges melting into the night of the story
+  // the book cloth, edge to edge — the one place it stays (council, 2026-10-18) — and the pin pinned on it
+  const cloth = await loadImage(CLOTH_STORY).catch(() => null);
+  if (cloth) {
+    g.drawImage(cloth, 0, 0, W, H);
+    const shade = g.createLinearGradient(0, 0, 0, H);
+    shade.addColorStop(0, 'rgba(11,28,38,0.35)');
+    shade.addColorStop(0.5, 'rgba(11,28,38,0.15)');
+    shade.addColorStop(1, 'rgba(11,28,38,0.7)');
+    g.fillStyle = shade;
+    g.fillRect(0, 0, W, H);
+  }
   const img = await loadImage(pinLarge(e.key)).catch(() => null);
-  const S = 740;
+  const S = Math.round(640 * Math.min(1.15, PIN_SCALE[e.key] ?? 1));
   const x0 = (W - S) / 2;
-  const y0 = 250;
+  const y0 = 300 + (640 - S) / 2;
   if (img) {
+    g.save();
+    g.shadowColor = 'rgba(0,0,0,0.55)';
+    g.shadowBlur = 40;
+    g.shadowOffsetY = 18;
     g.drawImage(img, x0, y0, S, S);
-    const fade = (x: number, y: number, x2: number, y2: number) => {
-      const lg = g.createLinearGradient(x, y, x2, y2);
-      lg.addColorStop(0, 'rgba(11,28,38,1)');
-      lg.addColorStop(1, 'rgba(11,28,38,0)');
-      return lg;
-    };
-    const F = 150;
-    g.fillStyle = fade(x0, 0, x0 + F, 0);
-    g.fillRect(x0, y0, F, S);
-    g.fillStyle = fade(x0 + S, 0, x0 + S - F, 0);
-    g.fillRect(x0 + S - F, y0, F, S);
-    g.fillStyle = fade(0, y0, 0, y0 + F);
-    g.fillRect(x0, y0, S, F);
-    g.fillStyle = fade(0, y0 + S, 0, y0 + S - F);
-    g.fillRect(x0, y0 + S - F, S, F);
+    g.restore();
   }
 
   g.textAlign = 'center';

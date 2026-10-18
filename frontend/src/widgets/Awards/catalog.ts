@@ -31,8 +31,24 @@ export function trackOf(key: string): { track: string; n: number } {
 
 /** The pin's picture: a small one for rows and grids, a large one for the close-up and the story.
  * Not under /awards: a public folder named like a page would shadow it (public/war did, 2026-10-17). */
-export const pinSmall = (key: string) => `/award-pins/s/${key}.webp`;
-export const pinLarge = (key: string) => `/award-pins/${key}.webp`;
+export const pinSmall = (key: string) => `/award-pins/c/${key}.webp`;
+export const pinLarge = (key: string) => `/award-pins/cl/${key}.webp`;
+/** The pins are shown bare, cut out of their cloth (council, 2026-10-18): the cloth stays only as the story's
+ * whole background. (The old cloth tiles are still in award-pins/<key>.webp and s/, unused.) */
+export const CLOTH_STORY = '/award-pins/cloth-story.webp';
+/** How much to grow or shrink each pin in its box so that all look the same size by eye (by the share of its
+ * square the pin covers: a thin match grows, a wide river shrinks). */
+export const PIN_SCALE: Record<string, number> = {
+  book_day: 0.90, clean_1: 0.89, clean_10: 1.10, clean_20: 1.15, clean_3: 1.04, clean_5: 0.99,
+  comeback: 1.22, days_1: 1.13, days_100: 0.90, days_1000: 1.06, days_200: 1.00, days_30: 0.88,
+  days_365: 1.02, days_500: 1.10, first_year: 0.91, full_year: 0.89, genre_biography: 0.99, genre_business: 0.97,
+  genre_classics: 1.00, genre_detective: 0.99, genre_fantasy_scifi: 1.00, genre_history: 1.22, genre_kazakh: 1.22, genre_modern_prose: 0.95,
+  genre_philosophy: 0.99, genre_poetry: 1.08, genre_psychology: 1.22, genre_religion: 0.87, genre_romance: 0.93, genre_science: 0.99,
+  genre_self_help: 1.22, minutes_1000: 1.17, minutes_10000: 1.22, minutes_25000: 1.22, minutes_5000: 1.04, minutes_50000: 0.82,
+  new_year: 0.96, streak_100: 1.20, streak_30: 1.17, streak_365: 1.05, streak_7: 1.22, together_1: 1.08,
+  together_10: 0.87, together_2: 0.98, together_3: 0.92, together_5: 0.82, variety_10: 0.92, variety_3: 0.83,
+  variety_6: 1.12, war_1: 1.08,
+};
 
 /** The pin cut out of its cloth, for wearing by an avatar (transparent). */
 export const pinCut = (key: string) => `/award-pins/c/${key}.webp`;
