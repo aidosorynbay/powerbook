@@ -126,7 +126,7 @@ def feedback_received(*, row, user) -> None:
 # ---------- archive nicknames ----------
 
 
-def claim_waiting(*, claim_id: str, claimant, ghost, rounds: list[str]) -> None:
+def claim_waiting(*, claim_id: str, claimant, ghost, rounds: list[str], note: str | None = None) -> None:
     """A reader asked for an archive nickname: it waits for a yes."""
     who = claimant.display_name or claimant.username
     tg = f", tg @{claimant.telegram_id}" if claimant.telegram_id else ""
@@ -138,6 +138,11 @@ def claim_waiting(*, claim_id: str, claimant, ghost, rounds: list[str]) -> None:
     ]
     if rounds:
         lines.append("Круги: " + ", ".join(rounds))
+    from app.services.claims import CLASH_NOTE
+
+    if note and note.startswith(CLASH_NOTE):
+        # a nickname in a circle the reader already has: renamed mid-month, or not them
+        lines.append(f"⚠ В одном круге с историей читателя: {note[len(CLASH_NOTE):].split(' · ')[0]} — сменили ник или чужой?")
     lines.append(f"Все заявки: {SITE}/admin/username-claim/list")
     tell_admins("\n".join(lines), buttons=[[
         {"text": "✅ Одобрить", "callback_data": f"claim:a:{claim_id}"},

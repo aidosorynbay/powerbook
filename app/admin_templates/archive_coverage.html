@@ -43,7 +43,8 @@
         {% for p in data.pending %}
           <tr>
             <td>@{{ p.claimant }} <div class="text-muted small">{{ p.claimant_name }}</div></td>
-            <td>@{{ p.ghost }} <div class="text-muted small">{{ p.ghost_name }}</div></td>
+            <td>@{{ p.ghost }} <div class="text-muted small">{{ p.ghost_name }}</div>
+              {% if p.clash %}<div class="text-warning small">⚠ в одном круге с историей читателя: {{ p.clash }} — сменили ник посреди месяца или это чужой?</div>{% endif %}</td>
             <td>{{ p.circles }} <span class="text-muted small">{{ p.span }}</span></td>
             <td class="text-muted small">{{ p.at }}</td>
             <td><form method="post" action="{{ base }}/archive-coverage/approve" class="m-0">

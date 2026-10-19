@@ -28,7 +28,7 @@ from app.models.enums import ClaimStatus
 from app.models.round import Round, RoundParticipant
 from app.models.user import User
 from app.services import claim_match
-from app.services.claims import ClaimsService
+from app.services.claims import CLASH_NOTE, ClaimsService
 
 # Archive nicknames that read this recently are most likely people still around.
 RECENT_YEAR = 2025
@@ -65,13 +65,13 @@ def build(db) -> dict:
         months[user_id].append((year, month))
 
     claims = db.execute(
-        select(UsernameClaim.id, UsernameClaim.claimant_user_id, UsernameClaim.ghost_user_id, UsernameClaim.status, UsernameClaim.created_at)
+        select(UsernameClaim.id, UsernameClaim.claimant_user_id, UsernameClaim.ghost_user_id, UsernameClaim.status, UsernameClaim.created_at, UsernameClaim.note)
     ).all()
     approved_by: dict[uuid.UUID, set[uuid.UUID]] = defaultdict(set)
     pending_by: dict[uuid.UUID, set[uuid.UUID]] = defaultdict(set)
     granted: set[uuid.UUID] = set()
     asked: set[uuid.UUID] = set()
-    for _cid, claimant, ghost, status, _at in claims:
+    for _cid, claimant, ghost, status, _at, _note in claims:
         if status == ClaimStatus.approved:
             approved_by[claimant].add(ghost)
             granted.add(ghost)
@@ -157,7 +157,7 @@ def build(db) -> dict:
     ]
 
     pending = []
-    for cid, claimant, ghost_id, status, at in sorted(claims, key=lambda c: c[4].timestamp() if c[4] else 0, reverse=True):
+    for cid, claimant, ghost_id, status, at, note in sorted(claims, key=lambda c: c[4].timestamp() if c[4] else 0, reverse=True):
         if status != ClaimStatus.pending:
             continue
         u = user_by_id.get(claimant)
@@ -167,6 +167,8 @@ def build(db) -> dict:
             "claimant": u.username if u else "?", "claimant_name": u.display_name if u else "",
             "ghost": g.username if g else "?", "ghost_name": g.display_name if g else "",
             "circles": len(months.get(ghost_id, [])), "span": _span(months.get(ghost_id, [])), "at": _astana(at),
+            # a nickname in a circle the reader already has: a renamed reader, or someone else
+            "clash": note[len(CLASH_NOTE):].split(" · ")[0] if note and note.startswith(CLASH_NOTE) else None,
         })
 
     return {

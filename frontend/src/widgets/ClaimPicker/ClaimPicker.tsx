@@ -93,7 +93,16 @@ export function ClaimPicker({ onChange }: ClaimPickerProps) {
     const { error: apiError } = await apiPost('/claims', { ghost_user_id: candidate.user_id }, { requireAuth: true });
     setSubmittingId(null);
     if (apiError) {
-      setError(apiError);
+      // the server answers in English; the reader reads their own language
+      setError(
+        t(
+          apiError.includes('someone else')
+            ? 'claims.errTaken'
+            : apiError.includes('already claimed this')
+              ? 'claims.errMine'
+              : 'claims.errFailed'
+        )
+      );
       return;
     }
     track('claim_submit', { from });

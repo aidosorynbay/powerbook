@@ -53,7 +53,7 @@ def create_claim(
     # The founder hears in Telegram, so nobody waits for them to open /admin.
     ghost = service.users.get(uuid.UUID(out.ghost_user_id))
     if ghost is not None and out.status == "pending":
-        admin_ping.claim_waiting(claim_id=out.id, claimant=user, ghost=ghost, rounds=out.rounds)
+        admin_ping.claim_waiting(claim_id=out.id, claimant=user, ghost=ghost, rounds=out.rounds, note=out.note)
     return out
 
 

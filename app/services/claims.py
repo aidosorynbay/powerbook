@@ -18,6 +18,10 @@ from app.services import claim_match
 MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 
+# How a request for a nickname that shares a circle with the reader's own history is marked for the founder.
+CLASH_NOTE = "общий круг: "
+
+
 def _round_label(year: int, month: int) -> str:
     return f"{MONTHS[month]} {year}"
 
@@ -113,7 +117,10 @@ class ClaimsService:
             suggestions=self.suggestions(user_id=user_id),
         )
 
-    def submit_claim(self, *, user_id: uuid.UUID, ghost_user_id: uuid.UUID, note: str | None) -> MyClaimOut:
+    def submit_claim(
+        self, *, user_id: uuid.UUID, ghost_user_id: uuid.UUID, note: str | None, checked: bool = False
+    ) -> MyClaimOut:
+        """A reader's request for an archive nickname, or (`checked`) the founder or Telegram vouching for it."""
         if ghost_user_id == user_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot claim yourself")
 
@@ -135,12 +142,18 @@ class ClaimsService:
             ghost_rounds |= self.repo.participated_round_ids(user_id=sib.id)
         covered_rounds = self.repo.covered_round_ids(claimant_user_id=user_id)
         clash = ghost_rounds & covered_rounds
-        if clash:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="This username shares a circle with an identity you've already claimed — "
-                       "you can only be one person per circle",
+        if clash and not checked:
+            # One person reads once per circle, so a nickname in a circle the reader already has looks like
+            # someone else's. But a reader who changed their nickname mid-month is in that circle twice, and such a
+            # reader was turned away for good (2026-10-19). The request now waits for the
+            # founder like any other, with the shared circles named.
+            months = sorted(
+                (y, m) for rid, y, m in (
+                    r for sib in siblings for r in self.repo.rounds_for_ghost(ghost_user_id=sib.id)
+                ) if rid in clash
             )
+            shared = ", ".join(dict.fromkeys(_round_label(y, m) for y, m in months))
+            note = f"{CLASH_NOTE}{shared}" + (f" · {note}" if note else "")
 
         # A previously-revoked claim between this exact pair leaves a row
         # behind (the unique constraint is on the pair, not the status) —
@@ -194,7 +207,7 @@ class ClaimsService:
     ) -> MyClaimOut:
         """The founder recognising a reader in the archive: the same checks as
         a reader's own request, granted at once."""
-        out = self.submit_claim(user_id=user_id, ghost_user_id=ghost_user_id, note=note)
+        out = self.submit_claim(user_id=user_id, ghost_user_id=ghost_user_id, note=note, checked=True)
         now = datetime.now(timezone.utc)
         for claim in self.repo.list_for_claimant(claimant_user_id=user_id):
             if claim.status == ClaimStatus.pending and claim.note == note:

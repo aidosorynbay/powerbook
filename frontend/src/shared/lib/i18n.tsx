@@ -1824,6 +1824,9 @@ const translations = {
     'claims.roundsMore': 'ещё {count}',
     'claims.roundsCollapse': 'свернуть',
     'claims.unclaim': 'Отменить',
+    'claims.errTaken': 'Этот ник уже привязал другой читатель. Если это вы — напишите нам.',
+    'claims.errMine': 'Этот ник уже ваш.',
+    'claims.errFailed': 'Не получилось отправить. Попробуйте ещё раз.',
 
     // Hall of fame
     'hallOfFame.title': 'Рекорды PowerBook',
@@ -4541,6 +4544,9 @@ const translations = {
     'claims.roundsMore': 'тағы {count}',
     'claims.roundsCollapse': 'жию',
     'claims.unclaim': 'Болдырмау',
+    'claims.errTaken': 'Бұл никті басқа оқырман байлап қойған. Егер бұл сіз болсаңыз — бізге жазыңыз.',
+    'claims.errMine': 'Бұл ник сіздікі.',
+    'claims.errFailed': 'Жіберу сәтсіз болды. Қайта көріңіз.',
 
     // Hall of fame
     'hallOfFame.title': 'PowerBook рекордтары',
@@ -7258,6 +7264,9 @@ const translations = {
     'claims.roundsMore': '{count} more',
     'claims.roundsCollapse': 'collapse',
     'claims.unclaim': 'Undo',
+    'claims.errTaken': 'Another reader has already linked this username. If it is you, write to us.',
+    'claims.errMine': 'This username is already yours.',
+    'claims.errFailed': 'Could not send. Please try again.',
 
     // Hall of fame
     'hallOfFame.title': 'PowerBook records',

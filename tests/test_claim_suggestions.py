@@ -140,6 +140,31 @@ def test_the_founder_links_a_reader_and_the_coverage_counts_follow(env):
 
 
 
+
+def test_a_nickname_changed_mid_month_waits_for_the_founder_not_turned_away(env):
+    # A reader renamed mid-month is in that circle under both nicknames; asking for the second one used to fail
+    # with «one person per circle» (2026-10-19). Now it waits for the founder, who sees the shared circle.
+    renamed = User(username="saira_new", display_name="Saira new", password_hash="x", gender=Gender.female, is_claimable=True)
+    env.db.add(renamed)
+    env.db.flush()
+    may = env.db.query(Round).filter_by(year=2023, month=5).one()
+    env.db.add(RoundParticipant(round_id=may.id, user_id=renamed.id, status=RoundParticipantStatus.active))
+    env.db.commit()
+    ClaimsService(env.db).link_by_admin(user_id=env.saira.id, ghost_user_id=env.ghost_saira.id, admin_id=env.aidos.id)
+
+    r = env.client.post("/api/claims", json={"ghost_user_id": str(renamed.id)}, headers=env.h(env.saira))
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "pending"
+    pending = build(env.db)["pending"]
+    assert [(p["ghost"], p["clash"]) for p in pending] == [("saira_new", "May 2023")]
+
+    # the founder approves it, or links it straight from the admin
+    ClaimsService(env.db).link_by_admin(user_id=env.saira.id, ghost_user_id=renamed.id, admin_id=env.aidos.id)
+    env.db.expire_all()
+    claim = env.db.query(UsernameClaim).filter_by(ghost_user_id=renamed.id).one()
+    assert claim.status == ClaimStatus.approved
+
+
 @pytest.fixture()
 def telegram(monkeypatch):
     """Telegram itself replaced by a list of what the bot would have said."""
