@@ -337,6 +337,8 @@ class BookcaseService:
                 added_on[vol.key] = bt.last_day.isoformat()
             vol.minutes_read += bt.minutes
             vol.days_read += bt.days
+            if is_self:
+                vol.read_as = sorted(set(vol.read_as) | bt.titles)
 
         # The reader's own corrections: a fixed title is what gets looked up,
         # and then their title, author and cover choice sit over whatever the
@@ -391,6 +393,7 @@ class BookcaseService:
             if twin is not None:
                 twin.minutes_read += vol.minutes_read
                 twin.days_read += vol.days_read
+                twin.read_as = sorted(set(twin.read_as) | set(vol.read_as))
                 volumes.remove(vol)
 
         # One book, one face (book_face): a copy that is a book of the shared library shows the library's title

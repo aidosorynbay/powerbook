@@ -127,6 +127,9 @@ class BookcaseBookOut(BaseModel):
     # Minutes the reader's days in the circle put on this book («Что читаю»).
     minutes_read: int = 0
     days_read: int = 0
+    # The titles the reader wrote in their days for this book: what the Round's dial looks it up by, whatever the
+    # shelf calls it now (a fixed title, the library's spelling, a file's name).
+    read_as: list[str] = []
     # Comparison key used to find other readers of the same book.
     match_key: str | None
     # The book of the shared library this copy is (app.services.book_face), when it is one.

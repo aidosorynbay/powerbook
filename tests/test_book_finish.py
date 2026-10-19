@@ -257,3 +257,26 @@ def test_the_whole_history_gives_each_finish_the_days_since_the_last_one(env):
     db.expire_all()
     again = db.execute(select(ReadingLogBook.title, ReadingLogBook.minutes).order_by(ReadingLogBook.id)).all()
     assert sorted(again) == sorted((t, m) for _, t, m, _ in rows)
+
+
+def test_the_shelf_says_which_typed_titles_count_for_each_copy(env):
+    # The Round's dial looks a day's book up on the shelf by what the reader typed, whatever the shelf calls the
+    # copy now: «Скажи жизни да» with its title fixed on the shelf showed no cover over the dial (2026-10-19).
+    d = lambda n: date(2026, 10, n)  # noqa: E731
+    env.log(d(17), 30, books=[{"title": "Скажи жизни да", "minutes": 30}])
+    env.log(d(18), 20, books=[{"title": "Теория игр!!", "minutes": 20}])
+    catalog.invalidate()
+    shelf = {b["title"]: b for b in env.client.get("/api/library/bookcase", headers=env.h).json()["books"]}
+    key = shelf["Скажи жизни да"]["key"]
+    assert "Теория игр!!" in shelf["Теория игр"]["read_as"]
+    r = env.client.put(f"/api/library/overrides/{key}", json={"title": "Сказать жизни «Да!»", "author": None}, headers=env.h)
+    assert r.status_code == 200, r.text
+    catalog.invalidate()
+    shelf = {b["title"]: b for b in env.client.get("/api/library/bookcase", headers=env.h).json()["books"]}
+    assert shelf["Сказать жизни «Да!»"]["read_as"] == ["Скажи жизни да"]
+    # what someone typed in their days is theirs: a visitor to the shelf gets none of it
+    dana = env.db.execute(select(User).where(User.username == "dana")).scalar_one()
+    other = {"Authorization": f"Bearer {create_access_token(subject=str(dana.id))}"}
+    r = env.client.get(f"/api/library/bookcase/{env.aigerim.id}", headers=other)
+    assert r.status_code == 200 and r.json()["books"]
+    assert all(not b["read_as"] for b in r.json()["books"])

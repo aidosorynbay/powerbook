@@ -11,7 +11,7 @@ import { apiGet, getApiBaseUrl } from '@/shared/lib';
  * title comes back as the library spells it, so «три товарища» typed today
  * reads «Три товарища», as on the shelf.
  */
-type Shelf = { books: { title: string; author: string | null; cover_thumb_url: string | null; cover_url: string | null; cover_data: string | null }[] };
+type Shelf = { books: { title: string; author: string | null; cover_thumb_url: string | null; cover_url: string | null; cover_data: string | null; read_as?: string[] }[] };
 type Match = { works: { title: string; author: string | null; cover_thumb_url: string | null }[] };
 export type BookLook = { cover: string | null; author: string | null; title: string | null };
 
@@ -48,13 +48,17 @@ if (typeof document !== 'undefined') {
 
 async function lookup(title: string): Promise<BookLook> {
   shelf ??= apiGet<Shelf>('/library/bookcase', { requireAuth: true }).then(({ data }) => data ?? null);
-  const mine = (await shelf)?.books.filter((b) => sameTitle(b.title, title)) ?? [];
-  // an exact title first, then a volume of the same series name
+  const books = (await shelf)?.books ?? [];
+  // The copy this day's minutes go to, whatever the shelf calls it now: «Скажи жизни да» typed in the day and
+  // «Сказать жизни „Да!“» on the shelf (2026-10-19). Else by title: an exact one first, then a volume of the series.
+  const readAs = books.find((b) => b.read_as?.some((t) => norm(t) === norm(title)));
+  const mine = books.filter((b) => b !== readAs && sameTitle(b.title, title));
   mine.sort((a, b) => Number(norm(b.title) === norm(title)) - Number(norm(a.title) === norm(title)));
+  if (readAs) mine.unshift(readAs);
   // the shelf's own order: a file's cover only when the library has none for the book (cover_data is then set)
   const own = mine.find((b) => b.cover_data ?? b.cover_thumb_url ?? b.cover_url);
   // the title only from the same book, not from another volume of its series
-  const same = mine.find((b) => norm(b.title) === norm(title));
+  const same = readAs ?? mine.find((b) => norm(b.title) === norm(title));
   if (own) return { cover: abs(own.cover_data ?? own.cover_thumb_url ?? own.cover_url), author: own.author, title: same?.title ?? null };
   const { data } = await apiGet<Match>(`/books/match?q=${encodeURIComponent(title)}&editions=false`, { requireAuth: true });
   const work = data?.works.find((w) => sameTitle(w.title, title));
