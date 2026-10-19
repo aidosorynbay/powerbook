@@ -231,18 +231,32 @@ class ArchiveCoverageView(BaseView):
         db = get_session_factory()()
         try:
             user_id = uuid.UUID(str(form.get("user_id")))
-            ghost_id = uuid.UUID(str(form.get("ghost_id")))
+            # one or several nicknames ticked for this reader
+            ghost_ids = [uuid.UUID(str(g)) for g in form.getlist("ghost_id")]
             admin = request.session.get("admin_user")
-            ClaimsService(db).link_by_admin(
-                user_id=user_id, ghost_user_id=ghost_id, admin_id=uuid.UUID(admin) if admin else None
-            )
             user = db.get(User, user_id)
-            ghost = db.get(User, ghost_id)
-            msg = f"Привязано: @{ghost.username if ghost else '?'} → @{user.username if user else '?'}"
-            target = f"{base}/archive-coverage?fresh=1&msg={quote(msg)}"
-        except Exception as exc:  # the service says why (already granted, shares a circle)
-            detail = getattr(exc, "detail", None) or str(exc)
-            target = f"{base}/archive-coverage?error={quote(str(detail)[:200])}"
+            linked, failed = [], []
+            for ghost_id in ghost_ids:
+                ghost = db.get(User, ghost_id)
+                name = f"@{ghost.username if ghost else '?'}"
+                try:
+                    ClaimsService(db).link_by_admin(
+                        user_id=user_id, ghost_user_id=ghost_id, admin_id=uuid.UUID(admin) if admin else None
+                    )
+                    linked.append(name)
+                except Exception as exc:  # the service says why (already granted to someone)
+                    db.rollback()
+                    failed.append(f"{name}: {getattr(exc, 'detail', None) or exc}")
+            if not ghost_ids:
+                target = f"{base}/archive-coverage?error={quote('Отметьте хотя бы один ник')}"
+            elif failed:
+                done = f"Привязано: {', '.join(linked)} → @{user.username if user else '?'}. " if linked else ""
+                target = f"{base}/archive-coverage?fresh=1&error={quote((done + 'Не вышло: ' + '; '.join(failed))[:300])}"
+            else:
+                msg = f"Привязано: {', '.join(linked)} → @{user.username if user else '?'}"
+                target = f"{base}/archive-coverage?fresh=1&msg={quote(msg)}"
+        except Exception as exc:
+            target = f"{base}/archive-coverage?error={quote(str(exc)[:200])}"
         finally:
             db.close()
         claim_match.invalidate()

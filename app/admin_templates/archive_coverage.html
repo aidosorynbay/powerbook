@@ -60,7 +60,7 @@
 
   <div class="card mb-3">
     <div class="card-header"><h3 class="card-title">Читатели без архива — вероятные совпадения</h3></div>
-    <div class="card-body text-muted small pb-0">Сначала те, кто читает в кругах на сайте. «Привязать» сразу отдаёт ник читателю (с той же проверкой «один человек на круг»).</div>
+    <div class="card-body text-muted small pb-0">Сначала те, кто читает в кругах на сайте. Отметьте ники читателя и нажмите «Привязать выбранные»: они сразу станут его.</div>
     <div class="table-responsive">
       <table class="table table-vcenter card-table">
         <thead><tr><th>Читатель</th><th>Совпадения в архиве</th></tr></thead>
@@ -70,14 +70,19 @@
             <td style="min-width:220px">@{{ r.username }}{% if r.telegram and r.telegram != r.username %} <span class="text-muted">· tg @{{ r.telegram }}</span>{% endif %}
               <div class="text-muted small">{{ r.display_name }} · с {{ r.joined }}{% if r.reads_here %} · <b>читает в кругах</b>{% endif %}</div></td>
             <td>
-              {% for m in r.matches %}
-                <form method="post" action="{{ base }}/archive-coverage/link" class="d-inline-flex align-items-center gap-2 me-3 mb-1">
+              {% if r.matches %}
+                {# several nicknames of one reader at once: tick them, then one button (the founder, 2026-10-19) #}
+                <form method="post" action="{{ base }}/archive-coverage/link" class="d-flex flex-wrap align-items-center gap-2 mb-1">
                   <input type="hidden" name="user_id" value="{{ r.user_id }}">
-                  <input type="hidden" name="ghost_id" value="{{ m.ghost_id }}">
-                  <span>@{{ m.username }} <span class="text-muted small">{{ m.display_name }} · {{ m.circles }} кр. {{ m.span }} · {{ m.score }}%</span></span>
-                  <button class="btn btn-outline-primary btn-sm" type="submit">Привязать</button>
+                  {% for m in r.matches %}
+                    <label class="form-check d-inline-flex align-items-center gap-2 me-3 mb-0">
+                      <input class="form-check-input m-0" type="checkbox" name="ghost_id" value="{{ m.ghost_id }}">
+                      <span>@{{ m.username }} <span class="text-muted small">{{ m.display_name }} · {{ m.circles }} кр. {{ m.span }} · {{ m.score }}%</span></span>
+                    </label>
+                  {% endfor %}
+                  <button class="btn btn-outline-primary btn-sm" type="submit">Привязать выбранные</button>
                 </form>
-              {% else %}<span class="text-muted small">похожих ников нет</span>{% endfor %}
+              {% else %}<span class="text-muted small">похожих ников нет</span>{% endif %}
             </td>
           </tr>
         {% endfor %}
