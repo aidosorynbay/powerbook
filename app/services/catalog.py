@@ -127,8 +127,10 @@ class _Entry:
     at: date | None
     # The title the reader said this copy is («Какая это книга?»).
     pinned_title: str | None = None
-    # The edition picture the reader picked for this copy (not a photo of it: that stays on their shelf).
+    # The edition picture the reader picked for this copy.
     picked_image: str | None = None
+    # A photo the reader took of this copy: the book's cover only while it has no other.
+    photo_image: str | None = None
     # The author hint was typed in an author field (a book added by hand), not read off a day's comment.
     author_typed: bool = False
 
@@ -225,6 +227,19 @@ def _build(db: Session) -> CatalogIndex:
         ).all()
     }
 
+    # Photos readers took of their own copies. The founder (2026-10-19): a book with no cover at all takes one, on
+    # every shelf and its card; a book that has a cover keeps it, and the photo stays on its own shelf.
+    photos = {
+        (u, vk): image
+        for u, vk, image in db.execute(
+            select(ShelfOverride.user_id, ShelfOverride.volume_key, ShelfOverride.image).where(
+                ShelfOverride.cover_mode == "image",
+                ShelfOverride.image.is_not(None),
+                ShelfOverride.source == "photo",
+            )
+        ).all()
+    }
+
     # what readers took off their shelves as no book at all («Убрать с полки»)
     hidden = {(u, vk) for u, vk in db.execute(
         select(ShelfOverride.user_id, ShelfOverride.volume_key).where(ShelfOverride.hidden.is_(True))
@@ -237,9 +252,10 @@ def _build(db: Session) -> CatalogIndex:
         if volume_key and ((account, volume_key) in hidden or (fold.get(account, account), volume_key) in hidden):
             return
         nodes = [k for k in dict.fromkeys([raw_key, canonical_key(clean)]) if k]
-        pinned_title = picked = None
+        pinned_title = picked = photo = None
         if volume_key:
             picked = picks.get((account, volume_key)) or picks.get((fold.get(account, account), volume_key))
+            photo = photos.get((account, volume_key)) or photos.get((fold.get(account, account), volume_key))
             # A claimed archive book sits on its claimant's shelf, so their pin counts for it too.
             pinned = pins.get((account, volume_key)) or pins.get((fold.get(account, account), volume_key))
             if pinned:
@@ -261,6 +277,7 @@ def _build(db: Session) -> CatalogIndex:
                 pinned_title=pinned_title,
                 author_typed=typed,
                 picked_image=picked,
+                photo_image=photo,
             )
         )
 
@@ -338,6 +355,7 @@ def _build(db: Session) -> CatalogIndex:
         face_titles: dict[str, Counter[str]] = defaultdict(Counter)
         face_images: dict[str, Counter[str]] = defaultdict(Counter)
         picked: Counter[str] = Counter()
+        photographed: Counter[str] = Counter()
         face_picked: dict[str, Counter[str]] = defaultdict(Counter)
         links: dict[str, str] = {}
         source_url = None
@@ -364,6 +382,8 @@ def _build(db: Session) -> CatalogIndex:
                 face_images[face][row.image] += 1
                 if row.source == "google" and row.source_id:
                     links.setdefault(row.image, f"https://books.google.com/books?id={row.source_id}")
+            if e.photo_image:
+                photographed[e.photo_image] += 1
             # Who wrote it: one lookup is one opinion, however many readers spelled the title its way, and each
             # reader's own word after the title counts once, for as much as it looks like an author's name.
             if row is not None and row.author and row.key not in looked_up:
@@ -389,6 +409,9 @@ def _build(db: Session) -> CatalogIndex:
         }
         # The card shows its own title's face, so its cover is never a translation's or another volume's edition.
         image = faces.get(face_key(title), (None, None))[1] or _top(picked) or _top(images)
+        # Only a book nobody found a cover for takes a reader's photo, and only as the book's own (not a title's
+        # face): a copy with a picture of its own, a file's cover say, keeps it (book_face.dress).
+        image = image or _top(photographed)
         work = Work(
             key=primary,
             members=members,

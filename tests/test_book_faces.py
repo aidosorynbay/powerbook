@@ -163,6 +163,32 @@ def test_a_photo_stays_on_its_shelf_alone(env):
     assert _work(env.db, "Три товарища").image == CAR
 
 
+def test_a_photo_is_the_cover_of_a_book_no_one_found_one_for(env):
+    # The founder (2026-10-19): a book with no cover takes the photo a reader took of their copy, everywhere.
+    env.finished(env.madik, 15, "Редкая книга")
+    env.finished(env.uldai, 16, "Редкая книга")
+    env.finished(env.gumi, 17, "Редкая книга")
+    env.db.add(LibraryBook(user_id=env.gumi.id, title="Редкая книга", file_format="epub",
+                           file_key=f"{env.gumi.id}/{uuid.uuid4()}.epub", file_size=10,
+                           cover_data="data:image/jpeg;base64,AAAA"))
+    env.db.add(ShelfOverride(user_id=env.madik.id, volume_key=_vol("Редкая книга"), cover_mode="image",
+                             image=PHOTO, source="photo"))
+    env.db.commit()
+    catalog.invalidate()
+    work = _work(env.db, "Редкая книга")
+    assert work.image == PHOTO and book_face.face(work).cover_url == f"/library/covers/{PHOTO}.jpg"
+    assert env.shelf(env.uldai)["Редкая книга"].cover_url == f"/library/covers/{PHOTO}.jpg"
+    # a copy with a cover of its own (its file's) keeps it
+    assert env.shelf(env.gumi)["Редкая книга"].cover_data == "data:image/jpeg;base64,AAAA"
+    # once the catalogues know a cover, that is the book's again and the photo goes back to its shelf
+    env.cover("Редкая книга", BLUE, author="Кто-то", edition="R1")
+    env.db.commit()
+    catalog.invalidate()
+    assert _work(env.db, "Редкая книга").image == BLUE
+    assert env.shelf(env.uldai)["Редкая книга"].cover_url == f"/library/covers/{BLUE}.jpg"
+    assert env.shelf(env.madik)["Редкая книга"].cover_url == f"/library/covers/{PHOTO}.jpg"
+
+
 def test_each_alphabet_keeps_its_own_edition(env):
     env.finished(env.orken, 12, "Atomic Habits")
     env.finished(env.uldai, 13, "Атомные привычки")

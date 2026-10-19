@@ -10,7 +10,7 @@ shelves (2026-10-15).
 Only what a reader chose for their own copy stays theirs, on that copy: a title or an author typed in, a
 cover photographed, the painted edition. A cover a reader picked from the catalogues becomes the book's cover
 for everyone, since a person's choice outranks any number of lookups (the most picked, if readers disagree);
-a photo never leaves its shelf. A copy that spells the same words differently («три товарища!!») takes the library's spelling; a
+a photo stays on its shelf, unless the book has no cover at all: then it is the book's cover for everyone. A copy that spells the same words differently («три товарища!!») takes the library's spelling; a
 different title — a volume number, a translation, the same words in Latin letters — keeps its own cover.
 """
 from __future__ import annotations

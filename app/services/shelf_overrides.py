@@ -5,9 +5,9 @@ title or an author, picks another edition's cover, photographs their own
 copy, or asks for the painted edition instead. Each change shows on their
 shelf, to them and to anyone visiting it. A picked edition does more: a
 person's choice outranks the lookups, so it becomes the book's cover on
-every shelf and on its card (app.services.book_face). A photo of the
-reader's own copy, a typed title or author and the painted edition stay on
-their shelf alone.
+every shelf and on its card (app.services.book_face). So does a photo of
+the reader's own copy, but only for a book no one found a cover for. A
+typed title or author and the painted edition stay on their shelf alone.
 """
 from __future__ import annotations
 
