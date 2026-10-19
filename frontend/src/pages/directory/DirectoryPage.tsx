@@ -42,7 +42,8 @@ export function DirectoryPage() {
 
   const filtered = useMemo(() => {
     const pool = showArchive ? archive : view === 'friends' ? members.filter((e) => friendIds.has(e.user_id)) : members;
-    const q = query.trim().toLowerCase();
+    // «@mukhamediar» finds mukhamediar: nicknames are kept without the @ people type before them (2026-10-19)
+    const q = query.trim().toLowerCase().replace(/^@+/, '');
     if (!q) return pool;
     return pool.filter(
       (e) =>
