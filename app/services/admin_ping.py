@@ -150,6 +150,19 @@ def claim_waiting(*, claim_id: str, claimant, ghost, rounds: list[str], note: st
     ]])
 
 
+def claim_disputed(*, claimant, ghost) -> None:
+    """A reader says a nickname already given to someone else is theirs: one of the two is wrong, and only the
+    founder can tell which. Before, the reader hit a wall and nobody heard of it."""
+    who = claimant.display_name or claimant.username
+    tg = f", tg @{claimant.telegram_id}" if claimant.telegram_id else ""
+    tell_admins(
+        "⚠️ Спор за ник из истории\n"
+        f"{who} (@{claimant.username}{tg}) говорит, что «{ghost.display_name}» (@{ghost.username}) — это он(а), "
+        "но ник уже привязан к другому читателю.\n"
+        f"Разобраться: {SITE}/admin/username-claim/list"
+    )
+
+
 def claim_by_telegram(*, claimant, nick: str, rounds: int) -> None:
     """A reader proved their old nickname through Telegram and took its
     history at once: nothing to approve, only to know."""

@@ -59,7 +59,9 @@ class InsightsRepository(BaseRepository[None]):
         return int(self.db.execute(stmt).scalar() or 0)
 
     def total_days_logged(self, *, user_ids: list[uuid.UUID]) -> int:
-        stmt = select(func.count(ReadingLog.id)).where(ReadingLog.user_id.in_(user_ids), ReadingLog.minutes > 0)
+        # Days, not rows: a reader renamed mid-month has the circle under both nicknames, and a day logged under
+        # each is still one day.
+        stmt = select(func.count(func.distinct(ReadingLog.date))).where(ReadingLog.user_id.in_(user_ids), ReadingLog.minutes > 0)
         return int(self.db.execute(stmt).scalar() or 0)
 
     def rounds_participated_count(self, *, user_ids: list[uuid.UUID]) -> int:

@@ -1824,8 +1824,8 @@ const translations = {
     'claims.roundsMore': 'ещё {count}',
     'claims.roundsCollapse': 'свернуть',
     'claims.unclaim': 'Отменить',
-    'claims.errTaken': 'Этот ник уже привязал другой читатель. Если это вы — напишите нам.',
-    'claims.errMine': 'Этот ник уже ваш.',
+    'claims.errTaken': 'Этот ник уже привязан к другому читателю. Мы сообщили основателю — он разберётся.',
+    'claims.errMine': 'Этот ник уже ваш или ждёт проверки.',
     'claims.errFailed': 'Не получилось отправить. Попробуйте ещё раз.',
 
     // Hall of fame
@@ -4544,8 +4544,8 @@ const translations = {
     'claims.roundsMore': 'тағы {count}',
     'claims.roundsCollapse': 'жию',
     'claims.unclaim': 'Болдырмау',
-    'claims.errTaken': 'Бұл никті басқа оқырман байлап қойған. Егер бұл сіз болсаңыз — бізге жазыңыз.',
-    'claims.errMine': 'Бұл ник сіздікі.',
+    'claims.errTaken': 'Бұл ник басқа оқырманға байланған. Негізін қалаушыға хабарладық — ол анықтайды.',
+    'claims.errMine': 'Бұл ник сіздікі немесе тексерісте.',
     'claims.errFailed': 'Жіберу сәтсіз болды. Қайта көріңіз.',
 
     // Hall of fame
@@ -7264,8 +7264,8 @@ const translations = {
     'claims.roundsMore': '{count} more',
     'claims.roundsCollapse': 'collapse',
     'claims.unclaim': 'Undo',
-    'claims.errTaken': 'Another reader has already linked this username. If it is you, write to us.',
-    'claims.errMine': 'This username is already yours.',
+    'claims.errTaken': 'This username is linked to another reader. We have told the founder, who will sort it out.',
+    'claims.errMine': 'This username is already yours or waiting for review.',
     'claims.errFailed': 'Could not send. Please try again.',
 
     // Hall of fame

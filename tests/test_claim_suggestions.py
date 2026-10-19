@@ -226,3 +226,68 @@ def test_the_founder_approves_or_refuses_from_telegram(env, telegram):
     telegram.clear()
     _press(env, f"claim:r:{asked['id']}")
     assert [p["text"] for m, p in telegram if m == "answerCallbackQuery"] == ["Уже одобрено"]
+
+
+def test_the_founder_ticks_several_nicknames_and_links_them_at_once(env, monkeypatch):
+    # Two nicknames of one reader: a click on the first one used to link it and reload the page (2026-10-19).
+    import asyncio
+    from types import SimpleNamespace
+
+    from starlette.datastructures import FormData
+
+    import app.admin_coverage as coverage
+
+    monkeypatch.setattr(coverage, "get_session_factory", lambda: (lambda: env.db))
+    monkeypatch.setattr(env.db, "close", lambda: None)
+    form = FormData([("user_id", str(env.saira.id)), ("ghost_id", str(env.ghost_saira.id)), ("ghost_id", str(env.ghost_dana.id))])
+
+    async def _form():
+        return form
+
+    request = SimpleNamespace(form=_form, url_for=lambda name: "http://x/admin/", session={"admin_user": str(env.aidos.id)},
+                              state=SimpleNamespace())
+    view = coverage.ArchiveCoverageView()
+    response = asyncio.run(coverage.ArchiveCoverageView.link.__wrapped__(view, request)
+                           if hasattr(coverage.ArchiveCoverageView.link, "__wrapped__") else view.link(request))
+    assert "msg=" in response.headers["location"]
+    env.db.expire_all()
+    granted = {c.ghost_user_id for c in env.db.query(UsernameClaim).filter_by(status=ClaimStatus.approved)}
+    assert granted == {env.ghost_saira.id, env.ghost_dana.id}
+
+    # and the page offers them as ticks under one button
+    readers = build(env.db)["readers"]
+    assert all(r["username"] != "saira_k" or r["matches"] == [] for r in readers)
+
+
+def test_a_nickname_someone_else_holds_reaches_the_founder(env, telegram):
+    ClaimsService(env.db).link_by_admin(user_id=env.aidos.id, ghost_user_id=env.ghost_bolat.id, admin_id=env.aidos.id)
+    r = env.client.post("/api/claims", json={"ghost_user_id": str(env.ghost_bolat.id)}, headers=env.h(env.saira))
+    assert r.status_code == 409 and "someone else" in r.json()["detail"]
+    said = [p["text"] for _m, p in telegram if "text" in p]
+    assert any("Спор за ник" in t and "@Bolat" in t for t in said)
+
+
+def test_a_day_under_two_nicknames_is_one_day():
+    from datetime import date
+
+    from app.models.round import ReadingLog
+    from app.repositories.insights import InsightsRepository
+
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    db = sessionmaker(bind=engine)()
+    a = User(username="a", display_name="A", password_hash="x", gender=Gender.female, is_claimable=True)
+    b = User(username="b", display_name="B", password_hash="x", gender=Gender.female, is_claimable=True)
+    db.add_all([a, b])
+    db.flush()
+    group = Group(name="G", slug="g", owner_user_id=a.id)
+    db.add(group)
+    db.flush()
+    r = Round(group_id=group.id, year=2023, month=1, status=RoundStatus.closed, end_day=None)
+    db.add(r)
+    db.flush()
+    for u in (a, b):
+        db.add(ReadingLog(round_id=r.id, user_id=u.id, date=date(2023, 1, 15), minutes=30, score=1))
+    db.add(ReadingLog(round_id=r.id, user_id=b.id, date=date(2023, 1, 16), minutes=30, score=1))
+    db.commit()
+    assert InsightsRepository(db).total_days_logged(user_ids=[a.id, b.id]) == 2

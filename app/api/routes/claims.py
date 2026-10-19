@@ -45,11 +45,19 @@ def create_claim(
     user=Depends(get_current_user),
 ) -> MyClaimOut:
     service = ClaimsService(db)
-    out = service.submit_claim(
-        user_id=user.id,
-        ghost_user_id=uuid.UUID(payload.ghost_user_id),
-        note=payload.note,
-    )
+    try:
+        out = service.submit_claim(
+            user_id=user.id,
+            ghost_user_id=uuid.UUID(payload.ghost_user_id),
+            note=payload.note,
+        )
+    except HTTPException as exc:
+        # Someone else holds it: the founder hears, so the reader isn't left at a dead end.
+        if exc.status_code == status.HTTP_409_CONFLICT and "someone else" in str(exc.detail):
+            ghost = service.users.get(uuid.UUID(payload.ghost_user_id))
+            if ghost is not None:
+                admin_ping.claim_disputed(claimant=user, ghost=ghost)
+        raise
     # The founder hears in Telegram, so nobody waits for them to open /admin.
     ghost = service.users.get(uuid.UUID(out.ghost_user_id))
     if ghost is not None and out.status == "pending":
