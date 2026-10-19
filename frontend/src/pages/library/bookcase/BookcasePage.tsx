@@ -32,6 +32,7 @@ import { BookDays } from '@/widgets/BookDays';
 import { MarkForm } from '../../books/MarkForm';
 import { ExtBadge, PbBadge, Sheet } from '../../books/bookUi';
 import { BookTime, shelfMinutes } from '@/widgets/BookTime';
+import { forgetBookCovers } from '@/widgets/RoundToday/useBookCover';
 import { LibraryTabs } from '@/widgets/SectionTabs';
 import { BookcaseSections, ShelvesSheet } from './BookcaseSections';
 import { loadShelfFonts, type VolumeArt } from './bookArt';
@@ -459,6 +460,8 @@ export function BookcasePage({ ownerId }: Props) {
       requireAuth: true,
     });
     if (next) {
+      // the cover over the Round's dial reads this shelf: after a photo or a picked edition it looks again
+      if (!ownerId) forgetBookCovers();
       // what the owner took off the shelf stays out of everything here, but for «Убранные» to put it back
       setHidden(next.books.filter((b) => b.hidden));
       setData({ ...next, books: next.books.filter((b) => !b.hidden) });

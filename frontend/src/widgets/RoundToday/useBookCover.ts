@@ -25,7 +25,26 @@ const sameTitle = (a: string, b: string) => {
 const abs = (url: string | null) => (url && !url.startsWith('http') && !url.startsWith('data:') ? `${getApiBaseUrl()}${url}` : url);
 
 let shelf: Promise<Shelf | null> | null = null;
+// What each title looked like last time, shown at once; `fresh` holds the titles looked up since the shelf last
+// changed. A cover photographed on the bookcase showed over the dial only after the app was closed (2026-10-19).
 const memo = new Map<string, BookLook>();
+const fresh = new Set<string>();
+const listeners = new Set<() => void>();
+
+/** The reader's shelf changed (a cover photographed or picked, a book corrected) or the app came back to the
+ * front: look every title up again. What is on screen stays until the new look arrives. */
+export function forgetBookCovers() {
+  shelf = null;
+  fresh.clear();
+  listeners.forEach((listener) => listener());
+}
+
+if (typeof document !== 'undefined') {
+  // someone else's photo may have become the book's cover meanwhile
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') forgetBookCovers();
+  });
+}
 
 async function lookup(title: string): Promise<BookLook> {
   shelf ??= apiGet<Shelf>('/library/bookcase', { requireAuth: true }).then(({ data }) => data ?? null);
@@ -48,24 +67,31 @@ const NONE: BookLook = { cover: null, author: null, title: null };
 export function useBookCover(title: string | undefined): BookLook {
   const key = (title ?? '').trim();
   const [url, setUrl] = useState<BookLook>(() => memo.get(key.toLowerCase()) ?? NONE);
+  const [round, setRound] = useState(0);
+  useEffect(() => {
+    const again = () => setRound((n) => n + 1);
+    listeners.add(again);
+    return () => {
+      listeners.delete(again);
+    };
+  }, []);
   useEffect(() => {
     if (key.length < 2) {
       setUrl(NONE);
       return;
     }
     const k = key.toLowerCase();
-    if (memo.has(k)) {
-      setUrl(memo.get(k) ?? NONE);
-      return;
-    }
+    if (memo.has(k)) setUrl(memo.get(k) ?? NONE);
+    if (fresh.has(k)) return;
     let alive = true;
     void lookup(key).then((found) => {
       memo.set(k, found);
+      fresh.add(k);
       if (alive) setUrl(found);
     });
     return () => {
       alive = false;
     };
-  }, [key]);
+  }, [key, round]);
   return url;
 }
