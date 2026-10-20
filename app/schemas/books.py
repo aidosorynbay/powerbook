@@ -133,6 +133,8 @@ class WorkOut(CatalogItemOut):
     my_review: ReviewOut | None
     # The book on the viewer's own shelf, when it is there: marks are given from the shelf.
     my_volume_key: str | None
+    # On the viewer's «Хочу прочитать»: that entry's id, to take it off.
+    my_want_id: str | None = None
     listings: list[ListingOut]
     # «Следить за книгой»: whether the viewer watches it, and how many readers do.
     watching: bool = False

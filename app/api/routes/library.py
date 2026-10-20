@@ -13,6 +13,8 @@ from app.models.user import User
 from app.schemas.books import PinWorkIn
 from app.schemas.reading import BookDaysIn, BookDaysOut
 from app.schemas.library import (
+    WantBookIn,
+    WantBookOut,
     CustomShelfOut,
     PlacementIn,
     ShelfNameIn,
@@ -31,7 +33,7 @@ from app.schemas.library import (
     ProgressUpdate,
     ShelfBookOut,
 )
-from app.services import book_notes, covers, custom_shelves, shelf_overrides
+from app.services import book_notes, covers, custom_shelves, shelf_overrides, want
 from app.services.bookcase import BookcaseService
 from app.services.library import LibraryService
 
@@ -317,6 +319,26 @@ def reset_override(
 ) -> dict:
     """Forget every correction to this book."""
     shelf_overrides.reset(db, user.id, volume_key)
+    return {"ok": True}
+
+
+# ---------- «Хочу прочитать», the second shelf ----------
+
+
+@router.get("/want", response_model=list[WantBookOut])
+def want_list(db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> list[WantBookOut]:
+    """Books the reader wants to read later. None of them count as read anywhere."""
+    return want.mine(db, user.id)
+
+
+@router.post("/want")
+def want_add(payload: WantBookIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+    return {"id": want.add(db, user.id, title=payload.title, author=payload.author, work_key=payload.work_key)}
+
+
+@router.delete("/want/{want_id}")
+def want_remove(want_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+    want.remove(db, user.id, want_id)
     return {"ok": True}
 
 

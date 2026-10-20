@@ -32,7 +32,7 @@ from app.schemas.books import (
     WorkOut,
     WorkReaderOut,
 )
-from app.services import catalog
+from app.services import catalog, want
 from app.services.catalog import CatalogIndex, Work
 
 SORTS = ("popular", "pb", "ext", "new", "az")
@@ -319,6 +319,7 @@ def work_page(db: Session, *, key: str, viewer_id: uuid.UUID, locale: str = "ru"
         readers_list=readers[:24],
         my_review=my_review,
         my_volume_key=my_volume,
+        my_want_id=None if my_volume else want.wanted(db, viewer_id, work),
         listings=listings,
         watching=notify.is_watching(db, viewer_id, work),
         watchers=notify.watchers_count(db, work),

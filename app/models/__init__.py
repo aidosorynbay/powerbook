@@ -32,8 +32,10 @@ from app.models.solo import SoloDay, SoloDayBook
 from app.models.suggestion import Suggestion
 from app.models.user import User
 from app.models.waitlist import WaitlistEntry
+from app.models.want_book import WantBook
 
 __all__ = [
+    "WantBook",
     "SoloDay",
     "SoloDayBook",
     "ClanWar",

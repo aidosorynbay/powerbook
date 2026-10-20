@@ -222,3 +222,22 @@ class CoverChoiceIn(BaseModel):
     mode: str = Field(pattern="^(auto|none|pick)$")
     source: str | None = Field(default=None, max_length=20)
     volume_id: str | None = Field(default=None, max_length=40)
+
+
+class WantBookIn(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    author: str | None = Field(default=None, max_length=200)
+    work_key: str | None = Field(default=None, max_length=300)
+
+
+class WantBookOut(BaseModel):
+    """A book on «Хочу прочитать», in the shared library's face when it is a book there."""
+
+    id: str
+    title: str
+    author: str | None
+    cover_url: str | None
+    cover_thumb_url: str | None
+    # the shared library's book: its card, and the seed a cover-less book is painted from
+    work_key: str | None
+    added_at: str | None
