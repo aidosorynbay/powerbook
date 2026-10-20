@@ -51,22 +51,33 @@ export function WorkSheet({ workKey, title, onClose, onChanged, review }: Props)
     document.getElementById(`review-${review}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }, [loaded, review]);
 
-  // Not on my shelf yet: put it there as read, then the mark can follow.
+  // Not on my shelf: put it there as read — a copy taken off the shelf comes back, an old mark comes with it.
   const addToShelf = async () => {
     if (!work || adding) return;
     setAdding(true);
-    const { data } = await apiPost<{ id: string }>(
-      '/insights/books',
-      { title: work.title, author: work.author, finished_on: null },
+    const { data } = await apiPost<{ volume_key: string }>(
+      '/library/read',
+      { title: work.title, author: work.author, work_key: work.key },
       { requireAuth: true }
     );
     setAdding(false);
     setChoosing(false);
     if (data) {
-      setWork({ ...work, my_volume_key: `m:${data.id}`, my_want_id: null });
       track('book_add', { as: 'read' });
+      // the card again: the mark, the readers and the count of them follow the shelf
+      await load();
       onChanged?.();
     }
+  };
+
+  // A mark left after its book was taken off the shelf: it stays in the library until its reader takes it back.
+  const deleteMark = async () => {
+    if (!work?.my_review || adding || !window.confirm(t('work.deleteMarkAsk'))) return;
+    setAdding(true);
+    await apiDelete(`/books/reviews/${work.my_review.id}`, { requireAuth: true });
+    setAdding(false);
+    await load();
+    onChanged?.();
   };
 
   // «Хочу прочитать»: the second shelf. The book is not read, so it goes on no shelf and in no count.
@@ -214,6 +225,17 @@ export function WorkSheet({ workKey, title, onClose, onChanged, review }: Props)
                 </>
               ) : (
                 <>
+                  {work.my_review && (
+                    <div className={styles.orphanMark}>
+                      <p className={styles.markHint}>
+                        {t('work.markStays', { n: work.my_review.rating })}
+                        {work.my_review.text && <><br />«{work.my_review.text}»</>}
+                      </p>
+                      <button type="button" className={styles.linkBtn} onClick={deleteMark} disabled={adding}>
+                        {t('work.deleteMark')}
+                      </button>
+                    </div>
+                  )}
                   <p className={styles.markHint} style={{ marginBottom: 10 }}>{t('work.notOnShelf')}</p>
                   <div className={styles.addPick}>
                     <button

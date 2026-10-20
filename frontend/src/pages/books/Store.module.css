@@ -1644,3 +1644,22 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* a mark whose book was taken off the shelf: it stays in the library, and can be taken back from here (2026-10-21) */
+.orphanMark {
+  margin: 0 0 12px;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.linkBtn {
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  text-decoration: underline;
+  cursor: pointer;
+}

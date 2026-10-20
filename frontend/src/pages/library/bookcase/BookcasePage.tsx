@@ -885,7 +885,7 @@ export function BookcasePage({ ownerId }: Props) {
   };
 
   const hideBook = async (b: BookcaseBook) => {
-    if (!window.confirm(t('shelf.confirmHide', { title: b.title }))) return;
+    if (!window.confirm(t('shelf.confirmHide', { title: b.title }) + (b.rating ? `\n\n${t('shelf.markStays')}` : ''))) return;
     await apiPut(`/library/overrides/${encodeURIComponent(b.key)}/hidden`, {}, { requireAuth: true });
     sceneRef.current?.returnToShelf();
     await load();
@@ -897,7 +897,7 @@ export function BookcasePage({ ownerId }: Props) {
   };
 
   const removeManual = async (b: BookcaseBook) => {
-    if (!b.manual_id || !window.confirm(t('shelf.confirmRemoveManual', { title: b.title }))) return;
+    if (!b.manual_id || !window.confirm(t('shelf.confirmRemoveManual', { title: b.title }) + (b.rating ? `\n\n${t('shelf.markStays')}` : ''))) return;
     await apiDelete(`/insights/books/${b.manual_id}`, { requireAuth: true });
     sceneRef.current?.returnToShelf();
     await load();
