@@ -39,6 +39,7 @@ import anim from '@/shared/styles/animations.module.css';
 import { quietDayIcon, quietDayQuoteKeys, finishFlagIcon } from '@/shared/lib/quietDays';
 import { ReadingBooks, booksPayload, sumMinutes } from './ReadingBooks';
 import { FinishBook, finishedBook, pickTitle, savedFinish } from './FinishBook';
+import { SoloMonth } from './SoloMonth';
 import styles from './DashboardPage.module.css';
 
 function getStatusVariant(status: RoundStatus): 'success' | 'accent' | 'default' {
@@ -1148,10 +1149,18 @@ export function DashboardPage() {
               )}
             </div>
           ) : !roundStatus?.round ? (
-            <div className={styles.noRound}>
-              <div className={styles.noRoundTitle}>{t('dashboard.noRoundTitle')}</div>
-              <p>{t('dashboard.noRoundText')}</p>
-            </div>
+            <>
+              <div className={styles.noRound}>
+                <div className={styles.noRoundTitle}>{t('dashboard.noRoundTitle')}</div>
+                <p>{t('dashboard.noRoundText')}</p>
+              </div>
+              {/* no circle this month: everyone reads in a month of their own (2026-10-20) */}
+              {user && (
+                <div className={styles.sections}>
+                  <SoloMonth />
+                </div>
+              )}
+            </>
           ) : (
             <>
               <div className={`${styles.roundInfo} ${isParticipant && !inRegistrationWindow ? styles.roundInfoTight : ''}`}>
@@ -1370,6 +1379,9 @@ export function DashboardPage() {
               )}
 
               <div ref={sectionsRef} className={styles.sections}>
+                {/* Outside the circle: a dial and a calendar of one's own, alongside the circle's (the founder,
+                    2026-10-20). The reading room's minutes land there too, and on the book on the shelf. */}
+                {!isParticipant && user && <SoloMonth className={`${revealClass} ${anim.scrollRevealDelay1}`} />}
                 {/* Today panel — first, so logging today's reading is the primary action */}
                 {isParticipant && !inRegistrationWindow && (
                   <div className={`${styles.section} ${revealClass} ${anim.scrollRevealDelay1}`}>

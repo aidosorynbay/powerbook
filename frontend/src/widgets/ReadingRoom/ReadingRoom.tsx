@@ -404,14 +404,15 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   const readingDay = dayLabel(state?.reading_day);
 
   /* ---------- the day's thirty minutes ---------- */
-  const todayTotal = (state?.today_minutes ?? 0) + (mine && state?.in_round ? Math.floor(elapsed(mine) / 60) : 0);
+  // outside the circle too: the minutes go to the reader's own month (2026-10-20)
+  const todayTotal = (state?.today_minutes ?? 0) + (mine ? Math.floor(elapsed(mine) / 60) : 0);
   useEffect(() => {
     if (!state) return;
     if (goalWas.current === null) {
       goalWas.current = todayTotal;
       return;
     }
-    if (goalWas.current < GOAL && todayTotal >= GOAL && state.in_round) {
+    if (goalWas.current < GOAL && todayTotal >= GOAL) {
       setGoal(Date.now());
       Ding.play();
     }
@@ -692,7 +693,7 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   };
 
   // After 03:00 the reading can still be last night's: the reader says which day before the minutes are written.
-  const askFirst = !!mine && !!state?.in_round && (mine.days?.length ?? 0) === 2 && elapsed(mine) >= 60;
+  const askFirst = !!mine && (mine.days?.length ?? 0) === 2 && elapsed(mine) >= 60;
   useEffect(() => {
     if (!mine) setAskDay(false);
   }, [mine]);
@@ -844,12 +845,12 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
               </span>
               <span className={styles.rdBook}>
                 <i className={styles.spine} />{r.book}
-                {r.in_round && (r.book_minutes ?? 0) * 60 + elapsed(r) >= 60 && <small> · {t('bookTime.spent', { time: formatSpent(Math.floor((r.book_minutes ?? 0) + elapsed(r) / 60), t) })}</small>}
+                {!r.guest && (r.book_minutes ?? 0) * 60 + elapsed(r) >= 60 && <small> · {t('bookTime.spent', { time: formatSpent(Math.floor((r.book_minutes ?? 0) + elapsed(r) / 60), t) })}</small>}
               </span>
             </span>
             <span className={styles.rdTime}>
               <b>{clock(elapsed(r))}</b>
-              {r.in_round && <small>{t('room.todayMin', { min: r.today_minutes, date: readingDay })}</small>}
+              {!r.guest && <small>{t('room.todayMin', { min: r.today_minutes, date: readingDay })}</small>}
             </span>
           </button>
         </li>
@@ -981,9 +982,8 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
         <span className={styles.clock} aria-label={t('room.timer')}>{clock(elapsed(mineHere))}</span>
         <span className={styles.dockBook}>
           <i>{mineHere.book}</i>
-          {state?.in_round && <small>{t('room.todayPlus', { today: state.today_minutes, min: Math.floor(elapsed(mineHere) / 60), date: readingDay })}</small>}
-          {!state?.in_round && state?.room_minutes && <small>{t('room.mineOutside', { today: state.room_minutes.today + Math.floor(elapsed(mineHere) / 60), total: state.room_minutes.total + Math.floor(elapsed(mineHere) / 60) })}</small>}
-          {state?.in_round && myBookMinutes > 0 && <small>{t('bookTime.onBook', { time: formatSpent(myBookMinutes, t) })}</small>}
+          {state && <small>{t('room.todayPlus', { today: state.today_minutes, min: Math.floor(elapsed(mineHere) / 60), date: readingDay })}</small>}
+          {myBookMinutes > 0 && <small>{t('bookTime.onBook', { time: formatSpent(myBookMinutes, t) })}</small>}
         </span>
         {mineHere.status === 'reading'
           ? <button className={styles.btn} type="button" onClick={() => act('pause')}>{t('room.pause')}</button>
