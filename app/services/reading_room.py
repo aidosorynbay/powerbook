@@ -178,8 +178,14 @@ class ReadingRoomService:
         return reading_day()
 
     def today_minutes(self, rnd: Round | None, user_id: uuid.UUID) -> int:
-        if rnd is None:
-            return 0
+        """Today's minutes as the reader's panel shows them: the circle's day, or their own day outside it."""
+        if not self.in_circle(rnd, user_id):
+            from app.models.solo import SoloDay
+
+            row = self.db.execute(
+                select(SoloDay.minutes).where(SoloDay.user_id == user_id, SoloDay.date == self._today())
+            ).scalar()
+            return int(row or 0)
         row = ReadingService(self.db).logs.get_for_user_date(round_id=rnd.id, user_id=user_id, day=self._today())
         return int(row.minutes) if row else 0
 
@@ -206,13 +212,25 @@ class ReadingRoomService:
         return self._credit(s, minutes, day)
 
     def _credit(self, s: ReadingRoomSession, minutes: int, day: date) -> str | None:
-        """Adds the sitting's minutes to the reader's day in their current circle.
+        """Adds the sitting's minutes to the reader's day in their current circle, or, for a reader not in it, to their
+        own month (solo.py: the dial and the calendar outside the circle) and the book they sat down with.
         Returns why nothing was written, or None when it was."""
         if minutes < 1:
             return "short"
         rnd = self.current_round()
         if not self.in_circle(rnd, s.user_id):
-            return "not_in_round"
+            from app.services.solo import SoloService
+
+            solo = SoloService(self.db)
+            if not solo.is_solo_day(s.user_id, day):
+                # last month's circle, which the reader was in, is closed now: nowhere to write that day
+                return "not_in_round"
+            minutes = min(minutes, max(0, 24 * 60 - solo.minutes_on(s.user_id, day)))
+            if minutes < 1:
+                return "full_day"
+            solo.add(user_id=s.user_id, day=day, minutes=minutes, title=s.book_title)
+            s.credited_minutes, s.credited_round_id, s.credited_date = minutes, None, day
+            return None
         reading = ReadingService(self.db)
         row = reading.logs.get_for_user_date(round_id=rnd.id, user_id=s.user_id, day=day)
         minutes = min(minutes, max(0, 24 * 60 - (int(row.minutes) if row else 0)))
@@ -237,7 +255,12 @@ class ReadingRoomService:
             return []
         rnd = rnd or self.current_round()
         if not self.in_circle(rnd, s.user_id):
-            return []
+            # a reader outside the circle asks their own month (solo.py), which takes any day that is not the circle's
+            from app.services.solo import SoloService
+
+            solo = SoloService(self.db)
+            days = [d for d in (today - timedelta(days=1), today) if solo.is_solo_day(s.user_id, d)]
+            return days if len(days) == 2 else []
         days = [d for d in (today - timedelta(days=1), today) if rnd.covers(d)]
         return days if len(days) == 2 else []
 
@@ -327,6 +350,14 @@ class ReadingRoomService:
                 ReadingLog.user_id.in_([s.user_id for s in sessions]),
             )).scalars()
             logs = {r.user_id: int(r.minutes) for r in rows}
+        if sessions:
+            # a reader outside the circle has a day of their own (solo.py): their tag shows it the same way
+            from app.models.solo import SoloDay
+
+            for uid, m in self.db.execute(select(SoloDay.user_id, SoloDay.minutes).where(
+                SoloDay.date == today, SoloDay.user_id.in_([s.user_id for s in sessions if s.user_id not in logs]),
+            )).all():
+                logs[uid] = int(m)
         readers = []
         # each sitter's minutes on their book before this sitting (book_time): «всего на книге» on their tag
         from app.services import book_time
@@ -480,8 +511,18 @@ class ReadingRoomService:
     def undo(self, *, session_id: uuid.UUID, user: User) -> dict:
         """Takes the sitting's minutes back out of «Сегодня»."""
         s = self._mine(session_id, user)
-        if s.ended_at is None or not s.credited_minutes or s.credited_round_id is None:
+        if s.ended_at is None or not s.credited_minutes or s.credited_date is None:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Nothing to undo")
+        if s.credited_round_id is None:
+            # it went to the reader's own month (solo.py)
+            from app.services.solo import SoloService
+
+            SoloService(self.db).take_back(
+                user_id=user.id, day=s.credited_date, minutes=int(s.credited_minutes), title=s.book_title,
+            )
+            s.credited_minutes = 0
+            self.db.commit()
+            return {"today_minutes": self.today_minutes(self.current_round(), user.id)}
         reading = ReadingService(self.db)
         row = reading.logs.get_for_user_date(round_id=s.credited_round_id, user_id=user.id, day=s.credited_date)
         if row is not None:

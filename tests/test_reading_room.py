@@ -143,10 +143,12 @@ def test_round_hall_is_open_but_only_the_circle_is_counted(env):
     st = c.get("/api/reading-room/round/state", headers=env.h(env.reader)).json()
     assert [(r["seat"], r["in_round"]) for r in st["readers"]] == [(1, False)]
     assert [m["text"] for m in st["messages"]] == ["привет"]
-    # ... but a guest's minutes have no circle to go to
+    # ... but a guest's minutes go to a month of their own, not into the circle's calendar (solo.py)
     _age(env, sid, 5 * 60)
     r = c.post(f"/api/reading-room/sessions/{sid}/finish", headers=h).json()
-    assert r["minutes"] == 5 and not r["credited"] and r["reason"] == "not_in_round"
+    assert r["minutes"] == 5 and r["credited"] and r["reason"] is None and r["today_minutes"] == 5
+    env.db.expire_all()
+    assert not env.db.query(ReadingLog).filter_by(user_id=env.guest.id).count()
 
 
 def test_one_sitting_at_a_time_and_bad_chairs(env):
@@ -323,8 +325,9 @@ def test_a_day_not_offered_is_not_taken(env, monkeypatch):
     assert r["minutes"] == 30 and r["date"] == str(env.today)
 
 
-def test_small_hours_ask_and_guests_are_not_asked(env, monkeypatch):
-    """At 04:00 even a sitting begun after the turn may be last night's reading; a guest has no days to choose from."""
+def test_small_hours_ask_and_guests_are_asked_too(env, monkeypatch):
+    """At 04:00 even a sitting begun after the turn may be last night's reading; a reader outside the circle is asked
+    the same, for their own month."""
     yesterday = env.today - timedelta(days=1)
     if not env.rnd.covers(yesterday) or env.today == env.rnd.last_day_date or yesterday == env.rnd.last_day_date:
         pytest.skip("this round does not take minutes for both days")
@@ -338,7 +341,7 @@ def test_small_hours_ask_and_guests_are_not_asked(env, monkeypatch):
         s.last_seen_at = turn + timedelta(hours=1)
         env.db.commit()
     assert c.get("/api/reading-room/round/state", headers=env.h(env.reader)).json()["my_session"]["days"] == [str(yesterday), str(env.today)]
-    assert c.get("/api/reading-room/round/state", headers=env.h(env.guest)).json()["my_session"]["days"] == []
+    assert c.get("/api/reading-room/round/state", headers=env.h(env.guest)).json()["my_session"]["days"] == [str(yesterday), str(env.today)]
 
 
 def test_the_rooms_minutes_go_to_the_book_everywhere(env):
@@ -529,9 +532,9 @@ def test_minutes_outside_the_circle_are_kept_in_the_room(env):
     assert r.status_code == 200, r.text
     _age(env, r.json()["id"], 20 * 60)
     fin = c.post(f"/api/reading-room/sessions/{r.json()['id']}/finish", headers=h).json()
-    assert fin["minutes"] == 20 and not fin["credited"] and fin["reason"] == "not_in_round"
+    assert fin["minutes"] == 20 and fin["credited"] and fin["date"] == str(env.today)
     st = c.get("/api/reading-room/round/state", headers=h).json()
-    assert st["room_minutes"] == {"today": 20, "total": 20} and not st["in_round"]
+    assert st["room_minutes"] == {"today": 20, "total": 20} and not st["in_round"] and st["today_minutes"] == 20
     env.db.expire_all()
     assert not env.db.query(ReadingLog).filter_by(user_id=env.guest.id).count()
 
