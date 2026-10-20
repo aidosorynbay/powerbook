@@ -33,7 +33,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from app.core import authors as names
@@ -135,6 +135,8 @@ class _Entry:
     photo_image: str | None = None
     # The author hint was typed in an author field (a book added by hand), not read off a day's comment.
     author_typed: bool = False
+    # A mark whose copy is no longer on the reader's shelf: its words name the book, but its author is no reader of it.
+    mark_only: bool = False
 
 
 class _Union:
@@ -252,7 +254,7 @@ def _build(db: Session) -> CatalogIndex:
 
     def add(
         raw_key: str | None, clean: str, hint: str | None, account: uuid.UUID, volume_key: str | None, at: object,
-        typed: bool = False,
+        typed: bool = False, mark_only: bool = False,
     ) -> None:
         if volume_key and ((account, volume_key) in hidden or (fold.get(account, account), volume_key) in hidden):
             return
@@ -282,6 +284,7 @@ def _build(db: Session) -> CatalogIndex:
                 at=_as_date(at),
                 pinned_title=pinned_title,
                 author_typed=typed,
+                mark_only=mark_only,
                 picked_image=picked,
                 photo_image=photo,
             )
@@ -311,12 +314,36 @@ def _build(db: Session) -> CatalogIndex:
             continue
         add(canonical_key(title), clean, author, account, f"m:{book_id}", finished_on or created_at, typed=True)
 
+    # A mark makes its author a reader of the book only while the copy it was given from is on their shelf: the founder
+    # took a marked book off the shelf and stayed its reader, and could not add it back (2026-10-21). The mark itself
+    # stays with the book — its rating and words — under the reader's name.
+    from app.models.library import LibraryBook
+
+    on_shelf = {(e.account, e.volume_key) for e in entries if e.volume_key}
+    # every finished day, a private one too (it is on its reader's shelf, only not in the library's word on the book)
+    on_shelf |= {
+        (account, f"r:{_short_hash(normalize_book_title(comment))}")
+        for account, comment in db.execute(
+            select(ReadingLog.user_id, ReadingLog.comment).where(
+                ReadingLog.book_finished.is_(True), ReadingLog.comment.is_not(None)
+            )
+        ).all()
+        if comment
+    }
+    files = {f"u:{i}" for (i,) in db.execute(select(LibraryBook.id)).all()}
     for account, key, volume_key, title, author, updated_at in db.execute(
         select(BookReview.user_id, BookReview.work_key, BookReview.volume_key, BookReview.title, BookReview.author, BookReview.updated_at)
     ).all():
         clean = covers.clean_title(title) or title
+        # an old mark with no copy recorded is taken at its word, as before; only a copy known to be gone stops counting
+        held = (
+            volume_key is None
+            or volume_key.startswith("l:")  # a book being read: as before, its mark counts
+            or (account, volume_key) in on_shelf
+            or volume_key in files
+        )
         # A mark keeps a copy of the author the library showed when it was given: no word of its own on who wrote it.
-        add(key, clean, None, account, volume_key, updated_at)
+        add(key, clean, None, account, volume_key, updated_at, mark_only=not held)
 
     found = covers.cached(db, list(wanted_covers)) if wanted_covers else {}
     # The founder's word on who wrote a book, and every author the catalogues ever named: what tells a reader's
@@ -434,6 +461,8 @@ def _build(db: Session) -> CatalogIndex:
             cover_links=links,
         )
         for e in group:
+            if e.mark_only:
+                continue
             work.readers.add(e.person)
             work.finishes += 1
             if e.at and (work.last_at is None or e.at > work.last_at):
@@ -618,3 +647,57 @@ def search_matches(work: Work, query: str) -> bool:
         return True
     skeleton = match_key(query)
     return len(skeleton) >= 3 and any(skeleton in m for m in work.members)
+
+
+# ---------- the library rebuilt after any change to what it is built from ----------
+#
+# Each place that changed a finished day, a hand-added book, a mark, a file or a reader's correction had to remember
+# catalog.invalidate(), and most did not: a book taken off the shelf still showed as the reader's on its card for up to
+# five minutes, and could not be added back (the founder, 2026-10-21). Now any commit touching those rows does it.
+
+_SOURCES = (ManualBook, BookReview, ShelfOverride, BookLink, BookAuthor)
+# rows that change often for reasons the library doesn't care about: only these columns matter
+_WATCHED = {ReadingLog: ("book_finished", "comment", "is_comment_private", "user_id")}
+
+
+def _touches_library(obj: object, how: str) -> bool:
+    """`how`: "new", "dirty" or "deleted" — which of the session's lists the row is in (the lists still hold their
+    pre-flush state in after_flush)."""
+    from sqlalchemy import inspect as sa_inspect
+
+    from app.models.library import LibraryBook
+
+    if isinstance(obj, _SOURCES):
+        return True
+    if isinstance(obj, LibraryBook):
+        return how != "dirty" or sa_inspect(obj).attrs.title.history.has_changes()
+    for model, columns in _WATCHED.items():
+        if isinstance(obj, model):
+            if how == "deleted":
+                return True
+            if how == "new":
+                return bool(getattr(obj, "book_finished", False))
+            state = sa_inspect(obj)
+            return any(state.attrs[c].history.has_changes() for c in columns)
+    return False
+
+
+@event.listens_for(Session, "after_flush")
+def _note_library_change(session: Session, _context) -> None:
+    if session.info.get("catalog_changed"):
+        return
+    for how, objs in (("new", session.new), ("dirty", session.dirty), ("deleted", session.deleted)):
+        if any(_touches_library(obj, how) for obj in objs):
+            session.info["catalog_changed"] = True
+            return
+
+
+@event.listens_for(Session, "after_commit")
+def _rebuild_after_commit(session: Session) -> None:
+    if session.info.pop("catalog_changed", False):
+        invalidate()
+
+
+@event.listens_for(Session, "after_rollback")
+def _forget_on_rollback(session: Session) -> None:
+    session.info.pop("catalog_changed", None)
