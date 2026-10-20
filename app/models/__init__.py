@@ -28,11 +28,14 @@ from app.models.reader_feedback import FeedbackAsk, ReaderFeedback
 from app.models.checkin import Checkin, DirectMessage
 from app.models.chat import BuddyMessage, ChatAccept, ChatBlock, ChatConsent, ChatReport
 from app.models.reading_room import GuestRoomSitting, ReadingRoomMessage, ReadingRoomSession
+from app.models.solo import SoloDay, SoloDayBook
 from app.models.suggestion import Suggestion
 from app.models.user import User
 from app.models.waitlist import WaitlistEntry
 
 __all__ = [
+    "SoloDay",
+    "SoloDayBook",
     "ClanWar",
     "ClanWarDay",
     "ClanWarMessage",

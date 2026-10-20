@@ -2,7 +2,7 @@
 
 A book is named in many places: «Что читаю» on a day of the round, the
 reading room's «Что читаете?», the title of a file in the reader, the shelf,
-the library. Each spelling is free text, so the minutes are tied together
+the library, a day read outside the circle (solo.py). Each spelling is free text, so the minutes are tied together
 here, the way the shared library ties copies into one book: a title goes to
 the library's book when the catalog knows it (its typos, corrected
 spellings, pins and the founder's links), else to its own comparison key.
@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.core.booktitles import canonical_key, matching_key
 from app.models.round import ReadingLog, ReadingLogBook
+from app.models.solo import SoloDay, SoloDayBook
 from app.repositories.insights import normalize_book_title
 from app.services import catalog, covers
 
@@ -73,6 +74,20 @@ def of_readers(db: Session, user_ids: list[uuid.UUID], idx: catalog.CatalogIndex
         .where(ReadingLogBook.user_id.in_(user_ids), ReadingLogBook.minutes > 0)
         .group_by(ReadingLogBook.title_norm)
     ).all()
+    # the days read outside the circle give the same book their minutes (a solo day finishes nothing: the shelf does)
+    rows += db.execute(
+        select(
+            SoloDayBook.title_norm,
+            func.max(SoloDayBook.title),
+            func.sum(SoloDayBook.minutes),
+            func.count(func.distinct(SoloDay.date)),
+            func.max(SoloDay.date),
+            func.max(0),
+        )
+        .join(SoloDay, SoloDay.id == SoloDayBook.solo_day_id)
+        .where(SoloDayBook.user_id.in_(user_ids), SoloDayBook.minutes > 0)
+        .group_by(SoloDayBook.title_norm)
+    ).all()
     out: dict[str, BookTime] = {}
     for _norm, title, minutes, days, last_day, finished in rows:
         key = book_of(idx, title)
@@ -101,14 +116,21 @@ def minutes_on(db: Session, user_ids: list[uuid.UUID], titles: list[str], idx: c
     return {t: (books[k].minutes if (k := book_of(idx, t)) in books else 0) for t in titles}
 
 
+def _per_title(db: Session, user_ids: set[uuid.UUID] | None = None) -> list:
+    """(reader, a spelling, minutes) over the circle's days and the days read outside it."""
+    rows = []
+    for book in (ReadingLogBook, SoloDayBook):
+        stmt = select(book.user_id, func.max(book.title), func.sum(book.minutes)).where(book.minutes > 0)
+        if user_ids is not None:
+            stmt = stmt.where(book.user_id.in_(user_ids))
+        rows += db.execute(stmt.group_by(book.user_id, book.title_norm)).all()
+    return rows
+
+
 def for_book(db: Session, key: str, user_ids: list[uuid.UUID] | None = None) -> dict:
     """One library book's minutes: the reader's own, and the circle's (everyone who named it)."""
     idx = catalog.index(db)
-    rows = db.execute(
-        select(ReadingLogBook.user_id, func.max(ReadingLogBook.title), func.sum(ReadingLogBook.minutes))
-        .where(ReadingLogBook.minutes > 0)
-        .group_by(ReadingLogBook.user_id, ReadingLogBook.title_norm)
-    ).all()
+    rows = _per_title(db)
     mine = set(user_ids or [])
     total = own = 0
     people: set[uuid.UUID] = set()
@@ -128,11 +150,7 @@ def of_sitters(db: Session, pairs: list[tuple[uuid.UUID, str]]) -> list[int]:
     if not pairs:
         return []
     idx = catalog.index(db)
-    rows = db.execute(
-        select(ReadingLogBook.user_id, func.max(ReadingLogBook.title), func.sum(ReadingLogBook.minutes))
-        .where(ReadingLogBook.user_id.in_({u for u, _ in pairs}), ReadingLogBook.minutes > 0)
-        .group_by(ReadingLogBook.user_id, ReadingLogBook.title_norm)
-    ).all()
+    rows = _per_title(db, {u for u, _ in pairs})
     spent: dict[tuple[uuid.UUID, str], int] = {}
     for user_id, title, minutes in rows:
         k = (user_id, book_of(idx, title))
