@@ -83,7 +83,10 @@ def _in_period(iso: str | None, year: int | None, month: int | None) -> bool:
 def _shelf(db: Session, user: User):
     from app.services.bookcase import BookcaseService
 
-    return BookcaseService(db).bookcase(owner_id=user.id, viewer_id=user.id)
+    shelf = BookcaseService(db).bookcase(owner_id=user.id, viewer_id=user.id)
+    # what the reader took off their shelf («Убранные») is no book they read: the letters leave it out too
+    shelf.books = [b for b in shelf.books if not b.hidden]
+    return shelf
 
 
 def _work_of(idx: CatalogIndex, vol: BookcaseBookOut):

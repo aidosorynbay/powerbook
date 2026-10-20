@@ -336,6 +336,12 @@ def want_add(payload: WantBookIn, db: Session = Depends(get_db), user: User = De
     return {"id": want.add(db, user.id, title=payload.title, author=payload.author, work_key=payload.work_key)}
 
 
+@router.post("/read")
+def read_add(payload: WantBookIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+    """«Прочитал(а)» from a book's card: back on the read shelf, its mark with it, off «Хочу прочитать»."""
+    return {"volume_key": want.add_read(db, user.id, title=payload.title, author=payload.author, work_key=payload.work_key)}
+
+
 @router.delete("/want/{want_id}")
 def want_remove(want_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
     want.remove(db, user.id, want_id)

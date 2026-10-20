@@ -81,6 +81,13 @@ it in a browser, phone width (390px) included.
   The same goes for what hangs on a book: who else read it, the books two readers share, its card, marks and
   watchers come from the catalog work (`work.readers`, `idx.by_person`, the copy's `work_key`), never from
   comparing spellings — the guard test fails on a new module that turns titles into keys itself.
+- **The shelf and the library stay in step:** `catalog` rebuilds itself after any commit that touches what it is built
+  from (finished days, hand-added books, marks, files, shelf corrections — the session hooks at the end of
+  `catalog.py`); don't call `catalog.invalidate()` by hand in tests, it hides a missing hook. A book is read by the
+  people who have a copy on their shelf: a mark stays in the library when its book leaves the shelf but no longer
+  makes its author a reader, and comes back with the book (`want.add_read`, `want.reattach_mark`) — one mark per
+  reader and book. «Хочу прочитать» (`want_books`) counts nowhere. Minutes live in the days, never in a shelf copy:
+  taking a book off the shelf must never lose them (`tests/test_shelf_removal.py`).
 - Existing members stay free forever; monetisation ideas must not take away what they have.
 - **Awards** («Мои награды», enamel pins): `app/services/awards.py` works them out from `reading_logs` (score 1 =
   a day of 30+ minutes, archive nicknames folded in) and writes each one to `reader_awards` the first time it is

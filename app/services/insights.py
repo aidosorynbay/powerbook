@@ -224,7 +224,8 @@ class InsightsService:
         from app.services.bookcase import BookcaseService
 
         shelf = BookcaseService(self.db).bookcase(owner_id=user_id, viewer_id=user_id)
-        return [b for b in shelf.books if b.status == "finished"]
+        # the reader's own shelf brings back what they took off it («Убранные»): those are not counted
+        return [b for b in shelf.books if b.status == "finished" and not b.hidden]
 
     def _participated_rounds(self, user_ids: list[uuid.UUID]) -> list:
         """The circles these accounts were in, in one query: one per circle
@@ -480,8 +481,10 @@ class InsightsService:
         ids = self._effective_ids(user_id)
 
         # Already on the shelf from a round — nothing to add, and silently
-        # accepting it would leave the reader wondering where it went.
-        if norm in self.repo.finished_book_titles_for_user(user_ids=ids):
+        # accepting it would leave the reader wondering where it went. Unless
+        # they took it off the shelf («Убрать с полки»): then it is theirs to add
+        # back (2026-10-21), and the hidden circle copy stays hidden.
+        if norm in self.repo.finished_book_titles_for_user(user_ids=ids) and not self._only_hidden(user_id, norm):
             raise ValueError("duplicate_round")
 
         if any(b.title_norm == norm for b in self.repo.manual_books_for_user(user_ids=ids)):
@@ -497,7 +500,19 @@ class InsightsService:
         self.db.add(book)
         self.db.commit()
         self.db.refresh(book)
+        from app.services import want
+
+        # a mark given before the book was taken off the shelf comes back with it
+        want.reattach_mark(self.db, user_id, title, f"m:{book.id}")
         return ManualBookOut(id=book.id, title=book.title, author=book.author, finished_on=book.finished_on)
+
+    def _only_hidden(self, user_id: uuid.UUID, norm: str) -> bool:
+        """Every circle copy of this title on the reader's shelf is one they took off it."""
+        from app.services.bookcase import BookcaseService
+
+        shelf = BookcaseService(self.db).bookcase(owner_id=user_id, viewer_id=user_id)
+        same = [b for b in shelf.books if b.key.startswith("r:") and normalize_book_title(b.title) == norm]
+        return bool(same) and all(b.hidden for b in same)
 
     def delete_manual_book(self, *, user_id: uuid.UUID, book_id: uuid.UUID) -> bool:
         book = self.repo.manual_book_by_id(book_id=book_id, user_ids=self._effective_ids(user_id))
