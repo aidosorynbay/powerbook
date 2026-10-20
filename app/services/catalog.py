@@ -84,6 +84,8 @@ class Work:
     author_fixed: bool = False
     # The cover lookups of its spellings (book_covers keys).
     cover_keys: set[str] = field(default_factory=set)
+    # Its cover is an edition a reader picked (not a lookup's guess, nor a photo).
+    cover_picked: bool = False
     # How the book looks under each title its copies carry, by face_key ("cyr:tritovarisha"): (spelling, cover image
     # or None). «три товарища!!» and «Три товарища» are one title with one face; a translation, a second volume or
     # the same words in Latin letters each keep their own. Every copy on every shelf shows its title's face
@@ -240,6 +242,9 @@ def _build(db: Session) -> CatalogIndex:
         ).all()
     }
 
+    # the copies counted below, whose picked edition or photo reaches their book there
+    dressed: set[tuple[uuid.UUID, str]] = set()
+
     # what readers took off their shelves as no book at all («Убрать с полки»)
     hidden = {(u, vk) for u, vk in db.execute(
         select(ShelfOverride.user_id, ShelfOverride.volume_key).where(ShelfOverride.hidden.is_(True))
@@ -256,6 +261,7 @@ def _build(db: Session) -> CatalogIndex:
         if volume_key:
             picked = picks.get((account, volume_key)) or picks.get((fold.get(account, account), volume_key))
             photo = photos.get((account, volume_key)) or photos.get((fold.get(account, account), volume_key))
+            dressed.update({(account, volume_key), (fold.get(account, account), volume_key)})
             # A claimed archive book sits on its claimant's shelf, so their pin counts for it too.
             pinned = pins.get((account, volume_key)) or pins.get((fold.get(account, account), volume_key))
             if pinned:
@@ -423,6 +429,7 @@ def _build(db: Session) -> CatalogIndex:
             if len(rivals) > 1
             else [],
             cover_keys={covers.cover_key(e.title) for e in group},
+            cover_picked=bool(face_picked[face_key(title)] or picked),
             faces=faces,
             cover_links=links,
         )
@@ -451,7 +458,93 @@ def _build(db: Session) -> CatalogIndex:
             work.author_fixed = True
             work.search = f"{work.title} {work.author}".casefold()
 
-    return CatalogIndex(works=works, by_member=by_member, by_person=dict(by_person), fold=fold, representative=representative)
+    idx = CatalogIndex(works=works, by_member=by_member, by_person=dict(by_person), fold=fold, representative=representative)
+    _dress_from_other_copies(
+        db, idx,
+        picks={k: v for k, v in picks.items() if k not in dressed},
+        photos={k: v for k, v in photos.items() if k not in dressed},
+        pins=pins,
+    )
+    return idx
+
+
+def _dress_from_other_copies(
+    db: Session,
+    idx: CatalogIndex,
+    *,
+    picks: dict[tuple[uuid.UUID, str], str],
+    photos: dict[tuple[uuid.UUID, str], str],
+    pins: dict[tuple[uuid.UUID, str], tuple[list[str], str | None]],
+) -> None:
+    """Covers chosen on copies the shared library is not built from: a book being read («Читаю», `l:`) and a file
+    (`u:`). The founder photographed «Гауһар тас», being read, and the library's card stayed bare (2026-10-20): only
+    finished, hand-added and marked copies used to count. Each such copy is found as the shelf finds it — the reader's
+    pin, then its days' minutes (book_time) or its file's title — and dresses its book by the same rules: a picked
+    edition outranks lookups, a photo only covers a book with no cover at all."""
+    if not picks and not photos:
+        return
+    from app.models.library import LibraryBook
+    from app.services import book_time
+    from app.services.bookcase import _short_hash
+
+    wanted = set(picks) | set(photos)
+    titles: dict[tuple[uuid.UUID, str], str] = {
+        (u, vk): t
+        for u, vk, t in db.execute(
+            select(ShelfOverride.user_id, ShelfOverride.volume_key, ShelfOverride.title).where(
+                ShelfOverride.title.is_not(None),
+                ShelfOverride.user_id.in_({u for u, _vk in wanted}),
+            )
+        ).all()
+    }
+    files: dict[str, str] = {}
+    file_ids = []
+    for _u, vk in wanted:
+        if vk.startswith("u:"):
+            try:
+                file_ids.append(uuid.UUID(vk[2:]))
+            except ValueError:
+                pass
+    if file_ids:
+        files = {f"u:{i}": t for i, t in db.execute(select(LibraryBook.id, LibraryBook.title).where(LibraryBook.id.in_(file_ids))).all()}
+    days: dict[uuid.UUID, dict[str, str]] = {}
+
+    def work_of(user: uuid.UUID, vk: str) -> Work | None:
+        pinned = pins.get((user, vk))
+        if pinned and (work := idx.find(pinned[0][0])) is not None:
+            return work
+        title = titles.get((user, vk))
+        if vk.startswith("l:"):
+            if user not in days:
+                days[user] = {f"l:{_short_hash(bt.key)}": bt.key for bt in book_time.of_readers(db, [user], idx).values()}
+            key = days[user].get(vk)
+            if key and (work := idx.works.get(key)) is not None:
+                return work
+        elif vk.startswith("u:"):
+            title = title or files.get(vk)
+        if not title:
+            return None
+        return idx.find(matching_key(title)) or idx.find(work_key(title))
+
+    picked: dict[str, Counter[str]] = defaultdict(Counter)
+    photographed: dict[str, Counter[str]] = defaultdict(Counter)
+    for (user, vk), image in picks.items():
+        if (work := work_of(user, vk)) is not None:
+            picked[work.key][image] += 1
+    for (user, vk), image in photos.items():
+        if (work := work_of(user, vk)) is not None:
+            photographed[work.key][image] += 1
+    for key, counted in picked.items():
+        work = idx.works[key]
+        if work.cover_picked:
+            continue  # the copies it is built from already picked one
+        work.image, work.cover_picked = _top(counted), True
+        own = face_key(work.title)
+        work.faces[own] = (work.faces.get(own, (work.title, None))[0], work.image)
+    for key, counted in photographed.items():
+        work = idx.works[key]
+        if work.image is None:
+            work.image = _top(counted)
 
 
 def _hint_votes(hint: str, known: names.Directory, *, typed: bool = False) -> list[tuple[str, float]]:

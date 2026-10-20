@@ -374,3 +374,65 @@ def test_a_celebritys_list_meets_every_spelling_of_a_book(env, monkeypatch):
     monkeypatch.setattr(insights, "CELEBRITY_READING_LISTS", [{"name": "Кто-то", "role": "писатель", "books": ["Три товарища", "Улисс"]}])
     found = insights.InsightsService(env.db).celebrity_match(user_id=env.madik.id)
     assert [c.shared_books for c in found] == [["Три товарища"]] and found[0].match_percent == 50
+
+
+def _reading(env, reader, title, minutes=30):
+    """A day of «Что читаю» on a book not finished: the copy stands on the shelf as «Читаю» (`l:`)."""
+    from app.models.round import ReadingLogBook
+
+    log = ReadingLog(round_id=env.rnd.id, user_id=reader.id, date=date.today(), minutes=minutes, score=1)
+    env.db.add(log)
+    env.db.flush()
+    env.db.add(ReadingLogBook(reading_log_id=log.id, user_id=reader.id, title=title, title_norm=title.casefold(),
+                              minutes=minutes))
+    env.db.commit()
+    catalog.invalidate()
+    return env.shelf(reader)[title].key
+
+
+def test_a_photo_on_a_book_being_read_covers_it_for_everyone(env):
+    # «Гауһар тас» photographed while being read stayed bare on the library's card (2026-10-20).
+    env.finished(env.uldai, 18, "Гауһар тас")
+    env.db.commit()
+    key = _reading(env, env.orken, "Гауһар тас")
+    assert key.startswith("l:")
+    env.db.add(ShelfOverride(user_id=env.orken.id, volume_key=key, cover_mode="image", image=PHOTO, source="photo"))
+    env.db.commit()
+    catalog.invalidate()
+    assert _work(env.db, "Гауһар тас").image == PHOTO
+    assert env.shelf(env.uldai)["Гауһар тас"].cover_url == f"/library/covers/{PHOTO}.jpg"
+
+
+def test_a_photo_on_a_file_covers_its_book_for_everyone(env):
+    env.finished(env.uldai, 18, "Гауһар тас")
+    book = LibraryBook(user_id=env.gumi.id, title="Гауһар тас", file_format="epub",
+                       file_key=f"{env.gumi.id}/{uuid.uuid4()}.epub", file_size=10)
+    env.db.add(book)
+    env.db.commit()
+    env.db.add(ShelfOverride(user_id=env.gumi.id, volume_key=f"u:{book.id}", cover_mode="image", image=PHOTO, source="photo"))
+    env.db.commit()
+    catalog.invalidate()
+    assert _work(env.db, "Гауһар тас").image == PHOTO
+
+
+def test_an_edition_picked_on_a_book_being_read_outranks_the_lookups(env):
+    dana = User(username="dana", display_name="Dana", password_hash="x", gender=Gender.female)
+    env.db.add(dana)
+    env.db.flush()
+    key = _reading(env, dana, "Три товарища")
+    assert key.startswith("l:")
+    env.db.add(ShelfOverride(user_id=dana.id, volume_key=key, cover_mode="image", image=PICK, source="google",
+                             source_id="P9"))
+    env.db.commit()
+    catalog.invalidate()
+    work = _work(env.db, "Три товарища")
+    assert work.image == PICK and book_face.face(work).cover_url == f"/library/covers/{PICK}.jpg"
+    assert env.shelf(env.uldai)["Три товарища"].cover_url == f"/library/covers/{PICK}.jpg"
+
+
+def test_every_kind_of_shelf_copy_can_dress_its_book():
+    # Copies being read and files were left out of the book's cover until the founder found a bare card
+    # (2026-10-20). A new kind of copy on the shelf must be taught to catalog too: finished (r), by hand (m) and
+    # marked copies are what the library is built from; being read (l) and files (u) dress it afterwards.
+    kinds = set(re.findall(r'key=f"([a-z]):', Path("app/services/bookcase.py").read_text()))
+    assert kinds <= {"r", "m", "u", "l"}, f"teach catalog._dress_from_other_copies about {kinds - {'r', 'm', 'u', 'l'}}"

@@ -72,7 +72,8 @@ it in a browser, phone width (390px) included.
   raw typed text (`tests/test_book_faces.py` guards it). `catalog._build` decides each face per title
   (`face_key`: «три товарища!!» = «Три товарища»; a translation or a volume keeps its own): the spelling, the
   cover (an edition a reader picked outranks lookups; a reader's photo stays on their shelf unless the book has
-  no cover at all, then it is everyone's) and the author — voted
+  no cover at all, then it is everyone's; a choice on any copy counts — finished, by hand, being read, a
+  file: `catalog._dress_from_other_copies`, guarded by `test_every_kind_of_shelf_copy_can_dress_its_book`) and the author — voted
   over all sources with names compared as people (`app/core/authors.py`: «Ремарк» = "Erich Maria Remarque"),
   lookups taking the author most editions name, not a translator. Only what a reader chose for their own copy
   stays theirs. The founder fixes an author in /admin → «Книги: склейка» (`book_authors`; «Автор под
