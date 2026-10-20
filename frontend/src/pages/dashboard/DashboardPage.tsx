@@ -1479,8 +1479,17 @@ export function DashboardPage() {
                             </div>
                             <MinutesDial
                               value={todayBooks.length > 1 ? sumMinutes(todayBooks) : parseInt(todayMinutes, 10) || 0}
-                              onChange={(m) => setTodayMinutes(m ? String(m) : '')}
-                              readOnly={todayBooks.length > 1}
+                              onChange={(m) => {
+                                if (todayBooks.length > 1) {
+                                  // Several books (each morning brings every book being read): the dial still winds,
+                                  // and what it winds goes to the first one, the book with the cover; the others keep
+                                  // what was set for them. It used to lock at 0 till each book got minutes (2026-10-20).
+                                  setTodayBooks((books) => {
+                                    const others = sumMinutes(books.slice(1));
+                                    return books.map((b, i) => (i === 0 ? { ...b, minutes: Math.max(0, m - others) } : b));
+                                  });
+                                } else setTodayMinutes(m ? String(m) : '');
+                              }}
                               onSwipe={wide ? undefined : (d) => goTop(topPage + d)}
                             />
                             <div className={rt.save}>
