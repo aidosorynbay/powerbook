@@ -798,7 +798,9 @@
 }
 .tabs .drawerX {
   flex: 0 0 auto;
-  width: 34px;
+  /* as big as a finger (the founder, 2026-10-20) */
+  width: 44px;
+  min-height: 44px;
   padding: 0;
   font-size: 18px;
   color: var(--ink3);

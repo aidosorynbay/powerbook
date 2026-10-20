@@ -1788,3 +1788,7 @@
   border-color: var(--color-accent-primary, #f26a35);
   color: var(--color-accent-primary, #f26a35);
 }
+
+/* a finger-sized target around the small round button (the founder, 2026-10-20) */
+.closeBtn { position: relative; }
+.closeBtn::after { content: ''; position: absolute; inset: -8px; }

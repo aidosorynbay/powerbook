@@ -779,3 +779,7 @@
 
 /* the award pin the reader wears, standing at the right of the face, a little over its edge */
 .av .avPin { position: absolute; right: -11px; bottom: -3px; width: 20px; height: 20px; border-radius: 0; object-fit: contain; aspect-ratio: auto; z-index: 2; pointer-events: none; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45)); }
+
+/* a finger-sized target around the small round button (the founder, 2026-10-20) */
+.checkinClose { position: relative; }
+.checkinClose::after { content: ''; position: absolute; inset: -8px; }

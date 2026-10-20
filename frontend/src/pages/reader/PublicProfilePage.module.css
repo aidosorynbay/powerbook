@@ -204,6 +204,12 @@
 }
 
 .badgeModalClose {
+  /* as big as a finger (the founder, 2026-10-20) */
+  min-width: 44px;
+  min-height: 44px;
+  margin: -10px -10px -10px 0;
+  display: inline-grid;
+  place-items: center;
   background: none;
   border: none;
   color: var(--color-text-secondary);

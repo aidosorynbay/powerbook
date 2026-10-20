@@ -7,7 +7,8 @@
   display: flex;
   justify-content: center;
   overflow-y: auto;
-  padding: 20px;
+  /* clear of the phone's clock, notch and home bar */
+  padding: calc(20px + env(safe-area-inset-top, 0px)) 20px calc(20px + env(safe-area-inset-bottom, 0px));
   background: rgba(0, 0, 0, 0.7);
   animation: fade 180ms ease both;
 }
@@ -27,12 +28,16 @@
 
 .close {
   position: absolute;
-  top: 6px;
-  right: 8px;
-  width: 36px;
-  height: 36px;
+  /* as big as a finger (the founder, 2026-10-20) */
+  top: 4px;
+  right: 4px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
   border: 0;
-  background: none;
+  border-radius: 999px;
+  background: rgba(127, 127, 127, 0.16);
   color: var(--color-text-muted);
   font-size: 26px;
   line-height: 1;
