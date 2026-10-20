@@ -3,7 +3,7 @@ import { Suspense, lazy, useEffect } from 'react';
 import * as Sentry from '@sentry/react';
 import { AuthProvider, useAuth, I18nProvider, useI18n, isReaderPath, setAnalyticsUser, enableWornPins } from '@/shared/lib';
 import { awardsOn } from '@/widgets/Awards';
-import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, ReadingPage, JoinPage, ReaderDayPage, GetPage, AboutPage, MessagesPage, WarPage } from '@/pages';
+import { HomePage, LoginPage, RegisterPage, DashboardPage, ArchivePage, ResultsPage, ProfilePage, InsightsPage, HallOfFamePage, DirectoryPage, PublicProfilePage, ForgotPasswordPage, SuggestionsPage, AdminSuggestionsPage, ClaimPage, PrivacyPage, TermsPage, LibraryPage, ReaderShelfPage, LibraryHallPage, CatalogPage, MarketPage, WantPage, ReadingPage, JoinPage, ReaderDayPage, GetPage, AboutPage, MessagesPage, WarPage } from '@/pages';
 import { ArchivePrompt, BottomNav, GuestKept, JoinPrompt, LastCallNotice, WhatsNew } from '@/widgets';
 import '@/app/styles/theme.css';
 
@@ -127,6 +127,10 @@ function AppRoutes() {
         <Route
           path="/library/hall"
           element={<LibraryHallPage />}
+        />
+        <Route
+          path="/library/want"
+          element={isAuthenticated ? <WantPage /> : <ToLogin />}
         />
         <Route
           path="/books"

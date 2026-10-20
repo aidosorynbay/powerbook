@@ -25,6 +25,8 @@ export function WorkSheet({ workKey, title, onClose, onChanged, review }: Props)
   const [work, setWork] = useState<Work | null>(null);
   const [failed, setFailed] = useState<'missing' | 'error' | null>(null);
   const [adding, setAdding] = useState(false);
+  // «Добавить на полку»: read, or to read later (the founder, 2026-10-21)
+  const [choosing, setChoosing] = useState(false);
   // «Обсудить с AI» over this sheet.
   const [talk, setTalk] = useState(false);
 
@@ -59,7 +61,41 @@ export function WorkSheet({ workKey, title, onClose, onChanged, review }: Props)
       { requireAuth: true }
     );
     setAdding(false);
-    if (data) setWork({ ...work, my_volume_key: `m:${data.id}` });
+    setChoosing(false);
+    if (data) {
+      setWork({ ...work, my_volume_key: `m:${data.id}`, my_want_id: null });
+      track('book_add', { as: 'read' });
+      onChanged?.();
+    }
+  };
+
+  // «Хочу прочитать»: the second shelf. The book is not read, so it goes on no shelf and in no count.
+  const addToWant = async () => {
+    if (!work || adding) return;
+    setAdding(true);
+    const { data } = await apiPost<{ id: string }>(
+      '/library/want',
+      { title: work.title, author: work.author, work_key: work.key },
+      { requireAuth: true }
+    );
+    setAdding(false);
+    setChoosing(false);
+    if (data) {
+      setWork({ ...work, my_want_id: data.id });
+      track('book_add', { as: 'want' });
+      onChanged?.();
+    }
+  };
+
+  const removeWant = async () => {
+    if (!work?.my_want_id || adding) return;
+    setAdding(true);
+    const { error } = await apiDelete(`/library/want/${work.my_want_id}`, { requireAuth: true });
+    setAdding(false);
+    if (!error) {
+      setWork({ ...work, my_want_id: null });
+      onChanged?.();
+    }
   };
 
   const sourceName = (source: string | null) => (source ? t(`src.${source}`) : '');
@@ -164,10 +200,47 @@ export function WorkSheet({ workKey, title, onClose, onChanged, review }: Props)
             />
           ) : (
             <div className={styles.markBox}>
-              <p className={styles.markHint} style={{ marginBottom: 10 }}>{t('work.notOnShelf')}</p>
-              <button type="button" className={styles.primary} onClick={addToShelf} disabled={adding}>
-                + {t('work.addToShelf')}
-              </button>
+              {work.my_want_id ? (
+                <>
+                  <p className={styles.markHint} style={{ marginBottom: 10 }}>✓ {t('want.inList')}</p>
+                  <div className={styles.addRow}>
+                    <button type="button" className={styles.primary} onClick={addToShelf} disabled={adding}>
+                      {t('want.readIt')}
+                    </button>
+                    <button type="button" className={styles.ghost} onClick={removeWant} disabled={adding}>
+                      {t('want.remove')}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className={styles.markHint} style={{ marginBottom: 10 }}>{t('work.notOnShelf')}</p>
+                  <div className={styles.addPick}>
+                    <button
+                      type="button"
+                      className={styles.primary}
+                      onClick={() => setChoosing((o) => !o)}
+                      disabled={adding}
+                      aria-expanded={choosing}
+                      aria-haspopup="menu"
+                    >
+                      + {t('work.addToShelf')} <span aria-hidden="true">▾</span>
+                    </button>
+                    {choosing && (
+                      <div className={styles.addMenu} role="menu">
+                        <button type="button" role="menuitem" onClick={addToShelf} disabled={adding}>
+                          <b>{t('want.asRead')}</b>
+                          <small>{t('want.asReadHint')}</small>
+                        </button>
+                        <button type="button" role="menuitem" onClick={addToWant} disabled={adding}>
+                          <b>{t('want.asWant')}</b>
+                          <small>{t('want.asWantHint')}</small>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
 

@@ -849,6 +849,8 @@ export type Work = CatalogItem & {
   readers_list: { user_id: string; display_name: string; avatar_data: string | null; is_archive: boolean; is_viewer: boolean }[];
   my_review: BookReview | null;
   my_volume_key: string | null;
+  /** On the viewer's «Хочу прочитать»: that entry's id. */
+  my_want_id?: string | null;
   listings: Listing[];
   /** «Следить за книгой»: whether the viewer watches it, and how many readers do. */
   watching?: boolean;
@@ -1059,4 +1061,16 @@ export type BookWatch = {
   title: string;
   author: string | null;
   for_sale: number;
+};
+
+/** A book on «Хочу прочитать», the second shelf: books to read later, counted nowhere. */
+export type WantBook = {
+  id: string;
+  title: string;
+  author: string | null;
+  cover_url: string | null;
+  cover_thumb_url: string | null;
+  /** the shared library's book, when it is one: its card, and the seed of a painted cover */
+  work_key: string | null;
+  added_at: string | null;
 };

@@ -76,3 +76,10 @@
   .tab { padding: 6px 12px; font-size: 13px; }
   .asideLink { font-size: 13px; }
 }
+
+/* three pills and a link don't fit a phone side by side (the library gained «Хочу прочитать», 2026-10-21): the link
+   goes under the pills instead of covering the last one */
+@media (max-width: 560px) {
+  .row { flex-wrap: wrap; row-gap: 6px; }
+  .tabs { flex: 1 1 100%; }
+}

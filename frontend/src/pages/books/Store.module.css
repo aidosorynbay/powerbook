@@ -1589,3 +1589,58 @@
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
 }
+
+/* «Добавить на полку»: read, or to read later — a small menu under the button (2026-10-21) */
+.addPick {
+  position: relative;
+  display: inline-block;
+}
+
+.addMenu {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(300px, 80vw);
+  display: grid;
+  padding: 6px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  /* solid: the card's own colour is see-through, and the reviews under the menu showed through it */
+  background: var(--color-bg-elevated);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+
+.addMenu button {
+  display: grid;
+  gap: 2px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  background: none;
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.addMenu button:hover:not(:disabled),
+.addMenu button:focus-visible {
+  background: var(--color-bg-secondary);
+}
+
+.addMenu b {
+  font-size: 14px;
+}
+
+.addMenu small {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.addRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useI18n } from '@/shared/lib';
 import styles from './SectionTabs.module.css';
 
-type Tab = { to: string; label: string; also?: string[] };
+type Tab = { to: string; label: string; also?: string[]; except?: string[] };
 
 /**
  * The parts of one tab-bar place, side by side as pills — the same pills as «Мой | Круг» on the circle page,
@@ -11,7 +11,8 @@ type Tab = { to: string; label: string; also?: string[] };
  */
 export function SectionTabs({ tabs, aside, label }: { tabs: Tab[]; aside?: ReactNode; label: string }) {
   const { pathname } = useLocation();
-  const on = (tab: Tab) => [tab.to, ...(tab.also ?? [])].some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  const under = (p: string) => pathname === p || pathname.startsWith(`${p}/`);
+  const on = (tab: Tab) => [tab.to, ...(tab.also ?? [])].some(under) && !(tab.except ?? []).some(under);
   return (
     <div className={styles.row}>
       <nav className={styles.tabs} aria-label={label}>
@@ -49,7 +50,9 @@ export function LibraryTabs({ room = true }: { room?: boolean } = {}) {
     <SectionTabs
       label={t('nav.library')}
       tabs={[
-        { to: '/library', label: t('nav2.myShelf') },
+        { to: '/library', label: t('nav2.myShelf'), except: ['/library/want'] },
+        // the second shelf: books to read later, counted nowhere (the founder, 2026-10-21)
+        { to: '/library/want', label: t('nav2.want') },
         { to: '/books', label: t('nav2.allBooks'), also: ['/market'] },
       ]}
       aside={
