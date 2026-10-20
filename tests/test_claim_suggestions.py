@@ -4,6 +4,7 @@ be taken back, and the founder linking a reader from the admin."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from urllib.parse import unquote
 
 import pytest
 from fastapi.testclient import TestClient
@@ -291,3 +292,48 @@ def test_a_day_under_two_nicknames_is_one_day():
     db.add(ReadingLog(round_id=r.id, user_id=b.id, date=date(2023, 1, 16), minutes=30, score=1))
     db.commit()
     assert InsightsRepository(db).total_days_logged(user_ids=[a.id, b.id]) == 2
+
+
+def test_a_reader_with_some_archive_is_offered_the_rest_and_linked_by_hand(env, monkeypatch):
+    # One approved nickname took a reader off «Архив: покрытие», and the rest had nowhere to go (2026-10-20).
+    import asyncio
+    from types import SimpleNamespace
+
+    import jinja2
+    from starlette.datastructures import FormData
+
+    import app.admin_coverage as coverage
+
+    other = User(username="sairak", display_name="Saira K", password_hash="x", gender=Gender.female, is_claimable=True)
+    env.db.add(other)
+    env.db.flush()
+    may = env.db.query(Round).filter_by(year=2023, month=5).one()
+    env.db.add(RoundParticipant(round_id=may.id, user_id=other.id, status=RoundParticipantStatus.active))
+    env.db.commit()
+    claim_match.invalidate()
+    ClaimsService(env.db).link_by_admin(user_id=env.saira.id, ghost_user_id=env.ghost_saira.id, admin_id=env.aidos.id)
+
+    data = build(env.db)
+    row = next(r for r in data["more"] if r["username"] == "saira_k")
+    assert row["held"] == ["Saira"] and "sairak" in [m["username"] for m in row["matches"]]
+    jinja2.Environment(loader=jinja2.FileSystemLoader("app/admin_templates")).parse(
+        open("app/admin_templates/archive_coverage.html").read()
+    )
+
+    # by hand: the reader's nickname and the archive's, with or without the @
+    monkeypatch.setattr(coverage, "get_session_factory", lambda: (lambda: env.db))
+    monkeypatch.setattr(env.db, "close", lambda: None)
+    form = FormData([("reader", "@saira_k"), ("nicknames", "@sairak, nobody_here")])
+
+    async def _form():
+        return form
+
+    request = SimpleNamespace(form=_form, url_for=lambda name: "http://x/admin/", session={"admin_user": str(env.aidos.id)},
+                              state=SimpleNamespace())
+    link = coverage.ArchiveCoverageView.link
+    response = asyncio.run(getattr(link, "__wrapped__", link)(coverage.ArchiveCoverageView(), request))
+    # what isn't in the archive is named, and the rest is linked anyway
+    assert "@nobody_here" in unquote(response.headers["location"])
+    env.db.expire_all()
+    granted = {c.ghost_user_id for c in env.db.query(UsernameClaim).filter_by(claimant_user_id=env.saira.id, status=ClaimStatus.approved)}
+    assert other.id in granted

@@ -10,6 +10,7 @@ links them on the spot: the founder knows these people.
 from __future__ import annotations
 
 import inspect
+import re
 import time
 import uuid
 from collections import defaultdict
@@ -17,7 +18,7 @@ from datetime import timezone
 from urllib.parse import quote
 
 from sqladmin import BaseView, expose
-from sqlalchemy import select
+from sqlalchemy import func, select
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
@@ -105,8 +106,8 @@ def build(db) -> dict:
     ghost_by_id = {g.id: g for g in ghosts}
     user_by_id = {u.id: u for u in users}
 
-    def matches_for_user(user, limit=3):
-        mine = user_keys[user.id]
+    def matches_for_user(user, limit=3, mine=None):
+        mine = mine or user_keys[user.id]
         scored = []
         for g in free:
             sc = claim_match.score(mine, g.keys)
@@ -143,6 +144,31 @@ def build(db) -> dict:
         }
         for u in neither_sorted[:_ROWS]
     ]
+
+    # Readers who already have some of their archive: one approved nickname used to take a reader off the list
+    # above, and their other nicknames had nowhere to be linked (the founder, 2026-10-20). Their names and the
+    # names of the nicknames they hold look for the rest.
+    def held_keys(user):
+        names = [user.username, user.display_name, user.telegram_id]
+        for gid in approved_by.get(user.id, ()):
+            g = ghost_by_id.get(gid)
+            if g is not None:
+                names += [g.username, g.display_name]
+        return claim_match.keys(*names)
+
+    with_some = [u for u in users if approved_by.get(u.id) or own_archive(u)]
+    more = []
+    for u in sorted(with_some, key=lambda u: -(u.created_at.timestamp() if u.created_at else 0)):
+        found = matches_for_user(u, limit=6, mine=held_keys(u))
+        if found:
+            held = [ghost_by_id[g].username for g in approved_by.get(u.id, ()) if g in ghost_by_id]
+            more.append({
+                "user_id": str(u.id), "username": u.username, "display_name": u.display_name,
+                "telegram": u.telegram_id or "", "joined": _astana(u.created_at), "held": sorted(held),
+                "matches": found,
+            })
+        if len(more) >= _ROWS:
+            break
 
     def last_month(g) -> tuple[int, int]:
         return max(months.get(g.id, [(0, 0)]))
@@ -189,9 +215,34 @@ def build(db) -> dict:
         },
         "pending": pending,
         "readers": readers,
+        "more": more,
         "nicknames": nicknames,
         "recent_year": RECENT_YEAR,
     }
+
+
+def _reader_by_name(db, name: str) -> User | None:
+    """A site reader by their nickname or Telegram, typed with or without the @."""
+    name = name.strip().lstrip("@").lower()
+    if not name:
+        return None
+    return db.execute(
+        select(User).where(
+            User.is_claimable.is_(False),
+            (func.lower(User.username) == name) | (func.lower(User.telegram_id) == name),
+        )
+    ).scalars().first()
+
+
+def _archive_by_name(db, name: str) -> list[User]:
+    """Archive accounts under this nickname: the archive's username or its old Telegram."""
+    name = name.strip().lstrip("@").lower()
+    return list(db.execute(
+        select(User).where(
+            User.is_claimable.is_(True),
+            (func.lower(User.username) == name) | (func.lower(User.archive_nick) == name),
+        )
+    ).scalars().all())
 
 
 class ArchiveCoverageView(BaseView):
@@ -230,12 +281,25 @@ class ArchiveCoverageView(BaseView):
         base = str(request.url_for("admin:index")).rstrip("/")
         db = get_session_factory()()
         try:
-            user_id = uuid.UUID(str(form.get("user_id")))
-            # one or several nicknames ticked for this reader
+            # one or several nicknames ticked for this reader, or (by hand) a reader and nicknames typed in
             ghost_ids = [uuid.UUID(str(g)) for g in form.getlist("ghost_id")]
+            if form.get("user_id"):
+                user = db.get(User, uuid.UUID(str(form.get("user_id"))))
+            else:
+                user = _reader_by_name(db, str(form.get("reader") or ""))
+            unknown = []
+            for nick in re.split(r"[\s,;]+", str(form.get("nicknames") or "")):
+                if nick.strip().lstrip("@"):
+                    found = _archive_by_name(db, nick)
+                    if found:
+                        ghost_ids += [g.id for g in found if g.id not in ghost_ids]
+                    else:
+                        unknown.append(f"@{nick.strip().lstrip('@')}")
+            if user is None:
+                raise ValueError("Нет такого читателя на сайте: " + str(form.get("reader") or "?"))
+            user_id = user.id
             admin = request.session.get("admin_user")
-            user = db.get(User, user_id)
-            linked, failed = [], []
+            linked, failed = [], [f"{n}: нет в архиве" for n in unknown]
             for ghost_id in ghost_ids:
                 ghost = db.get(User, ghost_id)
                 name = f"@{ghost.username if ghost else '?'}"
@@ -247,7 +311,7 @@ class ArchiveCoverageView(BaseView):
                 except Exception as exc:  # the service says why (already granted to someone)
                     db.rollback()
                     failed.append(f"{name}: {getattr(exc, 'detail', None) or exc}")
-            if not ghost_ids:
+            if not ghost_ids and not failed:
                 target = f"{base}/archive-coverage?error={quote('Отметьте хотя бы один ник')}"
             elif failed:
                 done = f"Привязано: {', '.join(linked)} → @{user.username if user else '?'}. " if linked else ""

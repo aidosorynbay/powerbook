@@ -59,6 +59,49 @@
   {% endif %}
 
   <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Привязать вручную</h3></div>
+    <div class="card-body">
+      <form method="post" action="{{ base }}/archive-coverage/link" class="d-flex flex-wrap align-items-end gap-2 m-0">
+        <label class="mb-0">Читатель сайта<input class="form-control" name="reader" placeholder="@ник или @telegram" required></label>
+        <label class="mb-0" style="flex:1;min-width:240px">Ники из архива<input class="form-control" name="nicknames" placeholder="@gumi @gumilina — через пробел или запятую" required></label>
+        <button class="btn btn-primary" type="submit">Привязать</button>
+      </form>
+    </div>
+  </div>
+
+  {% if data.more %}
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Читатели с архивом — ещё похожие ники ({{ data.more|length }})</h3></div>
+    <div class="card-body text-muted small pb-0">Уже привязали часть истории; похожие на них свободные ники. Отметьте свои и нажмите «Привязать выбранные».</div>
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead><tr><th>Читатель</th><th>Ещё похожие ники</th></tr></thead>
+        <tbody>
+        {% for r in data.more %}
+          <tr>
+            <td style="min-width:220px">@{{ r.username }}{% if r.telegram and r.telegram != r.username %} <span class="text-muted">· tg @{{ r.telegram }}</span>{% endif %}
+              <div class="text-muted small">{{ r.display_name }} · с {{ r.joined }}{% if r.held %} · уже: {% for h in r.held %}@{{ h }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}</div></td>
+            <td>
+              <form method="post" action="{{ base }}/archive-coverage/link" class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <input type="hidden" name="user_id" value="{{ r.user_id }}">
+                {% for m in r.matches %}
+                  <label class="form-check d-inline-flex align-items-center gap-2 me-3 mb-0">
+                    <input class="form-check-input m-0" type="checkbox" name="ghost_id" value="{{ m.ghost_id }}">
+                    <span>@{{ m.username }} <span class="text-muted small">{{ m.display_name }} · {{ m.circles }} кр. {{ m.span }} · {{ m.score }}%</span></span>
+                  </label>
+                {% endfor %}
+                <button class="btn btn-outline-primary btn-sm" type="submit">Привязать выбранные</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card mb-3">
     <div class="card-header"><h3 class="card-title">Читатели без архива — вероятные совпадения</h3></div>
     <div class="card-body text-muted small pb-0">Сначала те, кто читает в кругах на сайте. Отметьте ники читателя и нажмите «Привязать выбранные»: они сразу станут его.</div>
     <div class="table-responsive">
