@@ -409,6 +409,9 @@ def save_review(db: Session, *, user: User, payload: ReviewIn) -> ShelfReviewOut
         notify.take_back_review(db, review.id)
     else:
         notify.on_review(db, review, had_text=had_text)
+    from app.services import librarian
+
+    librarian.after_mark(db, user, review)
     return ShelfReviewOut.model_validate(review, from_attributes=True)
 
 

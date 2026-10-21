@@ -3,6 +3,7 @@ from app.models.award import ReaderAward
 from app.models.book_author import BookAuthor
 from app.models.book_chat import BookChat
 from app.models.book_cover import BookCover
+from app.models.book_dismissal import BookDismissal
 from app.models.book_fact import BookFact
 from app.models.book_link import BookLink
 from app.models.book_listing import BookListing
@@ -35,6 +36,7 @@ from app.models.waitlist import WaitlistEntry
 from app.models.want_book import WantBook
 
 __all__ = [
+    "BookDismissal",
     "WantBook",
     "SoloDay",
     "SoloDayBook",

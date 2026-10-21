@@ -1069,6 +1069,28 @@ export type BookWatch = {
 };
 
 /** A book on «Хочу прочитать», the second shelf: books to read later, counted nowhere. */
+/** One book the AI librarian picked («Что почитать дальше»), and why. */
+export type Pick = {
+  book: CatalogItem;
+  why: string;
+  /** on «Хочу прочитать» already: its id there */
+  want_id: string | null;
+};
+
+export type Picks = {
+  enabled: boolean;
+  ai_available: boolean;
+  has_taste: boolean;
+  /** marks still needed before the first picks */
+  marks_missing: number;
+  status: 'working' | 'done' | 'error' | null;
+  error: string | null;
+  taste: string | null;
+  picks: Pick[];
+  stale: boolean;
+  updated_at: string | null;
+};
+
 export type WantBook = {
   id: string;
   title: string;

@@ -71,6 +71,42 @@ class RecommendationOut(BaseModel):
     shared_readers: int = 0
 
 
+class PickOut(BaseModel):
+    """One book the AI librarian picked, and why (app/services/librarian.py)."""
+
+    book: CatalogItemOut
+    why: str
+    # on «Хочу прочитать» already: its id there
+    want_id: str | None = None
+
+
+class PicksOut(BaseModel):
+    # the librarian is open to this reader (admins first, then everyone)
+    enabled: bool
+    ai_available: bool
+    # marks enough to go on (librarian.MIN_MARKS)
+    has_taste: bool
+    # how many more marks before the first picks
+    marks_missing: int = 0
+    # None — never written; "working" | "done" | "error"
+    status: str | None
+    error: str | None = None
+    taste: str | None = None
+    picks: list[PickOut] = []
+    # the reader's marks changed since: written again when opened
+    stale: bool = False
+    updated_at: datetime | None = None
+
+
+class PicksIn(BaseModel):
+    lang: str = "ru"
+    force: bool = False
+
+
+class DismissIn(BaseModel):
+    work_key: str
+
+
 class NoteOut(BaseModel):
     id: uuid.UUID
     text: str

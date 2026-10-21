@@ -8,9 +8,18 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.reading_ai import DigestIn, DigestOut, NotebookEntryOut, ReadingOverviewOut, RecommendationOut
+from app.schemas.reading_ai import (
+    DigestIn,
+    DigestOut,
+    DismissIn,
+    NotebookEntryOut,
+    PicksIn,
+    PicksOut,
+    ReadingOverviewOut,
+    RecommendationOut,
+)
 from app.schemas.round_review import RoundReviewOut
-from app.services import reading_ai, round_review
+from app.services import librarian, reading_ai, round_review
 
 router = APIRouter(prefix="/reading", tags=["reading"])
 
@@ -31,6 +40,36 @@ def recommendations(
     user: User = Depends(get_current_user),
 ) -> list[RecommendationOut]:
     return reading_ai.recommendations(db, user=user, limit=limit)
+
+
+@router.get("/picks", response_model=PicksOut)
+def get_picks(
+    lang: str = Query(default="ru", pattern="^(ru|kk|en)$"),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> PicksOut:
+    """The AI librarian's picks for the reader: what to read next, and why."""
+    return librarian.get(db, user=user, lang=lang)
+
+
+@router.post("/picks", response_model=PicksOut, status_code=status.HTTP_202_ACCEPTED)
+def start_picks(payload: PicksIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> PicksOut:
+    if payload.lang not in ("ru", "kk", "en"):
+        payload.lang = "ru"
+    return librarian.start(db, user=user, lang=payload.lang, force=payload.force)
+
+
+@router.post("/picks/dismiss", status_code=status.HTTP_204_NO_CONTENT)
+def dismiss_pick(payload: DismissIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> None:
+    """«Не моё»: never suggested again."""
+    librarian.dismiss(db, user=user, work_key=payload.work_key[:300])
+
+
+@router.delete("/picks/dismiss", status_code=status.HTTP_204_NO_CONTENT)
+def undismiss_pick(
+    work_key: str = Query(max_length=300), db: Session = Depends(get_db), user: User = Depends(get_current_user)
+) -> None:
+    librarian.undismiss(db, user=user, work_key=work_key)
 
 
 @router.get("/notebook", response_model=list[NotebookEntryOut])

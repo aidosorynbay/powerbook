@@ -16,7 +16,8 @@ words is not a review), and whoever wrote it hears the answers under it
 (app/services/new_circle.py). A reader hears when a friend who signed up by their
 link reads for the first time («Приведи друга», app/services/invites.py). A reader quiet for three days hears
 from the founder («Хей, как вы?», app/services/checkins.py), and a push when another reader
-writes to them (app/services/buddy_chat.py; the push only, the conversation is in /messages). Each kind can be switched off; no switch means on.
+writes to them (app/services/buddy_chat.py; the push only, the conversation is in /messages). A reader who marks a
+book 8 and up hears that the AI librarian picked what to read next (app/services/librarian.py). Each kind can be switched off; no switch means on.
 
 Nothing here may break what triggered it: logging the day's minutes or
 putting up a listing always succeeds, whatever happens to a notification.
@@ -42,7 +43,7 @@ logger = logging.getLogger(__name__)
 KEEP_DAYS = 90
 
 # Everything the bell says, in the order the settings list them.
-KINDS = ("checkin", "buddy_message", "new_circle", "new_review", "review_reply", "watch_listing", "watch_finished", "wanted_by", "guest_read")
+KINDS = ("checkin", "buddy_message", "new_circle", "new_review", "review_reply", "watch_listing", "watch_finished", "wanted_by", "guest_read", "picks")
 
 # How much of a review the bell quotes.
 QUOTE_CHARS = 140
