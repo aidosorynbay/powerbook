@@ -6,10 +6,11 @@ only the club's library, no paywall).
 
 How it picks, so it never names a book that does not exist:
 
-1. From the club: candidates from the shared library, the books PowerBook readers actually read — what the readers
-   who loved your books loved, what readers with shelves like yours read (reading_ai.recommendations), more of the
-   authors you loved, the best of your topics. Read, wanted and turned-down books are left out. Each carries the club
-   members who marked it high: the best reason is a person («Айгерим тоже поставила 9 …»).
+1. From the club: every book of the shared library the reader does not know yet, ranked by how it fits their taste
+   read deeply (app/services/taste.py): each book's DNA — mood, pace, themes, style (app/services/book_dna.py) —
+   against the reader's portrait from everything they marked, finished, dropped, wanted and turned down; what kindred
+   readers (who agree with them across many shared marks, not one) thought of it; and its quality — kept varied, no
+   author twice. Each carries its match percent and the traits it fits by.
 2. From the world: the AI may also name books outside the library; one counts only when a catalogue (Google Books,
    Open Library, Flip.kz) has an edition by the same author with a cover (app/services/book_lookup.py).
 3. The AI (llm.py: DeepSeek or Claude) gets the reader's taste — marks with their words, recent books, their three
@@ -87,17 +88,22 @@ _SYSTEM = (
     "their taste — the books they marked out of 10 (with their own words, when they wrote some), what they read "
     "lately, what they already want to read, what they turned down («not for me»), their favourite topics — and a "
     "list of candidate books from the community's library, each with an id. Do two things. "
-    "1) `picks`: choose up to {n} candidates, by their ids only, that follow best from what they marked high, unlike "
-    "what they marked low or turned down. "
+    "The reader's `portrait` is their taste read from everything they marked, finished, dropped and turned down "
+    "(trait words like mood:warm, pace:slow, themes:friendship): `likes` and `dislikes`. Each candidate carries "
+    "`match_percent` (how well its traits fit that portrait), `fits_their_taste`, `against_their_taste`, an "
+    "`essence`, and `loved_by` — kindred club members who loved it, with how often they agree with the reader. "
+    "1) `picks`: choose up to {n} candidates, by their ids only — the ones that truly fit: weigh the match, the "
+    "reader's own marks and words, and kindred readers; skip a high match that clashes with what they marked low. "
     "2) `outside`: name {m} real, published books NOT among the candidates that this reader would love — well known "
     "enough to be in Google Books, with the title as published in the reader's language when there is such an "
     "edition (Russian for Russian readers; a Kazakh book in Kazakh) and the author's full name. Never a book from "
     "their marks, reads, favourites, want list or «not for me». "
     "Vary everything: not all one author or one topic, and one may be a little outside their habit if their marks "
-    "point there. For each book, say why in one or two short sentences, speaking to the reader directly. The best "
-    "reason is a person: when a candidate has `loved_by` (club members who marked it high, and the book of the "
-    "reader's they also loved), lead with that person by name («Айгерим тоже поставила 9 «Трём товарищам» — а этой "
-    "книге 10»); otherwise name the reader's own books («you gave 9 to …», «you named … among your favourites»). Put "
+    "point there. For each book, say why in one or two short sentences, speaking to the reader directly. The reason "
+    "is what the book is like and why that is them: name its qualities in plain words (never the trait codes) and tie "
+    "them to the reader's own books («медленная и тёплая книга о дружбе — как «Три товарища», которым вы дали 9»). "
+    "A kindred reader is the second voice, when it adds something: by name, with how often they agree with the reader "
+    "(«Айгерим, с которой вы совпали в 6 книгах из 7, поставила ей 10»). Put "
     "book titles in «». Never invent plot details, awards or facts you are not sure of. Speak of books and people, "
     "never of «topics», «themes in your profile», data or how you know. Also write one short sentence (at most 20 "
     "words) that sums up their taste as you see it. When the reader wrote a `wish` — what they want right now (a "
@@ -166,6 +172,7 @@ class _Reader:
         self.facts = books_service.facts_by_work(db, self.idx)
         accounts = ClaimsRepository(db).effective_user_ids(user_id=user.id)
         people = {self.idx.person_of(a) for a in accounts}
+        self.accounts, self.people = set(accounts), people
         self.read: set[str] = set().union(*(self.idx.by_person.get(p, set()) for p in people)) if people else set()
 
         # marks, newest first, one per book
@@ -197,10 +204,12 @@ class _Reader:
 
         # a newcomer's first step: their three favourite books (the profile's «Любимые книги»)
         self.favourites: list[str] = [t for t in (user.favorite_books or []) if t and t.strip()][:3]
+        self.favourite_keys: set[str] = set()
         for title in self.favourites:
             work = book_face.work_of(self.idx, title=title)
             if work is not None:
                 self.read.add(work.key)
+                self.favourite_keys.add(work.key)
 
         # minutes a reading day lately, for «≈ N дней при ваших M мин в день»
         from app.repositories.insights import InsightsRepository
@@ -303,51 +312,6 @@ class _Reader:
     def out(self, key: str) -> bool:
         return key in self.read or key in self.want_keys or key in self.dismissed_keys or key not in self.idx.works
 
-    def candidates(self, db: Session, user: User) -> list[str]:
-        from app.services.reading_ai import recommendations
-
-        marks = books_service._marks(db, self.idx)
-        picked: list[str] = []
-
-        def take(key: str) -> None:
-            if key not in picked and not self.out(key):
-                picked.append(key)
-
-        # 0. what the readers who loved your books loved
-        if self.shared_love:
-            kin = set(self.shared_love)
-            theirs = [k for k, fans in self.loved.items() if any(a in kin for a, _ in fans)]
-            for key in sorted(theirs, key=lambda k: -max(r for a, r in self.loved[k] if a in kin))[:20]:
-                take(key)
-
-        # 1. readers whose shelves look like yours (or the club's best, with nothing to go on)
-        for rec in recommendations(db, user=user, limit=40):
-            take(rec.book.key)
-
-        def quality(key: str) -> float:
-            work = self.idx.works[key]
-            q = math.log1p(len(work.readers)) / 2
-            if key in marks:
-                q += marks[key].weighted / 10
-            fact = self.facts.get(key)
-            if fact is not None and fact.rating is not None:
-                q += float(fact.rating) / float(fact.rating_scale or 5)
-            return q
-
-        # 2. more of the authors the reader loved
-        loved_authors = {(r.author or "").casefold() for _, r in self.marks if r.rating >= LOVED and r.author}
-        if loved_authors:
-            same = [k for k, w in self.idx.works.items() if (w.author or "").casefold() in loved_authors]
-            for key in sorted(same, key=quality, reverse=True)[:12]:
-                take(key)
-
-        # 3. the best of their favourite topics
-        if self.topics:
-            near = [k for k, f in self.facts.items() if f.topics and set(f.topics) & set(self.topics) and k in self.idx.works]
-            for key in sorted(near, key=quality, reverse=True)[:40]:
-                take(key)
-        return picked[:CANDIDATES]
-
 
 def _hash(lang: str, taste: dict) -> str:
     raw = json.dumps({"lang": lang, "model": llm.model_name(), "taste": taste}, ensure_ascii=False, sort_keys=True)
@@ -426,9 +390,15 @@ def get(db: Session, *, user: User, lang: str) -> PicksOut:
                 book=CatalogItemOut.model_validate(item.model_dump()), why=p.get("why") or "",
                 want_id=want_ids.get(work.key) or reader.want_norms.get(want._norm(work.title)),
                 buy_url=_buy_url(work.title), days=_days(fact.pages if fact else None, reader.pace),
+                match=p.get("match"), fits=list(p.get("fits") or []),
             )
         )
     out.pace = reader.pace
+    # the reader's taste, said plainly at the top of the page
+    from app.services.taste import Taste
+
+    taste = Taste(db, reader)
+    out.likes, out.dislikes = taste.likes(4), taste.dislikes(2)
     return out
 
 
@@ -509,33 +479,47 @@ def _prepare(db: Session, user: User, reader: _Reader, lang: str, shown: set[str
     starting with "_" stay here: they check the answer and are never sent."""
     from app.services import want
 
-    keys = reader.candidates(db, user)
-    ids = {f"b{i + 1}": key for i, key in enumerate(keys)}
+    from app.services.taste import Taste
+
+    taste = Taste(db, reader)
+    # every book of the library the reader does not know yet, ranked by how it fits them, varied
+    pool = [k for k in reader.idx.works if not reader.out(k)]
+    ranked = taste.rank(pool, CANDIDATES)
+    ids = {f"b{i + 1}": f.key for i, f in enumerate(ranked)}
+    fit_of = {f.key: f for f in ranked}
     # «Другие варианты»: the books shown now go to the end of the list, so others come first
     order = sorted(ids.items(), key=lambda kv: kv[1] in shown)
     candidates = []
     for cid, key in order:
         work = reader.idx.works[key]
         fact = reader.facts.get(key)
+        f = fit_of[key]
+        dna = taste.dna.get(key)
         candidates.append(
             {
                 "id": cid,
                 "title": work.title,
                 "author": work.author,
-                "topics": list(fact.topics or [])[:3] if fact else [],
                 "year": fact.year if fact else None,
-                "about": _about(fact, lang),
+                "essence": dna.essence if dna else None,
+                "about": None if dna and dna.essence else _about(fact, lang),
+                # how well it fits the reader's taste, and by what
+                "match_percent": f.match,
+                "fits_their_taste": f.fits,
+                "against_their_taste": f.clashes,
                 "pb_readers": len(work.readers),
-                "loved_by": reader.loved_by(key),
+                "loved_by": taste.kindred_fans(key, reader.names) or reader.loved_by(key),
             }
         )
     # for the outside books: what the reader knows (never named again) and the club's books (named, they are club picks)
     club = {
         want._norm(w.title): w.key for w in reader.idx.works.values() if not reader.out(w.key)
     }
+    portrait = {"likes": taste.likes(), "dislikes": taste.dislikes()}
     payload = {
-        "reader": {**reader.taste(), "_known": reader.known_titles()},
+        "reader": {**reader.taste(), "portrait": portrait, "_known": reader.known_titles()},
         "candidates": candidates,
+        "_fit": {cid: {"match": fit_of[key].match, "fits": fit_of[key].fits} for cid, key in ids.items()},
         "_skip": sorted({want._norm(t) for t in reader.known_titles()}),
         "_club": club,
     }
@@ -594,7 +578,7 @@ def choose(payload: dict, ids: dict[str, str], lang: str, *, look_up=None) -> di
         why = str(p.get("why", "")).strip()
         if key and key not in seen and why and _holds(why, known):
             seen.add(key)
-            club.append({"key": key, "why": why})
+            club.append({"key": key, "why": why, **payload.get("_fit", {}).get(str(p.get("id", "")).strip(), {})})
         else:
             dropped += 1
 

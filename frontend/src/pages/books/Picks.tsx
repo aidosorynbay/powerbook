@@ -291,6 +291,14 @@ export function Picks({ onOpen, onWantChanged, askable = false, initialWish = nu
           <span aria-hidden="true">✦</span> {t('picks.title')}
         </h2>
         {data.has_taste && (data.taste && !working ? <p className={styles.taste}>{data.taste}</p> : <p className={styles.taste}>{t('picks.intro')}</p>)}
+        {data.has_taste && data.likes.length > 0 && (
+          <p className={styles.portrait}>
+            <span className={styles.portraitLabel}>{t('picks.yourTaste')}</span>
+            {data.likes.map((trait) => <span key={trait} className={styles.like}>{t(`dna.${trait}`)}</span>)}
+            {data.dislikes.length > 0 && <span className={styles.portraitLabel}>{t('picks.notQuite')}</span>}
+            {data.dislikes.map((trait) => <span key={trait} className={styles.dislike}>{t(`dna.${trait}`)}</span>)}
+          </p>
+        )}
       </div>
 
       {!data.has_taste ? (
@@ -336,11 +344,19 @@ export function Picks({ onOpen, onWantChanged, askable = false, initialWish = nu
                       <BookFace title={p.book.title} author={p.book.author} cover={p.book.cover_thumb_url ?? p.book.cover_url} seed={p.book.key} />
                     </button>
                     <div className={styles.body}>
-                      {p.outside && <span className={styles.fresh}>{t('picks.outside')}</span>}
+                      {(p.outside || p.match !== null) && (
+                        <span className={styles.badges}>
+                          {p.match !== null && <span className={styles.matchBadge}>{t('picks.match', { n: p.match })}</span>}
+                          {p.outside && <span className={styles.fresh}>{t('picks.outside')}</span>}
+                        </span>
+                      )}
                       <button type="button" className={styles.name} onClick={() => look(p)}>
                         <span className={styles.bookTitle}>{p.book.title}</span>
                         {p.book.author && <span className={styles.author}>{p.book.author}</span>}
                       </button>
+                      {p.fits.length > 0 && (
+                        <p className={styles.fits}>{p.fits.map((trait) => t(`dna.${trait}`)).join(' · ')}</p>
+                      )}
                       <p className={styles.why}>{p.why}</p>
                       <p className={styles.meta}>
                         {p.days && data.pace ? <span>{t('picks.days', { days: p.days, pace: data.pace })}</span> : null}

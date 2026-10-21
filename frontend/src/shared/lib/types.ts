@@ -1082,6 +1082,9 @@ export type Pick = {
   buy_url: string | null;
   /** ≈ days to read it at the reader's pace */
   days: number | null;
+  /** how well it fits the reader's taste, percent, and by which traits (book DNA words: "mood:warm") */
+  match: number | null;
+  fits: string[];
 };
 
 export type Picks = {
@@ -1100,6 +1103,9 @@ export type Picks = {
   pace: number | null;
   /** what the reader asked for, when they did */
   wish: string | null;
+  /** the reader's taste as the librarian reads it (book DNA words) */
+  likes: string[];
+  dislikes: string[];
 };
 
 export type WantBook = {

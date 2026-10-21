@@ -108,9 +108,61 @@
   font-size: 13px;
 }
 
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.matchBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-success) 18%, transparent);
+  color: var(--color-success);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.fits {
+  margin: 6px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+}
+
+.portrait {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 12.5px;
+}
+
+.portraitLabel {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.like,
+.dislike {
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+}
+
+.like {
+  background: var(--color-accent-primary-muted);
+  color: var(--color-text-accent);
+}
+
+.dislike {
+  border: 1px dashed var(--color-border-primary);
+  color: var(--color-text-secondary);
+}
+
 .fresh {
   display: inline-block;
-  margin-bottom: 4px;
   padding: 2px 8px;
   border-radius: var(--radius-full);
   background: var(--color-accent-primary-muted);

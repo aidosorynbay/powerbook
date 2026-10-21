@@ -167,6 +167,19 @@ async def lifespan(app: FastAPI):
         coalesce=True,
         next_run_time=datetime.now() + timedelta(seconds=90),
     )
+    # Each library book's DNA (mood, pace, themes…) for the AI librarian, a couple of batches at a time; a file
+    # lock keeps the two workers from doing it twice (app/services/book_dna.py).
+    from app.services import book_dna
+
+    scheduler.add_job(
+        book_dna.scheduled,
+        "interval",
+        minutes=5,
+        id="book_dna",
+        max_instances=1,
+        coalesce=True,
+        next_run_time=datetime.now() + timedelta(seconds=150),
+    )
     # The daily reading reminder, at each reader's own time; the same file
     # lock idea keeps the two workers from sending it twice.
     from app.services import push

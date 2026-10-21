@@ -86,6 +86,9 @@ class PickOut(BaseModel):
     buy_url: str | None = None
     # ≈ days to read it at the reader's pace, when its pages are known
     days: int | None = None
+    # how well the book fits the reader's taste (percent) and by which of its traits (book_dna words: "mood:warm")
+    match: int | None = None
+    fits: list[str] = []
 
 
 class PicksOut(BaseModel):
@@ -108,6 +111,9 @@ class PicksOut(BaseModel):
     pace: int | None = None
     # what the reader asked for, when they did («что-то лёгкое на казахском»)
     wish: str | None = None
+    # the reader's taste as the librarian reads it: traits they like, and dislike (book_dna words)
+    likes: list[str] = []
+    dislikes: list[str] = []
 
 
 class PicksIn(BaseModel):
