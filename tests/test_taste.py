@@ -43,6 +43,12 @@ def test_the_ai_writes_the_dna_of_untagged_books_in_batches(env):
     assert [b["id"] for b in sent] == ["b1", "b2"]
     rows = {r.status for r in env.db.query(BookDna).all()}
     assert rows == {"done", "unknown"}
+    # the book it did not know is asked again (up to three tries), after the books never tried
+    unknown = env.db.query(BookDna).filter_by(status="unknown").one()
+    fake = env.deepseek([json.dumps({"books": []})])
+    book_dna.tag(env.db, limit=50)
+    asked_titles = [b["title"] for b in json.loads(fake.requests[-1]["body"]["messages"][1]["content"])["books"]]
+    assert asked_titles[-1] == unknown.title
     # done books are not asked again
     fake = env.deepseek([json.dumps({"books": []})])
     book_dna.tag(env.db, limit=50)

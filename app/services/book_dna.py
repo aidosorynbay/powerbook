@@ -168,7 +168,8 @@ def tag(db: Session, limit: int = BATCH) -> int:
     if not llm.available():
         return 0
     idx = catalog.index(db)
-    have = of_works(db)
+    # a book whose DNA is written; one the AI did not know is asked again while it has tries left
+    have = {k for k, row in of_works(db).items() if row.status == "done"}
     tried = {row.key: row for row in db.execute(select(BookDna)).scalars()}
     # books never tried first, the most read first; a book tried before only after them
     todo = [
@@ -267,7 +268,7 @@ def _backfill(limit: int, retry_unknown: bool = False) -> None:
 
 def _pending(db: Session) -> bool:
     idx = catalog.index(db)
-    have = of_works(db)
+    have = {k for k, row in of_works(db).items() if row.status == "done"}
     tried = {row.key: row.attempts for row in db.execute(select(BookDna)).scalars()}
     return any(w.key not in have and tried.get(w.key, 0) < 3 for w in idx.works.values())
 
