@@ -92,6 +92,9 @@ export type DayBook = {
   title: string;
   minutes: number;
   finished: boolean;
+  /** the shared library's book behind this spelling, and its name there: one book under every spelling */
+  key?: string;
+  book?: string;
 };
 
 /** «Книга прочитана», before saving: which book of the shelf or the library

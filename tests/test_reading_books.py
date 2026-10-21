@@ -103,7 +103,9 @@ def test_one_book_takes_the_whole_day_and_is_offered_next_time(env):
     # Changing the day's total moves the one book with it, even from a page
     # that does not send books at all.
     _log(env, 10, minutes=25)
-    assert _day(env, 10)["books"] == [{"title": "Шантарам", "minutes": 25, "finished": False}]
+    assert [{k: b[k] for k in ("title", "minutes", "finished")} for b in _day(env, 10)["books"]] == [
+        {"title": "Шантарам", "minutes": 25, "finished": False}
+    ]
 
 
 def test_a_day_split_between_two_books(env):

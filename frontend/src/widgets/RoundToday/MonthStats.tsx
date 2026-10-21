@@ -168,13 +168,14 @@ export function MonthStats(p: MonthStatsProps) {
     // minutes by book: the saved days' books
     const per = new Map<string, Book>();
     let untitled = 0;
-    const add = (title: string, minutes: number, finished: boolean, date: string) => {
-      const key = norm(title);
-      if (!key) {
+    const add = (book: DayBook, minutes: number, finished: boolean, date: string) => {
+      if (!norm(book.title)) {
         untitled += minutes;
         return;
       }
-      const b = per.get(key) ?? { title: title.trim(), minutes: 0, days: 0, finished: false, finishedOn: null };
+      // one book under every spelling: the shared library's key, when the server knows it
+      const key = book.key || norm(book.title);
+      const b = per.get(key) ?? { title: (book.book || book.title).trim(), minutes: 0, days: 0, finished: false, finishedOn: null };
       b.minutes += minutes;
       if (minutes > 0) b.days += 1;
       if (finished) {
@@ -188,7 +189,7 @@ export function MonthStats(p: MonthStatsProps) {
       const dayMinutes = d.minutes;
       const named = books.filter((b) => b.title.trim() && (b.minutes > 0 || b.finished));
       const namedSum = named.reduce((a, b) => a + b.minutes, 0);
-      named.forEach((b) => add(b.title, Math.min(b.minutes, dayMinutes), b.finished, d.date));
+      named.forEach((b) => add(b, Math.min(b.minutes, dayMinutes), b.finished, d.date));
       if (dayMinutes - namedSum > 0) untitled += dayMinutes - namedSum;
     }
     const books = [...per.values()].filter((b) => b.minutes > 0 || b.finished).sort((a, b) => b.minutes - a.minutes);

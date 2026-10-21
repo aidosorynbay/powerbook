@@ -283,6 +283,11 @@ class ReadingService:
         logs = self.logs.list_for_user(round_id=round_id, user_id=user_id)
         by_date = {l.date: l for l in logs}
 
+        # every spelling of a book under the shared library's one key and name (book_time), so «Мой месяц» counts it once
+        from app.services import book_face, book_time, catalog
+
+        idx = catalog.index(self.db) if is_owner and any(l.books for l in logs) else None
+
         days = []
         total_minutes = 0
         total_score = 0
@@ -307,7 +312,8 @@ class ReadingService:
                 "in_round": in_round,
                 # What the day was read on is the reader's own business.
                 "books": [
-                    {"title": b.title, "minutes": int(b.minutes), "finished": bool(b.finished)}
+                    {"title": b.title, "minutes": int(b.minutes), "finished": bool(b.finished),
+                     "key": book_time.book_of(idx, b.title), "book": book_face.spelling(idx, b.title) or b.title}
                     for b in row.books
                 ] if row is not None and is_owner else [],
             })
