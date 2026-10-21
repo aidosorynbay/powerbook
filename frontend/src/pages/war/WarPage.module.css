@@ -235,6 +235,9 @@
 .whichDay button.dayOn { border-color: #f26430; background: #f26430; color: #fff; }
 .whichDay small, .syncNote { font-size: 12.5px; line-height: 1.4; color: var(--color-text-secondary); text-wrap: pretty; }
 .syncNote { padding: 0 4px; }
+.roomRead { display: grid; gap: 8px; padding: 12px 16px; border-radius: 16px; background: var(--color-bg-card); border: 1px solid var(--color-border-primary); font-size: 14px; line-height: 1.4; text-wrap: pretty; }
+.roomRead button { justify-self: start; padding: 0; border: 0; background: none; color: var(--color-text-secondary); font: inherit; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.roomRead button:disabled { opacity: .5; cursor: default; }
 /* the faces and the 14 days: under the pictures on a wide screen, after today's form on a phone */
 .wide, .narrow { display: grid; gap: 16px; }
 .wide { display: none; }

@@ -32,7 +32,7 @@ export type War = {
   signup_until: string;
   starts_at: string;
   is_admin: boolean;
-  me: { joined: boolean; team: Team['key'] | null; guest?: boolean; minutes?: number; hits?: number; days?: number; today?: boolean; shelf_today?: Person[]; ask_day?: boolean; minutes_yesterday?: number };
+  me: { joined: boolean; team: Team['key'] | null; guest?: boolean; minutes?: number; hits?: number; days?: number; today?: boolean; shelf_today?: Person[]; ask_day?: boolean; minutes_yesterday?: number; room_read?: { date: string; minutes: number } | null };
   joined: Person[];
   teams: Team[];
   reveal?: Reveal;
@@ -666,6 +666,28 @@ function MinutesLog({ war, onSaved }: { war: War; onSaved: (w: War) => void }) {
   );
 }
 
+/** Last night's chair counted at 00:00 (the reader was still in the reading room, nothing saved): said once, with
+ * «Я не читал(а)» for a timer that ran while they were away. */
+function RoomRead({ war, onSaved }: { war: War; onSaved: (w: War) => void }) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const r = war.me.room_read;
+  if (!r) return null;
+  const drop = async () => {
+    setBusy(true);
+    const { data } = await apiPost<War>('/war/not-read', {}, { requireAuth: true });
+    if (data) onSaved(data);
+    track('war_not_read', { minutes: r.minutes });
+    setBusy(false);
+  };
+  return (
+    <div className={styles.roomRead}>
+      <span>{t('war.roomRead', { m: r.minutes })}</span>
+      <button type="button" onClick={drop} disabled={busy}>{t('war.notRead')}</button>
+    </div>
+  );
+}
+
 /** «Мой круг | Битва»: the war is the second tab of the circle, never the first. */
 export function WarSwitch({ active }: { active: 'round' | 'war' }) {
   const { t } = useI18n();
@@ -879,6 +901,7 @@ export function WarPage() {
                           </div>
                         </div>
                       )}
+                      {running && war.me.team && <RoomRead war={war} onSaved={setWar} />}
                       {running && war.me.team && <MinutesLog key={`${war.day}-${war.me.ask_day ? 1 : 0}`} war={war} onSaved={setWar} />}
                       {running && !war.me.team && <p className={styles.note}>{t('war.closed')}</p>}
                       <div className={styles.narrow}>{facesEl}{stripEl}</div>
