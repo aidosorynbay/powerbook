@@ -251,3 +251,27 @@ def test_whoever_invited_a_reader_hears_their_first_day(env):
     _log(env, 12, minutes=30)
     assert bell() == []
     s.close()
+
+
+def test_a_book_the_reader_said_is_another_counts_as_one_in_the_month(env):
+    """The founder (2026-10-21): «Скажи жизни да» one day and «Сказать жизни «ДА» the next were two books in «Мой месяц».
+    Once the reader says on the shelf which book «Скажи жизни да» is, every day of it is that book."""
+    from app.models.manual_book import ManualBook
+    from app.models.shelf_override import ShelfOverride
+    from app.services import book_time, catalog
+    from app.services.bookcase import _short_hash
+
+    db = env.Session()
+    db.add(ManualBook(user_id=env.aigerim.id, title="Сказать жизни «Да!»", title_norm="сказать жизни да"))
+    db.commit()
+    catalog.invalidate()
+    for day, title in ((10, "Скажи жизни да"), (11, "Сказать жизни «Да!»")):
+        _log(env, day, minutes=30, books=[{"title": title, "minutes": 30}])
+    a, b = _day(env, 10)["books"][0]["key"], _day(env, 11)["books"][0]["key"]
+    assert a != b  # the library alone can't tell
+
+    db.add(ShelfOverride(user_id=env.aigerim.id, volume_key=f"l:{_short_hash(a)}", work_key=b))
+    db.commit()
+    catalog.invalidate()
+    assert _day(env, 10)["books"][0]["key"] == _day(env, 11)["books"][0]["key"] == b
+    assert book_time.of_readers(db, [env.aigerim.id])[b].minutes == 60

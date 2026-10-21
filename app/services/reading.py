@@ -284,9 +284,10 @@ class ReadingService:
         by_date = {l.date: l for l in logs}
 
         # every spelling of a book under the shared library's one key and name (book_time), so «Мой месяц» counts it once
-        from app.services import book_face, book_time, catalog
+        from app.services import book_time, catalog
 
         idx = catalog.index(self.db) if is_owner and any(l.books for l in logs) else None
+        key_of = book_time.resolver(self.db, list(self.claims.effective_user_ids(user_id=user_id)), idx) if idx is not None else None
 
         days = []
         total_minutes = 0
@@ -311,11 +312,7 @@ class ReadingService:
                 "comment_private": is_private,
                 "in_round": in_round,
                 # What the day was read on is the reader's own business.
-                "books": [
-                    {"title": b.title, "minutes": int(b.minutes), "finished": bool(b.finished),
-                     "key": book_time.book_of(idx, b.title), "book": book_face.spelling(idx, b.title) or b.title}
-                    for b in row.books
-                ] if row is not None and is_owner else [],
+                "books": [self._day_book(b, idx, key_of) for b in row.books] if row is not None and is_owner else [],
             })
             if in_round:
                 total_minutes += minutes
@@ -330,6 +327,16 @@ class ReadingService:
             "end_day": rnd.last_day_num,
             "is_partial_month": rnd.is_partial_month,
             "days": days,
+        }
+
+    @staticmethod
+    def _day_book(b, idx, key_of) -> dict:
+        """A day's book with the library's key and name for it (book_time: every spelling and the reader's pin)."""
+        from app.services import book_face
+
+        return {
+            "title": b.title, "minutes": int(b.minutes), "finished": bool(b.finished),
+            "key": key_of(b.title), "book": book_face.spelling(idx, b.title) or b.title,
         }
 
     def _joined_day(self, rnd, user_id: uuid.UUID) -> str | None:

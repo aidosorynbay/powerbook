@@ -42,6 +42,30 @@ def book_of(idx: catalog.CatalogIndex, title: str) -> str:
     return nodes[0] if nodes else f"n:{_title_norm(title)}"
 
 
+def resolver(db: Session, user_ids: list[uuid.UUID], idx: catalog.CatalogIndex):
+    """`book_of` for these readers, with their own word on top: a book standing as «Читаю» on the shelf that the reader
+    said is a certain book of the library («Какая это книга?») is that book, its minutes and days with it. The founder
+    (2026-10-21): «Скажи жизни да» one day and «Сказать жизни «ДА» the next stood as two books in «Мой месяц»."""
+    from app.models.shelf_override import ShelfOverride
+    from app.services.bookcase import _short_hash
+
+    pins = dict(db.execute(
+        select(ShelfOverride.volume_key, ShelfOverride.work_key).where(
+            ShelfOverride.user_id.in_(user_ids), ShelfOverride.volume_key.like("l:%"), ShelfOverride.work_key.is_not(None),
+        )
+    ).all()) if user_ids else {}
+
+    def key_of(title: str) -> str:
+        key = book_of(idx, title)
+        pinned = pins.get(f"l:{_short_hash(key)}")
+        if not pinned:
+            return key
+        work = idx.works.get(pinned) or idx.find(pinned)
+        return work.key if work is not None else pinned
+
+    return key_of
+
+
 @dataclass
 class BookTime:
     key: str
@@ -89,8 +113,9 @@ def of_readers(db: Session, user_ids: list[uuid.UUID], idx: catalog.CatalogIndex
         .group_by(SoloDayBook.title_norm)
     ).all()
     out: dict[str, BookTime] = {}
+    key_of = resolver(db, user_ids, idx)
     for _norm, title, minutes, days, last_day, finished in rows:
-        key = book_of(idx, title)
+        key = key_of(title)
         work = idx.works.get(key)
         bt = out.get(key)
         if bt is None:
