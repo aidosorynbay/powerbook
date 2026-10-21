@@ -561,6 +561,8 @@ export type PublicProfile = {
   badges_earned: number;
   badges: Badge[];
   recent_books: string[];
+  /** «Читаю»: books read lately and not finished, as the shelf shows them */
+  reading_now?: string[];
   favorite_books: string[];
   /** Covers for the top-3, same order; null when none is known yet. */
   favorite_covers?: (string | null)[];

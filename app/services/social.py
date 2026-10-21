@@ -170,6 +170,7 @@ class SocialService:
         earned = sum(1 for b in badges if b.earned)
         shelf = self.insights.bookshelf(user_id=target.id, public=target.id != viewer_id)
         recent_books = [b.title for b in shelf[:6]]
+        reading_now = self._reading_now(target.id)
 
         is_buddy = self.buddies.get(user_id=viewer_id, buddy_user_id=target.id) is not None
 
@@ -195,12 +196,30 @@ class SocialService:
             badges_earned=earned,
             badges=badges,
             recent_books=recent_books,
+            reading_now=reading_now,
             favorite_books=target.favorite_books or [],
             favorite_covers=self.favorite_covers(target.favorite_books or []),
             is_buddy=is_buddy,
             is_self=target.id == viewer_id,
             is_archive=target.is_claimable,
         )
+
+    def _reading_now(self, user_id: uuid.UUID) -> list[str]:
+        """The books the reader is reading now, by the shelf's own rule (bookcase: «Читаю» from the minutes of the
+        circle's days and of the days outside it, unfinished and read lately), newest first. A newcomer who has only
+        sat in the reading room has a library too."""
+        from datetime import datetime
+
+        from app.services import book_time
+        from app.services.bookcase import READING_LATELY_DAYS
+        from app.core.constants import ROUND_TZ
+
+        today = datetime.now(tz=ROUND_TZ).date()
+        books = [
+            bt for bt in book_time.of_readers(self.db, self.insights._effective_ids(user_id)).values()
+            if not bt.finished and bt.last_day is not None and (today - bt.last_day).days <= READING_LATELY_DAYS
+        ]
+        return [bt.title for bt in sorted(books, key=lambda b: b.last_day, reverse=True)]
 
     def add_buddy(self, *, user_id: uuid.UUID, buddy_user_id: uuid.UUID) -> None:
         if user_id == buddy_user_id:

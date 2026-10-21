@@ -46,6 +46,8 @@ class PublicProfileOut(BaseModel):
     featured_award: str | None = None
     badges: list[BadgeOut]
     recent_books: list[str]
+    # «Читаю»: books read lately and not finished, as the shelf shows them
+    reading_now: list[str] = []
     favorite_books: list[str]
     # Covers for the top-3, in the same order: the shared library's own, as on the 3D shelf.
     favorite_covers: list[str | None] = []

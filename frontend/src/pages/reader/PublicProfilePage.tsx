@@ -90,6 +90,7 @@ export function PublicProfilePage() {
     setIsTogglingBuddy(false);
   };
 
+  const reading = profile?.reading_now ?? [];
   const embedUrl = profile?.reading_music_url ? getMusicEmbedUrl(profile.reading_music_url) : null;
 
   return (
@@ -164,20 +165,20 @@ export function PublicProfilePage() {
                   </div>
                 </div>
 
-                {(profile.books_finished > 0 || shelf.length > 0) && (
+                {(profile.books_finished > 0 || shelf.length > 0 || reading.length > 0) && (
                   <Link to={profile.is_self ? '/library' : `/readers/${profile.user_id}/shelf`} className={styles.shelfCta}>
                     <span className={styles.shelfCtaText}>
                       <span className={styles.shelfCtaKicker}>{t('nav.library')}</span>
                       <span className={styles.shelfCtaTitle}>{t('shelf.profileCta')}</span>
                       <span className={styles.shelfCtaHint}>
                         {t('shelf.profileCtaHint', {
-                          count: bookCount(locale, Math.max(profile.books_finished, shelf.length), t),
+                          count: bookCount(locale, Math.max(profile.books_finished + reading.length, shelf.length), t),
                         })}
                       </span>
                     </span>
                     {/* A few spines in the colours those books wear on the shelf itself. */}
                     <span className={styles.shelfCtaSpines} aria-hidden="true">
-                      {[...profile.recent_books, ...shelf.map((b) => b.title)].slice(0, 7).map((title, i) => {
+                      {[...reading, ...profile.recent_books, ...shelf.map((b) => b.title)].slice(0, 7).map((title, i) => {
                         const seed = title.trim().toLowerCase();
                         const p = paletteFor(seed);
                         const d = dimensionsFor(seed);

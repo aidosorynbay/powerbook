@@ -98,3 +98,18 @@ def test_the_hall_tag_shows_a_solo_readers_day(env):
     (tag,) = st["readers"]
     assert tag["today_minutes"] == 40 and not tag["in_round"]
     assert uuid.UUID(tag["user_id"]) == env.guest.id
+
+
+def test_a_newcomer_who_only_sat_in_the_room_has_a_library_on_the_profile(env):
+    """The founder (2026-10-21): a new reader outside the circle read in the room, and her profile showed no library."""
+    c, h = env.client, env.h(env.guest)
+    sid = c.post("/api/reading-room/round/sit", json={"seat": 3, "book": "Маленький принц"}, headers=h).json()["id"]
+    _age(env, sid, 20 * 60)
+    assert c.post(f"/api/reading-room/sessions/{sid}/finish", headers=h).json()["credited"]
+
+    from app.services.social import SocialService
+
+    env.db.expire_all()
+    out = SocialService(env.db).public_profile(target_user_id=env.guest.id, viewer_id=env.reader.id)
+    assert out.books_finished == 0
+    assert [t.casefold() for t in out.reading_now] == ["маленький принц"]
