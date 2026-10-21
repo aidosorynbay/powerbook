@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiPost, apiPut, track, useAuth, useI18n, type Pick, type Picks as PicksData, type User } from '@/shared/lib';
 import { BookFace } from './bookUi';
 import store from './Store.module.css';
@@ -59,8 +60,78 @@ function FirstStep({ missing, onSaved }: { missing: number; onSaved: () => void 
     </form>
   );
 }
-export function Picks({ onOpen, onWantChanged }: { onOpen: (key: string) => void; onWantChanged?: () => void }) {
+const CHIPS = ['picks.chipLight', 'picks.chipShort', 'picks.chipKazakh', 'picks.chipClassic', 'picks.chipNonfiction'] as const;
+
+/** The reader's own ask, above the picks: a few words or a tap on a suggestion, then «Подобрать мне». */
+function Ask({ value, onChange, onAsk, busy, asked, onClear }: {
+  value: string;
+  onChange: (v: string) => void;
+  onAsk: (wish: string) => void;
+  busy: boolean;
+  asked: string | null;
+  onClear: () => void;
+}) {
+  const { t } = useI18n();
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!busy) onAsk(value.trim());
+  };
+  return (
+    <form className={styles.ask} onSubmit={submit}>
+      <label className={styles.askLabel} htmlFor="picks-wish">{t('picks.askLabel')}</label>
+      <div className={styles.askRow}>
+        <input
+          id="picks-wish"
+          className={store.field}
+          value={value}
+          maxLength={200}
+          placeholder={t('picks.askPlaceholder')}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <button type="submit" className={`${store.primary} ${styles.small}`} disabled={busy}>
+          ✦ {t('picks.ask')}
+        </button>
+      </div>
+      <div className={styles.chips}>
+        {CHIPS.map((key) => (
+          <button key={key} type="button" className={styles.chip} disabled={busy} onClick={() => { onChange(t(key)); onAsk(t(key)); }}>
+            {t(key)}
+          </button>
+        ))}
+      </div>
+      {asked && (
+        <p className={styles.asked}>
+          {t('picks.asked', { wish: asked })}{' '}
+          <button type="button" className={styles.textButton} disabled={busy} onClick={onClear}>{t('picks.clearWish')}</button>
+        </p>
+      )}
+    </form>
+  );
+}
+
+/** Where «Что почитать дальше» lives elsewhere: one line to its own page (Библиотека → «✦ Подобрать»). */
+export function PicksEntry() {
+  const { t } = useI18n();
+  return (
+    <Link to="/library/picks" className={styles.entry} onClick={() => track('picks_entry')}>
+      <span aria-hidden="true">✦</span>
+      <span className={styles.entryText}>{t('picks.entry')}</span>
+      <span className={styles.entryGo}>{t('picks.entryGo')} →</span>
+    </Link>
+  );
+}
+
+export function Picks({ onOpen, onWantChanged, askable = false, initialWish = null }: {
+  onOpen: (key: string) => void;
+  onWantChanged?: () => void;
+  /** the reader may say what they want now (the picks' own page) */
+  askable?: boolean;
+  /** an ask that came with the link («Похожее на …» from a book's card): asked at once */
+  initialWish?: string | null;
+}) {
   const { t, locale } = useI18n();
+  const [wish, setWish] = useState(initialWish ?? '');
+  const sentInitial = useRef(false);
   const [data, setData] = useState<PicksData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -76,14 +147,16 @@ export function Picks({ onOpen, onWantChanged }: { onOpen: (key: string) => void
     return next ?? null;
   }, [locale]);
 
+  // `ask` undefined: written again by itself, the last ask kept; a string (empty: none) is the reader's new ask
   const start = useCallback(
-    async (force: boolean) => {
+    async (force: boolean, ask?: string) => {
       setError(null);
-      const { data: next, error: failed } = await apiPost<PicksData>('/reading/picks', { lang: locale, force }, { requireAuth: true });
+      const body = ask === undefined ? { lang: locale, force, keep_wish: true } : { lang: locale, force, wish: ask || null };
+      const { data: next, error: failed } = await apiPost<PicksData>('/reading/picks', body, { requireAuth: true });
       if (next) {
         setData(next);
-        if (force) setDismissed({});
-        track('picks_start', { force });
+        setDismissed({});
+        track('picks_start', { force, wish: ask === undefined ? 'kept' : ask ? 'own' : 'none' });
       } else setError(failed);
     },
     [locale]
@@ -95,15 +168,21 @@ export function Picks({ onOpen, onWantChanged }: { onOpen: (key: string) => void
     load();
   }, [load]);
 
-  // Writes itself: never written, or the reader's marks changed since.
+  // Writes itself: never written, or the reader's marks changed since. An ask that came with the link goes first.
   useEffect(() => {
     if (!data || asked.current || !data.enabled || !data.ai_available || !data.has_taste) return;
     if (data.status === 'working') return;
+    if (initialWish && !sentInitial.current) {
+      sentInitial.current = true;
+      asked.current = true;
+      start(false, initialWish);
+      return;
+    }
     if (data.status === null || data.stale || data.status === 'error') {
       asked.current = true;
       start(false);
     }
-  }, [data, start]);
+  }, [data, start, initialWish]);
 
   useEffect(() => {
     if (data?.status !== 'working') return;
@@ -207,7 +286,8 @@ export function Picks({ onOpen, onWantChanged }: { onOpen: (key: string) => void
   return (
     <section id="picks" ref={section} className={styles.picks} aria-labelledby="picks-title">
       <div className={styles.head}>
-        <h2 id="picks-title" className={styles.title}>
+        {/* on its own page the page's title says it */}
+        <h2 id="picks-title" className={askable ? styles.hidden : styles.title}>
           <span aria-hidden="true">✦</span> {t('picks.title')}
         </h2>
         {data.has_taste && (data.taste && !working ? <p className={styles.taste}>{data.taste}</p> : <p className={styles.taste}>{t('picks.intro')}</p>)}
@@ -220,6 +300,19 @@ export function Picks({ onOpen, onWantChanged }: { onOpen: (key: string) => void
         }} />
       ) : (
         <>
+          {askable && (
+            <Ask
+              value={wish}
+              onChange={setWish}
+              onAsk={(w) => start(false, w)}
+              busy={working}
+              asked={data.wish}
+              onClear={() => {
+                setWish('');
+                start(false, '');
+              }}
+            />
+          )}
           {working && (
             <p className={styles.working}>
               <span className={styles.dots} aria-hidden="true"><i /><i /><i /></span>

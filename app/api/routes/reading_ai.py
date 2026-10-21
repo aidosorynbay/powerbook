@@ -56,7 +56,9 @@ def get_picks(
 def start_picks(payload: PicksIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> PicksOut:
     if payload.lang not in ("ru", "kk", "en"):
         payload.lang = "ru"
-    return librarian.start(db, user=user, lang=payload.lang, force=payload.force)
+    return librarian.start(
+        db, user=user, lang=payload.lang, force=payload.force, wish=payload.wish, keep_wish=payload.keep_wish
+    )
 
 
 @router.post("/picks/dismiss", status_code=status.HTTP_204_NO_CONTENT)

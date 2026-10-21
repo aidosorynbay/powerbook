@@ -77,7 +77,7 @@ function useWords() {
     }
     if (n.kind === 'picks') {
       // the AI librarian picked what to read after a book the reader loved
-      return { text: t('notif.picks', { title }), to: '/library/want#picks' };
+      return { text: t('notif.picks', { title }), to: '/library/picks' };
     }
     if (n.kind === 'site_update') {
       // once, about the site itself: the link plays where everything went (WhatsNew)

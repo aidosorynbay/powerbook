@@ -68,6 +68,8 @@ FROM_CLUB = 2
 # Outside books the AI names, and how many of them are looked up (a lookup takes seconds).
 OUTSIDE = 4
 OUTSIDE_LOOKUPS = 3
+# A reader's own ask («что-то лёгкое на казахском»): at most this long.
+WISH_CHARS = 200
 # Reading pace for «≈ N дней»: minutes a page, a novel's average.
 MINUTES_A_PAGE = 1.3
 # A mark this high is the moment to suggest what next.
@@ -98,7 +100,9 @@ _SYSTEM = (
     "книге 10»); otherwise name the reader's own books («you gave 9 to …», «you named … among your favourites»). Put "
     "book titles in «». Never invent plot details, awards or facts you are not sure of. Speak of books and people, "
     "never of «topics», «themes in your profile», data or how you know. Also write one short sentence (at most 20 "
-    "words) that sums up their taste as you see it. Write everything in {lang}, plainly, no flattery. Address the reader "
+    "words) that sums up their taste as you see it. When the reader wrote a `wish` — what they want right now (a "
+    "mood, a genre, a length, a language, «like …») — follow it first and let their taste choose within it; then the "
+    "summary sentence answers the wish. Write everything in {lang}, plainly, no flattery. Address the reader "
     "politely and the same way every time (in Russian always «вы», in Kazakh always «сіз»); speak of a club member by "
     "their `gender` (поставила / поставил), and when it is unknown, without gendered words."
 )
@@ -358,6 +362,11 @@ def _current(db: Session, user: User, lang: str) -> AiDigest | None:
     ).scalars().first()
 
 
+def _wish(text: str | None) -> str | None:
+    text = " ".join((text or "").split())[:WISH_CHARS]
+    return text or None
+
+
 def get(db: Session, *, user: User, lang: str) -> PicksOut:
     from app.services.reading_ai import _is_abandoned
 
@@ -378,7 +387,9 @@ def get(db: Session, *, user: User, lang: str) -> PicksOut:
         out.status, out.error = "error", "interrupted"
     content = row.content or {}
     out.taste = content.get("taste")
-    out.stale = row.status == "done" and row.input_hash != _hash(lang, reader.taste())
+    out.wish = content.get("wish")
+    # changed since: the same ask on the taste there is now would be another one
+    out.stale = row.status == "done" and row.input_hash != _hash(lang, {**reader.taste(), "wish": out.wish})
 
     from app.services import want
 
@@ -439,9 +450,13 @@ def _days(pages: int | None, pace: int | None) -> int | None:
     return max(1, math.ceil(pages * MINUTES_A_PAGE / pace))
 
 
-def start(db: Session, *, user: User, lang: str, force: bool = False, notify_title: str | None = None) -> PicksOut:
-    """Write the picks in the background (the page polls get()). Fresh picks for the same taste are kept, unless
-    the reader asks for others (force)."""
+def start(
+    db: Session, *, user: User, lang: str, force: bool = False, notify_title: str | None = None, wish: str | None = None,
+    keep_wish: bool = False,
+) -> PicksOut:
+    """Write the picks in the background (the page polls get()). Fresh picks for the same taste and ask are kept,
+    unless the reader asks for others (force). `wish` is the reader's own ask; written again by itself (keep_wish),
+    the last ask stays."""
     from app.services.reading_ai import _DAILY_LIMIT, _is_abandoned
 
     if lang not in _LANG_NAMES:
@@ -453,9 +468,12 @@ def start(db: Session, *, user: User, lang: str, force: bool = False, notify_tit
     reader = _Reader(db, user)
     if not reader.has_taste():
         raise _bad("nothing_to_go_on")
-    taste = reader.taste()
-    digest_hash = _hash(lang, taste)
     row = _current(db, user, lang)
+    if keep_wish and row is not None:
+        wish = (row.content or {}).get("wish")
+    wish = _wish(wish)
+    taste = {**reader.taste(), "wish": wish}
+    digest_hash = _hash(lang, taste)
     now = datetime.now(timezone.utc)
     if row is not None:
         if row.status == "working" and not _is_abandoned(row):
@@ -480,7 +498,9 @@ def start(db: Session, *, user: User, lang: str, force: bool = False, notify_tit
         row.updated_at = now
     db.commit()
     db.refresh(row)
-    threading.Thread(target=_write, args=(row.id, lang, payload, ids, notify_title), daemon=True).start()
+    if wish:
+        payload["reader"]["wish"] = wish
+    threading.Thread(target=_write, args=(row.id, lang, payload, ids, notify_title, wish), daemon=True).start()
     return get(db, user=user, lang=lang)
 
 
@@ -617,7 +637,9 @@ def choose(payload: dict, ids: dict[str, str], lang: str, *, look_up=None) -> di
     return {"taste": str(answer.get("taste", "")).strip(), "picks": picks[:PICKS], "dropped": dropped}
 
 
-def _write(digest_id: uuid.UUID, lang: str, payload: dict, ids: dict[str, str], notify_title: str | None) -> None:
+def _write(
+    digest_id: uuid.UUID, lang: str, payload: dict, ids: dict[str, str], notify_title: str | None, wish: str | None = None
+) -> None:
     from app.db.session import get_session_factory
     from app.services import notify
 
@@ -627,7 +649,7 @@ def _write(digest_id: uuid.UUID, lang: str, payload: dict, ids: dict[str, str], 
         if row is None:
             return
         try:
-            row.content = choose(payload, ids, lang)
+            row.content = {**choose(payload, ids, lang), "wish": wish}
             row.status, row.error = "done", None
             picks = row.content["picks"]
             if notify_title and AUTO_BELL:

@@ -20,6 +20,15 @@
   letter-spacing: -0.01em;
 }
 
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .title span {
   color: var(--color-accent-primary);
 }
@@ -275,5 +284,106 @@
   .card {
     grid-template-columns: 56px 1fr;
     gap: 12px;
+  }
+}
+
+/* the reader's own ask */
+.ask {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.askLabel {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.askRow {
+  display: flex;
+  gap: 8px;
+}
+
+.askRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+.askRow button {
+  flex: none;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chip:hover:not(:disabled) {
+  border-color: var(--color-border-accent);
+}
+
+.chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.asked {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+/* one line to the picks' own page, from «Хочу прочитать» */
+.entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 24px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-xl);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.entry:hover {
+  border-color: var(--color-border-accent);
+}
+
+.entry > span:first-child {
+  color: var(--color-accent-primary);
+}
+
+.entryText {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.entryGo {
+  color: var(--color-text-accent);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .askRow {
+    flex-direction: column;
   }
 }

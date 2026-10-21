@@ -331,3 +331,29 @@ def test_a_newcomer_starts_from_three_favourite_books(env, monkeypatch):
     assert "Три товарища" not in {x["title"] for x in body["candidates"]}
     picks = c.get("/api/reading/picks", headers=nh).json()["picks"]
     assert [p["book"]["title"] for p in picks][-1] == "Джейн Эйр"
+
+
+def test_a_reader_asks_for_what_they_want_now(env):
+    c, h = env.client, env.h
+    reply = json.dumps({"taste": "Лёгкое, как вы просили.", "picks": [{"id": "b1", "why": "w"}], "outside": []}, ensure_ascii=False)
+    fake = env.deepseek([reply])
+    assert c.post("/api/reading/picks", json={"lang": "ru", "wish": "  что-то   лёгкое на казахском "}, headers=h).status_code == 202
+    sent = json.loads(fake.requests[-1]["body"]["messages"][1]["content"])
+    assert sent["reader"]["wish"] == "что-то лёгкое на казахском"
+    got = c.get("/api/reading/picks?lang=ru", headers=h).json()
+    assert got["wish"] == "что-то лёгкое на казахском" and got["stale"] is False and len(got["picks"]) == 1
+
+    # the page writing itself again keeps the ask; the same ask is kept, nothing asked
+    fake = env.deepseek([])
+    c.post("/api/reading/picks", json={"lang": "ru", "keep_wish": True}, headers=h)
+    assert fake.requests == []
+
+    # another ask: written again, the old one gone
+    fake = env.deepseek([reply])
+    c.post("/api/reading/picks", json={"lang": "ru", "wish": "детектив"}, headers=h)
+    assert json.loads(fake.requests[-1]["body"]["messages"][1]["content"])["reader"]["wish"] == "детектив"
+    # no ask at all: picks from the taste alone
+    fake = env.deepseek([reply])
+    c.post("/api/reading/picks", json={"lang": "ru"}, headers=h)
+    assert "wish" not in json.loads(fake.requests[-1]["body"]["messages"][1]["content"])["reader"]
+    assert c.get("/api/reading/picks?lang=ru", headers=h).json()["wish"] is None

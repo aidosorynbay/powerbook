@@ -50,9 +50,11 @@ export function LibraryTabs({ room = true }: { room?: boolean } = {}) {
     <SectionTabs
       label={t('nav.library')}
       tabs={[
-        { to: '/library', label: t('nav2.myShelf'), except: ['/library/want'] },
+        { to: '/library', label: t('nav2.myShelf'), except: ['/library/want', '/library/picks'] },
         // the second shelf: books to read later, counted nowhere (the founder, 2026-10-21)
         { to: '/library/want', label: t('nav2.want') },
+        // the AI librarian: a reader asks for picks of their own (the founder, 2026-10-22)
+        { to: '/library/picks', label: t('nav2.picks') },
         { to: '/books', label: t('nav2.allBooks'), also: ['/market'] },
       ]}
       aside={

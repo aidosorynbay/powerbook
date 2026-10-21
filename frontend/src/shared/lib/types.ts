@@ -1098,6 +1098,8 @@ export type Picks = {
   updated_at: string | null;
   /** the reader's minutes a reading day lately */
   pace: number | null;
+  /** what the reader asked for, when they did */
+  wish: string | null;
 };
 
 export type WantBook = {

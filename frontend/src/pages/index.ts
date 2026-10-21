@@ -15,7 +15,7 @@ export { SuggestionsPage } from './suggestions';
 export { AdminSuggestionsPage } from './admin-suggestions';
 export { PrivacyPage, TermsPage } from './legal';
 export { LibraryPage, ReaderShelfPage, LibraryHallPage } from './library';
-export { CatalogPage, MarketPage, WantPage } from './books';
+export { CatalogPage, MarketPage, WantPage, PicksPage } from './books';
 export { ReadingPage } from './reading';
 export { JoinPage } from './join';
 export { ReaderDayPage } from './share';

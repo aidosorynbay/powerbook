@@ -95,7 +95,7 @@ export function MarkForm({ volumeKey, rating, text, reviewId, onSaved }: Props) 
       {error && <p className={styles.formError} role="alert">{error}</p>}
       {nudge && (
         <p className={styles.formNote} style={{ marginTop: 10 }}>
-          ✦ {t('picks.nudge')} · <Link className={styles.link} to="/library/want#picks" onClick={() => track('picks_nudge')}>{t('picks.nudgeLink')} →</Link>
+          ✦ {t('picks.nudge')} · <Link className={styles.link} to="/library/picks" onClick={() => track('picks_nudge')}>{t('picks.nudgeLink')} →</Link>
         </p>
       )}
     </form>

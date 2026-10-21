@@ -363,6 +363,14 @@ export function WorkSheet({ workKey, title, onClose, onChanged, review }: Props)
             <button type="button" className={styles.ghost} onClick={() => setTalk(true)}>
               <Icon name="sparkle" size="em" aria-hidden="true" /> {t('chat.open')}
             </button>
+            {/* the AI librarian, asked for books like this one */}
+            <Link
+              className={styles.ghost}
+              to={`/library/picks?wish=${encodeURIComponent(t('picks.likeWish', { title: work.title }))}`}
+              onClick={() => track('picks_like')}
+            >
+              ✦ {t('work.pickLike')}
+            </Link>
             {work.my_volume_key && (
               <Link className={styles.ghost} to={`/market?sell=${encodeURIComponent(work.my_volume_key)}&title=${encodeURIComponent(work.title)}${work.author ? `&author=${encodeURIComponent(work.author)}` : ''}`}>
                 ₸ {t('work.sellThis')}

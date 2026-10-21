@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.schemas.books import CatalogItemOut
 
@@ -106,11 +106,16 @@ class PicksOut(BaseModel):
     updated_at: datetime | None = None
     # the reader's minutes a reading day lately
     pace: int | None = None
+    # what the reader asked for, when they did («что-то лёгкое на казахском»)
+    wish: str | None = None
 
 
 class PicksIn(BaseModel):
     lang: str = "ru"
     force: bool = False
+    # the reader's own ask; with keep_wish the page writing itself again keeps the last one
+    wish: str | None = Field(default=None, max_length=400)
+    keep_wish: bool = False
 
 
 class DismissIn(BaseModel):

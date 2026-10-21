@@ -5,7 +5,7 @@ import { Container } from '@/shared/ui';
 import { Header } from '@/widgets';
 import { LibraryTabs } from '@/widgets/SectionTabs';
 import { BookFace, Shelves, useCount } from './bookUi';
-import { Picks } from './Picks';
+import { PicksEntry } from './Picks';
 import { WorkSheet } from './WorkSheet';
 import styles from './Store.module.css';
 
@@ -64,8 +64,8 @@ export function WantPage() {
             </div>
           </div>
 
-          {/* the AI librarian: what to read next, one tap onto this shelf */}
-          <Picks onOpen={open} onWantChanged={load} />
+          {/* the AI librarian has its own page; from here, one line to it */}
+          <PicksEntry />
 
           {failed && !items ? (
             <div className={styles.state}>
