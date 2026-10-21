@@ -48,7 +48,7 @@ from app.repositories.claims import ClaimsRepository
 from app.schemas.books import CatalogItemOut
 from app.schemas.reading_ai import PickOut, PicksOut
 from app.services import books as books_service
-from app.services import book_face, catalog, llm
+from app.services import book_dna, book_face, catalog, llm
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,8 @@ _SYSTEM = (
     "their marks, reads, favourites, want list or «not for me». "
     "Vary everything: not all one author or one topic, and one may be a little outside their habit if their marks "
     "point there. For each book, say why in one or two short sentences, speaking to the reader directly. The reason "
-    "is what the book is like and why that is them: name its qualities in plain words (never the trait codes) and tie "
+    "is what the book is like and why that is them: name its qualities in plain words of {lang} (never English trait "
+    "words like «melancholic» or «literary» in a Russian or Kazakh text) and tie "
     "them to the reader's own books («медленная и тёплая книга о дружбе — как «Три товарища», которым вы дали 9»). "
     "A kindred reader is the second voice, when it adds something: by name, with how often they agree with the reader "
     "(«Айгерим, с которой вы совпали в 6 книгах из 7, поставила ей 10»). Put "
@@ -505,8 +506,8 @@ def _prepare(db: Session, user: User, reader: _Reader, lang: str, shown: set[str
                 "about": None if dna and dna.essence else _about(fact, lang),
                 # how well it fits the reader's taste, and by what
                 "match_percent": f.match,
-                "fits_their_taste": f.fits,
-                "against_their_taste": f.clashes,
+                "fits_their_taste": [_said(t) for t in f.fits],
+                "against_their_taste": [_said(t) for t in f.clashes],
                 "pb_readers": len(work.readers),
                 "loved_by": taste.kindred_fans(key, reader.names) or reader.loved_by(key),
             }
@@ -515,7 +516,7 @@ def _prepare(db: Session, user: User, reader: _Reader, lang: str, shown: set[str
     club = {
         want._norm(w.title): w.key for w in reader.idx.works.values() if not reader.out(w.key)
     }
-    portrait = {"likes": taste.likes(), "dislikes": taste.dislikes()}
+    portrait = {"likes": [_said(t) for t in taste.likes()], "dislikes": [_said(t) for t in taste.dislikes()]}
     payload = {
         "reader": {**reader.taste(), "portrait": portrait, "_known": reader.known_titles()},
         "candidates": candidates,
@@ -524,6 +525,29 @@ def _prepare(db: Session, user: User, reader: _Reader, lang: str, shown: set[str
         "_club": club,
     }
     return payload, ids
+
+
+def _said(trait: str) -> str:
+    """A trait as plain English words for the AI: "mood:warm" → "warm mood", "themes:coming_of_age" → "about coming of
+    age" (it writes them in the reader's language; the codes never reach a reader)."""
+    group, _, word = trait.partition(":")
+    word = word.replace("_", " ")
+    return {
+        "mood": f"{word} mood", "pace": f"{word} pace", "length": f"{word} length", "themes": f"about {word}",
+        "form": f"{word} (form)", "style": f"{word} style", "era": f"{word} era", "ease": f"{word} to read",
+    }.get(group, word)
+
+
+# The trait words in English: in a Russian or Kazakh «why» they are a code that slipped through.
+_CODES = {w for words in book_dna.VOCAB.values() for w in words if len(w) > 4}
+
+
+def _speaks_codes(text: str, lang: str) -> bool:
+    if lang == "en":
+        return False
+    # a title in «…» may be English («The Power of Habit»): only the words around it count
+    bare = re.sub(r"«[^»]*»", " ", text or "")
+    return any(w in _CODES for w in re.findall(r"[a-z_]+", bare.casefold()))
 
 
 def _words(text: str) -> list[str]:
@@ -576,7 +600,7 @@ def choose(payload: dict, ids: dict[str, str], lang: str, *, look_up=None) -> di
     for p in answer.get("picks", []):
         key = ids.get(str(p.get("id", "")).strip())
         why = str(p.get("why", "")).strip()
-        if key and key not in seen and why and _holds(why, known):
+        if key and key not in seen and why and _holds(why, known) and not _speaks_codes(why, lang):
             seen.add(key)
             club.append({"key": key, "why": why, **payload.get("_fit", {}).get(str(p.get("id", "")).strip(), {})})
         else:
@@ -588,7 +612,7 @@ def choose(payload: dict, ids: dict[str, str], lang: str, *, look_up=None) -> di
         title, author = str(p.get("title", "")).strip(), str(p.get("author", "")).strip() or None
         why = str(p.get("why", "")).strip()
         norm = want._norm(title) if title else ""
-        if not title or not why or norm in skip or not _holds(why, known + [title]):
+        if not title or not why or norm in skip or not _holds(why, known + [title]) or _speaks_codes(why, lang):
             dropped += 1
             continue
         # a book of the club after all: a club pick, with its face and its readers
@@ -618,7 +642,10 @@ def choose(payload: dict, ids: dict[str, str], lang: str, *, look_up=None) -> di
     picks += rest[: PICKS - len(picks)]
     if not picks:
         raise ValueError("no book among the picks")
-    return {"taste": str(answer.get("taste", "")).strip(), "picks": picks[:PICKS], "dropped": dropped}
+    taste_line = str(answer.get("taste", "")).strip()
+    if _speaks_codes(taste_line, lang):
+        taste_line = ""
+    return {"taste": taste_line, "picks": picks[:PICKS], "dropped": dropped}
 
 
 def _write(

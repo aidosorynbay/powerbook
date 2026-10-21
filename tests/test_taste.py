@@ -83,8 +83,9 @@ def test_the_portrait_and_the_fit_come_from_what_the_books_are_like(env):
     env.client.post("/api/reading/picks", json={"lang": "ru", "force": True}, headers=env.h)
     body = json.loads(fake.requests[-1]["body"]["messages"][1]["content"])
     first = body["candidates"][0]
-    assert first["title"] == "Триумфальная арка" and first["match_percent"] > 75 and "themes:love" in first["fits_their_taste"]
-    assert "themes:friendship" in body["reader"]["portrait"]["likes"]
+    assert first["title"] == "Триумфальная арка" and first["match_percent"] > 75 and "about love" in first["fits_their_taste"]
+    # trait codes reach the AI as plain words
+    assert "about friendship" in body["reader"]["portrait"]["likes"]
     got = env.client.get("/api/reading/picks?lang=ru", headers=env.h).json()
     assert got["picks"][0]["match"] > 75 and got["picks"][0]["fits"] and "themes:love" in got["likes"]
 
@@ -115,3 +116,11 @@ def test_a_kindred_reader_is_one_who_agrees_on_many_books_not_one_ten(env):
     stoner = catalog.index(env.db).find(catalog.work_key("Стоунер")).key
     fans = taste.kindred_fans(stoner, reader.names)
     assert fans == [{"name": "Dana", "gender": "female", "mark": 10, "agrees_with_reader": "3 of 3 books both marked"}]
+
+
+def test_a_why_with_an_english_trait_code_is_dropped_in_russian():
+    assert librarian._speaks_codes("та же melancholic-ткань", "ru") is True
+    assert librarian._speaks_codes("Как «Stoner» Уильямса", "ru") is False
+    assert librarian._speaks_codes("a melancholic novel", "en") is False
+    assert librarian._speaks_codes("Как «The Power of Habit», только о вере", "ru") is False
+    assert librarian._said("themes:coming_of_age") == "about coming of age"
