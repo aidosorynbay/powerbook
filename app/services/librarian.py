@@ -314,8 +314,15 @@ class _Reader:
         return key in self.read or key in self.want_keys or key in self.dismissed_keys or key not in self.idx.works
 
 
+# How the picks are made: a new way written again for everyone the next time they open the page.
+# "deep-1" (2026-10-22): book DNA, the reader's portrait, kindred readers by many marks.
+ENGINE = "deep-1"
+
+
 def _hash(lang: str, taste: dict) -> str:
-    raw = json.dumps({"lang": lang, "model": llm.model_name(), "taste": taste}, ensure_ascii=False, sort_keys=True)
+    raw = json.dumps(
+        {"lang": lang, "model": llm.model_name(), "engine": ENGINE, "taste": taste}, ensure_ascii=False, sort_keys=True
+    )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
