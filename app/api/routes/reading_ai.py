@@ -62,14 +62,20 @@ def start_picks(payload: PicksIn, db: Session = Depends(get_db), user: User = De
 @router.post("/picks/dismiss", status_code=status.HTTP_204_NO_CONTENT)
 def dismiss_pick(payload: DismissIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> None:
     """«Не моё»: never suggested again."""
-    librarian.dismiss(db, user=user, work_key=payload.work_key[:300])
+    librarian.dismiss(
+        db, user=user, work_key=(payload.work_key or "")[:300] or None, title=(payload.title or "")[:300] or None,
+        author=(payload.author or "")[:200] or None,
+    )
 
 
 @router.delete("/picks/dismiss", status_code=status.HTTP_204_NO_CONTENT)
 def undismiss_pick(
-    work_key: str = Query(max_length=300), db: Session = Depends(get_db), user: User = Depends(get_current_user)
+    work_key: str | None = Query(default=None, max_length=300),
+    title: str | None = Query(default=None, max_length=300),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ) -> None:
-    librarian.undismiss(db, user=user, work_key=work_key)
+    librarian.undismiss(db, user=user, work_key=work_key, title=title)
 
 
 @router.get("/notebook", response_model=list[NotebookEntryOut])

@@ -78,6 +78,14 @@ class PickOut(BaseModel):
     why: str
     # on «Хочу прочитать» already: its id there
     want_id: str | None = None
+    # from the world, not the club's library (book.key is then "x:<title>"; it has no card of its own)
+    outside: bool = False
+    # its page in the catalogue it was found in (Google Books, Flip.kz)
+    link: str | None = None
+    # where to get it: its search on Flip.kz
+    buy_url: str | None = None
+    # ≈ days to read it at the reader's pace, when its pages are known
+    days: int | None = None
 
 
 class PicksOut(BaseModel):
@@ -96,6 +104,8 @@ class PicksOut(BaseModel):
     # the reader's marks changed since: written again when opened
     stale: bool = False
     updated_at: datetime | None = None
+    # the reader's minutes a reading day lately
+    pace: int | None = None
 
 
 class PicksIn(BaseModel):
@@ -104,7 +114,10 @@ class PicksIn(BaseModel):
 
 
 class DismissIn(BaseModel):
-    work_key: str
+    # the library's book, or "x:<title>" for one from the world (then title names it)
+    work_key: str | None = None
+    title: str | None = None
+    author: str | None = None
 
 
 class NoteOut(BaseModel):

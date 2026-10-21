@@ -13,6 +13,8 @@ type AuthContextValue = {
   login: (token: string) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  /** The account as the server just returned it (a profile change made elsewhere), with no loading screen. */
+  setUserQuietly: (user: User) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -156,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       refreshUser,
+      setUserQuietly: setUser,
     }),
     [user, token, isLoading, login, logout, refreshUser]
   );

@@ -1,21 +1,26 @@
 """«Что почитать дальше»: the AI librarian.
 
 The founder (2026-10-21): from a reader's marks, the AI suggests what to read next and says why, and one tap puts a
-book on «Хочу прочитать». A free test for the readers there are now; later a paid feature for new ones.
+book on «Хочу прочитать». Free for everyone, veterans and newcomers alike (the founder, same day: aim long term, not
+only the club's library, no paywall).
 
 How it picks, so it never names a book that does not exist:
 
-1. Candidates come from the shared library only, the books PowerBook readers actually read: what readers with
-   shelves like yours read (reading_ai.recommendations), the best-rated books of your favourite topics, and more of
-   the authors you loved. Read, wanted and turned-down books are left out.
-2. The AI (llm.py: DeepSeek or Claude) gets the reader's taste (marks with their words, recent books, «Хочу
-   прочитать», «Не моё», topics) and the candidates by short id, chooses five and writes why each one, in the
-   reader's language. An id that is not a candidate is dropped.
-3. What it learns from: every new mark, «Хочу прочитать» and «Не моё» change the taste, and the picks are written
-   again the next time they are opened.
+1. From the club: candidates from the shared library, the books PowerBook readers actually read — what the readers
+   who loved your books loved, what readers with shelves like yours read (reading_ai.recommendations), more of the
+   authors you loved, the best of your topics. Read, wanted and turned-down books are left out. Each carries the club
+   members who marked it high: the best reason is a person («Айгерим тоже поставила 9 …»).
+2. From the world: the AI may also name books outside the library; one counts only when a catalogue (Google Books,
+   Open Library, Flip.kz) has an edition by the same author with a cover (app/services/book_lookup.py).
+3. The AI (llm.py: DeepSeek or Claude) gets the reader's taste — marks with their words, recent books, their three
+   favourite books (a newcomer's first step), «Хочу прочитать», «Не моё», topics — chooses by id and names outside
+   books, and writes why each one in the reader's language. An id that is not a candidate, a book that cannot be
+   found, or a «why» quoting a book the reader never had is dropped. Three are shown: two from the club and one from
+   the world when there are.
+4. What it learns from: every new mark, «Хочу прочитать», «Уже читал(а)» and «Не моё» change the taste, and the
+   picks are written again the next time they are opened.
 
-It also comes by itself: a mark of 8 and up writes fresh picks in the background and the bell says so (at most
-once a day, «Что почитать дальше» in the bell's switches).
+It also comes by itself: a mark of 8 and up writes fresh picks in the background (the bell for it is built, off).
 """
 from __future__ import annotations
 
@@ -27,7 +32,7 @@ import re
 import threading
 import uuid
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -42,12 +47,12 @@ from app.repositories.claims import ClaimsRepository
 from app.schemas.books import CatalogItemOut
 from app.schemas.reading_ai import PickOut, PicksOut
 from app.services import books as books_service
-from app.services import catalog, llm
+from app.services import book_face, catalog, llm
 
 logger = logging.getLogger(__name__)
 
-# While False only admins see it (and get it by themselves); the founder flips it for everyone.
-FOR_EVERYONE = False
+# Everyone, free (the founder, 2026-10-21); False would keep it to admins.
+FOR_EVERYONE = True
 
 KIND = "picks"
 SCOPE = "next"
@@ -57,9 +62,14 @@ ASK = 5
 # Fewer books known than this (marked, or finished without a mark): no picks yet, the reader is asked to mark a few
 # books first (council 2026-10-21: weak picks on a first look are worse than none).
 MIN_KNOWN = 3
-# A thinner choice than this is no choice: nothing is picked.
-MIN_CANDIDATES = 8
 CANDIDATES = 60
+# Of the three shown, this many from the club when it has them; the rest from the world.
+FROM_CLUB = 2
+# Outside books the AI names, and how many of them are looked up (a lookup takes seconds).
+OUTSIDE = 4
+OUTSIDE_LOOKUPS = 3
+# Reading pace for «≈ N дней»: minutes a page, a novel's average.
+MINUTES_A_PAGE = 1.3
 # A mark this high is the moment to suggest what next.
 LOVED = 8
 # The picks that come by themselves: at most this often.
@@ -74,15 +84,20 @@ _SYSTEM = (
     "You are the librarian of PowerBook, a reading community. A member wants to know what to read next. You get "
     "their taste — the books they marked out of 10 (with their own words, when they wrote some), what they read "
     "lately, what they already want to read, what they turned down («not for me»), their favourite topics — and a "
-    "list of candidate books from the community's library, each with an id. Choose exactly {n} candidates for this "
-    "reader: the ones that follow best from what they marked high, unlike what they marked low or turned down. "
-    "Vary them: not all one author or one topic, and one may be a little outside their habit if their marks point "
-    "there. For each, say why in one or two short sentences, speaking to the reader directly. The best reason is a "
-    "person: when a candidate has `loved_by` (club members who marked it high, and the book of the reader's they also "
-    "loved), lead with that person by name («Айгерим тоже поставила 9 «Трём товарищам» — а этой книге 10»); "
-    "otherwise name the reader's own books («you gave 9 to …»). Use only what the candidate data and the reader's words say; never invent plot, "
-    "awards or facts. Choose only from the candidates, by their ids. Also write one short line that sums up their "
-    "taste as you see it. Write everything in {lang}, plainly, no flattery."
+    "list of candidate books from the community's library, each with an id. Do two things. "
+    "1) `picks`: choose up to {n} candidates, by their ids only, that follow best from what they marked high, unlike "
+    "what they marked low or turned down. "
+    "2) `outside`: name {m} real, published books NOT among the candidates that this reader would love — well known "
+    "enough to be in Google Books, with the title as published in the reader's language when there is such an "
+    "edition (Russian for Russian readers; a Kazakh book in Kazakh) and the author's full name. Never a book from "
+    "their marks, reads, favourites, want list or «not for me». "
+    "Vary everything: not all one author or one topic, and one may be a little outside their habit if their marks "
+    "point there. For each book, say why in one or two short sentences, speaking to the reader directly. The best "
+    "reason is a person: when a candidate has `loved_by` (club members who marked it high, and the book of the "
+    "reader's they also loved), lead with that person by name («Айгерим тоже поставила 9 «Трём товарищам» — а этой "
+    "книге 10»); otherwise name the reader's own books («you gave 9 to …», «you named … among your favourites»). Put "
+    "book titles in «». Never invent plot details, awards or facts you are not sure of. Also write one short line "
+    "that sums up their taste as you see it. Write everything in {lang}, plainly, no flattery."
 )
 
 _SCHEMA = {
@@ -98,8 +113,17 @@ _SCHEMA = {
                 "additionalProperties": False,
             },
         },
+        "outside": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"title": {"type": "string"}, "author": {"type": "string"}, "why": {"type": "string"}},
+                "required": ["title", "author", "why"],
+                "additionalProperties": False,
+            },
+        },
     },
-    "required": ["taste", "picks"],
+    "required": ["taste", "picks", "outside"],
     "additionalProperties": False,
 }
 
@@ -164,6 +188,23 @@ class _Reader:
             if len(self.recent) >= 15:
                 break
 
+        # a newcomer's first step: their three favourite books (the profile's «Любимые книги»)
+        self.favourites: list[str] = [t for t in (user.favorite_books or []) if t and t.strip()][:3]
+        for title in self.favourites:
+            work = book_face.work_of(self.idx, title=title)
+            if work is not None:
+                self.read.add(work.key)
+
+        # minutes a reading day lately, for «≈ N дней при ваших M мин в день»
+        from app.repositories.insights import InsightsRepository
+
+        since = date.today() - timedelta(days=60)
+        days: dict[date, int] = {}
+        for d, m in InsightsRepository(db).daily_minutes_all_time(user_ids=list(accounts)):
+            if d >= since and m > 0:
+                days[d] = days.get(d, 0) + m
+        self.pace = round(sum(days.values()) / len(days)) if len(days) >= 3 else None
+
         self.wanted = want.mine(db, user.id)
         self.want_keys = {w.work_key for w in self.wanted if w.work_key}
         self.dismissed = list(
@@ -173,6 +214,7 @@ class _Reader:
         for d in self.dismissed:
             work = self.idx.find(d.work_key)
             self.dismissed_keys.add(work.key if work else d.work_key)
+        self.want_norms = {want._norm(w.title): w.id for w in self.wanted}
 
         # everyone's high marks, to give each pick a person: who in the club loved it, and what of yours they loved too
         self.loved: dict[str, list[tuple[uuid.UUID, int]]] = {}
@@ -203,14 +245,21 @@ class _Reader:
         self.topics = [t for t, _ in topics.most_common(4)]
 
     def has_taste(self) -> bool:
-        return bool(self.marks) and len(self.marks) + len(self.recent) >= MIN_KNOWN
+        """Enough to go on: three books known, one of them marked or named a favourite."""
+        known = len(self.marks) + len(self.recent) + len(self.favourites)
+        return bool(self.marks or self.favourites) and known >= MIN_KNOWN
 
     def marks_missing(self) -> int:
-        return 0 if self.has_taste() else max(1, MIN_KNOWN - len(self.marks) - len(self.recent))
+        if self.has_taste():
+            return 0
+        return max(1, MIN_KNOWN - len(self.marks) - len(self.recent) - len(self.favourites))
 
     def known_titles(self) -> list[str]:
         """Every book the reader's taste names: a «why» may quote these and the candidates, nothing else."""
-        return [r.title for _, r in self.marks] + self.recent + [w.title for w in self.wanted] + [d.title for d in self.dismissed]
+        return (
+            [r.title for _, r in self.marks] + self.recent + self.favourites
+            + [w.title for w in self.wanted] + [d.title for d in self.dismissed]
+        )
 
     def taste(self) -> dict:
         return {
@@ -219,6 +268,7 @@ class _Reader:
                 for _, r in self.marks[:40]
             ],
             "read_lately_unmarked": self.recent,
+            "favourite_books": self.favourites,
             "want_to_read": [w.title for w in self.wanted[:20]],
             "not_for_me": [d.title for d in self.dismissed[:30]],
             "favourite_topics": self.topics,
@@ -325,18 +375,63 @@ def get(db: Session, *, user: User, lang: str) -> PicksOut:
     out.taste = content.get("taste")
     out.stale = row.status == "done" and row.input_hash != _hash(lang, reader.taste())
 
+    from app.services import want
+
     marks = books_service._marks(db, reader.idx)
     sale = books_service._for_sale(db, reader.idx)
     want_ids = {w.work_key: w.id for w in reader.wanted if w.work_key}
     for p in content.get("picks", []):
+        found = p.get("outside")
+        if found:
+            norm = want._norm(found["title"])
+            work = book_face.work_of(reader.idx, title=found["title"])
+            if (work is not None and work.key in reader.read) or OUTSIDE_PREFIX + norm in reader.dismissed_keys:
+                continue
+            cover, thumb = book_face.cover_urls(found.get("image"))
+            book = CatalogItemOut(
+                key=OUTSIDE_PREFIX + norm, title=found["title"], author=found.get("author"), cover_url=cover,
+                cover_thumb_url=thumb, readers=0, pb_rating=None, pb_votes=0, pb_reviews=0, ext_rating=None,
+                ext_scale=5, ext_votes=None, ext_source=None, for_sale=0, my_rating=None, topics=[],
+            )
+            out.picks.append(
+                PickOut(
+                    book=book, why=p.get("why") or "", want_id=reader.want_norms.get(norm), outside=True,
+                    link=found.get("link"), buy_url=_buy_url(found["title"]),
+                )
+            )
+            continue
         work = reader.idx.find(p.get("key"))
         if work is None or work.key in reader.read or work.key in reader.dismissed_keys:
             continue
-        item = books_service._item(work, marks.get(work.key), reader.facts.get(work.key), sale.get(work.key, 0), None)
+        fact = reader.facts.get(work.key)
+        item = books_service._item(work, marks.get(work.key), fact, sale.get(work.key, 0), None)
         out.picks.append(
-            PickOut(book=CatalogItemOut.model_validate(item.model_dump()), why=p.get("why") or "", want_id=want_ids.get(work.key))
+            PickOut(
+                book=CatalogItemOut.model_validate(item.model_dump()), why=p.get("why") or "",
+                want_id=want_ids.get(work.key) or reader.want_norms.get(want._norm(work.title)),
+                buy_url=_buy_url(work.title), days=_days(fact.pages if fact else None, reader.pace),
+            )
         )
+    out.pace = reader.pace
     return out
+
+
+# A book from the world is no work of the library: its key in «Не моё» and on the page is this and its title.
+OUTSIDE_PREFIX = "x:"
+
+
+def _buy_url(title: str) -> str:
+    """Where to get it in Kazakhstan: the book's search on Flip.kz."""
+    from urllib.parse import quote
+
+    return f"https://www.flip.kz/search?search={quote(title)}"
+
+
+def _days(pages: int | None, pace: int | None) -> int | None:
+    """Days to read it at the reader's own pace (minutes a reading day lately), when both are known."""
+    if not pages or not pace:
+        return None
+    return max(1, math.ceil(pages * MINUTES_A_PAGE / pace))
 
 
 def start(db: Session, *, user: User, lang: str, force: bool = False, notify_title: str | None = None) -> PicksOut:
@@ -371,8 +466,6 @@ def start(db: Session, *, user: User, lang: str, force: bool = False, notify_tit
 
     shown = {p.get("key") for p in ((row.content or {}).get("picks", []) if row is not None and force else [])}
     payload, ids = _prepare(db, user, reader, lang, shown)
-    if len(ids) < MIN_CANDIDATES:
-        raise _bad("nothing_to_go_on")
 
     if row is None:
         row = AiDigest(user_id=user.id, kind=KIND, scope=SCOPE, lang=lang, input_hash=digest_hash, status="working")
@@ -387,7 +480,10 @@ def start(db: Session, *, user: User, lang: str, force: bool = False, notify_tit
 
 
 def _prepare(db: Session, user: User, reader: _Reader, lang: str, shown: set[str] = frozenset()) -> tuple[dict, dict[str, str]]:
-    """What the AI is asked: the reader's taste and the candidates by short id (and the ids, to map back)."""
+    """What the AI is asked: the reader's taste and the candidates by short id (and the ids, to map back). Keys
+    starting with "_" stay here: they check the answer and are never sent."""
+    from app.services import want
+
     keys = reader.candidates(db, user)
     ids = {f"b{i + 1}": key for i, key in enumerate(keys)}
     # «Другие варианты»: the books shown now go to the end of the list, so others come first
@@ -408,7 +504,17 @@ def _prepare(db: Session, user: User, reader: _Reader, lang: str, shown: set[str
                 "loved_by": reader.loved_by(key),
             }
         )
-    return {"reader": {**reader.taste(), "_known": reader.known_titles()}, "candidates": candidates}, ids
+    # for the outside books: what the reader knows (never named again) and the club's books (named, they are club picks)
+    club = {
+        want._norm(w.title): w.key for w in reader.idx.works.values() if not reader.out(w.key)
+    }
+    payload = {
+        "reader": {**reader.taste(), "_known": reader.known_titles()},
+        "candidates": candidates,
+        "_skip": sorted({want._norm(t) for t in reader.known_titles()}),
+        "_club": club,
+    }
+    return payload, ids
 
 
 def _words(text: str) -> list[str]:
@@ -436,31 +542,73 @@ def _holds(why: str, known: list[str]) -> bool:
     return all(any(_names(quoted, k) for k in known) for quoted in re.findall(r"«([^»]{1,120})»", why))
 
 
-def choose(payload: dict, ids: dict[str, str], lang: str) -> dict:
-    """Ask the AI, and keep only what holds: candidates by their ids, once each, whose «why» quotes no book the reader
-    never had. {"taste", "picks": [{"key", "why"}], "dropped": n}"""
+def choose(payload: dict, ids: dict[str, str], lang: str, *, look_up=None) -> dict:
+    """Ask the AI, and keep only what holds: club candidates by their ids, outside books a catalogue really has, once
+    each, whose «why» quotes no book the reader never had. Two from the club and one from the world when there are.
+    {"taste", "picks": [{"key", "why"} | {"key": None, "outside": {...}, "why"}], "dropped": n}"""
+    from app.services import book_lookup, want
+
+    look_up = look_up or book_lookup.find
     known = list(payload["reader"].get("_known", []))
     for c in payload["candidates"]:
         known.append(c["title"])
         known.extend(f["also_loved_your"]["title"] for f in c.get("loved_by", []) if f.get("also_loved_your"))
-    asked = {**payload, "reader": {k: v for k, v in payload["reader"].items() if k != "_known"}}
+    asked = {
+        "reader": {k: v for k, v in payload["reader"].items() if not k.startswith("_")},
+        "candidates": payload["candidates"],
+    }
     answer = llm.ask_json(
-        system=_SYSTEM.format(n=ASK, lang=_LANG_NAMES[lang]),
+        system=_SYSTEM.format(n=ASK, m=OUTSIDE, lang=_LANG_NAMES[lang]),
         prompt=json.dumps(asked, ensure_ascii=False, default=str),
         schema=_SCHEMA,
-        max_tokens=3000,
+        max_tokens=3500,
     )
-    picks, seen, dropped = [], set(), 0
+    club, seen, dropped = [], set(), 0
     for p in answer.get("picks", []):
         key = ids.get(str(p.get("id", "")).strip())
         why = str(p.get("why", "")).strip()
         if key and key not in seen and why and _holds(why, known):
             seen.add(key)
-            picks.append({"key": key, "why": why})
+            club.append({"key": key, "why": why})
         else:
             dropped += 1
+
+    world, skip, lookups = [], set(payload.get("_skip", [])), 0
+    club_by_title = payload.get("_club", {})
+    for p in answer.get("outside", []):
+        title, author = str(p.get("title", "")).strip(), str(p.get("author", "")).strip() or None
+        why = str(p.get("why", "")).strip()
+        norm = want._norm(title) if title else ""
+        if not title or not why or norm in skip or not _holds(why, known + [title]):
+            dropped += 1
+            continue
+        # a book of the club after all: a club pick, with its face and its readers
+        key = club_by_title.get(norm)
+        if key:
+            if key not in seen:
+                seen.add(key)
+                club.append({"key": key, "why": why})
+            continue
+        if lookups >= OUTSIDE_LOOKUPS or len(world) >= PICKS:
+            continue
+        lookups += 1
+        found = look_up(title, author)
+        if found is None:
+            dropped += 1
+            continue
+        skip.add(norm)
+        world.append({
+            "key": None,
+            "why": why,
+            "outside": {"title": found.title, "author": found.author, "image": found.image, "link": found.link, "source": found.source},
+        })
+
+    from_club = min(FROM_CLUB, len(club))
+    picks = club[:from_club] + world[: PICKS - from_club]
+    rest = club[from_club:] + world[PICKS - from_club :]
+    picks += rest[: PICKS - len(picks)]
     if not picks:
-        raise ValueError("no candidate among the picks")
+        raise ValueError("no book among the picks")
     return {"taste": str(answer.get("taste", "")).strip(), "picks": picks[:PICKS], "dropped": dropped}
 
 
@@ -491,22 +639,37 @@ def _write(digest_id: uuid.UUID, lang: str, payload: dict, ids: dict[str, str], 
         db.close()
 
 
-def dismiss(db: Session, *, user: User, work_key: str) -> None:
+def _dismiss_key(db: Session, work_key: str | None, title: str | None) -> tuple[str, str, str | None]:
+    """(key, title, author) of a book turned down: the library's work, or a book from the world by its title."""
+    from app.services import want
+
+    if work_key and not work_key.startswith(OUTSIDE_PREFIX):
+        work = catalog.index(db).find(work_key)
+        if work is None:
+            raise _bad("book_not_found", status.HTTP_404_NOT_FOUND)
+        return work.key, work.title, work.author
+    if not title or not title.strip():
+        raise _bad("title_required")
+    return OUTSIDE_PREFIX + want._norm(title), title.strip(), None
+
+
+def dismiss(db: Session, *, user: User, work_key: str | None, title: str | None = None, author: str | None = None) -> None:
     """«Не моё»: never suggested again, and the next picks know it."""
-    work = catalog.index(db).find(work_key)
-    if work is None:
-        raise _bad("book_not_found", status.HTTP_404_NOT_FOUND)
+    key, name, by = _dismiss_key(db, work_key, title)
+    by = by or (author or "").strip() or None
     row = db.execute(
-        select(BookDismissal).where(BookDismissal.user_id == user.id, BookDismissal.work_key == work.key)
+        select(BookDismissal).where(BookDismissal.user_id == user.id, BookDismissal.work_key == key)
     ).scalar_one_or_none()
     if row is None:
-        db.add(BookDismissal(user_id=user.id, work_key=work.key, title=work.title[:300], author=(work.author or None) and work.author[:200]))
+        db.add(BookDismissal(user_id=user.id, work_key=key[:300], title=name[:300], author=by[:200] if by else None))
         db.commit()
 
 
-def undismiss(db: Session, *, user: User, work_key: str) -> None:
-    work = catalog.index(db).find(work_key)
-    key = work.key if work else work_key
+def undismiss(db: Session, *, user: User, work_key: str | None, title: str | None = None) -> None:
+    try:
+        key = _dismiss_key(db, work_key, title)[0]
+    except HTTPException:
+        key = work_key or ""
     row = db.execute(select(BookDismissal).where(BookDismissal.user_id == user.id, BookDismissal.work_key == key)).scalar_one_or_none()
     if row is not None:
         db.delete(row)

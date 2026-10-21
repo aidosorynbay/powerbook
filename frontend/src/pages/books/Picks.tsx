@@ -1,15 +1,64 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { apiDelete, apiGet, apiPost, track, useI18n, type Pick, type Picks as PicksData } from '@/shared/lib';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { apiDelete, apiGet, apiPost, apiPut, track, useAuth, useI18n, type Pick, type Picks as PicksData, type User } from '@/shared/lib';
 import { BookFace } from './bookUi';
 import store from './Store.module.css';
 import styles from './Picks.module.css';
 
 /**
- * «Что почитать дальше»: the AI librarian (app/services/librarian.py). From the reader's marks it picks three books of
- * the shared library and says why; one tap puts a book on «Хочу прочитать», «Не моё» never shows it again. It writes
- * itself when opened and the marks changed since — no button to find (the founder, 2026-10-21: «максимально простенько»).
+ * «Что почитать дальше»: the AI librarian (app/services/librarian.py). From the reader's marks it picks three books —
+ * two of the club's library, one from the world that a catalogue really has — and says why; one tap puts a book on
+ * «Хочу прочитать», «Не моё» never shows it again. It writes itself when opened and the marks changed since — no
+ * button to find (the founder, 2026-10-21: «максимально простенько»). A newcomer starts from three favourite books.
  */
+
+/** A newcomer's first step: three favourite books (the profile's «Любимые книги»), and the picks follow. */
+function FirstStep({ missing, onSaved }: { missing: number; onSaved: () => void }) {
+  const { t } = useI18n();
+  const { user, setUserQuietly } = useAuth();
+  const [books, setBooks] = useState<string[]>(() => [0, 1, 2].map((i) => user?.favorite_books?.[i] ?? ''));
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const filled = books.filter((b) => b.trim()).length;
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    if (busy || !filled) return;
+    setBusy(true);
+    setFailed(false);
+    const { data } = await apiPut<User>('/auth/profile', { favorite_books: books.map((b) => b.trim()).filter(Boolean) }, { requireAuth: true });
+    setBusy(false);
+    if (!data) return setFailed(true);
+    setUserQuietly(data);
+    track('picks_first_step', { books: filled });
+    onSaved();
+  };
+
+  return (
+    <form className={styles.first} onSubmit={save}>
+      <p className={styles.empty}>{t('picks.firstStep')}</p>
+      <div className={styles.fields}>
+        {books.map((b, i) => (
+          <input
+            key={i}
+            className={store.field}
+            value={b}
+            maxLength={200}
+            placeholder={t('picks.favPlaceholder', { n: i + 1 })}
+            aria-label={t('picks.favPlaceholder', { n: i + 1 })}
+            onChange={(e) => setBooks((all) => all.map((x, j) => (j === i ? e.target.value : x)))}
+          />
+        ))}
+      </div>
+      <div className={styles.actions}>
+        <button type="submit" className={`${store.primary} ${styles.small}`} disabled={busy || !filled}>
+          {t('picks.firstGo')}
+        </button>
+        <span className={styles.privacy}>{t('picks.firstHint', { n: missing })}</span>
+      </div>
+      {failed && <p className={styles.note}>{t('picks.error')}</p>}
+    </form>
+  );
+}
 export function Picks({ onOpen, onWantChanged }: { onOpen: (key: string) => void; onWantChanged?: () => void }) {
   const { t, locale } = useI18n();
   const [data, setData] = useState<PicksData | null>(null);
@@ -87,7 +136,7 @@ export function Picks({ onOpen, onWantChanged }: { onOpen: (key: string) => void
     } else {
       const { data: added } = await apiPost<{ id: string }>(
         '/library/want',
-        { title: p.book.title, author: p.book.author, work_key: p.book.key },
+        { title: p.book.title, author: p.book.author, work_key: p.outside ? null : p.book.key },
         { requireAuth: true }
       );
       if (added) {
@@ -102,7 +151,11 @@ export function Picks({ onOpen, onWantChanged }: { onOpen: (key: string) => void
   const notMine = async (p: Pick) => {
     if (busy) return;
     setBusy(p.book.key);
-    const { error: failed } = await apiPost('/reading/picks/dismiss', { work_key: p.book.key }, { requireAuth: true });
+    const { error: failed } = await apiPost(
+      '/reading/picks/dismiss',
+      { work_key: p.book.key, title: p.book.title, author: p.book.author },
+      { requireAuth: true }
+    );
     setBusy(null);
     if (failed) return;
     if (p.want_id) {
@@ -119,24 +172,32 @@ export function Picks({ onOpen, onWantChanged }: { onOpen: (key: string) => void
     setBusy(p.book.key);
     const { error: failed } = await apiPost(
       '/library/read',
-      { title: p.book.title, author: p.book.author, work_key: p.book.key },
+      { title: p.book.title, author: p.book.author, work_key: p.outside ? null : p.book.key },
       { requireAuth: true }
     );
     setBusy(null);
     if (failed) return;
     setData((d) => (d ? { ...d, picks: d.picks.filter((x) => x.book.key !== p.book.key) } : d));
-    track('picks_read');
+    track('picks_read', { outside: p.outside });
     onWantChanged?.();
-    onOpen(p.book.key);
+    // a book of the library opens its card for the mark; one from the world has no card yet
+    if (!p.outside) onOpen(p.book.key);
   };
 
   const undo = async (key: string) => {
-    await apiDelete(`/reading/picks/dismiss?work_key=${encodeURIComponent(key)}`, { requireAuth: true });
+    const title = dismissed[key] ?? '';
+    await apiDelete(`/reading/picks/dismiss?work_key=${encodeURIComponent(key)}&title=${encodeURIComponent(title)}`, { requireAuth: true });
     setDismissed((d) => {
       const next = { ...d };
       delete next[key];
       return next;
     });
+  };
+
+  // a book of the library opens its card; one from the world, its page in the catalogue it was found in
+  const look = (p: Pick) => {
+    if (!p.outside) return onOpen(p.book.key);
+    if (p.link) window.open(p.link, '_blank', 'noopener,noreferrer');
   };
 
   const working = data.status === 'working';
@@ -149,13 +210,14 @@ export function Picks({ onOpen, onWantChanged }: { onOpen: (key: string) => void
         <h2 id="picks-title" className={styles.title}>
           <span aria-hidden="true">✦</span> {t('picks.title')}
         </h2>
-        {data.taste && !working ? <p className={styles.taste}>{data.taste}</p> : <p className={styles.taste}>{t('picks.intro')}</p>}
+        {data.has_taste && (data.taste && !working ? <p className={styles.taste}>{data.taste}</p> : <p className={styles.taste}>{t('picks.intro')}</p>)}
       </div>
 
       {!data.has_taste ? (
-        <p className={styles.empty}>
-          {t('picks.noTaste', { n: data.marks_missing })} <Link className={store.link} to="/library">{t('picks.toShelf')} →</Link>
-        </p>
+        <FirstStep missing={data.marks_missing} onSaved={async () => {
+          asked.current = false;
+          await load();
+        }} />
       ) : (
         <>
           {working && (
@@ -177,15 +239,24 @@ export function Picks({ onOpen, onWantChanged }: { onOpen: (key: string) => void
                   </li>
                 ) : (
                   <li key={p.book.key} className={styles.card}>
-                    <button type="button" className={styles.cover} onClick={() => onOpen(p.book.key)} aria-label={p.book.title}>
+                    <button type="button" className={styles.cover} onClick={() => look(p)} aria-label={p.book.title}>
                       <BookFace title={p.book.title} author={p.book.author} cover={p.book.cover_thumb_url ?? p.book.cover_url} seed={p.book.key} />
                     </button>
                     <div className={styles.body}>
-                      <button type="button" className={styles.name} onClick={() => onOpen(p.book.key)}>
+                      {p.outside && <span className={styles.fresh}>{t('picks.outside')}</span>}
+                      <button type="button" className={styles.name} onClick={() => look(p)}>
                         <span className={styles.bookTitle}>{p.book.title}</span>
                         {p.book.author && <span className={styles.author}>{p.book.author}</span>}
                       </button>
                       <p className={styles.why}>{p.why}</p>
+                      <p className={styles.meta}>
+                        {p.days && data.pace ? <span>{t('picks.days', { days: p.days, pace: data.pace })}</span> : null}
+                        {p.buy_url && (
+                          <a href={p.buy_url} target="_blank" rel="noopener noreferrer" onClick={() => track('picks_buy', { outside: p.outside })}>
+                            {t('picks.buy')} ↗
+                          </a>
+                        )}
+                      </p>
                       <div className={styles.actions}>
                         <button
                           type="button"

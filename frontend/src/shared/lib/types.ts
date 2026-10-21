@@ -1075,6 +1075,13 @@ export type Pick = {
   why: string;
   /** on «Хочу прочитать» already: its id there */
   want_id: string | null;
+  /** from the world, not the club's library: no card of its own, `link` is its catalogue page */
+  outside: boolean;
+  link: string | null;
+  /** where to get it (Flip.kz) */
+  buy_url: string | null;
+  /** ≈ days to read it at the reader's pace */
+  days: number | null;
 };
 
 export type Picks = {
@@ -1089,6 +1096,8 @@ export type Picks = {
   picks: Pick[];
   stale: boolean;
   updated_at: string | null;
+  /** the reader's minutes a reading day lately */
+  pace: number | null;
 };
 
 export type WantBook = {

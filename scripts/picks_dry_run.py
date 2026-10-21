@@ -2,9 +2,10 @@
 """
 «Что почитать дальше» on real readers, before anyone sees it (council 2026-10-21).
 
-Writes nothing: no picks are saved, no bell rings. For every reader who read in the last 90 days it says whether
-they would get picks at all (marks, books read, candidates), and with --ask N it asks the AI for the first N of them
-and prints their picks with the «why», to read the way a reader would.
+Writes no picks and rings no bell (covers of books from the world it finds are kept, as any cover lookup does).
+For every reader who read in the last 90 days it says whether they would get picks at all (marks, books read,
+favourites, club candidates), and with --ask N it asks the AI for the first N of them and prints their picks with
+the «why», to read the way a reader would.
 
 Usage (on the server):
     docker compose -f docker-compose.prod.yml exec backend python scripts/picks_dry_run.py
@@ -42,15 +43,15 @@ def main() -> None:
 
     ready = asked = 0
     print(f"# Picks dry run — {len(users)} readers active since {since}\n")
-    print("| reader | marks | read, unmarked | candidates | picks? |")
-    print("|---|---|---|---|---|")
+    print("| reader | marks | read, unmarked | favourites | club candidates | picks? |")
+    print("|---|---|---|---|---|---|")
     rows = []
     for user in users:
         reader = librarian._Reader(db, user)
         payload, ids = librarian._prepare(db, user, reader, args.lang)
-        ok = reader.has_taste() and len(ids) >= librarian.MIN_CANDIDATES
+        ok = reader.has_taste()
         ready += ok
-        print(f"| {user.username} | {len(reader.marks)} | {len(reader.recent)} | {len(ids)} | {'yes' if ok else 'no'} |")
+        print(f"| {user.username} | {len(reader.marks)} | {len(reader.recent)} | {len(reader.favourites)} | {len(ids)} | {'yes' if ok else 'no'} |")
         rows.append((user, reader, payload, ids, ok))
     print(f"\n**{ready} of {len(users)}** would get picks today.\n")
 
@@ -72,8 +73,12 @@ def main() -> None:
             continue
         print(f"_{out['taste']}_\n")
         for p in out["picks"]:
-            work = reader.idx.works[p["key"]]
-            print(f"- **{work.title}**{', ' + work.author if work.author else ''} — {p['why']}")
+            if p.get("outside"):
+                o = p["outside"]
+                print(f"- 🌍 **{o['title']}**{', ' + o['author'] if o.get('author') else ''} — {p['why']}  ({o.get('link') or o['source']})")
+            else:
+                work = reader.idx.works[p["key"]]
+                print(f"- **{work.title}**{', ' + work.author if work.author else ''} — {p['why']}")
         if out["dropped"]:
             print(f"\n({out['dropped']} picks dropped: unknown id or a «why» quoting a book the reader never had)")
         print()
