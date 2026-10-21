@@ -40,6 +40,7 @@ export { resizeImageToDataUrl } from './imageResize';
 
 // The time given a book
 export { formatSpent } from './bookTime';
+export { guessBook, notSameBook, titleCloseness } from './sameBook';
 
 // Color utilities
 export { colorFromSeed } from './colorHash';

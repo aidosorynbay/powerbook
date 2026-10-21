@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiGet, apiPost, colorFromSeed, formatSpent, useAuth, useI18n, useResolvedTheme, track } from '@/shared/lib';
+import { apiGet, apiPost, colorFromSeed, formatSpent, guessBook, notSameBook, useAuth, useI18n, useResolvedTheme, track } from '@/shared/lib';
 import { HALLS, charFor, createRoomEngine, seatChar, type HallKey, type RoomEngine } from './engine';
 import { Ding, Snd, type SoundChannel } from './sound';
 import { ShareDay } from '@/widgets/ShareDay';
@@ -240,6 +240,8 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
   const [pick, setPick] = useState<{ seat: number | null } | null>(null);
   const [book, setBook] = useState('');
   const [suggest, setSuggest] = useState<string[]>(readRecent);
+  // «Вы про эту книгу?» before sitting down with a typed title close to a known one (sameBook.ts)
+  const [bookAsk, setBookAsk] = useState<{ typed: string; known: string } | null>(null);
   const [finished, setFinished] = useState<Finished | null>(null);
   // The day a finished sitting went to, while «Поделиться» is open for it.
   const [shareDay, setShareDay] = useState<string | null>(null);
@@ -646,9 +648,19 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     });
   };
 
-  const sit = async () => {
-    const title = book.trim();
+  const sit = async (chosen?: string) => {
+    const title = (chosen ?? book).trim();
     if (!title || busy) return;
+    if (chosen === undefined && !suggest.includes(title)) {
+      setBusy(true);
+      const known = await guessBook(title, suggest).catch(() => null);
+      setBusy(false);
+      if (known) {
+        setBookAsk({ typed: title, known });
+        return;
+      }
+    }
+    setBookAsk(null);
     const taken = new Set(readers.map((r) => r.seat));
     let seat = pick?.seat ?? null;
     if (seat === null || taken.has(seat)) {
@@ -1010,8 +1022,15 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
         )}
         <div className={styles.pickRow}>
           <input value={book} onChange={(e) => setBook(e.target.value)} maxLength={200} placeholder={t('room.bookPlaceholder')} aria-label={t('room.bookPlaceholder')} onKeyDown={(e) => { if (e.key === 'Enter') sit(); }} />
-          <button className={`${styles.btn} ${styles.primary}`} type="button" onClick={sit} disabled={busy || !book.trim()}>{t('room.light')}</button>
+          <button className={`${styles.btn} ${styles.primary}`} type="button" onClick={() => sit()} disabled={busy || !book.trim()}>{t('room.light')}</button>
         </div>
+        {bookAsk && bookAsk.typed === book.trim() && (
+          <div className={styles.pickRow} role="status">
+            <span className={styles.dockLbl}>{t('sameBook.ask', { title: bookAsk.known })}</span>
+            <button className={`${styles.btn} ${styles.primary}`} type="button" disabled={busy} onClick={() => { setBook(bookAsk.known); void sit(bookAsk.known); }}>{t('sameBook.yes')}</button>
+            <button className={styles.btn} type="button" disabled={busy} onClick={() => { notSameBook(bookAsk.typed, bookAsk.known); void sit(bookAsk.typed); }}>{t('sameBook.no')}</button>
+          </div>
+        )}
       </div>
     );
   } else if (finished) {

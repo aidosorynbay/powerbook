@@ -159,3 +159,42 @@
   order: 3;
   flex-basis: 100%;
 }
+
+/* «Вы про «…»?»: a typed title close to a known book, asked once */
+.ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--color-border-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.ask > span {
+  flex: 1 1 12em;
+}
+
+.askYes,
+.askNo {
+  min-height: 32px;
+  padding: 0 var(--spacing-3);
+  border-radius: var(--radius-md);
+  font: inherit;
+  cursor: pointer;
+}
+
+.askYes {
+  border: none;
+  background: var(--color-accent-primary);
+  color: #fff;
+}
+
+.askNo {
+  border: 1px solid var(--color-border-primary);
+  background: transparent;
+  color: var(--color-text-secondary);
+}

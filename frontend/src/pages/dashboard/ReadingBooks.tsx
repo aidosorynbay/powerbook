@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { apiGet, formatSpent, useI18n, type DayBook } from '@/shared/lib';
+import { apiGet, formatSpent, guessBook, notSameBook, useI18n, type DayBook } from '@/shared/lib';
 import { Icon } from '@/shared/ui';
 import styles from './ReadingBooks.module.css';
 
@@ -94,6 +94,19 @@ export function ReadingBooks({ books, onChange, totalMinutes, onTotalChange, sug
   const focusNew = useRef(false);
   const multi = books.length > 1;
   const own = suggestions.filter((s) => !books.some((b) => b.title === s));
+  // «Вы про эту книгу?»: a typed title close to a known one, asked once before it stands as a book of its own
+  const [ask, setAsk] = useState<{ typed: string; known: string } | null>(null);
+  const check = (title: string) => {
+    setAsk(null);
+    if (!title || suggestions.includes(title)) return;
+    void guessBook(title, suggestions).then((known) => known && setAsk({ typed: title, known }));
+  };
+  const answer = (same: boolean) => {
+    if (!ask) return;
+    if (same) onChange(books.map((b) => (b.title === ask.typed ? { ...b, title: ask.known } : b)));
+    else notSameBook(ask.typed, ask.known);
+    setAsk(null);
+  };
 
   const setTitle = (i: number, title: string) => {
     if (!title) {
@@ -155,6 +168,7 @@ export function ReadingBooks({ books, onChange, totalMinutes, onTotalChange, sug
                 return;
               }
               onChange([{ title, minutes: books[0]?.minutes ?? 0, finished: books[0]?.finished ?? false }]);
+              check(title);
             }}
           />
         )
@@ -170,7 +184,10 @@ export function ReadingBooks({ books, onChange, totalMinutes, onTotalChange, sug
                   suggestions={own}
                   placeholder={t('readingBooks.placeholder')}
                   autoFocus={focusNew.current && i === books.length - 1 && !b.title}
-                  onCommit={(title) => setTitle(i, title)}
+                  onCommit={(title) => {
+                    if (title !== b.title) check(title);
+                    setTitle(i, title);
+                  }}
                 />
                 {so(b.title)}
               </div>
@@ -206,6 +223,14 @@ export function ReadingBooks({ books, onChange, totalMinutes, onTotalChange, sug
             </div>
           ))}
           <div className={styles.sum}>{t('readingBooks.total', { minutes: sum })}</div>
+        </div>
+      )}
+
+      {ask && books.some((b) => b.title === ask.typed) && (
+        <div className={styles.ask} role="status">
+          <span>{t('sameBook.ask', { title: ask.known })}</span>
+          <button type="button" className={styles.askYes} onClick={() => answer(true)}>{t('sameBook.yes')}</button>
+          <button type="button" className={styles.askNo} onClick={() => answer(false)}>{t('sameBook.no')}</button>
         </div>
       )}
 
