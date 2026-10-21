@@ -748,10 +748,12 @@ def _look_up(row: BookCover, author_hint: str | None, *, only_flip: bool = False
         searches += [(parts[0], _search), (parts[1], _search)]
     if _script(core) == "lat":
         searches.append((core, _search_open_library))
-    # Flip.kz sells the Russian and Kazakh editions of foreign books too, so it is asked for every title.
-    searches.append((core, _search_flip))
+    # Flip.kz sells the Russian and Kazakh editions of foreign books too, so it is asked for every title —
+    # when switched on (settings.flip_covers): it banned our addresses on 2026-10-22.
+    if settings.flip_covers:
+        searches.append((core, _search_flip))
     if only_flip:
-        searches = [(core, _search_flip)]
+        searches = [(core, _search_flip)] if settings.flip_covers else []
 
     started = time.monotonic()
     seen: set[tuple[str, str]] = set()
@@ -945,7 +947,7 @@ def wants_lookup(row: BookCover | None) -> bool:
 # Google's free quota is per day, and readers' own shelf lookups share it:
 # a daily pass asks for a bounded number of the titles still without a
 # picture, oldest first. The rest wait for tomorrow.
-_DAILY_LOOKUPS = 40
+_DAILY_LOOKUPS = 150
 _DAILY_LOCK = Path(settings.library_storage_dir).parent / ".covers-daily.lock"
 _daily_lock = threading.Lock()
 

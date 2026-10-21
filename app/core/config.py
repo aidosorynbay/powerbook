@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     # 2026-10-21; a lookup costs ~$0.1–0.2, so a few a day per server process.
     ai_covers: bool = True
     ai_covers_daily_limit: int = 15
+    # Flip.kz for covers (app/services/covers.py). Off since 2026-10-22: Flip answers
+    # 403 to the server and banned the founder's IP after our lookups.
+    flip_covers: bool = False
     # Background fetching of ratings and descriptions from the free
     # catalogues (Google Books, Open Library, Wikipedia).
     book_facts_enabled: bool = True

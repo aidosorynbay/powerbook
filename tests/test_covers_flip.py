@@ -53,6 +53,7 @@ def test_the_picture_is_filed_by_the_thousand():
 
 @pytest.fixture()
 def google_down(monkeypatch, tmp_path):
+    monkeypatch.setattr(covers.settings, "flip_covers", True)
     def refuse(q):
         raise urllib.error.HTTPError("https://www.google.com/books/feeds/volumes", 500, "down", {}, None)
 
@@ -96,4 +97,18 @@ def test_flip_only_asks_no_one_else(google_down, monkeypatch):
     row = BookCover(key=covers.cover_key("Гауһар тас"), query="Гауһар тас", status="working", attempts=0)
     covers._look_up(row, None, only_flip=True)
     assert row.status == "found" and row.source == "flip"
+    assert asked == []
+
+
+def test_flip_is_off_unless_switched_on(monkeypatch, tmp_path):
+    asked = []
+    monkeypatch.setattr(covers.settings, "flip_covers", False)
+    monkeypatch.setattr(covers, "COVERS_DIR", tmp_path)
+    monkeypatch.setattr(covers, "_search", lambda q: [])
+    monkeypatch.setattr(covers, "_wikidata_cover", lambda q: None)
+    monkeypatch.setattr(covers_ai, "find_cover", lambda q, a: None)
+    monkeypatch.setattr(covers, "_search_flip", lambda q: asked.append(q) or [])
+    _look_up("Гауһар тас")
+    row = BookCover(key="k", query="Гауһар тас", status="working", attempts=0)
+    covers._look_up(row, None, only_flip=True)
     assert asked == []
