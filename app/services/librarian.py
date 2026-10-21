@@ -361,7 +361,11 @@ def get(db: Session, *, user: User, lang: str) -> PicksOut:
     out.taste = content.get("taste")
     out.wish = content.get("wish")
     # changed since: the same ask on the taste there is now would be another one
-    out.stale = row.status == "done" and row.input_hash != _hash(lang, {**reader.taste(), "wish": out.wish})
+    out.stale = row.status == "done" and (
+        row.input_hash != _hash(lang, {**reader.taste(), "wish": out.wish})
+        # the reader got newer picks in another language: these follow them
+        or _fresher_elsewhere(db, user, lang, row, reader) is not None
+    )
 
     from app.services import want
 
@@ -453,11 +457,14 @@ def start(
     taste = {**reader.taste(), "wish": wish}
     digest_hash = _hash(lang, taste)
     now = datetime.now(timezone.utc)
-    if row is not None:
-        if row.status == "working" and not _is_abandoned(row):
-            return get(db, user=user, lang=lang)
-        if row.status == "done" and row.input_hash == digest_hash and not force:
-            return get(db, user=user, lang=lang)
+    if row is not None and row.status == "working" and not _is_abandoned(row):
+        return get(db, user=user, lang=lang)
+    # the same picks in another language, still fresh and newer than these: translated, not chosen again
+    src = None if force else _fresher_elsewhere(db, user, lang, row, reader)
+    if src is not None and (keep_wish or wish == (src.content or {}).get("wish")):
+        return _start_translation(db, user, lang, row, src, reader)
+    if row is not None and row.status == "done" and row.input_hash == digest_hash and not force:
+        return get(db, user=user, lang=lang)
 
     recent = db.execute(
         select(func.count()).where(AiDigest.user_id == user.id, AiDigest.updated_at > now - timedelta(days=1))
@@ -480,6 +487,105 @@ def start(
         payload["reader"]["wish"] = wish
     threading.Thread(target=_write, args=(row.id, lang, payload, ids, notify_title, wish), daemon=True).start()
     return get(db, user=user, lang=lang)
+
+
+# ---------- one set of picks, in every language ----------
+
+_TRANSLATE_SYSTEM = (
+    "Translate these short texts for a reader of a book club into {lang}. They speak to the reader about books; keep "
+    "the meaning, the warmth and every number. Keep book titles in «» as the books are known in {lang} (a Russian title "
+    "stays as it is in Russian unless the book is well known under another title in {lang}); keep people's names as "
+    "they are. Address the reader politely (in Russian «вы», in Kazakh «сіз»). Return exactly as many texts, in order."
+)
+
+_TRANSLATE_SCHEMA = {
+    "type": "object",
+    "properties": {"texts": {"type": "array", "items": {"type": "string"}}},
+    "required": ["texts"],
+    "additionalProperties": False,
+}
+
+
+def _fresher_elsewhere(db: Session, user: User, lang: str, row: AiDigest | None, reader: _Reader) -> AiDigest | None:
+    """The reader's picks in another language, written for the taste they have now and newer than these (or these
+    missing): the ones to show, translated."""
+    other = db.execute(
+        select(AiDigest)
+        .where(AiDigest.user_id == user.id, AiDigest.kind == KIND, AiDigest.scope == SCOPE, AiDigest.lang != lang,
+               AiDigest.status == "done")
+        .order_by(AiDigest.updated_at.desc())
+    ).scalars().first()
+    if other is None or not (other.content or {}).get("picks"):
+        return None
+    if other.input_hash != _hash(other.lang, {**reader.taste(), "wish": (other.content or {}).get("wish")}):
+        return None
+    if row is not None and row.status == "done":
+        mine, theirs = row.content or {}, other.content or {}
+        # these are already those picks, translated
+        if mine.get("origin") and mine.get("origin") == theirs.get("origin"):
+            return None
+        # chosen later than those (the moment of choosing, kept in the picks and their translations)
+        if mine.get("chosen_at") and theirs.get("chosen_at"):
+            if mine["chosen_at"] >= theirs["chosen_at"]:
+                return None
+        elif _aware(row.updated_at) >= _aware(other.updated_at):
+            return None
+    return other
+
+
+def _aware(moment: datetime) -> datetime:
+    return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
+
+
+def _start_translation(
+    db: Session, user: User, lang: str, row: AiDigest | None, src: AiDigest, reader: _Reader
+) -> PicksOut:
+    wish = (src.content or {}).get("wish")
+    digest_hash = _hash(lang, {**reader.taste(), "wish": wish})
+    if row is None:
+        row = AiDigest(user_id=user.id, kind=KIND, scope=SCOPE, lang=lang, input_hash=digest_hash, status="working")
+        db.add(row)
+    else:
+        row.status, row.input_hash, row.error = "working", digest_hash, None
+        row.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(row)
+    threading.Thread(target=_translate, args=(row.id, dict(src.content or {}), lang), daemon=True).start()
+    return get(db, user=user, lang=lang)
+
+
+def _translate(digest_id: uuid.UUID, content: dict, lang: str) -> None:
+    """The same books, their «why» and the taste line in another language. Should the AI fail, the words stay as
+    they were rather than the picks being lost."""
+    from app.db.session import get_session_factory
+
+    db = get_session_factory()()
+    try:
+        row = db.get(AiDigest, digest_id)
+        if row is None:
+            return
+        picks = [dict(p) for p in content.get("picks", [])]
+        texts = [content.get("taste") or ""] + [p.get("why") or "" for p in picks]
+        try:
+            answer = llm.ask_json(
+                system=_TRANSLATE_SYSTEM.format(lang=_LANG_NAMES[lang]),
+                prompt=json.dumps({"texts": texts}, ensure_ascii=False),
+                schema=_TRANSLATE_SCHEMA,
+                effort="low",
+                max_tokens=2500,
+            )
+            done = [str(t).strip() for t in answer.get("texts", [])]
+            if len(done) == len(texts) and all(done[1:]):
+                texts = done
+        except Exception:
+            logger.exception("picks translation %s failed", digest_id)
+        for p, why in zip(picks, texts[1:]):
+            p["why"] = why
+        row.content = {**content, "taste": texts[0], "picks": picks}
+        row.status, row.error = "done", None
+        db.commit()
+    finally:
+        db.close()
 
 
 def _prepare(db: Session, user: User, reader: _Reader, lang: str, shown: set[str] = frozenset()) -> tuple[dict, dict[str, str]]:
@@ -675,7 +781,11 @@ def _write(
         if row is None:
             return
         try:
-            row.content = {**choose(payload, ids, lang), "wish": wish}
+            # `origin` names this choosing: its translations into other languages carry it too
+            row.content = {
+                **choose(payload, ids, lang), "wish": wish, "origin": uuid.uuid4().hex,
+                "chosen_at": datetime.now(timezone.utc).isoformat(),
+            }
             row.status, row.error = "done", None
             picks = row.content["picks"]
             if notify_title and AUTO_BELL:

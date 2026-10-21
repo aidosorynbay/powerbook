@@ -358,3 +358,38 @@ def test_a_reader_asks_for_what_they_want_now(env):
     c.post("/api/reading/picks", json={"lang": "ru"}, headers=h)
     assert "wish" not in json.loads(fake.requests[-1]["body"]["messages"][1]["content"])["reader"]
     assert c.get("/api/reading/picks?lang=ru", headers=h).json()["wish"] is None
+
+
+def test_another_language_shows_the_same_picks_translated_not_chosen_again(env):
+    c, h = env.client, env.h
+    env.deepseek([])
+    _mark(env, "Обломов", 7)
+    env.deepseek([json.dumps({"taste": "Вы любите тихие книги.", "picks": [{"id": "b1", "why": "Как «Обломов»."}], "outside": []}, ensure_ascii=False)])
+    c.post("/api/reading/picks", json={"lang": "ru"}, headers=h)
+    ru = c.get("/api/reading/picks?lang=ru", headers=h).json()
+
+    # Kazakh: nothing on it yet — the same books, the words translated
+    fake = env.deepseek([json.dumps({"texts": ["Сіз тыныш кітаптарды ұнатасыз.", "«Обломов» сияқты."]}, ensure_ascii=False)])
+    assert c.get("/api/reading/picks?lang=kk", headers=h).json()["status"] is None
+    c.post("/api/reading/picks", json={"lang": "kk", "keep_wish": True}, headers=h)
+    asked = json.loads(fake.requests[-1]["body"]["messages"][1]["content"])
+    assert asked == {"texts": ["Вы любите тихие книги.", "Как «Обломов»."]}
+    kk = c.get("/api/reading/picks?lang=kk", headers=h).json()
+    assert [p["book"]["key"] for p in kk["picks"]] == [p["book"]["key"] for p in ru["picks"]]
+    assert kk["picks"][0]["why"] == "«Обломов» сияқты." and kk["taste"].startswith("Сіз")
+
+    # back and forth: no more translating, both are the same picks
+    fake = env.deepseek([])
+    assert c.get("/api/reading/picks?lang=ru", headers=h).json()["stale"] is False
+    c.post("/api/reading/picks", json={"lang": "ru", "keep_wish": True}, headers=h)
+    c.post("/api/reading/picks", json={"lang": "kk", "keep_wish": True}, headers=h)
+    assert fake.requests == []
+
+    # «Другие варианты» in Kazakh: chosen anew; Russian then follows them, translated
+    env.deepseek([json.dumps({"taste": "Жаңа.", "picks": [{"id": "b2", "why": "Басқа."}], "outside": []}, ensure_ascii=False)])
+    c.post("/api/reading/picks", json={"lang": "kk", "force": True}, headers=h)
+    assert c.get("/api/reading/picks?lang=ru", headers=h).json()["stale"] is True
+    env.deepseek([json.dumps({"texts": ["Новое.", "Другое."]}, ensure_ascii=False)])
+    c.post("/api/reading/picks", json={"lang": "ru", "keep_wish": True}, headers=h)
+    again = c.get("/api/reading/picks?lang=ru", headers=h).json()
+    assert again["picks"][0]["why"] == "Другое." and again["stale"] is False
