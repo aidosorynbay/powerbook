@@ -223,6 +223,7 @@ def editions(monkeypatch, tmp_path):
     monkeypatch.setattr(covers, "COVERS_DIR", tmp_path)
     monkeypatch.setattr(covers, "_search", lambda q: list(found))
     monkeypatch.setattr(covers, "_search_open_library", lambda q: [])
+    monkeypatch.setattr(covers, "_search_flip", lambda q: [])
     monkeypatch.setattr(covers, "_wikidata_cover", lambda q: None)
     monkeypatch.setattr(covers, "_fetch_images", lambda c, min_width=250: (b"full", b"small"))
     return found

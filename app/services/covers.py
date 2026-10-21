@@ -25,6 +25,7 @@ own «Ремарк» after the title decides it when an edition bears it out.
 from __future__ import annotations
 
 import hashlib
+import html
 import json
 import logging
 import re
@@ -272,6 +273,49 @@ def _search_open_library(query: str) -> list[_Candidate]:
             )
         )
     return found
+
+
+_FLIP = "https://www.flip.kz"
+# One search result: the product link, its cover and name, then the binding
+# and year — which only a book has, so puzzles and mugs named after one fall away.
+_FLIP_ITEM = re.compile(
+    r'<a href="/catalog\?prod=(\d+)" class="product">.*?<img class="image"[^>]*alt="([^"]*)".*?'
+    r'<div class="description"><span>([^<]*)</span>',
+    re.DOTALL,
+)
+_FLIP_AUTHOR = re.compile(r'<a href="/descript\?cat=people&id=\d+"><b>([^<]+)</b></a>')
+_FLIP_PAGES = 4
+
+
+def _search_flip(query: str) -> list[_Candidate]:
+    """Flip.kz, the Kazakhstan bookshop: books in Kazakh and Russian that no
+    world catalogue holds — «Гауһар тас», a local edition of a translation.
+    Its search page names a book but not its author; the book's own page
+    does, so the few whose names come close to the reader's are opened."""
+    body = _paced(f"{_FLIP}/search?" + urllib.parse.urlencode({"search": query})).decode("utf-8", "replace")
+    ours = match_key(query)
+    found = []
+    for product, alt, kind in _FLIP_ITEM.findall(body):
+        title = html.unescape(alt).strip()
+        if not title or not re.search(r"обложк|переплет|переплёт", kind, re.IGNORECASE):
+            continue
+        found.append(_Candidate(volume_id=product, titles=[title], creators=[], has_thumbnail=True, source="flip"))
+    close = [
+        c for c in found
+        if (key := match_key(c.titles[0])) and (key in ours or SequenceMatcher(None, ours, key).ratio() >= 0.6)
+    ]
+    for candidate in close[:_FLIP_PAGES]:
+        try:
+            page = _paced(f"{_FLIP}/catalog?prod={candidate.volume_id}").decode("utf-8", "replace")
+        except Exception:
+            continue
+        candidate.creators = list(dict.fromkeys(html.unescape(a).strip() for a in _FLIP_AUTHOR.findall(page)))
+    return found
+
+
+def _flip_image(product: str, size: int) -> str:
+    # Flip files a product's pictures by the thousand it falls in: 4306625 → /prod/4307/4306625_550.jpg.
+    return f"https://s.f.kz/prod/{-(-int(product) // 1000)}/{product}_{size}.jpg"
 
 
 # Where an edition's subtitle starts: ". Как приобрести…", ": A Brief
@@ -560,6 +604,14 @@ def _fetch_images(candidate: _Candidate, min_width: int = 250) -> tuple[bytes, b
             return None
         return full, _cover_bytes(f"{base}-M.jpg", min_width=60, portrait=False) or full
 
+    if candidate.source == "flip":
+        full = _cover_bytes(_flip_image(candidate.volume_id, 1000), min_width=min_width) or _cover_bytes(
+            _flip_image(candidate.volume_id, 550), min_width=min_width
+        )
+        if not full:
+            return None
+        return full, _cover_bytes(_flip_image(candidate.volume_id, 550), min_width=60, portrait=False) or full
+
     quoted = urllib.parse.quote(candidate.volume_id)
     full = None
     if candidate.has_thumbnail:
@@ -695,17 +747,26 @@ def _look_up(row: BookCover, author_hint: str | None) -> None:
         searches += [(parts[0], _search), (parts[1], _search)]
     if _script(core) == "lat":
         searches.append((core, _search_open_library))
+    else:
+        searches.append((core, _search_flip))
 
     started = time.monotonic()
     seen: set[tuple[str, str]] = set()
     fallback: _Match | None = None
     with_picture: list[_Match] = []
     tries = 0
+    # Google pushing back or down: the other shops are still asked, and only
+    # if none of them has the book is the lookup an error, tried again tomorrow.
+    refused: urllib.error.HTTPError | None = None
     for text, search in searches:
+        if refused is not None and search is _search:
+            continue
         try:
             candidates = [c for c in search(text) if (c.source, c.volume_id) not in seen]
-        except urllib.error.HTTPError:
-            raise
+        except urllib.error.HTTPError as exc:
+            if search is _search:
+                refused = exc
+            continue
         except Exception:
             continue
         seen.update((c.source, c.volume_id) for c in candidates)
@@ -737,6 +798,8 @@ def _look_up(row: BookCover, author_hint: str | None) -> None:
         if images:
             _keep(row, match, images, keep_title=core == query, author=author())
             return
+    if refused is not None:
+        raise refused
     if fallback:
         _keep(row, fallback, None, keep_title=core == query, author=author())
     else:
