@@ -276,6 +276,7 @@ def test_books_from_the_world_count_only_when_a_catalogue_has_them(env, monkeypa
         "picks": [{"id": "b1", "why": "a"}, {"id": "b2", "why": "b"}, {"id": "b3", "why": "c"}],
         "outside": [
             {"title": "Обломов", "author": "Гончаров", "why": "already read: never again"},
+            {"title": "Маленький принц", "author": "Экзюпери", "why": "read long ago, unmarked: never again"},
             {"title": "Книга, которой нет", "author": "Никто", "why": "made up"},
             {"title": "Время жить и время умирать", "author": "Эрих Мария Ремарк", "why": "Как «Три товарища», но о войне."},
             {"title": "Стоунер", "author": "Джон Уильямс", "why": "it is in the club's library"},

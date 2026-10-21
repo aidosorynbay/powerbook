@@ -528,7 +528,15 @@ def _prepare(db: Session, user: User, reader: _Reader, lang: str, shown: set[str
         "reader": {**reader.taste(), "portrait": portrait, "_known": reader.known_titles()},
         "candidates": candidates,
         "_fit": {cid: {"match": fit_of[key].match, "fits": fit_of[key].fits} for cid, key in ids.items()},
-        "_skip": sorted({want._norm(t) for t in reader.known_titles()}),
+        # never named again from the world: every book they know, the long-ago ones too (each spelling of it)
+        "_skip": sorted(
+            {want._norm(t) for t in reader.known_titles()}
+            | {
+                want._norm(spelling)
+                for k in reader.read if k in reader.idx.works
+                for spelling in [reader.idx.works[k].title, *(sp for sp, _ in reader.idx.works[k].faces.values())]
+            }
+        ),
         "_club": club,
     }
     return payload, ids
