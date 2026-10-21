@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -215,7 +216,12 @@ def tag(db: Session, limit: int = BATCH) -> int:
             row.status, row.traits = "done", traits
             row.essence = str(got.get("essence") or "").strip()[:300] or None
             written += 1
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # another process wrote one of these books meanwhile: theirs stands, this batch is asked again later
+        db.rollback()
+        return 0
     return written
 
 
@@ -247,6 +253,10 @@ def scheduled() -> None:
 def _backfill(limit: int, retry_unknown: bool = False) -> None:
     from app.db.session import get_session_factory
 
+    # the scheduler's tick waits while this runs (the same lock), so no book is written twice at once
+    _LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    lock = open(_LOCK_PATH, "w")
+    fcntl.flock(lock, fcntl.LOCK_EX)
     db = get_session_factory()()
     total = 0
     try:
@@ -263,6 +273,8 @@ def _backfill(limit: int, retry_unknown: bool = False) -> None:
             print(f"… {total}", flush=True)
     finally:
         db.close()
+        fcntl.flock(lock, fcntl.LOCK_UN)
+        lock.close()
     print(f"done: {total}")
 
 
