@@ -466,6 +466,7 @@ class ReadingRoomService:
         if s.ended_at is None:
             if count:
                 s.accumulated_seconds = int(s.accumulated_seconds) + int(s.away_seconds or 0)
+                self._tell_war(s)
             s.away_seconds = 0
         self.db.commit()
         return self._session_out(s, now)
@@ -521,6 +522,7 @@ class ReadingRoomService:
                 user_id=user.id, day=s.credited_date, minutes=int(s.credited_minutes), title=s.book_title,
             )
             s.credited_minutes = 0
+            self._tell_war(s)
             self.db.commit()
             return {"today_minutes": self.today_minutes(self.current_round(), user.id)}
         reading = ReadingService(self.db)
@@ -531,8 +533,16 @@ class ReadingRoomService:
                 minutes=int(s.credited_minutes), title=s.book_title,
             )
         s.credited_minutes = 0
+        self._tell_war(s)
         self.db.commit()
         return {"today_minutes": self.today_minutes(self.current_round(), user.id)}
+
+    def _tell_war(self, s: ReadingRoomSession) -> None:
+        """A war day the room counted at 00:00 follows the reader's word given after it (clan_war.room_changed)."""
+        from app.services import clan_war
+
+        self.db.flush()
+        clan_war.room_changed(self.db, s)
 
     # ---------- the day in the hall, for the chat ----------
 

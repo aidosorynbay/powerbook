@@ -120,3 +120,25 @@ class ClanWarReport(TimestampMixin, Base):
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ClanWarRoomRead(TimestampMixin, Base):
+    """A member's war day counted at 00:00 from the reading room (founder 2026-10-22): they were still in the chair
+    at midnight, nothing saved yet, and the room's minutes before midnight (with whatever they had logged) came to
+    30+. The day's lock counts it; the reader may still say they were not reading (the room's «Отменить», or
+    «Я не читал(а)» on the war page) — then `revoked_at` is set and the team's locked day loses the point."""
+
+    __tablename__ = "clan_war_room_reads"
+    __table_args__ = (UniqueConstraint("war_id", "user_id", "date", name="uq_clan_war_room_read"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    war_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("clan_wars.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    # the room's minutes before that midnight
+    minutes: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

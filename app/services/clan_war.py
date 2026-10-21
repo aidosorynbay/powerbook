@@ -23,7 +23,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.constants import ROUND_TZ
-from app.models.clan_war import ClanWar, ClanWarDay, ClanWarMember, ClanWarRead
+from app.models.clan_war import ClanWar, ClanWarDay, ClanWarMember, ClanWarRead, ClanWarRoomRead
 from app.models.enums import SystemRole
 from app.models.round import ReadingLog, Round, RoundParticipant
 from app.models.user import User
@@ -89,30 +89,198 @@ def _on_time(d: date, created: datetime | None) -> bool:
         return True
     if created.tzinfo is None:
         created = created.replace(tzinfo=timezone.utc)
-    return created < datetime.combine(d + timedelta(days=1), time(0, 0), tzinfo=ROUND_TZ)
+    return created < _midnight(d)
 
 
-def _reads(db: Session, user_ids: list[uuid.UUID], war: ClanWar) -> set[tuple[uuid.UUID, date]]:
-    """Days of 30+ minutes logged before their own midnight: from the circle's logs,
-    and from the war page for guests."""
+def _midnight(d: date) -> datetime:
+    """When war day `d` closes: 00:00 (Astana) after it."""
+    return datetime.combine(d + timedelta(days=1), time(0, 0), tzinfo=ROUND_TZ)
+
+
+def _logged(db: Session, user_ids: list[uuid.UUID], war: ClanWar) -> dict[tuple[uuid.UUID, date], int]:
+    """Each member's minutes for each war day logged before its own midnight: from the circle's logs, and from
+    the war page for guests."""
     if not user_ids:
-        return set()
+        return {}
     rows = db.execute(
-        select(ReadingLog.user_id, ReadingLog.date, ReadingLog.created_at).where(
+        select(ReadingLog.user_id, ReadingLog.date, ReadingLog.minutes, ReadingLog.created_at).where(
             ReadingLog.user_id.in_(user_ids),
-            # 30+ minutes, not the circle's stored score: the war may run into the
-            # circle's last day, which the circle keeps for corrections and never scores
-            ReadingLog.minutes >= 30,
             ReadingLog.date >= war.start_date,
             ReadingLog.date <= war.end_date,
         )
     ).all()
     guest = db.execute(
-        select(ClanWarRead.user_id, ClanWarRead.date, ClanWarRead.created_at).where(
-            ClanWarRead.war_id == war.id, ClanWarRead.user_id.in_(user_ids), ClanWarRead.minutes >= 30
+        select(ClanWarRead.user_id, ClanWarRead.date, ClanWarRead.minutes, ClanWarRead.created_at).where(
+            ClanWarRead.war_id == war.id, ClanWarRead.user_id.in_(user_ids)
         )
     ).all()
-    return {(u, d) for u, d, c in [*rows, *guest] if _on_time(d, c)}
+    out: dict[tuple[uuid.UUID, date], int] = {}
+    for u, d, m, c in [*rows, *guest]:
+        if _on_time(d, c):
+            out[(u, d)] = max(out.get((u, d), 0), int(m or 0))
+    return out
+
+
+def _room(db: Session, user_ids: list[uuid.UUID], d: date, now: datetime | None = None) -> dict[uuid.UUID, int]:
+    """Minutes each member read in the reading room on war day `d` (the calendar day, Astana) that its logs before
+    midnight do not hold yet: a sitting still open, one got up from after midnight, or one whose minutes went to
+    another day (the room's day turns at 03:00, so 00:10–01:00 is credited to the day before). A sitting the reader
+    took back («Отменить») was not reading; a silence they have not answered for stays out, as in the room."""
+    if not user_ids:
+        return {}
+    from app.models.reading_room import ReadingRoomSession
+    from app.services.reading_room import AWAY_AFTER, ReadingRoomService, _aware
+
+    start = datetime.combine(d, time(0, 0), tzinfo=ROUND_TZ)
+    end = min(_midnight(d), now or datetime.now(tz=ROUND_TZ))
+    out: dict[uuid.UUID, int] = {}
+    for s in db.execute(
+        select(ReadingRoomSession).where(
+            ReadingRoomSession.user_id.in_(user_ids),
+            ReadingRoomSession.created_at < end.astimezone(timezone.utc),
+            # no sitting lasts more than 12 hours (reading_room.MAX_SITTING)
+            ReadingRoomSession.created_at > (start - timedelta(days=1)).astimezone(timezone.utc),
+        )
+    ).scalars():
+        began, ended = _aware(s.created_at), _aware(s.ended_at)
+        if ended is not None and ended < start:
+            continue
+        if ended is not None and not s.credited_minutes and s.credited_date is not None:
+            continue  # taken back by the reader
+        if ended is not None and ended < _midnight(d) and s.credited_round_id is not None and s.credited_date == d:
+            continue  # already in that day's circle log, written before midnight
+        if ended is None:
+            at, seen = end, _aware(s.last_seen_at)
+            if s.status == "reading" and at - seen > AWAY_AFTER:
+                at = seen
+            seconds = ReadingRoomService.elapsed_seconds(s, at)
+            if began < start:
+                seconds -= ReadingRoomService.elapsed_seconds(s, start)  # what it read the day before
+        else:
+            at, seconds = min(ended, end), int(s.accumulated_seconds)
+        # only the part of the sitting inside the day
+        span = (at - max(began, start)).total_seconds()
+        minutes = int(max(0, min(seconds, span))) // 60
+        if minutes:
+            out[s.user_id] = out.get(s.user_id, 0) + minutes
+    return out
+
+
+def _reads(db: Session, user_ids: list[uuid.UUID], war: ClanWar, today: date | None = None) -> set[tuple[uuid.UUID, date]]:
+    """Days of 30+ minutes logged before their own midnight (30+ minutes, not the circle's stored score: the war may
+    run into the circle's last day, which the circle keeps for corrections and never scores); locked days the room
+    counted at midnight; and today, the room's minutes so far on top of what is logged."""
+    if not user_ids:
+        return set()
+    logged = _logged(db, user_ids, war)
+    out = {k for k, m in logged.items() if m >= 30}
+    out |= {
+        (u, d)
+        for u, d in db.execute(
+            select(ClanWarRoomRead.user_id, ClanWarRoomRead.date).where(
+                ClanWarRoomRead.war_id == war.id,
+                ClanWarRoomRead.user_id.in_(user_ids),
+                ClanWarRoomRead.revoked_at.is_(None),
+            )
+        ).all()
+    }
+    today = today or _today()
+    if war.start_date <= today <= war.end_date:
+        for u, m in _room(db, user_ids, today).items():
+            if logged.get((u, today), 0) + m >= 30:
+                out.add((u, today))
+    return out
+
+
+def _count_room(db: Session, war: ClanWar, d: date, user_ids: list[uuid.UUID]) -> None:
+    """At the day's lock: a member still reading in the room at 00:00 (or just up, nothing saved for the war) whose
+    room minutes before midnight, with what they had logged, make 30+ gets the day (founder 2026-10-22)."""
+    logged = _logged(db, user_ids, war)
+    have = set(
+        db.execute(
+            select(ClanWarRoomRead.user_id).where(ClanWarRoomRead.war_id == war.id, ClanWarRoomRead.date == d)
+        ).scalars()
+    )
+    for u, m in _room(db, user_ids, d).items():
+        before = logged.get((u, d), 0)
+        if u not in have and before < 30 <= before + m:
+            db.add(ClanWarRoomRead(war_id=war.id, user_id=u, date=d, minutes=min(m, 1440)))
+    db.flush()
+
+
+def _change_day(db: Session, war: ClanWar, user_id: uuid.UUID, d: date, delta: int) -> None:
+    """A locked day gains or loses one member's point (the room's word came after midnight)."""
+    m = db.execute(
+        select(ClanWarMember).where(ClanWarMember.war_id == war.id, ClanWarMember.user_id == user_id)
+    ).scalar_one_or_none()
+    if m is None or m.team is None:
+        return
+    row = db.execute(
+        select(ClanWarDay).where(ClanWarDay.war_id == war.id, ClanWarDay.date == d, ClanWarDay.team == m.team)
+    ).scalar_one_or_none()
+    if row is not None:
+        row.hits = max(0, min(row.size, row.hits + delta))
+
+
+def _locked_days_of(db: Session, war: ClanWar, s) -> list[date]:
+    """The locked war days a sitting reaches into (a sitting is at most 12 hours: one or two days)."""
+    from app.services.reading_room import _aware
+
+    began = _aware(s.created_at).astimezone(ROUND_TZ).date()
+    last = (_aware(s.ended_at) or datetime.now(tz=ROUND_TZ)).astimezone(ROUND_TZ).date()
+    days = [d for d in (began, last) if war.start_date <= d <= war.end_date]
+    locked = set(
+        db.execute(select(ClanWarDay.date).where(ClanWarDay.war_id == war.id, ClanWarDay.date.in_(days))).scalars()
+    )
+    return sorted({d for d in days if d in locked})
+
+
+def room_changed(db: Session, s) -> None:
+    """The reader's word about a sitting after its war day locked: «Отменить» in the room (they were not reading —
+    the day the room counted is taken back) or «да, читал» about a silence (the day may now be theirs). Called by the
+    room before its own commit; never raises."""
+    try:
+        war = current_war(db)
+        if war is None or war.status != "live":
+            return
+        ids = [s.user_id]
+        for d in _locked_days_of(db, war, s):
+            row = db.execute(
+                select(ClanWarRoomRead).where(
+                    ClanWarRoomRead.war_id == war.id, ClanWarRoomRead.user_id == s.user_id, ClanWarRoomRead.date == d
+                )
+            ).scalar_one_or_none()
+            logged = _logged(db, ids, war).get((s.user_id, d), 0)
+            room = _room(db, ids, d).get(s.user_id, 0)
+            ok = logged < 30 <= logged + room
+            if row is not None and row.revoked_at is None and not ok:
+                row.revoked_at = datetime.now(tz=timezone.utc)
+                _change_day(db, war, s.user_id, d, -1)
+            elif row is None and ok:
+                db.add(ClanWarRoomRead(war_id=war.id, user_id=s.user_id, date=d, minutes=min(room, 1440)))
+                _change_day(db, war, s.user_id, d, +1)
+        db.flush()
+    except Exception:  # the room's own save never fails over the war
+        import logging
+
+        logging.getLogger(__name__).exception("clan war room_changed")
+
+
+def not_read(db: Session, user: User) -> dict:
+    """«Я не читал(а)» on the war page: the day the room counted at midnight is taken back (the circle's minutes are
+    the reader's to fix on the dial)."""
+    war = _war_or_404(db)
+    rows = db.execute(
+        select(ClanWarRoomRead).where(
+            ClanWarRoomRead.war_id == war.id, ClanWarRoomRead.user_id == user.id, ClanWarRoomRead.revoked_at.is_(None),
+            ClanWarRoomRead.date >= _today() - timedelta(days=1),
+        )
+    ).scalars().all()
+    for row in rows:
+        row.revoked_at = datetime.now(tz=timezone.utc)
+        _change_day(db, war, user.id, row.date, -1)
+    db.commit()
+    return state(db, user)
 
 
 def in_circle(db: Session, user_id: uuid.UUID, war: ClanWar) -> bool:
@@ -215,7 +383,10 @@ def lock_days(db: Session, war: ClanWar | None = None, today: date | None = None
         return 0
     members = _members(db, war)
     by_team = _team_rows(members)
-    reads = _reads(db, [m.user_id for m, _, _ in members], war)
+    ids = [m.user_id for m, _, _ in members if m.team in (0, 1)]
+    for d in days:
+        _count_room(db, war, d, ids)
+    reads = _reads(db, [m.user_id for m, _, _ in members], war, today)
     n = 0
     for d in days:
         for t in (0, 1):
@@ -392,6 +563,14 @@ def state(db: Session, viewer: User | None, *, unmasked: bool = False) -> dict:
                     or 0
                 )
         out["me"]["minutes"] = int(row or 0)
+        # «засчитано из читального зала»: last night's chair counted at 00:00, with «Я не читал(а)» beside it
+        room = db.execute(
+            select(ClanWarRoomRead.date, ClanWarRoomRead.minutes).where(
+                ClanWarRoomRead.war_id == war.id, ClanWarRoomRead.user_id == me.user_id,
+                ClanWarRoomRead.revoked_at.is_(None), ClanWarRoomRead.date == today - timedelta(days=1),
+            )
+        ).first()
+        out["me"]["room_read"] = {"date": room[0].isoformat(), "minutes": int(room[1])} if room else None
     if phase == "done":
         # the fullest library wins (books against the places on its shelves)
         fill = [x["fill"] for x in out["teams"]]

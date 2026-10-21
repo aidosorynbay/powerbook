@@ -53,6 +53,12 @@ def war_read(body: ReadIn, db: Session = Depends(get_db), user=Depends(get_curre
     return clan_war.log_read(db, user, body.minutes, body.day)
 
 
+@router.post("/not-read")
+def war_not_read(db: Session = Depends(get_db), user=Depends(get_current_user)) -> dict:
+    """«Я не читал(а)»: last night's day counted from the reading room at 00:00 is taken back."""
+    return clan_war.not_read(db, user)
+
+
 @router.get("/chat")
 def war_chat(db: Session = Depends(get_db), user=Depends(get_current_user)) -> dict:
     """The team's own room: only its members see it."""

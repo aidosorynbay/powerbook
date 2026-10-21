@@ -217,3 +217,94 @@ def test_after_midnight_a_circle_reader_is_asked_which_day(env, monkeypatch):
     assert row.date == date(2026, 10, 17) and row.minutes == 45  # the circle has it
     assert body["me"]["minutes_yesterday"] == 45 and body["me"]["today"] is False
 
+
+
+def _at(day, hh, mm):
+    from datetime import timezone
+
+    return datetime(2026, 10, day, hh, mm, tzinfo=ROUND_TZ).astimezone(timezone.utc)
+
+
+def _split_on_17th(env, monkeypatch):
+    db, c, admin, readers, rnd = env
+    monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 17))
+    for u in readers:
+        c.post("/api/war/join", headers=h(u))
+    # joined before the start (the real clock would make them join today)
+    from app.models.clan_war import ClanWarMember
+
+    for m in db.query(ClanWarMember):
+        m.created_at = _at(16, 12, 0)
+    db.commit()
+    body = c.post("/api/war/split", headers=h(admin)).json()
+    team_of = {m["display_name"]: t["key"] for t in body["teams"] for m in t["members"]}
+    return [u for u in readers if team_of[u.display_name] == "lighthouse"]
+
+
+def _sit(db, u, rnd, *, begun, **kw):
+    from app.models.reading_room import ReadingRoomSession
+
+    s = ReadingRoomSession(
+        user_id=u.id, hall="round", round_id=rnd.id, seat=0, book_title="Три товарища",
+        status=kw.pop("status", "reading"), accumulated_seconds=kw.pop("accumulated_seconds", 0),
+        run_started_at=kw.pop("run_started_at", begun), last_seen_at=kw.pop("last_seen_at", begun),
+        created_at=begun, **kw,
+    )
+    db.add(s)
+    db.commit()
+    return s
+
+
+def test_still_in_the_reading_room_at_midnight_counts_and_i_did_not_read_takes_it_back(env, monkeypatch):
+    """Founder 2026-10-22: 23:59, 40 minutes in the chair, nothing saved — the war's 00:00 counts it anyway."""
+    db, c, admin, readers, rnd = env
+    light = _split_on_17th(env, monkeypatch)
+    me = light[0]
+    # in the chair since 23:20, the page alive until the very end of the day
+    _sit(db, me, rnd, begun=_at(17, 23, 20), last_seen_at=_at(17, 23, 59))
+    # the other one sat for 20 minutes only: not a day
+    _sit(db, light[1], rnd, begun=_at(17, 23, 40), last_seen_at=_at(17, 23, 59))
+    monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 18))
+    body = c.get("/api/war", headers=h(me)).json()
+    t = {x["key"]: x for x in body["teams"]}
+    assert t["lighthouse"]["days"][0]["hits"] == 1
+    assert body["me"]["hits"] == 1 and body["me"]["room_read"] == {"date": "2026-10-17", "minutes": 40}
+    # «Я не читал(а)»: the point leaves the locked day
+    body = c.post("/api/war/not-read", headers=h(me)).json()
+    t = {x["key"]: x for x in body["teams"]}
+    assert t["lighthouse"]["days"][0]["hits"] == 0
+    assert body["me"]["hits"] == 0 and body["me"]["room_read"] is None
+
+
+def test_room_minutes_top_up_what_was_logged_and_undo_in_the_room_takes_the_day_back(env, monkeypatch):
+    from app.services.reading_room import ReadingRoomService
+
+    db, c, admin, readers, rnd = env
+    light = _split_on_17th(env, monkeypatch)
+    me = light[0]
+    # 20 minutes logged in the evening, then the room from 23:45, got up at 00:30 — the sitting went to the 17th's
+    # circle log after midnight, too late for the war's own count
+    db.add(ReadingLog(round_id=rnd.id, user_id=me.id, date=date(2026, 10, 17), minutes=20, score=0, created_at=_at(17, 20, 0)))
+    s = _sit(
+        db, me, rnd, begun=_at(17, 23, 45), status="ended", accumulated_seconds=45 * 60, run_started_at=None,
+        last_seen_at=_at(18, 0, 30), ended_at=_at(18, 0, 30),
+        credited_minutes=45, credited_round_id=rnd.id, credited_date=date(2026, 10, 17),
+    )
+    monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 18))
+    t = {x["key"]: x for x in c.get("/api/war", headers=h(me)).json()["teams"]}
+    assert t["lighthouse"]["days"][0]["hits"] == 1  # 20 logged + 15 in the room before 00:00
+    # «Отменить» in the room: they were not reading, and the war forgets the day too
+    ReadingRoomService(db).undo(session_id=s.id, user=me)
+    body = c.get("/api/war", headers=h(me)).json()
+    t = {x["key"]: x for x in body["teams"]}
+    assert t["lighthouse"]["days"][0]["hits"] == 0 and body["me"]["hits"] == 0
+
+
+def test_a_silent_page_before_midnight_is_not_counted(env, monkeypatch):
+    db, c, admin, readers, rnd = env
+    light = _split_on_17th(env, monkeypatch)
+    # sat down at 23:00, page went quiet at 23:10 (locked phone) and never answered: 10 minutes only
+    _sit(db, light[0], rnd, begun=_at(17, 23, 0), last_seen_at=_at(17, 23, 10))
+    monkeypatch.setattr(clan_war, "_today", lambda: date(2026, 10, 18))
+    t = {x["key"]: x for x in c.get("/api/war", headers=h(light[0])).json()["teams"]}
+    assert t["lighthouse"]["days"][0]["hits"] == 0
