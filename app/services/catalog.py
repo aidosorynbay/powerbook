@@ -300,7 +300,10 @@ def _build(db: Session) -> CatalogIndex:
         .order_by(ReadingLog.date.asc())
     ).all()
     for account, comment, day in rows:
-        clean = covers.clean_title(comment or "")
+        # «Бегущий за ветром (The kite runner - ағылшыншасы мэйк мор сэнс)»: an aside the whole does not survive
+        # cleaning with still names its book. Dropped here it stayed on its reader's shelf yet out of the library, so
+        # the book's card said it was not theirs and «Прочитал(а)» could not put it back (the founder, 2026-10-22).
+        clean = covers.clean_title(comment or "") or covers.clean_title(covers._ASIDE.sub("", comment or ""))
         if not clean:
             continue
         _, author, _ = _split_comment(comment)

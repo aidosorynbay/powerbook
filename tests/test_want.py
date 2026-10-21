@@ -100,3 +100,17 @@ def test_a_book_taken_off_the_list_is_gone_and_others_cannot_take_it(env):
     assert c.delete(f"/api/library/want/{want_id}", headers=other).status_code == 404
     assert c.delete(f"/api/library/want/{want_id}", headers=h).status_code == 200
     assert c.get("/api/library/want", headers=h).json() == []
+
+
+def test_a_circle_title_with_an_aside_is_the_readers_book_on_its_card(env):
+    """«Бегущий за ветром (The kite runner - ағылшыншасы мэйк мор сэнс)»: on the reader's shelf and theirs in the
+    library too, so its card says so and «Прочитал(а)» has nothing left to do."""
+    c, h = env.client, env.h
+    rnd = env.db.query(Round).one()
+    env.db.add(ReadingLog(round_id=rnd.id, user_id=env.me.id, date=date(2026, 9, 5), minutes=40, score=1,
+                          comment="Бегущий за ветром (The kite runner - ағылшыншасы мэйк мор сэнс)", book_finished=True))
+    env.db.commit()
+    catalog.invalidate()
+    work = catalog.index(env.db).find(catalog.work_key("Бегущий за ветром"))
+    assert work is not None and env.me.id in work.holders
+    assert c.get(f"/api/books/work/{work.key}", headers=h).json()["my_volume_key"] is not None
