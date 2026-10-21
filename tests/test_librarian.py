@@ -139,10 +139,7 @@ def test_few_books_known_no_picks_yet(env):
     got = c.get("/api/reading/picks", headers=oh).json()
     assert got["has_taste"] is False and got["marks_missing"] == 3
     assert c.post("/api/reading/picks", json={"lang": "ru"}, headers=oh).json()["detail"] == "nothing_to_go_on"
-    # three books read but no mark at all: still nothing — one mark is the least to go on
-    assert c.get("/api/reading/picks", headers=env.h).json()["has_taste"] is False
-    env.deepseek([])
-    _mark(env, "Обломов", 6)
+    # three books read and none marked: enough to go on
     assert c.get("/api/reading/picks", headers=env.h).json()["has_taste"] is True
 
 
@@ -165,7 +162,9 @@ def test_picks_come_only_from_the_library_say_why_and_name_a_person(env):
     # read books are never candidates; what kin loved comes first, and carries the person
     assert not {"Три товарища", "Обломов", "Маленький принц"} & set(titles)
     assert titles[0] == "Триумфальная арка"
-    assert sent[0]["loved_by"] == [{"name": "Dana", "mark": 10, "also_loved_your": {"title": "Три товарища", "their_mark": 9}}]
+    assert sent[0]["loved_by"] == [
+        {"name": "Dana", "gender": "female", "mark": 10, "also_loved_your": {"title": "Три товарища", "their_mark": 9}}
+    ]
     assert {"title": "Три товарища", "author": None, "mark": 9, "their_words": "про дружбу"} in body["reader"]["marks"]
     assert "_known" not in body["reader"]
 

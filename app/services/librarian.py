@@ -96,8 +96,11 @@ _SYSTEM = (
     "reason is a person: when a candidate has `loved_by` (club members who marked it high, and the book of the "
     "reader's they also loved), lead with that person by name («Айгерим тоже поставила 9 «Трём товарищам» — а этой "
     "книге 10»); otherwise name the reader's own books («you gave 9 to …», «you named … among your favourites»). Put "
-    "book titles in «». Never invent plot details, awards or facts you are not sure of. Also write one short line "
-    "that sums up their taste as you see it. Write everything in {lang}, plainly, no flattery."
+    "book titles in «». Never invent plot details, awards or facts you are not sure of. Speak of books and people, "
+    "never of «topics», «themes in your profile», data or how you know. Also write one short sentence (at most 20 "
+    "words) that sums up their taste as you see it. Write everything in {lang}, plainly, no flattery. Address the reader "
+    "politely and the same way every time (in Russian always «вы», in Kazakh always «сіз»); speak of a club member by "
+    "their `gender` (поставила / поставил), and when it is unknown, without gendered words."
 )
 
 _SCHEMA = {
@@ -227,7 +230,10 @@ class _Reader:
             if work is None or person in mine_people:
                 continue
             self.loved.setdefault(work.key, []).append((account, rating))
-        self.names = {u.id: u.display_name for u in db.execute(select(User).where(User.is_claimable.is_(False))).scalars()}
+        self.names = {
+            u.id: (u.display_name, u.gender.value if u.gender else None)
+            for u in db.execute(select(User).where(User.is_claimable.is_(False))).scalars()
+        }
         my_loved = {k: r for k, r in self.marks if r.rating >= LOVED}
         # account -> a book both loved, with both marks
         self.shared_love: dict[uuid.UUID, tuple[str, int, int]] = {}
@@ -245,14 +251,12 @@ class _Reader:
         self.topics = [t for t, _ in topics.most_common(4)]
 
     def has_taste(self) -> bool:
-        """Enough to go on: three books known, one of them marked or named a favourite."""
-        known = len(self.marks) + len(self.recent) + len(self.favourites)
-        return bool(self.marks or self.favourites) and known >= MIN_KNOWN
+        """Enough to go on: three books known — marked, finished or named a favourite (the dry run of 21.10: most
+        readers finish books in the circles and mark none, and fifteen finished books say plenty)."""
+        return len(self.marks) + len(self.recent) + len(self.favourites) >= MIN_KNOWN
 
     def marks_missing(self) -> int:
-        if self.has_taste():
-            return 0
-        return max(1, MIN_KNOWN - len(self.marks) - len(self.recent) - len(self.favourites))
+        return max(0, MIN_KNOWN - len(self.marks) - len(self.recent) - len(self.favourites))
 
     def known_titles(self) -> list[str]:
         """Every book the reader's taste names: a «why» may quote these and the candidates, nothing else."""
@@ -279,10 +283,11 @@ class _Reader:
         out = []
         fans = sorted(self.loved.get(key, []), key=lambda ar: (ar[0] not in self.shared_love, -ar[1]))
         for account, rating in fans:
-            name = self.names.get(account)
+            name, gender = self.names.get(account, (None, None))
             if not name:
                 continue
-            entry = {"name": name, "mark": rating}
+            # their gender, so «поставила» / «поставил» is right
+            entry = {"name": name, "gender": gender, "mark": rating}
             if account in self.shared_love:
                 title, _, theirs = self.shared_love[account]
                 entry["also_loved_your"] = {"title": title, "their_mark": theirs}
