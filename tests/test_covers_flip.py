@@ -4,7 +4,7 @@ import urllib.error
 import pytest
 
 from app.models.book_cover import BookCover
-from app.services import covers
+from app.services import covers, covers_ai
 
 _ITEM = (
     '<div class="new-product "><a href="/catalog?prod={id}" class="product"><div class="top"><div class="product-image">'
@@ -81,3 +81,19 @@ def test_google_down_and_nothing_elsewhere_is_tried_again_tomorrow(google_down, 
     monkeypatch.setattr(covers, "_search_flip", lambda q: [])
     with pytest.raises(urllib.error.HTTPError):
         _look_up("Гауһар тас")
+
+
+def test_flip_only_asks_no_one_else(google_down, monkeypatch):
+    """The Flip-only sweep spends no Google quota and asks no Wikipedia or Claude."""
+    asked = []
+    monkeypatch.setattr(covers, "_search", lambda q: asked.append("google") or [])
+    monkeypatch.setattr(covers, "_search_open_library", lambda q: asked.append("openlibrary") or [])
+    monkeypatch.setattr(covers, "_wikidata_cover", lambda q: asked.append("wikidata") or None)
+    monkeypatch.setattr(covers_ai, "find_cover", lambda q, a: asked.append("claude") or None)
+    book = covers._Candidate(volume_id="4306625", titles=["Гауһар тас"], creators=["Дулат Исабеков"],
+                             has_thumbnail=True, source="flip")
+    monkeypatch.setattr(covers, "_search_flip", lambda q: [book])
+    row = BookCover(key=covers.cover_key("Гауһар тас"), query="Гауһар тас", status="working", attempts=0)
+    covers._look_up(row, None, only_flip=True)
+    assert row.status == "found" and row.source == "flip"
+    assert asked == []

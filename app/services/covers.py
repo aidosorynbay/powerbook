@@ -715,7 +715,7 @@ _MAX_IMAGE_TRIES = 8
 _LOOKUP_SECONDS = 40
 
 
-def _look_up(row: BookCover, author_hint: str | None) -> None:
+def _look_up(row: BookCover, author_hint: str | None, *, only_flip: bool = False) -> None:
     query = row.query
     core = _VOLUME.sub("", query).strip(_TRIM) or query
     script = _script(core)
@@ -750,6 +750,8 @@ def _look_up(row: BookCover, author_hint: str | None) -> None:
         searches.append((core, _search_open_library))
     # Flip.kz sells the Russian and Kazakh editions of foreign books too, so it is asked for every title.
     searches.append((core, _search_flip))
+    if only_flip:
+        searches = [(core, _search_flip)]
 
     started = time.monotonic()
     seen: set[tuple[str, str]] = set()
@@ -787,7 +789,7 @@ def _look_up(row: BookCover, author_hint: str | None) -> None:
     # shows one; failing that, a small cover still beats a painted stand-in
     # on the shelf, and only looks soft when held right up to the camera.
     try:
-        found = _wikidata_cover(core)
+        found = None if only_flip else _wikidata_cover(core)
     except Exception:
         found = None
     if found:
@@ -802,7 +804,7 @@ def _look_up(row: BookCover, author_hint: str | None) -> None:
     # Nobody's catalogue has it: what the founder did by hand — search the web, take the shop's picture.
     from app.services import covers_ai
 
-    found_ai = covers_ai.find_cover(core, author_hint)
+    found_ai = None if only_flip else covers_ai.find_cover(core, author_hint)
     if found_ai:
         picture, ai_author, images = found_ai
         candidate = _Candidate(volume_id=picture[:40], titles=[core], creators=[], has_thumbnail=True, source="claude")
@@ -1072,16 +1074,45 @@ def recheck_disputed(db: Session, limit: int = _RECHECK_PER_TICK) -> int:
     return asked
 
 
+# ---------- Flip.kz sweep ----------
+
+
+def flip_sweep(db: Session) -> tuple[int, int]:
+    """One pass over every title on a shelf with no picture yet, asking Flip.kz
+    only — no daily cap, and no Google quota spent. Returns (found, asked)."""
+    found = asked = 0
+    for key, (title, author) in _wanted(db).items():
+        row = db.get(BookCover, key)
+        if row is not None and row.image:
+            continue
+        if row is None:
+            row = BookCover(key=key, query=title, status="working", attempts=0)
+            db.add(row)
+        try:
+            _look_up(row, author, only_flip=True)
+        except Exception:
+            row.status = "error"
+            db.rollback()
+            row = db.get(BookCover, key) or row
+        row.attempts += 1
+        row.checked_at = datetime.now(timezone.utc)
+        db.commit()
+        asked += 1
+        found += bool(row.image)
+        if asked % 20 == 0:
+            print(f"  {asked} asked, {found} with a picture", flush=True)
+    return found, asked
+
+
 # ---------- backfill ----------
 
 
-def _backfill(retry_misses: bool = False, prune: bool = False) -> None:
-    from app.db.session import get_session_factory
+def _wanted(db: Session) -> dict[str, tuple[str, str | None]]:
+    """Every title on a shelf now, cleaned: key → (title, author the reader gave)."""
     from app.models.library import LibraryBook
     from app.models.manual_book import ManualBook
     from app.models.round import ReadingLog
 
-    db = get_session_factory()()
     wanted: dict[str, tuple[str, str | None]] = {}
     # Titles only, never the rest of a comment; private comments wait until
     # their owner opens the shelf themselves.
@@ -1103,6 +1134,14 @@ def _backfill(retry_misses: bool = False, prune: bool = False) -> None:
         title = clean_title(title_raw.replace("_", " "))
         if title:
             wanted.setdefault(cover_key(title), (title, author))
+    return wanted
+
+
+def _backfill(retry_misses: bool = False, prune: bool = False) -> None:
+    from app.db.session import get_session_factory
+
+    db = get_session_factory()()
+    wanted = _wanted(db)
 
     if prune:
         # Rows keyed by titles as they were cleaned before the cleaning got
@@ -1151,5 +1190,12 @@ def _backfill(retry_misses: bool = False, prune: bool = False) -> None:
 if __name__ == "__main__":
     if sys.argv[1:2] == ["backfill"]:
         _backfill(retry_misses="--retry-misses" in sys.argv, prune="--prune" in sys.argv)
+    elif sys.argv[1:2] == ["flip-sweep"]:
+        from app.db.session import get_session_factory
+
+        db = get_session_factory()()
+        found, asked = flip_sweep(db)
+        db.close()
+        print(f"flip sweep: {asked} titles asked, {found} with a picture", flush=True)
     else:
         print(__doc__)
