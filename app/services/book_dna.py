@@ -7,6 +7,7 @@ so the traits can be counted and compared. A book the AI does not know well enou
 the other signals alone.
 
     python -m app.services.book_dna backfill [limit]
+    python -m app.services.book_dna retry-unknown [limit]   # the books it did not know, asked again
 """
 from __future__ import annotations
 
@@ -53,8 +54,10 @@ _SYSTEM = (
     "You describe books for a reading club's librarian. For each book you get its id, title, author, year and maybe a "
     "description. Say what it is like to read, using ONLY these words:\n{vocab}\n"
     "mood: up to 3, the strongest first; themes: up to 5, the most central first; style: up to 2; the others exactly "
-    "one word. `essence`: one plain English sentence (at most 18 words) on what the book is. Set `known` to false when "
-    "you do not know this book and the description is not enough to tell — never guess a book you do not know. "
+    "one word. `essence`: one plain English sentence (at most 18 words) on what the book is. Kazakh and local books "
+    "you may not know: then go by the description and `readers_say` (what the club's readers wrote about it); when "
+    "they say enough of what it is like, describe it from them. Set `known` to false only when you do not know the "
+    "book and neither the description nor the readers say enough — never guess a book you do not know. "
     "Titles may be Russian or Kazakh translations of world books; recognise them."
 )
 
@@ -134,7 +137,7 @@ def of_works(db: Session) -> dict[str, BookDna]:
     return out
 
 
-def _input(work: catalog.Work, fact) -> dict:
+def _input(work: catalog.Work, fact, said: list[str]) -> dict:
     about = books_service._localized(fact.about if fact else None, "en")
     text = about[1].get("text") if about else None
     return {
@@ -142,7 +145,22 @@ def _input(work: catalog.Work, fact) -> dict:
         "author": work.author,
         "year": fact.year if fact else None,
         "description": " ".join(text.split())[:500] if text else None,
+        # what the club's readers wrote about it: for a Kazakh or local book no catalogue describes, often all there is
+        "readers_say": said or None,
     }
+
+
+def _readers_say(db: Session, idx: catalog.CatalogIndex, keys: set[str]) -> dict[str, list[str]]:
+    """Up to three of the club's own reviews of each book, longest first, cut short."""
+    from app.models.book_review import BookReview
+
+    out: dict[str, list[str]] = {}
+    for key, text in db.execute(select(BookReview.work_key, BookReview.text).where(BookReview.text.is_not(None))).all():
+        work = idx.find(key)
+        if work is None or work.key not in keys or not (text or "").strip():
+            continue
+        out.setdefault(work.key, []).append(" ".join(text.split())[:300])
+    return {k: sorted(v, key=len, reverse=True)[:3] for k, v in out.items()}
 
 
 def tag(db: Session, limit: int = BATCH) -> int:
@@ -152,19 +170,24 @@ def tag(db: Session, limit: int = BATCH) -> int:
     idx = catalog.index(db)
     have = of_works(db)
     tried = {row.key: row for row in db.execute(select(BookDna)).scalars()}
+    # books never tried first, the most read first; a book tried before only after them
     todo = [
-        w for w in sorted(idx.works.values(), key=lambda w: -len(w.readers))
+        w for w in sorted(idx.works.values(), key=lambda w: (tried[w.key].attempts if w.key in tried else 0, -len(w.readers)))
         if w.key not in have and (tried.get(w.key) is None or tried[w.key].attempts < 3)
     ][:limit]
     if not todo:
         return 0
     facts = books_service.facts_by_work(db, idx)
+    said = _readers_say(db, idx, {w.key for w in todo})
     ids = {f"b{i + 1}": w for i, w in enumerate(todo)}
     vocab = "\n".join(f"{g}: {', '.join(words)}" for g, words in VOCAB.items())
     try:
         answer = llm.ask_json(
             system=_SYSTEM.format(vocab=vocab),
-            prompt=json.dumps({"books": [{"id": i, **_input(w, facts.get(w.key))} for i, w in ids.items()]}, ensure_ascii=False),
+            prompt=json.dumps(
+                {"books": [{"id": i, **_input(w, facts.get(w.key), said.get(w.key, []))} for i, w in ids.items()]},
+                ensure_ascii=False,
+            ),
             schema=_SCHEMA,
             effort="low",
             max_tokens=6000,
@@ -220,12 +243,17 @@ def scheduled() -> None:
             fcntl.flock(handle, fcntl.LOCK_UN)
 
 
-def _backfill(limit: int) -> None:
+def _backfill(limit: int, retry_unknown: bool = False) -> None:
     from app.db.session import get_session_factory
 
     db = get_session_factory()()
     total = 0
     try:
+        if retry_unknown:
+            # asked again, now with what the club's readers wrote about them
+            for row in db.execute(select(BookDna).where(BookDna.status.in_(("unknown", "error")))).scalars():
+                row.attempts = 0
+            db.commit()
         while total < limit:
             n = tag(db, min(BATCH, limit - total))
             if not n and not _pending(db):
@@ -245,7 +273,7 @@ def _pending(db: Session) -> bool:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 2 and sys.argv[1] == "backfill":
-        _backfill(int(sys.argv[2]) if len(sys.argv) > 2 else 5000)
+    if len(sys.argv) >= 2 and sys.argv[1] in ("backfill", "retry-unknown"):
+        _backfill(int(sys.argv[2]) if len(sys.argv) > 2 else 5000, retry_unknown=sys.argv[1] == "retry-unknown")
     else:
         print(__doc__)
