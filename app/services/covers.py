@@ -798,6 +798,17 @@ def _look_up(row: BookCover, author_hint: str | None) -> None:
         if images:
             _keep(row, match, images, keep_title=core == query, author=author())
             return
+    # Nobody's catalogue has it: what the founder did by hand — search the web, take the shop's picture.
+    from app.services import covers_ai
+
+    found_ai = covers_ai.find_cover(core, author_hint)
+    if found_ai:
+        picture, ai_author, images = found_ai
+        candidate = _Candidate(volume_id=picture[:40], titles=[core], creators=[], has_thumbnail=True, source="claude")
+        named = author() or (ai_author if ai_author and _script(ai_author) == script else None)
+        _keep(row, _Match(candidate=candidate, score=1.0, title=None, author=None), images,
+              keep_title=core == query, author=named)
+        return
     if refused is not None:
         raise refused
     if fallback:

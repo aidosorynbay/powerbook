@@ -43,7 +43,7 @@ def _client():
 def ask_json(
     *,
     system: str,
-    prompt: str,
+    prompt: str | list[dict],
     schema: dict,
     web_search: bool = False,
     effort: str = "medium",

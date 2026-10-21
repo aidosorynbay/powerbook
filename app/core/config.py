@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     # book's Goodreads/LiveLib rating and readers' verdict. Costs money per
     # book, so it stays off until switched on.
     ai_book_facts: bool = False
+    # Covers no catalogue or shop has: Claude searches the web for the book's
+    # page, the picture is fetched from it, and Claude looks at it before it
+    # goes on the shelf (app/services/covers_ai.py). Switched on by the founder
+    # 2026-10-21; a lookup costs ~$0.1–0.2, so a few a day per server process.
+    ai_covers: bool = True
+    ai_covers_daily_limit: int = 15
     # Background fetching of ratings and descriptions from the free
     # catalogues (Google Books, Open Library, Wikipedia).
     book_facts_enabled: bool = True
