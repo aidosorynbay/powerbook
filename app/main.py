@@ -193,6 +193,18 @@ async def lifespan(app: FastAPI):
         coalesce=True,
         next_run_time=datetime.now() + timedelta(seconds=45),
     )
+    # Covers still missing: asked again once a day, a bounded number, so the free Google quota is not used up.
+    from app.services import covers
+
+    scheduler.add_job(
+        covers.scheduled,
+        "interval",
+        days=1,
+        id="covers_daily",
+        max_instances=1,
+        coalesce=True,
+        next_run_time=datetime.now() + timedelta(minutes=10),
+    )
     scheduler.start()
     logger.info("Round lifecycle scheduler started")
     # The bot's «Одобрить» / «Отказать» buttons come back by its webhook.

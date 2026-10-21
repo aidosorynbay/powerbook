@@ -24,6 +24,7 @@ own «Ремарк» after the title decides it when an edition bears it out.
 """
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import html
 import json
@@ -747,8 +748,8 @@ def _look_up(row: BookCover, author_hint: str | None) -> None:
         searches += [(parts[0], _search), (parts[1], _search)]
     if _script(core) == "lat":
         searches.append((core, _search_open_library))
-    else:
-        searches.append((core, _search_flip))
+    # Flip.kz sells the Russian and Kazakh editions of foreign books too, so it is asked for every title.
+    searches.append((core, _search_flip))
 
     started = time.monotonic()
     seen: set[tuple[str, str]] = set()
@@ -935,6 +936,69 @@ def wants_lookup(row: BookCover | None) -> bool:
     if row.status == "none":
         return checked < now - timedelta(days=60)
     return False
+
+
+# ---------- every day, a few more ----------
+
+# Google's free quota is per day, and readers' own shelf lookups share it:
+# a daily pass asks for a bounded number of the titles still without a
+# picture, oldest first. The rest wait for tomorrow.
+_DAILY_LOOKUPS = 40
+_DAILY_LOCK = Path(settings.library_storage_dir).parent / ".covers-daily.lock"
+_daily_lock = threading.Lock()
+
+
+def due_again(db: Session, limit: int = _DAILY_LOOKUPS) -> dict[str, tuple[str, str | None]]:
+    """Titles with no picture yet whose last try was over a day ago, oldest
+    first. Each is set back to pending, so fill() asks again."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=20)
+    rows = db.execute(
+        select(BookCover)
+        .where(
+            or_(
+                BookCover.status == "none",
+                BookCover.status == "error",
+                and_(BookCover.status == "found", BookCover.image.is_(None)),
+            ),
+            or_(BookCover.checked_at.is_(None), BookCover.checked_at < cutoff),
+        )
+        .order_by(BookCover.checked_at.asc().nulls_first())
+        .limit(limit)
+    ).scalars().all()
+    for row in rows:
+        row.status = "pending"
+    db.commit()
+    return {row.key: (row.query, row.author) for row in rows}
+
+
+def scheduled() -> None:
+    """The daily tick: one pass at a time across the workers, and an error
+    never reaches the scheduler."""
+    from app.db.session import get_session_factory
+
+    if not _daily_lock.acquire(blocking=False):
+        return
+    try:
+        _DAILY_LOCK.parent.mkdir(parents=True, exist_ok=True)
+        with open(_DAILY_LOCK, "w") as handle:
+            try:
+                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                return
+            db = get_session_factory()()
+            try:
+                wanted = due_again(db)
+                if wanted:
+                    found, errors = fill(db, wanted, limit=len(wanted))
+                    logger.info("daily cover pass: %d asked, %d found, %d errors", len(wanted), found, errors)
+            except Exception:
+                logger.exception("daily cover pass failed")
+                db.rollback()
+            finally:
+                db.close()
+                fcntl.flock(handle, fcntl.LOCK_UN)
+    finally:
+        _daily_lock.release()
 
 
 # ---------- asking again who wrote it ----------
