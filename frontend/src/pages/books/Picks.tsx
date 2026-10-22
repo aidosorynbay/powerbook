@@ -373,6 +373,8 @@ export function Picks({ onOpen, onWantChanged, askable = false, initialWish = nu
           {failed && !working && (
             <p className={styles.note}>{failed === 'ai_daily_limit' ? t('picks.limit') : t('picks.error')}</p>
           )}
+          {/* above the books, so the eye lands on what they stand on before it meets them */}
+          {data.status === 'done' && !working && data.basis && data.picks.length > 0 && <Basis basis={data.basis} wish={data.wish} />}
           {data.picks.length > 0 && (
             <ol className={`${styles.list} ${working ? styles.dim : ''}`}>
               {data.picks.map((p) =>
@@ -436,7 +438,6 @@ export function Picks({ onOpen, onWantChanged, askable = false, initialWish = nu
               )}
             </ol>
           )}
-          {data.status === 'done' && !working && data.basis && <Basis basis={data.basis} wish={data.wish} />}
           {data.status === 'done' && !working && (
             <div className={styles.foot}>
               <span className={styles.privacy}>{t('picks.privacy')}</span>

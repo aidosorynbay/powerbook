@@ -101,7 +101,10 @@ export async function apiFetch<T>(
       const error = await parseErrorMessage(res);
       return { data: null, error };
     }
-    const data = await res.json();
+    // A 204 (or any answer with no body) is a success with nothing to read: «Не моё», deleting a mark. Reading JSON from
+    // it threw, so these looked failed to the page though the server had done them (the founder, 2026-10-22).
+    const text = await res.text();
+    const data = text ? JSON.parse(text) : null;
     return { data, error: null };
   } catch {
     return { data: null, error: 'error.network' };

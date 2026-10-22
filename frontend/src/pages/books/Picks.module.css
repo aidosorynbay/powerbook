@@ -254,12 +254,13 @@
 
 /* «На чём основана подборка» */
 .basis {
-  margin: 14px 0 0;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border-primary);
+  margin: 0 0 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--color-border-accent);
   border-radius: var(--radius-lg);
+  background: var(--color-accent-primary-muted);
   color: var(--color-text-secondary);
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
