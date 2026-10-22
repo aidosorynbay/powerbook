@@ -22,6 +22,7 @@ from app.models.enums import Gender, RoundParticipantStatus, RoundStatus
 from app.models.group import Group
 from app.models.reading_room import ReadingRoomSession
 from app.models.round import ReadingLog, ReadingLogBook, Round, RoundParticipant
+from app.models.solo import SoloDay, SoloDayBook
 from app.models.sticker_use import StickerUse
 from app.models.user import User
 from app.services import day_share
@@ -185,15 +186,16 @@ def test_every_sticker_taken_is_counted_for_the_month(env):
     assert admin_stickers.build(env.db, 2026, 11)["total"] == 0
 
 
-def test_sharing_is_for_the_circle_and_its_own_days(env):
-    assert _share(env, env.dana).status_code == 403
+def test_sharing_is_for_the_months_own_days(env):
+    # a reader outside the circle shares a day of their own month too (founder 2026-10-23)
+    assert _share(env, env.dana).status_code == 200
     assert _share(env, env.aigerim, day=date(2026, 11, 1)).status_code == 409
     assert _share(env, env.aigerim, channel="fax").status_code == 422
     assert _share(env, env.aigerim).status_code == 200
     assert _share(env, env.aigerim).status_code == 200
     assert _share(env, env.aigerim, channel="telegram").status_code == 200
     count = env.db.execute(select(func.count()).select_from(DayShare)).scalar_one()
-    assert count == 2  # once per day and channel
+    assert count == 3  # once per reader, day and channel
 
 
 def test_whoever_signs_up_from_a_shared_link_is_remembered(env):
@@ -285,3 +287,29 @@ def test_a_reader_sees_who_came_by_their_link_and_what_they_read(env):
     empty = env.client.get("/api/share/invites", headers=env.h(env.dana)).json()
     assert empty["guests"] == [] and empty["direct"]["people"] == 0
     assert env.client.get("/api/share/invites").status_code == 401
+
+
+def test_a_reader_outside_the_circle_shares_her_own_month(env):
+    """The founder (2026-10-23): a reader not in the circle read two hours in the reading room, and her sticker said
+    «0 минут сегодня · 0 дней в октябре». Her room minutes are in her own month (solo_days): the card reads them."""
+    def own(day, minutes, title):
+        row = SoloDay(user_id=env.dana.id, date=day, minutes=minutes)
+        env.db.add(row)
+        env.db.flush()
+        env.db.add(SoloDayBook(solo_day_id=row.id, user_id=env.dana.id, title=title, title_norm=title.lower(), minutes=minutes))
+        env.db.commit()
+
+    own(date(2026, 10, 4), 40, "Дюна")
+    own(OCT5, 120, "Маленький принц")
+
+    mine = env.client.get("/api/share/day", params={"day": "2026-10-05"}, headers=env.h(env.dana)).json()
+    assert (mine["minutes"], mine["goal_days"], mine["streak"], mine["total_minutes"]) == (120, 2, 2, 160)
+    # her month is the whole of October, not the circle's window
+    assert (mine["first_day"], mine["last_day"]) == ("2026-10-01", "2026-10-31")
+    assert mine["book"] == "Маленький принц"
+    assert [b["title"] for b in mine["month_books"]] == ["Дюна", "Маленький принц"]
+
+    assert _share(env, env.dana, channel="sticker", template="page", action="copy").status_code == 200
+    public = env.client.get("/api/share/r/dana").json()
+    assert (public["minutes"], public["goal_days"]) == (120, 2)
+    assert "Маленький" not in str(public)

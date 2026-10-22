@@ -11,6 +11,7 @@ minutes only: never what was read, never a comment.
 """
 from __future__ import annotations
 
+import calendar
 import uuid
 from datetime import date, datetime, timedelta
 
@@ -25,6 +26,7 @@ from app.models.enums import RoundParticipantStatus
 from app.models.group import Group
 from app.models.reading_room import ReadingRoomSession
 from app.models.round import ReadingLog, ReadingLogBook, Round, RoundParticipant
+from app.models.solo import SoloDay, SoloDayBook
 from app.models.sticker_use import StickerUse
 from app.models.user import User
 from app.schemas.share import CardDayOut, DayCardOut, MonthBookOut, MyDayCardOut
@@ -40,16 +42,47 @@ def _not_found(detail: str = "not_shared") -> HTTPException:
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
 
 
-def _card(db: Session, *, user: User, rnd: Round, day: date) -> dict:
-    """The round as the share shows it, up to `day` (kept inside the round)."""
-    first, last = rnd.first_day_date, rnd.last_day_date
-    day = min(max(day, first), last)
+def _in_round(db: Session, *, user: User, rnd: Round) -> bool:
+    return db.execute(
+        select(RoundParticipant.id).where(
+            RoundParticipant.round_id == rnd.id,
+            RoundParticipant.user_id == user.id,
+            RoundParticipant.status.in_(_IN_ROUND),
+        )
+    ).first() is not None
+
+
+def _window(db: Session, *, user: User, rnd: Round) -> tuple[date, date]:
+    """The days the card covers: the circle's for its readers, the whole month for a reader outside it, whose
+    month is their own (solo.py) and does not start with the circle."""
+    if _in_round(db, user=user, rnd=rnd):
+        return rnd.first_day_date, rnd.last_day_date
+    return date(rnd.year, rnd.month, 1), date(rnd.year, rnd.month, calendar.monthrange(rnd.year, rnd.month)[1])
+
+
+def _logged(db: Session, *, user: User, rnd: Round, first: date, last: date) -> dict[date, tuple[int, int]]:
+    """The reader's minutes and «30 есть» by day: the circle's days from reading_logs, every other day from their own
+    month (solo_days) — the reading room's minutes of a reader outside the circle go there (founder 2026-10-23:
+    a reader outside the circle read two hours in the room and her sticker said 0)."""
     rows = db.execute(
         select(ReadingLog.date, ReadingLog.minutes, ReadingLog.score).where(
             ReadingLog.round_id == rnd.id, ReadingLog.user_id == user.id
         )
     ).all()
     logged = {d: (int(m), int(s)) for d, m, s in rows}
+    for d, m in db.execute(
+        select(SoloDay.date, SoloDay.minutes).where(SoloDay.user_id == user.id, SoloDay.date >= first, SoloDay.date <= last)
+    ).all():
+        if d not in logged:
+            logged[d] = (int(m), int(int(m) >= 30))
+    return logged
+
+
+def _card(db: Session, *, user: User, rnd: Round, day: date) -> dict:
+    """The month as the share shows it, up to `day` (kept inside the card's window, see _window)."""
+    first, last = _window(db, user=user, rnd=rnd)
+    day = min(max(day, first), last)
+    logged = _logged(db, user=user, rnd=rnd, first=first, last=last)
 
     days: list[CardDayOut] = []
     d = first
@@ -134,13 +167,24 @@ def _book(db: Session, *, user: User, rnd: Round, day: date) -> str | None:
         .order_by(ReadingRoomSession.credited_date.desc(), ReadingRoomSession.credited_minutes.desc())
         .limit(1)
     ).first()
+    # a day of the reader's own month, outside the circle (the room's minutes, the dial)
+    own = db.execute(
+        select(SoloDay.date, SoloDayBook.minutes, SoloDayBook.title)
+        .join(SoloDayBook, SoloDayBook.solo_day_id == SoloDay.id)
+        .where(
+            SoloDay.user_id == user.id, SoloDay.date >= date(rnd.year, rnd.month, 1), SoloDay.date <= day,
+            SoloDayBook.minutes > 0,
+        )
+        .order_by(SoloDay.date.desc(), SoloDayBook.minutes.desc(), SoloDayBook.position)
+        .limit(1)
+    ).first()
     from app.services import book_face, catalog
 
     # The book finished that day, even if the reading room had more minutes.
     if logged is not None and logged[0] == day and logged[3] and logged[2].strip():
         title = logged[2]
     else:
-        found = [row for row in (logged, sat) if row is not None and row[2].strip()]
+        found = [row for row in (logged, sat, own) if row is not None and row[2].strip()]
         if not found:
             return None
         title = max(found, key=lambda row: (row[0], row[1]))[2]
@@ -177,11 +221,18 @@ def _month_books(db: Session, *, user: User, rnd: Round, day: date, limit: int =
             ReadingRoomSession.credited_minutes > 0,
         )
     ).all()
+    # the reader's own month: the room's minutes outside the circle go to solo_day_books, not to sittings credited
+    # to the round, so nothing here is counted twice
+    own = db.execute(
+        select(SoloDay.date, SoloDayBook.title, SoloDayBook.minutes)
+        .join(SoloDayBook, SoloDayBook.solo_day_id == SoloDay.id)
+        .where(SoloDay.user_id == user.id, SoloDay.date >= date(rnd.year, rnd.month, 1), SoloDay.date <= day)
+    ).all()
     from app.services import book_face, catalog
 
     idx = catalog.index(db)
     books: dict[str, dict] = {}
-    for when, title, minutes in [*logged, *sat]:
+    for when, title, minutes in [*logged, *sat, *own]:
         if not title or not title.strip() or when is None:
             continue
         name = book_face.spelling(idx, title.strip()) or title.strip()
@@ -225,17 +276,10 @@ def share(
     ink: str | None = None,
 ) -> None:
     rnd = _round(db, round_id)
-    if not rnd.covers(day):
+    # Any reader shares their day, in the circle or not (founder 2026-10-23): outside it, the day is their own month's.
+    first, last = _window(db, user=user, rnd=rnd)
+    if not first <= day <= last:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Day is outside this round")
-    in_round = db.execute(
-        select(RoundParticipant.id).where(
-            RoundParticipant.round_id == rnd.id,
-            RoundParticipant.user_id == user.id,
-            RoundParticipant.status.in_(_IN_ROUND),
-        )
-    ).first()
-    if in_round is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a participant")
 
     # Every sticker taken is counted, not just the day's first.
     if template is not None:
@@ -285,8 +329,7 @@ def public_card(db: Session, *, username: str) -> DayCardOut:
         raise _not_found()
     # Today in the circle's timezone, or a later day the reader has already
     # logged: east of Almaty, a reader's tomorrow comes first.
-    latest = db.execute(
-        select(func.max(ReadingLog.date)).where(ReadingLog.round_id == rnd.id, ReadingLog.user_id == user.id)
-    ).scalar()
+    first, last = _window(db, user=user, rnd=rnd)
+    latest = max(_logged(db, user=user, rnd=rnd, first=first, last=last), default=None)
     day = max(_today(), latest) if latest else _today()
     return DayCardOut(**_card(db, user=user, rnd=rnd, day=day))

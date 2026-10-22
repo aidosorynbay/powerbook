@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiGet, apiPut, formatSpent, track, useI18n } from '@/shared/lib';
 import { Button } from '@/shared/ui';
 import { MinutesDial } from '@/widgets/RoundToday';
+import { ShareDay } from '@/widgets/ShareDay';
 import rt from '@/widgets/RoundToday/RoundToday.module.css';
 import styles from './DashboardPage.module.css';
 import s from './SoloMonth.module.css';
@@ -42,6 +43,8 @@ export function SoloMonth({ className = '' }: { className?: string }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // «Поделиться днём» for a reader outside the circle too (founder 2026-10-23): the sticker shows their own month
+  const [sharing, setSharing] = useState<string | null>(null);
 
   const load = useCallback(async (at?: { year: number; month: number }) => {
     const q = at ? `?year=${at.year}&month=${at.month}` : '';
@@ -194,6 +197,16 @@ export function SoloMonth({ className = '' }: { className?: string }) {
               </Button>
             </div>
             {error && <p className={s.error} role="alert">{error}</p>}
+            {day.minutes > 0 && !dirty && (
+              <button
+                type="button"
+                className={`${styles.toRoom} ${day.minutes >= GOAL ? styles.toShareLit : ''}`}
+                onClick={() => { setSharing(day.date); track('share_open', { from: 'solo' }); }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 8 5-5 5 5" /><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>
+                {t('today.share')}
+              </button>
+            )}
             <button
               type="button"
               className={styles.toRoom}
@@ -254,6 +267,7 @@ export function SoloMonth({ className = '' }: { className?: string }) {
         </div>
         <p className={s.note}>{t('solo.joinHint')}</p>
       </div>
+      {sharing && <ShareDay day={sharing} onClose={() => setSharing(null)} />}
     </>
   );
 }
