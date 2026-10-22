@@ -106,13 +106,15 @@ function Basis({ basis, wish }: { basis: PicksBasis; wish: string | null }) {
 const CHIPS = ['picks.chipLight', 'picks.chipShort', 'picks.chipKazakh', 'picks.chipClassic', 'picks.chipNonfiction'] as const;
 
 /** The reader's own ask, above the picks: a few words or a tap on a suggestion, then «Подобрать мне». */
-function Ask({ value, onChange, onAsk, busy, asked, onClear }: {
+function Ask({ value, onChange, onAsk, busy, asked, onClear, again }: {
   value: string;
   onChange: (v: string) => void;
   onAsk: (wish: string) => void;
   busy: boolean;
   asked: string | null;
   onClear: () => void;
+  /** there are picks already: the button asks for others */
+  again: boolean;
 }) {
   const { t } = useI18n();
   const submit = (e: FormEvent) => {
@@ -132,7 +134,7 @@ function Ask({ value, onChange, onAsk, busy, asked, onClear }: {
           onChange={(e) => onChange(e.target.value)}
         />
         <button type="submit" className={`${store.primary} ${styles.small}`} disabled={busy}>
-          ✦ {t('picks.ask')}
+          ✦ {t(again ? 'picks.askMore' : 'picks.ask')}
         </button>
       </div>
       <div className={styles.chips}>
@@ -178,8 +180,10 @@ export function Picks({ onOpen, onWantChanged, askable = false, initialWish = nu
   const [data, setData] = useState<PicksData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  // turned down here, to say so in its place (and take it back)
-  const [dismissed, setDismissed] = useState<Record<string, string>>({});
+  // «Не моё» just pressed: another is being picked in its place
+  const [replacing, setReplacing] = useState<Record<string, true>>({});
+  // the last book turned down, said under the list
+  const [removed, setRemoved] = useState<string | null>(null);
   const asked = useRef(false);
   const poll = useRef<number>();
   const section = useRef<HTMLElement>(null);
@@ -198,7 +202,7 @@ export function Picks({ onOpen, onWantChanged, askable = false, initialWish = nu
       const { data: next, error: failed } = await apiPost<PicksData>('/reading/picks', body, { requireAuth: true });
       if (next) {
         setData(next);
-        setDismissed({});
+        setRemoved(null);
         track('picks_start', { force, wish: ask === undefined ? 'kept' : ask ? 'own' : 'none' });
       } else setError(failed);
     },
@@ -211,7 +215,9 @@ export function Picks({ onOpen, onWantChanged, askable = false, initialWish = nu
     load();
   }, [load]);
 
-  // Writes itself: never written, or the reader's marks changed since. An ask that came with the link goes first.
+  // Writes itself only when there is nothing to show yet (never written, or it failed) or the same picks in another
+  // language are newer (translated, the books stay). A page opened again keeps its picks: «Подобрать ещё» alone changes
+  // them (the founder, 2026-10-22). An ask that came with the link goes first.
   useEffect(() => {
     if (!data || asked.current || !data.enabled || !data.ai_available || !data.has_taste) return;
     if (data.status === 'working') return;
@@ -221,7 +227,7 @@ export function Picks({ onOpen, onWantChanged, askable = false, initialWish = nu
       start(false, initialWish);
       return;
     }
-    if (data.status === null || data.stale || data.status === 'error') {
+    if (data.status === null || data.follows || data.status === 'error') {
       asked.current = true;
       start(false);
     }
@@ -270,22 +276,31 @@ export function Picks({ onOpen, onWantChanged, askable = false, initialWish = nu
     onWantChanged?.();
   };
 
+  // «Не моё»: never again, and another book takes its place at once
   const notMine = async (p: Pick) => {
     if (busy) return;
     setBusy(p.book.key);
-    const { error: failed } = await apiPost(
-      '/reading/picks/dismiss',
-      { work_key: p.book.key, title: p.book.title, author: p.book.author },
+    setReplacing((r) => ({ ...r, [p.book.key]: true }));
+    setRemoved(null);
+    const { data: next, error: failed } = await apiPost<PicksData>(
+      '/reading/picks/replace',
+      { lang: locale, work_key: p.book.key, title: p.book.title, author: p.book.author },
       { requireAuth: true }
     );
     setBusy(null);
-    if (failed) return;
+    setReplacing((r) => {
+      const rest = { ...r };
+      delete rest[p.book.key];
+      return rest;
+    });
+    if (failed || !next) return setError(failed ?? 'failed');
     if (p.want_id) {
       await apiDelete(`/library/want/${p.want_id}`, { requireAuth: true });
       onWantChanged?.();
     }
-    setDismissed((d) => ({ ...d, [p.book.key]: p.book.title }));
-    track('picks_dismiss');
+    setData(next);
+    setRemoved(p.book.title);
+    track('picks_dismiss', { outside: p.outside });
   };
 
   // read it already: onto the read shelf, then its card, to give it a mark (the next picks learn from it)
@@ -306,16 +321,6 @@ export function Picks({ onOpen, onWantChanged, askable = false, initialWish = nu
     if (!p.outside) onOpen(p.book.key);
   };
 
-  const undo = async (key: string) => {
-    const title = dismissed[key] ?? '';
-    await apiDelete(`/reading/picks/dismiss?work_key=${encodeURIComponent(key)}&title=${encodeURIComponent(title)}`, { requireAuth: true });
-    setDismissed((d) => {
-      const next = { ...d };
-      delete next[key];
-      return next;
-    });
-  };
-
   // a book of the library opens its card; one from the world, its page in the catalogue it was found in
   const look = (p: Pick) => {
     if (!p.outside) return onOpen(p.book.key);
@@ -323,7 +328,6 @@ export function Picks({ onOpen, onWantChanged, askable = false, initialWish = nu
   };
 
   const working = data.status === 'working';
-  const left = data.picks.filter((p) => !dismissed[p.book.key]);
   const failed = error ?? (data.status === 'error' ? 'failed' : null);
 
   return (
@@ -355,14 +359,19 @@ export function Picks({ onOpen, onWantChanged, askable = false, initialWish = nu
             <Ask
               value={wish}
               onChange={setWish}
-              onAsk={(w) => start(false, w)}
-              busy={working}
+              // pressed: other books, by this ask (or none) — never the same ones again
+              onAsk={(w) => start(true, w)}
+              busy={working || Object.keys(replacing).length > 0}
               asked={data.wish}
+              again={data.picks.length > 0}
               onClear={() => {
                 setWish('');
-                start(false, '');
+                start(true, '');
               }}
             />
+          )}
+          {askable && data.stale && data.status === 'done' && !working && (
+            <p className={styles.note}>{t('picks.staleHint')}</p>
           )}
           {working && (
             <p className={styles.working}>
@@ -378,10 +387,12 @@ export function Picks({ onOpen, onWantChanged, askable = false, initialWish = nu
           {data.picks.length > 0 && (
             <ol className={`${styles.list} ${working ? styles.dim : ''}`}>
               {data.picks.map((p) =>
-                dismissed[p.book.key] ? (
+                replacing[p.book.key] ? (
                   <li key={p.book.key} className={styles.gone}>
-                    {t('picks.dismissed', { title: dismissed[p.book.key] })}{' '}
-                    <button type="button" className={styles.textButton} onClick={() => undo(p.book.key)}>{t('picks.undo')}</button>
+                    <span className={styles.working}>
+                      <span className={styles.dots} aria-hidden="true"><i /><i /><i /></span>
+                      {t('picks.replacing')}
+                    </span>
                   </li>
                 ) : (
                   <li key={p.book.key} className={styles.card}>
@@ -440,11 +451,9 @@ export function Picks({ onOpen, onWantChanged, askable = false, initialWish = nu
           )}
           {data.status === 'done' && !working && (
             <div className={styles.foot}>
+              {removed && <span className={styles.note}>{t('picks.dismissed', { title: removed })}</span>}
+              {data.picks.length === 0 && <span className={styles.note}>{t('picks.allDone')}</span>}
               <span className={styles.privacy}>{t('picks.privacy')}</span>
-              {left.length === 0 && <span className={styles.note}>{t('picks.allDone')}</span>}
-              <button type="button" className={`${styles.textButton} ${styles.again}`} onClick={() => start(true)}>
-                ↻ {t('picks.more')}
-              </button>
             </div>
           )}
         </>

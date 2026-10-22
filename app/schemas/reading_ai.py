@@ -134,7 +134,10 @@ class PicksOut(BaseModel):
     taste: str | None = None
     picks: list[PickOut] = []
     # the reader's marks changed since: written again when opened
+    # the marks changed since these picks: the page says so, and only the reader's «Подобрать ещё» writes them again
     stale: bool = False
+    # the same picks in another language are newer than these: translated by the page, the books stay
+    follows: bool = False
     updated_at: datetime | None = None
     # the reader's minutes a reading day lately
     pace: int | None = None
@@ -152,6 +155,14 @@ class PicksIn(BaseModel):
     # the reader's own ask; with keep_wish the page writing itself again keeps the last one
     wish: str | None = Field(default=None, max_length=400)
     keep_wish: bool = False
+
+
+class ReplaceIn(BaseModel):
+    lang: str = "ru"
+    # the library's book, or "x:<title>" for one from the world (then title names it)
+    work_key: str | None = Field(default=None, max_length=300)
+    title: str | None = Field(default=None, max_length=300)
+    author: str | None = Field(default=None, max_length=200)
 
 
 class DismissIn(BaseModel):

@@ -361,11 +361,11 @@ def get(db: Session, *, user: User, lang: str) -> PicksOut:
     out.taste = content.get("taste")
     out.wish = content.get("wish")
     # changed since: the same ask on the taste there is now would be another one
-    out.stale = row.status == "done" and (
-        row.input_hash != _hash(lang, {**reader.taste(), "wish": out.wish})
-        # the reader got newer picks in another language: these follow them
-        or _fresher_elsewhere(db, user, lang, row, reader) is not None
-    )
+    # the marks changed since: said on the page, never done by itself (the founder, 2026-10-22: picks change only when
+    # the reader presses «Подобрать ещё»)
+    out.stale = row.status == "done" and row.input_hash != _hash(lang, {**reader.taste(), "wish": out.wish})
+    # the same picks in another language are newer than these: the page translates them, the books stay
+    out.follows = row.status == "done" and _fresher_elsewhere(db, user, lang, row, reader) is not None
 
     from app.services import want
 
@@ -589,7 +589,9 @@ def _translate(digest_id: uuid.UUID, content: dict, lang: str) -> None:
         db.close()
 
 
-def _prepare(db: Session, user: User, reader: _Reader, lang: str, shown: set[str] = frozenset()) -> tuple[dict, dict[str, str]]:
+def _prepare(
+    db: Session, user: User, reader: _Reader, lang: str, shown: set[str] = frozenset(), exclude: set[str] = frozenset()
+) -> tuple[dict, dict[str, str]]:
     """What the AI is asked: the reader's taste and the candidates by short id (and the ids, to map back). Keys
     starting with "_" stay here: they check the answer and are never sent."""
     from app.services import want
@@ -598,7 +600,7 @@ def _prepare(db: Session, user: User, reader: _Reader, lang: str, shown: set[str
 
     taste = Taste(db, reader)
     # every book of the library the reader does not know yet, ranked by how it fits them, varied
-    pool = [k for k in reader.idx.works if not reader.out(k)]
+    pool = [k for k in reader.idx.works if not reader.out(k) and k not in exclude]
     ranked = taste.rank(pool, CANDIDATES)
     ids = {f"b{i + 1}": f.key for i, f in enumerate(ranked)}
     fit_of = {f.key: f for f in ranked}
@@ -697,7 +699,10 @@ def _holds(why: str, known: list[str]) -> bool:
     return all(any(_names(quoted, k) for k in known) for quoted in re.findall(r"«([^»]{1,120})»", why))
 
 
-def choose(payload: dict, ids: dict[str, str], lang: str, *, look_up=None) -> dict:
+def choose(
+    payload: dict, ids: dict[str, str], lang: str, *, look_up=None, club_n: int = ASK, world_n: int = OUTSIDE,
+    take: int = PICKS, take_club: int = FROM_CLUB,
+) -> dict:
     """Ask the AI, and keep only what holds: club candidates by their ids, outside books a catalogue really has, once
     each, whose «why» quotes no book the reader never had. Two from the club and one from the world when there are.
     {"taste", "picks": [{"key", "why"} | {"key": None, "outside": {...}, "why"}], "dropped": n}"""
@@ -713,7 +718,7 @@ def choose(payload: dict, ids: dict[str, str], lang: str, *, look_up=None) -> di
         "candidates": payload["candidates"],
     }
     answer = llm.ask_json(
-        system=_SYSTEM.format(n=ASK, m=OUTSIDE, lang=_LANG_NAMES[lang]),
+        system=_SYSTEM.format(n=club_n, m=world_n, lang=_LANG_NAMES[lang]),
         prompt=json.dumps(asked, ensure_ascii=False, default=str),
         schema=_SCHEMA,
         max_tokens=3500,
@@ -744,7 +749,7 @@ def choose(payload: dict, ids: dict[str, str], lang: str, *, look_up=None) -> di
                 seen.add(key)
                 club.append({"key": key, "why": why})
             continue
-        if lookups >= OUTSIDE_LOOKUPS or len(world) >= PICKS:
+        if lookups >= OUTSIDE_LOOKUPS or len(world) >= take:
             continue
         lookups += 1
         found = look_up(title, author)
@@ -758,16 +763,16 @@ def choose(payload: dict, ids: dict[str, str], lang: str, *, look_up=None) -> di
             "outside": {"title": found.title, "author": found.author, "image": found.image, "link": found.link, "source": found.source},
         })
 
-    from_club = min(FROM_CLUB, len(club))
-    picks = club[:from_club] + world[: PICKS - from_club]
-    rest = club[from_club:] + world[PICKS - from_club :]
-    picks += rest[: PICKS - len(picks)]
+    from_club = min(take_club, len(club))
+    picks = club[:from_club] + world[: take - from_club]
+    rest = club[from_club:] + world[take - from_club :]
+    picks += rest[: take - len(picks)]
     if not picks:
         raise ValueError("no book among the picks")
     taste_line = str(answer.get("taste", "")).strip()
     if _speaks_codes(taste_line, lang):
         taste_line = ""
-    return {"taste": taste_line, "picks": picks[:PICKS], "dropped": dropped}
+    return {"taste": taste_line, "picks": picks[:take], "dropped": dropped}
 
 
 def _write(
@@ -840,6 +845,79 @@ def undismiss(db: Session, *, user: User, work_key: str | None, title: str | Non
         db.commit()
 
 
+REPLACE_DAILY = 30
+
+
+def _is_pick(p: dict, key: str) -> bool:
+    """Is this stored pick the book with this dismissal key (a library work's key, or "x:" and a title)?"""
+    from app.services import want
+
+    found = p.get("outside")
+    if found:
+        return OUTSIDE_PREFIX + want._norm(found["title"]) == key
+    return p.get("key") == key
+
+
+def replace(
+    db: Session, *, user: User, lang: str, work_key: str | None, title: str | None, author: str | None
+) -> PicksOut:
+    """«Не моё»: the book is never suggested again and another takes its place at once, of the same kind (a book of
+    the club for one of the club, one from the world for one from the world), by the same taste. Should no other be
+    found, it just goes."""
+    from app.services import want
+
+    if lang not in _LANG_NAMES:
+        raise _bad("bad_lang")
+    if not enabled_for(user):
+        raise _bad("not_found", status.HTTP_404_NOT_FOUND)
+    key, _, _ = _dismiss_key(db, work_key, title)
+    dismiss(db, user=user, work_key=work_key, title=title, author=author)
+    row = _current(db, user, lang)
+    if row is None or row.status != "done" or not llm.available():
+        return get(db, user=user, lang=lang)
+    content = dict(row.content or {})
+    picks = list(content.get("picks", []))
+    at = next((i for i, p in enumerate(picks) if _is_pick(p, key)), None)
+    if at is None:
+        return get(db, user=user, lang=lang)
+
+    now = datetime.now(timezone.utc)
+    stamps = [t for t in content.get("replaced", []) if t > (now - timedelta(days=1)).isoformat()]
+    reader = _Reader(db, user)
+    wish = content.get("wish")
+    rest = [p for i, p in enumerate(picks) if i != at]
+    new = None
+    if len(stamps) < REPLACE_DAILY:
+        was_world = key.startswith(OUTSIDE_PREFIX)
+        exclude = {p["key"] for p in rest if p.get("key")}
+        payload, ids = _prepare(db, user, reader, lang, exclude=exclude)
+        if wish:
+            payload["reader"]["wish"] = wish
+        payload["_skip"] = sorted(set(payload["_skip"]) | {
+            want._norm(p["outside"]["title"]) for p in rest if p.get("outside")
+        } | ({want._norm(title)} if title else set()))
+        try:
+            got = choose(
+                payload, ids, lang, club_n=0 if was_world else 4, world_n=4 if was_world else 0, take=1,
+                take_club=0 if was_world else 1,
+            )
+            new = got["picks"][0] if got["picks"] else None
+        except Exception:
+            logger.exception("picks replacement failed")
+    if new is not None:
+        rest.insert(at, new)
+        stamps.append(now.isoformat())
+    # the picks are the reader's own now: the taste they stand on is the one there is, and other languages follow
+    content.update(
+        picks=rest, replaced=stamps, origin=uuid.uuid4().hex, chosen_at=now.isoformat(),
+    )
+    row.content = content
+    row.input_hash = _hash(lang, {**reader.taste(), "wish": wish})
+    row.updated_at = now
+    db.commit()
+    return get(db, user=user, lang=lang)
+
+
 def after_mark(db: Session, user: User, review: BookReview) -> None:
     """A book the reader loved: the moment to say what next. Fresh picks in the background, then the bell.
     Never in the way of saving the mark."""
@@ -852,6 +930,9 @@ def after_mark(db: Session, user: User, review: BookReview) -> None:
         ).scalars().first()
         lang = last or "ru"
         row = _current(db, user, lang)
+        # picks change only when the reader presses «Подобрать ещё»: by itself, only the very first ones
+        if row is not None and row.status in ("done", "working"):
+            return
         if row is not None and row.updated_at:
             updated = row.updated_at if row.updated_at.tzinfo else row.updated_at.replace(tzinfo=timezone.utc)
             if updated > datetime.now(timezone.utc) - AUTO_EVERY:

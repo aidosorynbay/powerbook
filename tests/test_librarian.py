@@ -232,14 +232,20 @@ def test_a_loved_book_brings_picks_by_itself_without_the_bell_for_now(env, monke
     db = env.Session()
     assert db.query(Notification).filter_by(user_id=env.me.id, kind="picks").count() == 0
 
-    # another loved book the same day: no second round by itself
+    # another loved book: no second round by itself — picks change only when the reader presses «Подобрать ещё»
+    monkeypatch.setattr(librarian, "AUTO_EVERY", librarian.timedelta(0))
     fake = env.deepseek([])
     _mark(env, "Маленький принц", 10)
     assert fake.requests == []
+    assert env.client.get("/api/reading/picks?lang=ru", headers=env.h).json()["stale"] is True
 
-    # with the bell on, it says so
+    # the very first picks, with the bell on, say so
+    from app.models.ai_digest import AiDigest
+
+    db = env.Session()
+    db.query(AiDigest).delete()
+    db.commit()
     monkeypatch.setattr(librarian, "AUTO_BELL", True)
-    monkeypatch.setattr(librarian, "AUTO_EVERY", librarian.timedelta(0))
     env.deepseek([json.dumps({"taste": "t", "picks": [{"id": "b3", "why": "w"}], "outside": []})])
     _mark(env, "Маленький принц", 9)
     bell = env.Session().query(Notification).filter_by(user_id=env.me.id, kind="picks").all()
@@ -380,7 +386,7 @@ def test_another_language_shows_the_same_picks_translated_not_chosen_again(env):
 
     # back and forth: no more translating, both are the same picks
     fake = env.deepseek([])
-    assert c.get("/api/reading/picks?lang=ru", headers=h).json()["stale"] is False
+    assert c.get("/api/reading/picks?lang=ru", headers=h).json()["follows"] is False
     c.post("/api/reading/picks", json={"lang": "ru", "keep_wish": True}, headers=h)
     c.post("/api/reading/picks", json={"lang": "kk", "keep_wish": True}, headers=h)
     assert fake.requests == []
@@ -388,8 +394,55 @@ def test_another_language_shows_the_same_picks_translated_not_chosen_again(env):
     # «Другие варианты» in Kazakh: chosen anew; Russian then follows them, translated
     env.deepseek([json.dumps({"taste": "Жаңа.", "picks": [{"id": "b2", "why": "Басқа."}], "outside": []}, ensure_ascii=False)])
     c.post("/api/reading/picks", json={"lang": "kk", "force": True}, headers=h)
-    assert c.get("/api/reading/picks?lang=ru", headers=h).json()["stale"] is True
+    got = c.get("/api/reading/picks?lang=ru", headers=h).json()
+    assert got["follows"] is True and got["stale"] is False
     env.deepseek([json.dumps({"texts": ["Новое.", "Другое."]}, ensure_ascii=False)])
     c.post("/api/reading/picks", json={"lang": "ru", "keep_wish": True}, headers=h)
     again = c.get("/api/reading/picks?lang=ru", headers=h).json()
-    assert again["picks"][0]["why"] == "Другое." and again["stale"] is False
+    assert again["picks"][0]["why"] == "Другое." and again["stale"] is False and again["follows"] is False
+
+
+def test_not_for_me_puts_another_book_in_its_place_at_once(env, monkeypatch):
+    c, h = env.client, env.h
+    env.deepseek([])
+    _mark(env, "Обломов", 7)
+    fake = env.deepseek([json.dumps({
+        "taste": "t",
+        "picks": [{"id": "b1", "why": "a"}, {"id": "b2", "why": "b"}],
+        "outside": [{"title": "Время жить и время умирать", "author": "Эрих Мария Ремарк", "why": "w"}],
+    }, ensure_ascii=False)])
+    monkeypatch.setattr(book_lookup, "find", lambda title, author: _found(title, author))
+    c.post("/api/reading/picks", json={"lang": "ru"}, headers=h)
+    shown = c.get("/api/reading/picks?lang=ru", headers=h).json()["picks"]
+    assert [p["outside"] for p in shown] == [False, False, True]
+    first = shown[0]["book"]
+
+    # «Не моё» on a book of the club: another of the club comes in its place, same spot, none of those shown
+    sent = json.loads(fake.requests[-1]["body"]["messages"][1]["content"])["candidates"]
+    spare = next(x for x in sent if x["title"] not in {p["book"]["title"] for p in shown})
+    env.deepseek([json.dumps({"taste": "t", "picks": [{"id": "b1", "why": "Другая."}], "outside": []})])
+    got = c.post("/api/reading/picks/replace", json={"lang": "ru", "work_key": first["key"], "title": first["title"]}, headers=h)
+    assert got.status_code == 200
+    after = got.json()
+    assert first["key"] not in [p["book"]["key"] for p in after["picks"]]
+    assert len(after["picks"]) == 3 and after["picks"][0]["why"] == "Другая." and after["picks"][2]["outside"] is True
+    assert after["picks"][0]["book"]["key"] != shown[1]["book"]["key"]
+    assert after["stale"] is False  # the picks stand on the taste there is now
+    assert spare["title"] is not None
+
+    # on a book from the world: another from the world, by its title
+    env.deepseek([json.dumps({"taste": "t", "picks": [], "outside": [{"title": "Три сестры", "author": "Чехов", "why": "Ещё."}]}, ensure_ascii=False)])
+    world = after["picks"][2]["book"]
+    after2 = c.post("/api/reading/picks/replace", json={"lang": "ru", "work_key": world["key"], "title": world["title"]}, headers=h).json()
+    assert [p["outside"] for p in after2["picks"]] == [False, False, True]
+    assert after2["picks"][2]["book"]["title"] == "Три сестры"
+
+    # nothing found to take its place: it just goes
+    env.deepseek([json.dumps({"taste": "t", "picks": [], "outside": []})])
+    gone = after2["picks"][1]["book"]
+    after3 = c.post("/api/reading/picks/replace", json={"lang": "ru", "work_key": gone["key"], "title": gone["title"]}, headers=h).json()
+    assert len(after3["picks"]) == 2 and gone["key"] not in [p["book"]["key"] for p in after3["picks"]]
+
+    # a book never offered again, and the page does not write itself again: only «Подобрать ещё»
+    again = c.get("/api/reading/picks?lang=ru", headers=h).json()
+    assert len(again["picks"]) == 2 and again["status"] == "done"

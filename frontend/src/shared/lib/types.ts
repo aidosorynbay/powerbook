@@ -1113,6 +1113,8 @@ export type Picks = {
   taste: string | null;
   picks: Pick[];
   stale: boolean;
+  /** the same picks in another language are newer: translated by the page */
+  follows: boolean;
   updated_at: string | null;
   /** the reader's minutes a reading day lately */
   pace: number | null;

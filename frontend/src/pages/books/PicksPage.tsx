@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useI18n } from '@/shared/lib';
 import { Container } from '@/shared/ui';
@@ -18,6 +18,14 @@ export function PicksPage() {
   const [params, setParams] = useSearchParams();
   const openKey = params.get('book');
   const [initialWish] = useState(() => params.get('wish'));
+  // The ask that came with the link is asked once: gone from the address, so opening the page again changes nothing.
+  useEffect(() => {
+    if (!params.get('wish')) return;
+    const next = new URLSearchParams(params);
+    next.delete('wish');
+    setParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const open = (key: string | null) => {
     const next = new URLSearchParams(params);

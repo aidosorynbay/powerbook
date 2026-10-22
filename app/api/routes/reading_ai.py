@@ -16,6 +16,7 @@ from app.schemas.reading_ai import (
     PicksIn,
     PicksOut,
     ReadingOverviewOut,
+    ReplaceIn,
     RecommendationOut,
 )
 from app.schemas.round_review import RoundReviewOut
@@ -58,6 +59,15 @@ def start_picks(payload: PicksIn, db: Session = Depends(get_db), user: User = De
         payload.lang = "ru"
     return librarian.start(
         db, user=user, lang=payload.lang, force=payload.force, wish=payload.wish, keep_wish=payload.keep_wish
+    )
+
+
+@router.post("/picks/replace", response_model=PicksOut)
+def replace_pick(payload: ReplaceIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> PicksOut:
+    """«Не моё»: never suggested again, and another book takes its place."""
+    return librarian.replace(
+        db, user=user, lang=payload.lang if payload.lang in ("ru", "kk", "en") else "ru",
+        work_key=payload.work_key or None, title=payload.title or None, author=payload.author or None,
     )
 
 
