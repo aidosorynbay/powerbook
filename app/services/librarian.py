@@ -46,7 +46,7 @@ from app.models.enums import SystemRole
 from app.models.user import User
 from app.repositories.claims import ClaimsRepository
 from app.schemas.books import CatalogItemOut
-from app.schemas.reading_ai import PickOut, PicksOut
+from app.schemas.reading_ai import BasisOut, PickOut, PicksOut
 from app.services import books as books_service
 from app.services import book_dna, book_face, catalog, llm
 
@@ -411,6 +411,7 @@ def get(db: Session, *, user: User, lang: str) -> PicksOut:
 
     taste = Taste(db, reader)
     out.likes, out.dislikes = taste.likes(4), taste.dislikes(2)
+    out.basis = BasisOut(**taste.basis(reader.names))
     return out
 
 

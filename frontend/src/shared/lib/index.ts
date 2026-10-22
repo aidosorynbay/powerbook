@@ -153,6 +153,7 @@ export type {
   WantBook,
   Pick,
   Picks,
+  PicksBasis,
 } from './types';
 export { useTheme, useResolvedTheme, readThemeChoice, resolveTheme, applyTheme, THEME_KEY, type ThemeChoice } from './theme';
 export { useWaitlist, inviteLink, rememberInvite, invitedRef, markJoinIntent, type WaitlistState } from './waitlist';

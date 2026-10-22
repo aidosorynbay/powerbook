@@ -1069,6 +1069,21 @@ export type BookWatch = {
 };
 
 /** A book on «Хочу прочитать», the second shelf: books to read later, counted nowhere. */
+/** What the picks stand on, in full (the note on the page). */
+export type PicksBasis = {
+  marks: { title: string; mark: number }[];
+  reviews_with_words: number;
+  finished: string[];
+  long: string[];
+  dropped: string[];
+  favourites: string[];
+  wanted: string[];
+  dismissed: string[];
+  kindred: { name: string; agree: number; shared: number }[];
+  dna_known: number;
+  dna_total: number;
+};
+
 /** One book the AI librarian picked («Что почитать дальше»), and why. */
 export type Pick = {
   book: CatalogItem;
@@ -1106,6 +1121,7 @@ export type Picks = {
   /** the reader's taste as the librarian reads it (book DNA words) */
   likes: string[];
   dislikes: string[];
+  basis: PicksBasis | null;
 };
 
 export type WantBook = {

@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiDelete, apiGet, apiPost, apiPut, track, useAuth, useI18n, type Pick, type Picks as PicksData, type User } from '@/shared/lib';
+import { apiDelete, apiGet, apiPost, apiPut, track, useAuth, useI18n, type Pick, type Picks as PicksData, type PicksBasis, type User } from '@/shared/lib';
 import { BookFace } from './bookUi';
 import store from './Store.module.css';
 import styles from './Picks.module.css';
@@ -60,6 +60,49 @@ function FirstStep({ missing, onSaved }: { missing: number; onSaved: () => void 
     </form>
   );
 }
+/** «На чём основана подборка»: one quiet line, and everything the picks stand on when opened (the founder, 2026-10-22). */
+function Basis({ basis, wish }: { basis: PicksBasis; wish: string | null }) {
+  const { t } = useI18n();
+  const summary = [
+    [basis.marks.length, 'picks.basisMarks'],
+    [basis.finished.length + basis.long.length, 'picks.basisFinished'],
+    [basis.favourites.length, 'picks.basisFavourites'],
+    [basis.kindred.length, 'picks.basisKindred'],
+  ]
+    .filter(([n]) => (n as number) > 0)
+    .map(([n, key]) => `${t(key as string)} ${n}`)
+    .join(' · ');
+  const rows: { label: string; items: string[] }[] = [
+    { label: t('picks.basisRowMarks'), items: basis.marks.map((m) => `${m.title} ${m.mark}`) },
+    { label: t('picks.basisRowFinished'), items: basis.finished },
+    { label: t('picks.basisRowLong'), items: basis.long },
+    { label: t('picks.basisRowFavourites'), items: basis.favourites },
+    { label: t('picks.basisRowDropped'), items: basis.dropped },
+    { label: t('picks.basisRowWanted'), items: basis.wanted },
+    { label: t('picks.basisRowDismissed'), items: basis.dismissed },
+    { label: t('picks.basisRowKindred'), items: basis.kindred.map((k) => t('picks.basisKin', { name: k.name, agree: k.agree, shared: k.shared })) },
+  ].filter((r) => r.items.length > 0);
+  return (
+    <details className={styles.basis} onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && track('picks_basis_open')}>
+      <summary>
+        <span className={styles.basisTitle}>{t('picks.basis')}</span>
+        {summary && <span className={styles.basisSummary}>{summary}</span>}
+      </summary>
+      <div className={styles.basisBody}>
+        {wish && <p className={styles.basisRow}><b>{t('picks.basisRowWish')}</b> {wish}</p>}
+        {rows.map((r) => (
+          <p key={r.label} className={styles.basisRow}>
+            <b>{r.label} · {r.items.length}</b> {r.items.join(' · ')}
+          </p>
+        ))}
+        {basis.reviews_with_words > 0 && <p className={styles.basisRow}>{t('picks.basisWords', { n: basis.reviews_with_words })}</p>}
+        <p className={styles.basisRow}>{t('picks.basisDna', { known: basis.dna_known, total: basis.dna_total })}</p>
+        <p className={styles.basisRow}>{t('picks.basisHow')}</p>
+      </div>
+    </details>
+  );
+}
+
 const CHIPS = ['picks.chipLight', 'picks.chipShort', 'picks.chipKazakh', 'picks.chipClassic', 'picks.chipNonfiction'] as const;
 
 /** The reader's own ask, above the picks: a few words or a tap on a suggestion, then «Подобрать мне». */
@@ -393,6 +436,7 @@ export function Picks({ onOpen, onWantChanged, askable = false, initialWish = nu
               )}
             </ol>
           )}
+          {data.status === 'done' && !working && data.basis && <Basis basis={data.basis} wish={data.wish} />}
           {data.status === 'done' && !working && (
             <div className={styles.foot}>
               <span className={styles.privacy}>{t('picks.privacy')}</span>

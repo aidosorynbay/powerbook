@@ -124,3 +124,16 @@ def test_a_why_with_an_english_trait_code_is_dropped_in_russian():
     assert librarian._speaks_codes("a melancholic novel", "en") is False
     assert librarian._speaks_codes("Как «The Power of Habit», только о вере", "ru") is False
     assert librarian._said("themes:coming_of_age") == "about coming of age"
+
+
+def test_the_note_lists_everything_the_picks_stand_on(env):
+    env.deepseek([])
+    _dna(env, "Три товарища", WARM)
+    _mark(env, "Три товарища", 10, "про дружбу")
+    _mark(env, "Обломов", 6)
+    env.client.post("/api/library/want", json={"title": "Стоунер"}, headers=env.h)
+    got = env.client.get("/api/reading/picks?lang=ru", headers=env.h).json()["basis"]
+    assert got["marks"] == [{"title": "Три товарища", "mark": 10}, {"title": "Обломов", "mark": 6}]
+    assert got["reviews_with_words"] == 1 and got["wanted"] == ["Стоунер"]
+    assert "Маленький принц" in got["finished"] and "Три товарища" not in got["finished"]
+    assert got["dna_known"] == 1 and got["dna_total"] >= 12

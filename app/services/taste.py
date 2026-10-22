@@ -68,8 +68,12 @@ class Taste:
 
         # what each book the reader knows says
         signals: dict[str, float] = {}
+        # and of what kind: "mark" | "finished" | "long" | "dropped" | "favourite" | "want" | "dismissed", for the note
+        # on the page that says what the picks stand on
+        self.kinds: dict[str, set[str]] = defaultdict(set)
         for key, review in reader.marks:
             signals[key] = mark_signal(review.rating)
+            self.kinds[key].add("mark")
         times = book_time.of_readers(db, list(reader.accounts), idx)
         finished_minutes = sorted(bt.minutes for bt in times.values() if bt.finished and bt.minutes)
         usual = finished_minutes[len(finished_minutes) // 2] if finished_minutes else 0
@@ -77,17 +81,23 @@ class Taste:
         for key in reader.read:
             if key not in signals:
                 signals[key] = FINISHED
+                self.kinds[key].add("finished")
         for key, bt in times.items():
             if key in signals and usual and bt.finished and bt.minutes >= 1.5 * usual:
                 signals[key] += LONG_READ
+                self.kinds[key].add("long")
             if key not in signals and not bt.finished and bt.minutes >= 60 and bt.last_day and bt.last_day < long_ago:
                 signals[key] = DROPPED
+                self.kinds[key].add("dropped")
         for key in reader.favourite_keys:
             signals[key] = max(signals.get(key, 0.0), FAVOURITE)
+            self.kinds[key].add("favourite")
         for key in reader.want_keys:
             signals.setdefault(key, WANTED)
+            self.kinds[key].add("want")
         for key in reader.dismissed_keys:
             signals[key] = NOT_FOR_ME
+            self.kinds[key].add("dismissed")
         self.signals = signals
 
         # the portrait: per trait, the books' say weighed by how much of the trait they have
@@ -163,6 +173,44 @@ class Taste:
             if len(fans) == limit:
                 break
         return fans
+
+    # ---------- what the picks stand on ----------
+
+    def basis(self, names: dict) -> dict:
+        """Everything the reader's taste was read from, for the note on the page: their marks, the books finished
+        unmarked, the ones given far more time, the dropped, favourites, wanted and turned-down books, the kindred
+        readers (most kindred first) and how much of the library has a DNA to match by."""
+        idx, reader = self.reader.idx, self.reader
+
+        def titles(kind: str) -> list[str]:
+            out = []
+            for key, kinds in self.kinds.items():
+                work = idx.works.get(key)
+                if kind in kinds and work is not None:
+                    out.append(work.title)
+            return sorted(out, key=str.casefold)
+
+        kindred = []
+        for person, sim in sorted(self.kin.items(), key=lambda kv: -kv[1])[:6]:
+            name, _ = names.get(idx.account_of(person), (None, None))
+            if not name or person not in self.kin_agree:
+                continue
+            agree, shared = self.kin_agree[person]
+            kindred.append({"name": name, "agree": agree, "shared": shared})
+        marks = sorted(reader.marks, key=lambda kr: (-kr[1].rating, kr[1].title.casefold()))
+        return {
+            "marks": [{"title": r.title, "mark": r.rating} for _, r in marks],
+            "reviews_with_words": sum(1 for _, r in marks if (r.text or "").strip()),
+            "finished": titles("finished"),
+            "long": titles("long"),
+            "dropped": titles("dropped"),
+            "favourites": list(reader.favourites),
+            "wanted": [w.title for w in reader.wanted],
+            "dismissed": [d.title for d in reader.dismissed],
+            "kindred": kindred,
+            "dna_known": len(self.dna),
+            "dna_total": len(idx.works),
+        }
 
     # ---------- the portrait, said plainly ----------
 

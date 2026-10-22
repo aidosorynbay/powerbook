@@ -91,6 +91,35 @@ class PickOut(BaseModel):
     fits: list[str] = []
 
 
+class BasisMarkOut(BaseModel):
+    title: str
+    mark: int
+
+
+class BasisKinOut(BaseModel):
+    name: str
+    # on how many of the books both marked they are within two points
+    agree: int
+    shared: int
+
+
+class BasisOut(BaseModel):
+    """What the picks stand on, in full: the note on the page."""
+
+    marks: list[BasisMarkOut] = []
+    reviews_with_words: int = 0
+    finished: list[str] = []
+    long: list[str] = []
+    dropped: list[str] = []
+    favourites: list[str] = []
+    wanted: list[str] = []
+    dismissed: list[str] = []
+    kindred: list[BasisKinOut] = []
+    # books of the library with a DNA to match by, of all
+    dna_known: int = 0
+    dna_total: int = 0
+
+
 class PicksOut(BaseModel):
     # the librarian is open to this reader (admins first, then everyone)
     enabled: bool
@@ -114,6 +143,7 @@ class PicksOut(BaseModel):
     # the reader's taste as the librarian reads it: traits they like, and dislike (book_dna words)
     likes: list[str] = []
     dislikes: list[str] = []
+    basis: BasisOut | None = None
 
 
 class PicksIn(BaseModel):

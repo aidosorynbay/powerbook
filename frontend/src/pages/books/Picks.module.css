@@ -252,6 +252,70 @@
   font-size: 13.5px;
 }
 
+/* «На чём основана подборка» */
+.basis {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.basis summary {
+  display: block;
+  list-style: none;
+  cursor: pointer;
+}
+
+.basis summary::-webkit-details-marker {
+  display: none;
+}
+
+.basisTitle {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.basisTitle::after {
+  content: ' ▾';
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.basis[open] .basisTitle::after {
+  content: ' ▴';
+}
+
+.basisSummary {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-text-secondary);
+}
+
+.basisBody {
+  display: grid;
+  gap: 8px;
+  max-height: 340px;
+  margin-top: 10px;
+  padding-top: 10px;
+  overflow-y: auto;
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.basisRow {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.basisRow b {
+  display: block;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .foot {
   display: flex;
   flex-wrap: wrap;
