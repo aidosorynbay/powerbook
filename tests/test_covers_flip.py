@@ -27,6 +27,7 @@ PAGE = (
 
 @pytest.fixture()
 def flip(monkeypatch):
+    monkeypatch.setattr(covers.settings, "flip_covers", True)
     asked: list[str] = []
 
     def paced(url):
@@ -112,3 +113,9 @@ def test_flip_is_off_unless_switched_on(monkeypatch, tmp_path):
     row = BookCover(key="k", query="Гауһар тас", status="working", attempts=0)
     covers._look_up(row, None, only_flip=True)
     assert asked == []
+
+
+def test_flip_switched_off_answers_nothing_to_any_caller(monkeypatch):
+    monkeypatch.setattr(covers.settings, "flip_covers", False)
+    monkeypatch.setattr(covers, "_paced", lambda url: (_ for _ in ()).throw(AssertionError("Flip was asked")))
+    assert covers._search_flip("Гауһар тас") == []

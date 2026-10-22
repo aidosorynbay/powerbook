@@ -33,8 +33,9 @@ def test_only_titles_without_a_picture_are_due_and_the_oldest_first(db):
     _row(db, "found-no-image", "found", image=None, hours_ago=50)
     _row(db, "has-cover", "found", image="a" * 32, hours_ago=100)
     _row(db, "tried-today", "none", hours_ago=2)
+    _row(db, "cut-short", "pending", hours_ago=40)
     due = covers.due_again(db, limit=10)
-    assert set(due) == {"old-none", "newer-error", "found-no-image"}
+    assert set(due) == {"old-none", "newer-error", "found-no-image", "cut-short"}
     assert list(due)[0] == "old-none"
     assert db.get(BookCover, "old-none").status == "pending"
     assert db.get(BookCover, "has-cover").status == "found"

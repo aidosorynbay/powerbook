@@ -292,7 +292,10 @@ def _search_flip(query: str) -> list[_Candidate]:
     """Flip.kz, the Kazakhstan bookshop: books in Kazakh and Russian that no
     world catalogue holds — «Гауһар тас», a local edition of a translation.
     Its search page names a book but not its author; the book's own page
-    does, so the few whose names come close to the reader's are opened."""
+    does, so the few whose names come close to the reader's are opened.
+    Off unless settings.flip_covers: every caller gets nothing, not a 403."""
+    if not settings.flip_covers:
+        return []
     body = _paced(f"{_FLIP}/search?" + urllib.parse.urlencode({"search": query})).decode("utf-8", "replace")
     ours = match_key(query)
     found = []
@@ -962,6 +965,8 @@ def due_again(db: Session, limit: int = _DAILY_LOOKUPS) -> dict[str, tuple[str, 
             or_(
                 BookCover.status == "none",
                 BookCover.status == "error",
+                # Left waiting by a pass a restart cut short.
+                BookCover.status == "pending",
                 and_(BookCover.status == "found", BookCover.image.is_(None)),
             ),
             or_(BookCover.checked_at.is_(None), BookCover.checked_at < cutoff),
