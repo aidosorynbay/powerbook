@@ -224,9 +224,22 @@ export function PublicProfilePage() {
                   </div>
                 )}
 
-                {shelf.length > 0 && (
+                {/* What the reader is reading now: the circle's own count of minutes (unfinished, read lately),
+                    not the files in the library — a PDF opened once is not the book of the day. */}
+                {reading.length > 0 && (
                   <div className={styles.librarySection}>
                     <div className={styles.musicKicker}>{t('profile.shelfNow')}</div>
+                    <div className={styles.libraryGrid}>
+                      {reading.map((title, i) => (
+                        <BookCard key={i} title={title} cover={apiUrl(profile.reading_now_covers?.[i])} size="md" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {shelf.length > 0 && (
+                  <div className={styles.librarySection}>
+                    <div className={styles.musicKicker}>{t('profile.libraryFiles')}</div>
                     <div className={styles.shelfGrid}>
                       {shelf.map((book, i) => (
                         <div key={i} className={styles.shelfItem}>

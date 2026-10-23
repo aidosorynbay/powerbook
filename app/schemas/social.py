@@ -53,6 +53,8 @@ class PublicProfileOut(BaseModel):
     favorite_books: list[str]
     # Covers for the top-3, in the same order: the shared library's own, as on the 3D shelf.
     favorite_covers: list[str | None] = []
+    # The cover of each book being read now (reading_now), found the same way; None paints one.
+    reading_now_covers: list[str | None] = []
     is_buddy: bool
     is_self: bool
     # An unclaimed archive record rather than a member's own profile.

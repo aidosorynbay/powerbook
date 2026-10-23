@@ -203,6 +203,7 @@ class SocialService:
             reading_now=reading_now,
             favorite_books=target.favorite_books or [],
             favorite_covers=self.favorite_covers(target.favorite_books or []),
+            reading_now_covers=self.favorite_covers(reading_now),
             is_buddy=is_buddy,
             is_self=target.id == viewer_id,
             is_archive=target.is_claimable,
