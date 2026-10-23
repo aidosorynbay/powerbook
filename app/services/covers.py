@@ -377,8 +377,12 @@ _CHITAI_CARD = re.compile(
 _KAZAKH = re.compile(r"[әғқңөұүһіӘҒҚҢӨҰҮҺІ]")
 # Its robots.txt allows search; this keeps us a quiet visitor: a request every few
 # seconds and a ceiling a day per process, so it never has cause to shut us out as Flip did.
-_CHITAI_GAP_SECONDS = 3.0
-_CHITAI_DAILY_CAP = 300
+_CHITAI_GAP_SECONDS = 10.0
+_CHITAI_DAILY_CAP = 120
+# A 403 or 429 means "too often": the shop is left alone this long. On 2026-10-24 its search
+# answered 403 after ~100 requests in ten minutes, while its pages and pictures still opened.
+_CHITAI_REST = timedelta(hours=12)
+_chitai_resting_until = [0.0]
 _chitai_lock = threading.Lock()
 _chitai_last = [0.0]
 _chitai_spent: dict[str, int] = {}
@@ -386,6 +390,8 @@ _chitai_spent: dict[str, int] = {}
 
 def _chitai_get(url: str) -> str:
     with _chitai_lock:
+        if time.time() < _chitai_resting_until[0]:
+            raise RuntimeError("chitai-gorod: resting after it asked us to slow down")
         today = datetime.now(timezone.utc).date().isoformat()
         if _chitai_spent.get(today, 0) >= _CHITAI_DAILY_CAP:
             raise RuntimeError("chitai-gorod: the day's requests are spent")
@@ -397,6 +403,12 @@ def _chitai_get(url: str) -> str:
             time.sleep(wait)
         try:
             return _get(url)[0].decode("utf-8", "replace")
+        except urllib.error.HTTPError as exc:
+            if exc.code in (403, 429):
+                _chitai_resting_until[0] = time.time() + _CHITAI_REST.total_seconds()
+                logger.warning("chitai-gorod answered %s: resting until %s", exc.code,
+                               datetime.fromtimestamp(_chitai_resting_until[0], timezone.utc).isoformat(timespec="minutes"))
+            raise
         finally:
             _chitai_last[0] = time.monotonic()
 

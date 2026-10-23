@@ -115,3 +115,23 @@ def test_a_russian_title_asks_the_shop_before_google(monkeypatch, tmp_path):
     covers._look_up(row, None)
     assert row.source == "chitai" and row.image
     assert order == ["chitai"]
+
+
+def test_told_to_slow_down_it_rests(monkeypatch):
+    import urllib.error
+
+    asked = []
+
+    def refuse(url, timeout=15):
+        asked.append(url)
+        raise urllib.error.HTTPError(url, 403, "Forbidden", {}, None)
+
+    monkeypatch.setattr(covers, "_CHITAI_GAP_SECONDS", 0)
+    monkeypatch.setattr(covers, "_chitai_spent", {})
+    monkeypatch.setattr(covers, "_chitai_resting_until", [0.0])
+    monkeypatch.setattr(covers, "_get", refuse)
+    with pytest.raises(urllib.error.HTTPError):
+        covers._chitai_get("https://www.chitai-gorod.ru/a")
+    with pytest.raises(RuntimeError):
+        covers._chitai_get("https://www.chitai-gorod.ru/b")
+    assert asked == ["https://www.chitai-gorod.ru/a"]
