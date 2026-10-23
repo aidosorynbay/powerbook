@@ -282,3 +282,17 @@ def test_a_book_taken_off_the_shelf_comes_back_rather_than_twice(env):
 def test_nothing_to_read_is_refused(env):
     assert env.client.post("/api/library/read/import", json={}, headers=env.h).status_code == 422
     assert _preview(env, "\n\n—\n") == []
+
+
+def test_the_reader_sets_when_they_finished_a_book(env):
+    """The founder (2026-10-23): the date one finished a book, set where its cover is set."""
+    c, h = env.client, env.h
+    dune = next(b for b in _shelf(env) if b["title"] == "Дюна")
+    assert dune["finished_on"].startswith("2026-09-04")
+    assert c.put(f"/api/library/overrides/{dune['key']}/finished", json={"finished_on": "2021-03-08"}, headers=h).status_code == 200
+    assert next(b for b in _shelf(env) if b["key"] == dune["key"])["finished_on"].startswith("2021-03-08")
+    # not in the future
+    assert c.put(f"/api/library/overrides/{dune['key']}/finished", json={"finished_on": "2999-01-01"}, headers=h).status_code == 400
+    # taken back: the day's own date again
+    assert c.put(f"/api/library/overrides/{dune['key']}/finished", json={"finished_on": None}, headers=h).status_code == 200
+    assert next(b for b in _shelf(env) if b["key"] == dune["key"])["finished_on"].startswith("2026-09-04")

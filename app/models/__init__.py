@@ -7,6 +7,7 @@ from app.models.book_dismissal import BookDismissal
 from app.models.book_dna import BookDna
 from app.models.book_fact import BookFact
 from app.models.book_link import BookLink
+from app.models.book_pair import BookPair
 from app.models.book_listing import BookListing
 from app.models.book_review import BookReview
 from app.models.book_review_reply import BookReviewReply
@@ -58,6 +59,7 @@ __all__ = [
     "ReadingReminder",
     "BookChat",
     "BookLink",
+    "BookPair",
     "BookAuthor",
     "User",
     "Group",

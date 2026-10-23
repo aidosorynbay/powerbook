@@ -50,6 +50,9 @@ export function EditBookSheet({ book, seed, onClose, onChanged }: Props) {
   const photoInput = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(book.title);
   const [author, setAuthor] = useState(book.author ?? '');
+  // «Когда дочитали» (the founder, 2026-10-23: set it where the cover is set)
+  const [finished, setFinished] = useState((book.finished_on ?? '').slice(0, 10));
+  const today = new Date().toISOString().slice(0, 10);
   const [query, setQuery] = useState([book.title, book.author].filter(Boolean).join(' '));
   const [results, setResults] = useState<CoverOption[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -85,6 +88,15 @@ export function EditBookSheet({ book, seed, onClose, onChanged }: Props) {
     void run(
       'text',
       () => apiPut(path, { title: title.trim() || null, author: author.trim() || null }, { requireAuth: true }),
+      t('shelf.saved')
+    );
+  };
+
+  const saveFinished = (e: FormEvent) => {
+    e.preventDefault();
+    void run(
+      'finished',
+      () => apiPut(`${path}/finished`, { finished_on: finished || null }, { requireAuth: true }),
       t('shelf.saved')
     );
   };
@@ -211,6 +223,25 @@ export function EditBookSheet({ book, seed, onClose, onChanged }: Props) {
             </ul>
           )}
         </div>
+
+        <form className={styles.sheetSection} onSubmit={saveFinished}>
+          <h3>{t('shelf.finishedHead')}</h3>
+          <p>{t('shelf.finishedHint')}</p>
+          <label className={styles.fieldLabel}>
+            <span>{t('shelf.dateLabel')}</span>
+            <input className={styles.field} type="date" value={finished} max={today} min="1900-01-01" onChange={(e) => setFinished(e.target.value)} />
+          </label>
+          <div className={styles.sheetRow}>
+            <button type="submit" className={styles.addButton} disabled={!!busy || finished === (book.finished_on ?? '').slice(0, 10)}>
+              {busy === 'finished' ? t('shelf.working') : t('shelf.saveFinished')}
+            </button>
+            {finished && (
+              <button type="button" className={styles.ghostButton} disabled={!!busy} onClick={() => setFinished('')}>
+                {t('shelf.clearFinished')}
+              </button>
+            )}
+          </div>
+        </form>
 
         <form className={styles.sheetSection} onSubmit={saveText}>
           <h3>{t('shelf.editTextHead')}</h3>

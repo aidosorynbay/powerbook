@@ -445,6 +445,9 @@ def _item(k: _Known, n: int, line: str, title: str, author: str | None) -> Item:
         if volume(spelled)[1] == vol:
             title = spelled
         author = _full_name(author, work.author)
+        if not author and vol:
+            # a volume the library holds without a name: the series' author
+            author = k.series_author(volume(title)[0])
     else:
         title = _tidy_case(title)
         base, _ = volume(title)

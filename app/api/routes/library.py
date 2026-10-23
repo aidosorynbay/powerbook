@@ -13,6 +13,7 @@ from app.models.user import User
 from app.schemas.books import PinWorkIn
 from app.schemas.reading import BookDaysIn, BookDaysOut
 from app.schemas.library import (
+    FinishedOnIn,
     ReadImportIn,
     ReadImportItemOut,
     ReadImportOut,
@@ -241,6 +242,18 @@ def set_override_text(
 ) -> dict:
     """Correct a book's title or author on your own shelf."""
     shelf_overrides.set_text(db, user.id, volume_key, payload.title, payload.author)
+    return {"ok": True}
+
+
+@router.put("/overrides/{volume_key}/finished")
+def set_override_finished(
+    volume_key: str,
+    payload: FinishedOnIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict:
+    """«Когда дочитали»: the date you finished a book on your own shelf; null gives it back to the days."""
+    shelf_overrides.set_finished(db, user.id, volume_key, payload.finished_on)
     return {"ok": True}
 
 

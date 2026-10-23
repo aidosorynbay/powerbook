@@ -111,7 +111,7 @@
   {% if doubles %}
   <div class="card mb-3">
     <div class="card-header"><h3 class="card-title">Возможные дубли ({{ doubles|length }})</h3></div>
-    <div class="card-body text-muted small pb-0">Тот же автор и похожее название, или почти одинаковое название. Склеивайте только если это правда одна книга.</div>
+    <div class="card-body text-muted small pb-0">Тот же автор и похожее название, или почти одинаковое название. Склеивайте только если это правда одна книга; «Разные» убирает пару из списка навсегда. Разные тома и разных авторов здесь нет — их склеить нельзя.</div>
     <div class="table-responsive">
       <table class="table table-vcenter card-table">
         <thead><tr><th>Книга</th><th>Похожая</th><th></th></tr></thead>
@@ -122,7 +122,10 @@
             <td><b>{{ b.title }}</b><div class="text-muted small">{{ b.author }} · {{ b.readers }} чит. · {{ b.votes }} оц.</div></td>
             <td><form method="post" action="{{ base }}/book-merge/link" class="m-0">
               <input type="hidden" name="key" value="{{ a.key }}"><input type="hidden" name="key" value="{{ b.key }}">
-              <button class="btn btn-outline-success btn-sm" type="submit">Это одна книга</button></form></td>
+              <button class="btn btn-outline-success btn-sm" type="submit">Это одна книга</button></form>
+              <form method="post" action="{{ base }}/book-merge/apart" class="m-0 mt-1">
+              <input type="hidden" name="key" value="{{ a.key }}"><input type="hidden" name="key" value="{{ b.key }}">
+              <button class="btn btn-outline-secondary btn-sm" type="submit">Разные</button></form></td>
           </tr>
         {% endfor %}
         </tbody>

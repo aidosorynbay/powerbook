@@ -218,6 +218,18 @@ async def lifespan(app: FastAPI):
         coalesce=True,
         next_run_time=datetime.now() + timedelta(minutes=10),
     )
+    # Likely doubles in the shared library: a few a day to the founder's Telegram, «Одна книга» / «Разные».
+    from app.services import book_identity
+
+    scheduler.add_job(
+        book_identity.scheduled,
+        "interval",
+        days=1,
+        id="book_pairs_daily",
+        max_instances=1,
+        coalesce=True,
+        next_run_time=datetime.now() + timedelta(minutes=20),
+    )
     scheduler.start()
     logger.info("Round lifecycle scheduler started")
     # The bot's «Одобрить» / «Отказать» buttons come back by its webhook.

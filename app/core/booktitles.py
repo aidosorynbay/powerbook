@@ -70,17 +70,35 @@ def _strip_accents(text: str) -> str:
                    if unicodedata.category(ch) != "Mn")
 
 
+# A volume in brackets at the end — «(часть 3)», «(3)», «(2-кітап)» — is the book, not an aside: stripped with the
+# brackets, «Перси Джексон (часть 3)» and «(часть 4)» were one book (2026-10-23). Its number stays in the key.
+_BRACKET_VOLUME = re.compile(
+    r"\s*[\(\[]\s*(?:(?:часть|ч\.|том|т\.|книга|кн\.|кітап|бөлім|part|pt\.|vol\.?|volume|book)\s*)?"
+    r"(\d{1,3}|[ivx]{1,4})(?:\s*-?\s*(?:я|й|ая|ый|ші|шы|ші))?(?:\s*-?\s*(?:часть|том|книга|кітап|бөлім))?\s*[\)\]]\s*$"
+)
+
+# Kazakh in Latin letters, and a Latin schwa typed for «ә» (the same key letter for letter, not a guess):
+# «Адамзаттың асыл тəжі» and «…тәжі», «Alğaşqy mūsylman» and «Алғашқы мұсылман» were two books (2026-10-23).
+_LATIN_KAZAKH = [("ə", "ә"), ("ş", "sh"), ("ç", "ch"), ("ı", "i")]
+
+
 def match_key(title: str) -> str:
     """A script-neutral skeleton used only for comparison, never for display."""
     text = title.strip().split("\n", 1)[0].lower()
 
-    # Drop trailing asides such as "(второй раз)" before anything else.
+    # Drop trailing asides such as "(второй раз)" before anything else — but a volume stays, as its number.
     while True:
+        volume = _BRACKET_VOLUME.search(text)
+        if volume is not None:
+            text = f"{text[: volume.start()]} {volume.group(1)}".strip()
+            break
         stripped = re.sub(r"\s*[\(\[][^\(\)\[\]]*[\)\]]\s*$", "", text)
         if stripped == text:
             break
         text = stripped.strip()
 
+    for a, b in _LATIN_KAZAKH:
+        text = text.replace(a, b)
     text = _strip_accents(text) if not any(c in text for c in "әғқңөұүі") else text
     text = "".join(_CYR.get(ch, ch) for ch in text)
 

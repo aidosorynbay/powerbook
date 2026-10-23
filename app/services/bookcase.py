@@ -372,6 +372,9 @@ class BookcaseService:
                     if override.source == "google" and override.source_id
                     else None
                 )
+            if override.finished_on:
+                # «Когда дочитали», the reader's own word over the days or the entry
+                vol.finished_on = override.finished_on.isoformat()
             if override.work_key:
                 # The owner said which book this is: it counts as that book everywhere.
                 vol.match_key = override.work_key

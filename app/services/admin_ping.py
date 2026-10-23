@@ -170,6 +170,28 @@ def claim_by_telegram(*, claimant, nick: str, rounds: int) -> None:
     tell_admins(f"✅ Через Telegram: {who} (@{claimant.username}) забрал(а) историю ника @{nick} — кругов: {rounds}")
 
 
+# ---------- likely doubles in the shared library ----------
+
+
+def book_pair_waiting(*, pair_id: str, a: dict, b: dict) -> None:
+    """Two books that look like one (app/services/book_identity.py): the founder says, by a button, once."""
+
+    def line(w: dict) -> str:
+        who = f" — {w['author']}" if w.get("author") else ""
+        return f"«{w['title']}»{who} · читателей: {w['readers']}"
+
+    tell_admins(
+        "📚 Это одна книга?\n"
+        f"{line(a)}\n{line(b)}\n"
+        "Если одна — карточки, оценки и читатели сложатся в одну. Разные тома и разных авторов бот не предлагает.\n"
+        f"Все возможные дубли: {SITE}/admin/book-merge",
+        buttons=[[
+            {"text": "✅ Одна книга", "callback_data": f"bp:s:{pair_id}"},
+            {"text": "❌ Разные", "callback_data": f"bp:d:{pair_id}"},
+        ]],
+    )
+
+
 def _together(db: Session, claim: UsernameClaim) -> list[UsernameClaim]:
     """The request and the ones it brought along: a reader asking for one
     nickname asks for every archive account recorded as the same person."""
@@ -241,7 +263,7 @@ def on_update(db: Session, update: dict) -> None:
     query = update.get("callback_query") or {}
     data = query.get("data") or ""
     sender = str((query.get("from") or {}).get("id") or "")
-    if not data.startswith(("claim:", "ci:")):
+    if not data.startswith(("claim:", "ci:", "bp:")):
         return
     if sender not in chat_ids():
         _later("answerCallbackQuery", {"callback_query_id": query.get("id"), "text": "Только для админа"})
@@ -250,8 +272,13 @@ def on_update(db: Session, update: dict) -> None:
         _on_checkin_button(db, query, data)
         return
     try:
-        _, verb, raw_id = data.split(":", 2)
-        verdict = decide_claim(db, uuid.UUID(raw_id), approve=verb == "a")
+        kind, verb, raw_id = data.split(":", 2)
+        if kind == "bp":
+            from app.services import book_identity
+
+            verdict = book_identity.decide(db, uuid.UUID(raw_id), same=verb == "s")
+        else:
+            verdict = decide_claim(db, uuid.UUID(raw_id), approve=verb == "a")
     except Exception:
         logger.exception("claim button failed")
         db.rollback()

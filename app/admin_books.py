@@ -140,13 +140,21 @@ def likely_doubles(idx, votes: dict[str, int]) -> list[tuple[dict, dict]]:
 
 
 def link(db, keys: list[str], admin_id: uuid.UUID | None) -> int:
-    """Join every book in `keys` to the first. Returns how many links were made."""
+    """Join every book in `keys` to the first. Returns how many links were made. Two volumes of a series or two
+    authors are never one book (book_identity.why_apart): ValueError with the reason, and nothing is joined."""
+    from app.services.book_identity import why_apart
+
     idx = catalog.index(db)
     works = [idx.find(k) for k in keys]
     works = [w for w in works if w is not None]
     if len(works) < 2:
         return 0
     first, made = works[0], 0
+    for other in works[1:]:
+        if other.key != first.key:
+            reason = why_apart(first.title, first.author, other.title, other.author)
+            if reason:
+                raise ValueError(f"«{first.title}» и «{other.title}»: {reason}")
     for other in works[1:]:
         if other.key == first.key:
             continue
@@ -178,7 +186,10 @@ class BookMergeView(BaseView):
                 found = [w for w in idx.works.values() if catalog.search_matches(w, q)]
                 found.sort(key=lambda w: (-len(w.readers), w.title.casefold()))
                 found = [_row(w, votes) for w in found[:60]]
-            doubles = likely_doubles(idx, votes) if not q else []
+            from app.services.book_identity import candidates
+
+            # without the pairs already answered and those that may never be one (book_identity)
+            doubles = candidates(db, idx) if not q else []
             disputes = author_disputes(idx, votes) if not q else []
             links = db.execute(select(BookLink).order_by(BookLink.created_at.desc()).limit(100)).scalars().all()
             link_rows = [{"id": str(x.id), "a": x.title_a or x.key_a, "b": x.title_b or x.key_b} for x in links]
@@ -208,11 +219,17 @@ class BookMergeView(BaseView):
         base = str(request.url_for("admin:index")).rstrip("/")
         admin = request.session.get("admin_user")
         db = get_session_factory()()
+        refused = None
         try:
             made = link(db, keys, uuid.UUID(admin) if admin else None)
+        except ValueError as exc:
+            made, refused = 0, str(exc)
         finally:
             db.close()
-        msg = f"Склеено: {made}" if made else "Нечего склеивать — выберите хотя бы две разные книги"
+        if refused:
+            msg = f"Не склеено: {refused}"
+        else:
+            msg = f"Склеено: {made}" if made else "Нечего склеивать — выберите хотя бы две разные книги"
         q = f"&q={quote(back)}" if back else ""
         return RedirectResponse(f"{base}/book-merge?msg={quote(msg)}{q}", status_code=303)
 
@@ -237,6 +254,23 @@ class BookMergeView(BaseView):
             msg = "Автор снова по источникам"
         q = f"&q={quote(back)}" if back else ""
         return RedirectResponse(f"{base}/book-merge?msg={quote(msg)}{q}", status_code=303)
+
+    @expose("/book-merge/apart", methods=["POST"])
+    async def apart(self, request: Request):
+        """«Разные»: the pair leaves the list of likely doubles for good."""
+        from app.services.book_identity import mark_apart
+
+        form = await request.form()
+        keys = [str(k) for k in form.getlist("key") if k]
+        base = str(request.url_for("admin:index")).rstrip("/")
+        admin = request.session.get("admin_user")
+        db = get_session_factory()()
+        try:
+            done = len(keys) == 2 and mark_apart(db, keys[0], keys[1], uuid.UUID(admin) if admin else None)
+        finally:
+            db.close()
+        msg = "Отмечено: разные книги — больше не покажем" if done else "Не нашлось этих книг"
+        return RedirectResponse(f"{base}/book-merge?msg={quote(msg)}", status_code=303)
 
     @expose("/book-merge/unlink", methods=["POST"])
     async def unlink(self, request: Request):

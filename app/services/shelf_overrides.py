@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from datetime import date
 from urllib.parse import quote
 
 from fastapi import HTTPException, UploadFile, status
@@ -67,7 +68,10 @@ def _library_changed() -> None:
 
 def _tidy(db: Session, row: ShelfOverride) -> None:
     """An override that overrides nothing is just a row; don't keep it."""
-    if row.cover_mode == "auto" and not row.title and not row.author and not row.work_key and not row.hidden:
+    if (
+        row.cover_mode == "auto" and not row.title and not row.author and not row.work_key and not row.hidden
+        and not row.finished_on
+    ):
         _drop_image(row)
         db.delete(row)
 
@@ -76,6 +80,17 @@ def set_text(db: Session, user_id: uuid.UUID, volume_key: str, title: str | None
     row = _row(db, user_id, volume_key)
     row.title = (title or "").strip()[:300] or None
     row.author = (author or "").strip()[:200] or None
+    _tidy(db, row)
+    db.commit()
+
+
+def set_finished(db: Session, user_id: uuid.UUID, volume_key: str, day: date | None) -> None:
+    """«Когда дочитали»: the reader's own date for this copy (None gives it back to the days or the entry). Not in
+    the future, and not before there were printed books to speak of."""
+    if day is not None and (day > date.today() or day.year < 1900):
+        raise _bad("bad_date")
+    row = _row(db, user_id, volume_key)
+    row.finished_on = day
     _tidy(db, row)
     db.commit()
 

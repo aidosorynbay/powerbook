@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { apiDelete, apiGet, apiPut, track, useI18n, type CatalogItem, type CoverOption } from '@/shared/lib';
 import { apiUrl, PbBadge, useCount } from '@/pages/books/bookUi';
+import { paletteFor } from './bookArt';
 import styles from './Bookcase.module.css';
 
 type Match = { works: CatalogItem[]; editions: CoverOption[] };
@@ -116,7 +117,12 @@ export function WorkPicker({ volumeKey, initialQuery, pinned = false, autoSearch
                   {w.cover_thumb_url ? (
                     <img src={apiUrl(w.cover_thumb_url) ?? ''} alt="" loading="lazy" />
                   ) : (
-                    <span className={styles.whichNoCover} aria-hidden="true" />
+                    // painted as the shelf paints it: a grey box read as a picture still loading (2026-10-23)
+                    <span
+                      className={styles.whichNoCover}
+                      aria-hidden="true"
+                      style={{ background: paletteFor(w.key).cover, color: paletteFor(w.key).accent }}
+                    />
                   )}
                   <span className={styles.whichText}>
                     <strong>{w.title}</strong>

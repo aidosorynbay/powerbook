@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import Boolean, ForeignKey, String, Uuid
+from datetime import date
+
+from sqlalchemy import Boolean, Date, ForeignKey, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -44,3 +46,7 @@ class ShelfOverride(TimestampMixin, Base):
     # «Убрать с полки»: not a book at all (a finished day's comment that is no title, say). The shelf and the shared
     # library leave it out; the day, its minutes and its comment stay as they are.
     hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+
+    # «Когда дочитали»: the reader's own date for this copy, over what the days or the hand-added entry say
+    # (2026-10-23, the founder: set it where the cover is set).
+    finished_on: Mapped[date | None] = mapped_column(Date, nullable=True, default=None)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -222,6 +222,10 @@ class CoverChoiceIn(BaseModel):
     mode: str = Field(pattern="^(auto|none|pick)$")
     source: str | None = Field(default=None, max_length=20)
     volume_id: str | None = Field(default=None, max_length=40)
+
+
+class FinishedOnIn(BaseModel):
+    finished_on: date | None = None
 
 
 class ReadImportBookIn(BaseModel):
