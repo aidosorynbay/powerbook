@@ -101,7 +101,9 @@ _RATING = re.compile(r"\s*[-—–(]?\s*\b\d{1,2}(?:[.,]\d{1,2})?\s*/\s*10\b\)?|
 _EMOTICON = re.compile(r"\s*(?:[:;=]-?[()DPpОО3]+|\){2,}|\(+)\s*$")
 # "2 часть", "том 1", "1-бөлім": right to keep on the spine, wrong to search with.
 _VOLUME = re.compile(
-    r"\s*(?:\d+\s*[-‐]?\s*(?:часть|том|книга|бөлім|кітап)|(?:часть|том|книга|бөлім|part|vol\.?|volume|book)\s*\d+)\s*$",
+    r"\s*(?:\d+\s*[-‐]?\s*(?:часть|том|книга|бөлім|кітап)|(?:часть|том|книга|бөлім|part|vol\.?|volume|book)\s*\d+)\s*$"
+    # Or a bare volume number after the name: "Шантарам 1", "Сынық құмыра 5" (not a year: "Метро 2033").
+    r"|(?<=\w)\s+\d{1,2}\s*$",
     re.IGNORECASE,
 )
 # A title and its author joined by a dash, with space on at least one side.
@@ -182,6 +184,8 @@ class _Candidate:
     has_thumbnail: bool
     source: str = "google"
     isbns: list[str] = field(default_factory=list)
+    # Where its picture is, for a shop whose picture addresses can't be built from the id.
+    image_url: str | None = None
 
 
 def _get(url: str, timeout: int = 15) -> tuple[bytes, str]:
@@ -363,6 +367,70 @@ def _search_flip(query: str) -> list[_Candidate]:
     return found
 
 
+_CHITAI = "https://www.chitai-gorod.ru"
+_CHITAI_CARD = re.compile(
+    r'<article class="product-card[^"]*"[^>]*data-testid-product-item="(\d+)".*?'
+    r'<a href="/product/[^"]+"[^>]*title="([^"]+)"><img[^>]*srcset="(https://content\.img-gorod\.ru/[^"?\s]+)',
+    re.DOTALL,
+)
+# Kazakh letters: Читай-город sells Russian books, so a Kazakh title is not asked there.
+_KAZAKH = re.compile(r"[әғқңөұүһіӘҒҚҢӨҰҮҺІ]")
+# Its robots.txt allows search; this keeps us a quiet visitor: a request every few
+# seconds and a ceiling a day per process, so it never has cause to shut us out as Flip did.
+_CHITAI_GAP_SECONDS = 3.0
+_CHITAI_DAILY_CAP = 300
+_chitai_lock = threading.Lock()
+_chitai_last = [0.0]
+_chitai_spent: dict[str, int] = {}
+
+
+def _chitai_get(url: str) -> str:
+    with _chitai_lock:
+        today = datetime.now(timezone.utc).date().isoformat()
+        if _chitai_spent.get(today, 0) >= _CHITAI_DAILY_CAP:
+            raise RuntimeError("chitai-gorod: the day's requests are spent")
+        if today not in _chitai_spent:
+            _chitai_spent.clear()
+        _chitai_spent[today] = _chitai_spent.get(today, 0) + 1
+        wait = _chitai_last[0] + _CHITAI_GAP_SECONDS - time.monotonic()
+        if wait > 0:
+            time.sleep(wait)
+        try:
+            return _get(url)[0].decode("utf-8", "replace")
+        finally:
+            _chitai_last[0] = time.monotonic()
+
+
+def _search_chitai(query: str) -> list[_Candidate]:
+    """Читай-город, the Russian bookshop: the Russian editions — translations
+    included — that Google files oddly or not at all. Each result names the book
+    and its author ("Атомные привычки. Как приобрести… (Джеймс Клир)") and
+    carries its cover."""
+    if not settings.chitai_covers or _KAZAKH.search(query):
+        return []
+    page = _chitai_get(f"{_CHITAI}/search?" + urllib.parse.urlencode({"phrase": query}))
+    # The search answers with a refresh to its own address for the phrase.
+    moved = re.search(r'url=(/search/[^"\s]+)"', page[:2000])
+    if moved:
+        page = _chitai_get(_CHITAI + moved.group(1))
+    found = []
+    for product, label, image in _CHITAI_CARD.findall(page)[:12]:
+        label = html.unescape(label).strip()
+        named = re.match(r"^(.*\S)\s+\(([^()]*)\)$", label)
+        title, authors = (named.group(1), named.group(2)) if named else (label, "")
+        found.append(
+            _Candidate(
+                volume_id=product,
+                titles=[title],
+                creators=[a.strip() for a in authors.split(",") if a.strip()],
+                has_thumbnail=True,
+                source="chitai",
+                image_url=image,
+            )
+        )
+    return found
+
+
 def _flip_image(product: str, size: int) -> str:
     # Flip files a product's pictures by the thousand it falls in: 4306625 → /prod/4307/4306625_550.jpg.
     return f"https://s.f.kz/prod/{-(-int(product) // 1000)}/{product}_{size}.jpg"
@@ -371,7 +439,7 @@ def _flip_image(product: str, size: int) -> str:
 # Where an edition's subtitle starts: ". Как приобрести…", ": A Brief
 # History", " — роман", " (", " [". A dot followed by a lowercase word is
 # part of the title ("Думай медленно... решай быстро"), not the end of it.
-_SUBTITLE = re.compile(r"(?<!\.)\.\s+(?=[A-ZА-ЯЁӘҒҚҢӨҰҮҺІ])|:\s+| [—–-] |\s[\(\[]")
+_SUBTITLE = re.compile(r"(?<!\.)\.\s+(?=[A-ZА-ЯЁӘҒҚҢӨҰҮҺІ])|:\s+| [—–-] |\s[\(\[]|(?<=\w)[!?]\s+(?=\S)")
 
 
 def _head(title: str) -> str:
@@ -654,6 +722,15 @@ def _fetch_images(candidate: _Candidate, min_width: int = 250) -> tuple[bytes, b
             return None
         return full, _cover_bytes(f"{base}-M.jpg", min_width=60, portrait=False) or full
 
+    if candidate.source == "chitai":
+        if not (candidate.image_url or "").startswith("https://content.img-gorod.ru/"):
+            return None
+        # The picture service scales to a box; small boxes come back as AVIF, so the small one stays at 400.
+        full = _cover_bytes(f"{candidate.image_url}?width=600&height=900", min_width=min_width)
+        if not full:
+            return None
+        return full, _cover_bytes(f"{candidate.image_url}?width=400&height=600", min_width=60, portrait=False) or full
+
     if candidate.source == "flip":
         full = _cover_bytes(_flip_image(candidate.volume_id, 1000), min_width=min_width) or _cover_bytes(
             _flip_image(candidate.volume_id, 550), min_width=min_width
@@ -797,6 +874,8 @@ def _look_up(row: BookCover, author_hint: str | None, *, only_flip: bool = False
         searches += [(parts[0], _search), (parts[1], _search)]
     if _script(core) == "lat":
         searches.append((core, _search_open_library))
+    else:
+        searches.append((core, _search_chitai))
     # Flip.kz sells the Russian and Kazakh editions of foreign books too, so it is asked for every title —
     # when switched on (settings.flip_covers): it banned our addresses on 2026-10-22.
     if settings.flip_covers:

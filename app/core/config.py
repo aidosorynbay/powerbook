@@ -78,6 +78,8 @@ class Settings(BaseSettings):
     # Flip.kz for covers (app/services/covers.py). Off since 2026-10-22: Flip answers
     # 403 to the server and banned the founder's IP after our lookups.
     flip_covers: bool = False
+    # Читай-город for covers of Russian editions (app/services/covers.py), a few requests a minute.
+    chitai_covers: bool = True
     # Background fetching of ratings and descriptions from the free
     # catalogues (Google Books, Open Library, Wikipedia).
     book_facts_enabled: bool = True
