@@ -543,6 +543,22 @@ export function ReadingRoom({ hall, layout, onToday }: { hall: HallName; layout:
     // on a phone Lock in sits right above the sound button: one arrow there would cover the other
     if ((engineRef.current?.progress ?? 0) > 0.97) setCoach(COACH.map((c) => c.id).filter((id) => id !== 'lock' || (layout === 'scroll' && !phone)));
   }, [tick, loaded, coach, layout, phone]);
+  // phones: the dock rests right on the tab bar's top edge (measured), not on a calculated gap
+  useEffect(() => {
+    if (!phone) return;
+    const fit = () => {
+      const stage = stageRef.current;
+      if (!stage) return;
+      const nav = document.querySelector('[data-bottom-nav]')?.getBoundingClientRect();
+      const st = stage.getBoundingClientRect();
+      const gap = nav?.height ? Math.max(0, st.bottom - nav.top) : 0;
+      stage.style.setProperty('--dock-base', `${gap.toFixed(1)}px`);
+    };
+    fit();
+    addEventListener('resize', fit);
+    addEventListener('scroll', fit, { passive: true });
+    return () => { removeEventListener('resize', fit); removeEventListener('scroll', fit); };
+  }, [phone, layout, locked]);
   // each arrow follows what it points at (name tags ride on the photo), its label kept on the screen
   useEffect(() => {
     if (!coach) return;

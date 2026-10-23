@@ -1250,7 +1250,7 @@
   .dock {
     left: 12px;
     right: 12px;
-    bottom: calc(12px + var(--nav));
+    bottom: calc(4px + var(--dock-base, var(--nav)));
     max-width: none;
     padding: 10px 12px;
   }
