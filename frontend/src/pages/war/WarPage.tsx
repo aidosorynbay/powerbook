@@ -209,6 +209,26 @@ function planClips(team: Team, hits: number): ClipSeg[] | null {
   return segs.length ? segs : null;
 }
 
+/** The library as Flow painted it, five pictures of the same room from bare shelves to full ones. As the team's shelf
+ * fills the next picture fades in over the one before it, so the books arrive gradually instead of in four jumps. */
+const SHELF_FRAMES = 5;
+function ShelfFrames({ team, fill }: { team: Team['key']; fill: number }) {
+  const pos = (Math.max(0, Math.min(100, fill)) / 100) * (SHELF_FRAMES - 1);
+  return (
+    <span className={styles.shelfFrames} aria-hidden="true">
+      {Array.from({ length: SHELF_FRAMES }, (_, i) => (
+        <img
+          key={i}
+          src={`/war-art/shelf/${team}-${i}.webp`}
+          alt=""
+          decoding="async"
+          style={i === 0 ? undefined : { opacity: Math.max(0, Math.min(1, pos - (i - 1))) }}
+        />
+      ))}
+    </span>
+  );
+}
+
 type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; r: number; c: string };
 
 /** Two cozy library corners, each in its team's colour; a tap opens the team. While the day's reveal plays, the
@@ -568,7 +588,7 @@ function Field({ war, live, onTeam, playing, onEnd }: { war: War; live: boolean;
             className={`${styles.side} ${x.key === 'lighthouse' ? styles.sideA : styles.sideB} ${war.me.team === x.key ? styles.mine : ''}`}
             onClick={() => onTeam(x.key)}
           >
-            <img src={`/war-art/${x.key}-${stage(playing && rv && x.shelf && stage2 === 'count' ? (100 * (x.points - rv.hits[ti])) / x.shelf : x.fill)}.jpg`} alt="" />
+            <ShelfFrames team={x.key} fill={playing && rv && x.shelf && stage2 === 'count' ? (100 * (x.points - rv.hits[ti])) / x.shelf : x.fill} />
             {playing && <span className={styles.glow} data-glow />}
             {war.me.team === x.key && <span className={styles.tag}>{t('war.yourTeam')}</span>}
             {playing && rv && landed[ti] > 0 && <span key={landed[ti]} className={styles.plus}>+{landed[ti]}</span>}
