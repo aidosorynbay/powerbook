@@ -1,0 +1,68 @@
+.text {
+  min-height: 132px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.list {
+  max-height: 46vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.list li + li {
+  border-top: 1px solid var(--hairline);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.row input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.book {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.title {
+  overflow: hidden;
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.author {
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag {
+  flex: none;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.quiet .row {
+  cursor: default;
+  opacity: 0.55;
+}

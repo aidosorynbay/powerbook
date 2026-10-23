@@ -13,6 +13,9 @@ from app.models.user import User
 from app.schemas.books import PinWorkIn
 from app.schemas.reading import BookDaysIn, BookDaysOut
 from app.schemas.library import (
+    ReadImportIn,
+    ReadImportItemOut,
+    ReadImportOut,
     WantBookIn,
     WantBookOut,
     CustomShelfOut,
@@ -33,7 +36,7 @@ from app.schemas.library import (
     ProgressUpdate,
     ShelfBookOut,
 )
-from app.services import book_notes, covers, custom_shelves, shelf_overrides, want
+from app.services import book_import, book_notes, covers, custom_shelves, shelf_overrides, want
 from app.services.bookcase import BookcaseService
 from app.services.library import LibraryService
 
@@ -340,6 +343,19 @@ def want_add(payload: WantBookIn, db: Session = Depends(get_db), user: User = De
 def read_add(payload: WantBookIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
     """«Прочитал(а)» from a book's card: back on the read shelf, its mark with it, off «Хочу прочитать»."""
     return {"volume_key": want.add_read(db, user.id, title=payload.title, author=payload.author, work_key=payload.work_key)}
+
+
+@router.post("/read/import", response_model=ReadImportOut)
+def read_import(payload: ReadImportIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> ReadImportOut:
+    """«Вставить список»: a pasted list of books read. Without `apply`, what would go on the shelf; with it, done."""
+    if payload.apply:
+        items, added = book_import.apply(db, user.id, payload.text, set(payload.skip))
+    else:
+        items, added = book_import.plan(db, user.id, payload.text), 0
+    return ReadImportOut(
+        items=[ReadImportItemOut(n=i.n, line=i.line, title=i.title, author=i.author, status=i.status, known=i.known) for i in items],
+        added=added,
+    )
 
 
 @router.delete("/want/{want_id}")

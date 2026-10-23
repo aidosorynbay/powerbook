@@ -224,6 +224,31 @@ class CoverChoiceIn(BaseModel):
     volume_id: str | None = Field(default=None, max_length=40)
 
 
+class ReadImportIn(BaseModel):
+    """«Вставить список»: the books the reader has read, one per line, as pasted."""
+
+    text: str = Field(min_length=1, max_length=30_000)
+    # false: only show what would happen; true: put the missing books on the shelf
+    apply: bool = False
+    # the lines (ReadImportItemOut.n) the reader unticked in the preview
+    skip: list[int] = Field(default_factory=list, max_length=300)
+
+
+class ReadImportItemOut(BaseModel):
+    n: int
+    line: str
+    title: str
+    author: str | None
+    # "add" | "have" | "dup"
+    status: str
+    known: bool
+
+
+class ReadImportOut(BaseModel):
+    items: list[ReadImportItemOut]
+    added: int = 0
+
+
 class WantBookIn(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     author: str | None = Field(default=None, max_length=200)

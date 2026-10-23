@@ -25,6 +25,7 @@ import {
 import { Avatar, Icon } from '@/shared/ui';
 import { Header } from '@/widgets';
 import { bookMeta, extractCover } from '../extractCover';
+import { ImportList } from './ImportList';
 import { EditBookSheet } from './EditBookSheet';
 import { WhichBookSheet } from './WorkPicker';
 import { BookChat } from '@/widgets/BookChat';
@@ -1566,6 +1567,15 @@ export function BookcasePage({ ownerId }: Props) {
                     )}
                   </div>
                 </div>
+
+                <ImportList
+                  onDone={async (added) => {
+                    setAddOpen(false);
+                    setSort('recent');
+                    await load();
+                    flash(added ? t('shelf.importDone', { n: added }) : t('shelf.importNothing'));
+                  }}
+                />
 
                 <form className={styles.sheetSection} onSubmit={onAddManual}>
                   <h3>{t('shelf.addManualTitle')}</h3>
