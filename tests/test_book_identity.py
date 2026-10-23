@@ -186,3 +186,28 @@ def test_the_buttons_reach_the_decision(db, monkeypatch):
     db.commit()
     admin_ping.on_update(db, {"callback_query": {"id": "q", "data": f"bp:s:{pair.id}", "from": {"id": 8}, "message": {}}})
     assert db.get(BookPair, pair.id).status == "asked"
+
+
+def test_the_founder_says_what_a_book_is_called(db):
+    """2026-10-23: the Monk's card showed the spelling readers typed, without «свой»."""
+    from app.admin_books import set_author
+
+    a, b = _work(db, "Монах, который продал Феррари"), _work(db, "Монах который продал свой Феррари")
+    link(db, [a.key, b.key], None)
+    catalog.invalidate()
+    work = _work(db, "Монах который продал свой Феррари")
+    assert set_author(db, work.key, "Робин Шарма", None, title="Монах, который продал свой Феррари")
+    idx = catalog.index(db)
+    work = idx.find(catalog.work_key("Монах, который продал Феррари"))
+    assert (work.title, work.author, work.title_fixed) == ("Монах, который продал свой Феррари", "Робин Шарма", True)
+    # every copy's face is the founder's name, whichever way its reader typed it
+    from app.services import book_face
+
+    assert book_face.spelling(idx, "Монах, который продал Феррари") == "Монах, который продал свой Феррари"
+    assert book_face.spelling(idx, "Монах который продал свой Феррари") == "Монах, который продал свой Феррари"
+    # an author chosen later keeps the name (the forms that only pick an author send no title) …
+    assert set_author(db, work.key, "Робин С. Шарма", None)
+    assert catalog.index(db).find(work.key).title == "Монах, который продал свой Феррари"
+    # … and an empty title gives it back to the readers
+    assert set_author(db, work.key, "Робин Шарма", None, title="")
+    assert not catalog.index(db).find(work.key).title_fixed

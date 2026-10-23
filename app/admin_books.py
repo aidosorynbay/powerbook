@@ -48,6 +48,7 @@ def _row(work, votes: dict[str, int]) -> dict:
         "votes": votes.get(work.key, 0),
         "image": work.image,
         "author_fixed": work.author_fixed,
+        "title_fixed": work.title if work.title_fixed else "",
         # the other people the sources name, with the weight of what named them
         "rivals": [{"name": name, "weight": weight} for name, weight in work.author_rivals[1:4]],
     }
@@ -65,18 +66,30 @@ def author_disputes(idx, votes: dict[str, int]) -> list[dict]:
     return [_row(w, votes) for w in works[:_DISPUTES]]
 
 
-def set_author(db, key: str, author: str | None, admin_id: uuid.UUID | None) -> bool:
+def set_author(
+    db, key: str, author: str | None, admin_id: uuid.UUID | None, title: str | None = None
+) -> bool:
     """The founder's word on who wrote a book; an empty name gives the choice
     back to the sources. The book's lookups are asked again with the name,
-    so their covers become editions by that author (covers.recheck_disputed)."""
+    so their covers become editions by that author (covers.recheck_disputed).
+    `title` is what the book is called: None keeps what was said before, empty gives the name back to the readers."""
     work = catalog.index(db).find(key)
     if work is None:
         return False
     name = re.sub(r"\s+", " ", author or "").strip(" ,;")[:200]
+    members = sorted(work.members)
+    if title is None:
+        before = db.execute(select(BookAuthor.display_title).where(BookAuthor.key.in_(members))).scalars().first()
+        shown = before or ""
+    else:
+        shown = re.sub(r"\s+", " ", title).strip()[:300]
     # One word per book, whichever of its keys an earlier one was kept under.
-    db.execute(delete(BookAuthor).where(BookAuthor.key.in_(sorted(work.members))))
+    db.execute(delete(BookAuthor).where(BookAuthor.key.in_(members)))
+    if name or shown:
+        db.add(BookAuthor(
+            key=work.key, author=name or None, display_title=shown or None, title=work.title[:300], created_by=admin_id,
+        ))
     if name:
-        db.add(BookAuthor(key=work.key, author=name, title=work.title[:300], created_by=admin_id))
         if work.cover_keys:
             db.execute(update(BookCover).where(BookCover.key.in_(sorted(work.cover_keys))).values(author_checked_at=None))
     db.commit()
@@ -241,9 +254,11 @@ class BookMergeView(BaseView):
         base = str(request.url_for("admin:index")).rstrip("/")
         admin = request.session.get("admin_user")
         name = str(form.get("author") or "")
+        # absent: the title stays as it was (the forms that only choose an author); present: what is written
+        shown = form.get("title")
         db = get_session_factory()()
         try:
-            done = set_author(db, key, name, uuid.UUID(admin) if admin else None)
+            done = set_author(db, key, name, uuid.UUID(admin) if admin else None, None if shown is None else str(shown))
         finally:
             db.close()
         if not done:

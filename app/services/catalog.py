@@ -82,6 +82,8 @@ class Work:
     author_rivals: list[tuple[str, float]] = field(default_factory=list)
     # The founder said who wrote it (book_authors).
     author_fixed: bool = False
+    # The founder said what it is called (book_authors.display_title).
+    title_fixed: bool = False
     # The cover lookups of its spellings (book_covers keys).
     cover_keys: set[str] = field(default_factory=set)
     # Its cover is an edition a reader picked (not a lookup's guess, nor a photo).
@@ -352,6 +354,11 @@ def _build(db: Session) -> CatalogIndex:
     # The founder's word on who wrote a book, and every author the catalogues ever named: what tells a reader's
     # «Ремарк» (a real author, written short) from «Перечитала».
     fixed = {key: author for key, author in db.execute(select(BookAuthor.key, BookAuthor.author)).all() if author}
+    named = {
+        key: shown.strip()
+        for key, shown in db.execute(select(BookAuthor.key, BookAuthor.display_title)).all()
+        if shown and shown.strip()
+    }
     known = names.Directory(
         [a for (a,) in db.execute(select(BookCover.author).where(BookCover.author.is_not(None))).all()]
         + list(fixed.values())
@@ -489,6 +496,18 @@ def _build(db: Session) -> CatalogIndex:
             work.author = author[:200]
             work.author_fixed = True
             work.search = f"{work.title} {work.author}".casefold()
+
+    # So is its name: the card's title, and the spelling every copy's shelf shows.
+    for key, shown in named.items():
+        work = works.get(by_member.get(key, ""))
+        if work is not None:
+            work.faces = {
+                face: (shown[:300], image) for face, (_old, image) in work.faces.items()
+            }
+            work.faces.setdefault(face_key(shown), (shown[:300], work.image))
+            work.title = shown[:300]
+            work.title_fixed = True
+            work.search = f"{work.title} {work.author or ''}".casefold()
 
     idx = CatalogIndex(works=works, by_member=by_member, by_person=dict(by_person), fold=fold, representative=representative)
     _dress_from_other_copies(
