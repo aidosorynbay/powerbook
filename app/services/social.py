@@ -133,6 +133,10 @@ class SocialService:
                     league=leagues.get(u.id),
                 )
             )
+        # Every reader's recent books get their covers in one pass, the way the shelf finds them.
+        found = iter(self.favorite_covers([title for entry in out for title in entry.recent_books]))
+        for entry in out:
+            entry.recent_covers = [next(found) for _ in entry.recent_books]
         return out + self._archive_directory()
 
     def favorite_covers(self, titles: list[str]) -> list[str | None]:

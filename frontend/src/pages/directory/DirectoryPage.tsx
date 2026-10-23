@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useI18n, apiGet, type Buddy, type DirectoryEntry } from '@/shared/lib';
+import { apiUrl } from '@/pages/books/bookUi';
 import { Container, PageTransition, Avatar, BookCard, Icon } from '@/shared/ui';
 import { Header, Footer } from '@/widgets';
 import styles from './DirectoryPage.module.css';
@@ -167,7 +168,7 @@ export function DirectoryPage() {
                       <div className={styles.miniLibrary}>
                         {entry.recent_books.slice(0, 3).map((title, i) => (
                           <div key={i} className={styles.miniLibraryItem}>
-                            <BookCard title={title} size="sm" />
+                            <BookCard title={title} cover={apiUrl(entry.recent_covers?.[i])} size="sm" />
                           </div>
                         ))}
                       </div>

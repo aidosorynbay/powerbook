@@ -15,6 +15,8 @@ class DirectoryEntryOut(BaseModel):
     archetype_weekday: int | None = None
     recommendation_text: str | None
     recent_books: list[str]
+    # The cover of each recent book, found the way the shelf finds it; None paints one.
+    recent_covers: list[str | None] = []
     badges_earned: int
     # Archive entries are historical records nobody has claimed yet.
     is_archive: bool = False

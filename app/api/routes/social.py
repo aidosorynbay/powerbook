@@ -17,8 +17,17 @@ router = APIRouter(prefix="/social", tags=["social"])
 
 
 @router.get("/directory", response_model=list[DirectoryEntryOut])
-def get_directory(db: Session = Depends(get_db), _user=Depends(get_current_user)) -> list[DirectoryEntryOut]:
-    return SocialService(db).directory()
+def get_directory(
+    background: BackgroundTasks, db: Session = Depends(get_db), _user=Depends(get_current_user)
+) -> list[DirectoryEntryOut]:
+    service = SocialService(db)
+    out = service.directory()
+    if service.pending_lookups:
+        # Covers of recent books nobody has looked up yet: there on the next visit.
+        from app.services import covers
+
+        background.add_task(covers.fill_in_background, service.pending_lookups)
+    return out
 
 
 @router.get("/profile/{user_id}", response_model=PublicProfileOut)

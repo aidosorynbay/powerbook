@@ -535,6 +535,8 @@ export type DirectoryEntry = {
   archetype_weekday: number | null;
   recommendation_text: string | null;
   recent_books: string[];
+  /** The cover of each recent book, or null where the painted one stands in. */
+  recent_covers?: (string | null)[];
   badges_earned: number;
   /** A historical record nobody has claimed yet, not a registered member. */
   is_archive: boolean;
