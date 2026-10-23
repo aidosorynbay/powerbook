@@ -99,3 +99,19 @@ def test_a_bare_volume_number_is_not_part_of_the_name(typed, core):
 def test_a_subtitle_after_an_exclamation_is_cut():
     assert covers._head("Начни с главного! 1 удивительно простой принцип") == "Начни с главного"
     assert covers._head("Хватит мечтать, займись делом! Почему важно") == "Хватит мечтать, займись делом"
+
+
+def test_a_russian_title_asks_the_shop_before_google(monkeypatch, tmp_path):
+    order = []
+    book = covers._Candidate(volume_id="1", titles=["Важные годы"], creators=["Мэг Джей"], has_thumbnail=True,
+                             source="chitai", image_url="https://content.img-gorod.ru/a.jpg")
+    monkeypatch.setattr(covers, "COVERS_DIR", tmp_path)
+    monkeypatch.setattr(covers, "_search_chitai", lambda q: order.append("chitai") or [book])
+    monkeypatch.setattr(covers, "_search", lambda q: order.append("google") or [])
+    monkeypatch.setattr(covers, "_fetch_images", lambda c, min_width=250: (b"full", b"small"))
+    from app.models.book_cover import BookCover
+
+    row = BookCover(key=covers.cover_key("Важные годы"), query="Важные годы", status="working", attempts=0)
+    covers._look_up(row, None)
+    assert row.source == "chitai" and row.image
+    assert order == ["chitai"]

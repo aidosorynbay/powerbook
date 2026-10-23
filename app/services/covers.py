@@ -875,7 +875,10 @@ def _look_up(row: BookCover, author_hint: str | None, *, only_flip: bool = False
     if _script(core) == "lat":
         searches.append((core, _search_open_library))
     else:
-        searches.append((core, _search_chitai))
+        # Читай-город first for a Russian title: it answers in seconds, while Google, refusing
+        # most calls and asked again after each refusal, can use up the lookup's time before
+        # the shop is reached (2026-10-24: a pass of 20 found nothing that way).
+        searches.insert(0, (core, _search_chitai))
     # Flip.kz sells the Russian and Kazakh editions of foreign books too, so it is asked for every title —
     # when switched on (settings.flip_covers): it banned our addresses on 2026-10-22.
     if settings.flip_covers:

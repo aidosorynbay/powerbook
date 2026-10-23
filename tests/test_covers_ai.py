@@ -51,6 +51,7 @@ def web(monkeypatch, tmp_path):
     monkeypatch.setattr(covers, "COVERS_DIR", tmp_path)
     monkeypatch.setattr(covers, "_search", lambda q: [])
     monkeypatch.setattr(covers, "_search_flip", lambda q: [])
+    monkeypatch.setattr(covers, "_search_chitai", lambda q: [])
     monkeypatch.setattr(covers, "_wikidata_cover", lambda q: None)
     return state
 

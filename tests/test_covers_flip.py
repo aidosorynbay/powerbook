@@ -55,6 +55,7 @@ def test_the_picture_is_filed_by_the_thousand():
 @pytest.fixture()
 def google_down(monkeypatch, tmp_path):
     monkeypatch.setattr(covers.settings, "flip_covers", True)
+    monkeypatch.setattr(covers, "_search_chitai", lambda q: [])
     def refuse(q):
         raise urllib.error.HTTPError("https://www.google.com/books/feeds/volumes", 500, "down", {}, None)
 
