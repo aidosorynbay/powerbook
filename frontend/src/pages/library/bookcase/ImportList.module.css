@@ -4,11 +4,20 @@
   line-height: 1.45;
 }
 
+.summary {
+  color: var(--ink) !important;
+  font-weight: 600;
+}
+
+.hint {
+  margin-top: -6px !important;
+  font-size: 13px !important;
+}
+
+/* one scroll for the whole sheet: the list grows, the buttons stay at its foot */
 .list {
-  max-height: 46vh;
   margin: 0;
   padding: 0;
-  overflow-y: auto;
   list-style: none;
 }
 
@@ -20,35 +29,70 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 44px;
-  padding: 8px 0;
+  min-height: 52px;
+  padding: 6px 0;
+}
+
+/* drawn, not the browser's own: Safari painted ticked boxes two ways in one list (2026-10-23) */
+.box {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1.5px solid var(--hairline);
+  border-radius: 6px;
+  color: #fff;
+  background: transparent;
   cursor: pointer;
 }
 
-.row input {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  accent-color: var(--accent);
+.box[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.box:disabled {
+  cursor: default;
+}
+
+.box:focus-visible,
+.book:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .book {
   display: flex;
   flex: 1;
   flex-direction: column;
+  align-items: flex-start;
   min-width: 0;
+  padding: 4px 0;
+  border: 0;
+  color: inherit;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: text;
+}
+
+.book:disabled {
+  cursor: default;
 }
 
 .title {
+  max-width: 100%;
   overflow: hidden;
   color: var(--ink);
-  font-family: var(--serif);
   font-size: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .author {
+  max-width: 100%;
   overflow: hidden;
   color: var(--ink-soft);
   font-size: 13px;
@@ -62,7 +106,67 @@
   font-size: 12px;
 }
 
+.off .book {
+  opacity: 0.5;
+}
+
 .quiet .row {
-  cursor: default;
-  opacity: 0.55;
+  opacity: 0.5;
+}
+
+.edit {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.done {
+  align-self: flex-start;
+  padding: 4px 0;
+  border: 0;
+  color: var(--accent);
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bar {
+  position: sticky;
+  z-index: 1;
+  bottom: -30px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 4px -30px -30px;
+  padding: 14px 30px 22px;
+  border-top: 1px solid var(--hairline);
+  background: var(--paper-deep, var(--paper-light));
+}
+
+@media (max-width: 760px) {
+  .bar {
+    bottom: -24px;
+    margin: 4px -20px -24px;
+    padding: 12px 20px 18px;
+  }
+}
+
+.back {
+  padding: 8px 2px;
+  border: 0;
+  color: var(--ink-soft);
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.back:hover {
+  color: var(--ink);
 }

@@ -347,11 +347,14 @@ def read_add(payload: WantBookIn, db: Session = Depends(get_db), user: User = De
 
 @router.post("/read/import", response_model=ReadImportOut)
 def read_import(payload: ReadImportIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> ReadImportOut:
-    """«Вставить список»: a pasted list of books read. Without `apply`, what would go on the shelf; with it, done."""
-    if payload.apply:
-        items, added = book_import.apply(db, user.id, payload.text, set(payload.skip))
-    else:
+    """«Вставить список»: a pasted list of books read, as it was read (`text`); or the books kept from it put on the
+    shelf (`books`)."""
+    if payload.books is not None:
+        items, added = book_import.apply(db, user.id, [(b.title, b.author) for b in payload.books])
+    elif payload.text and payload.text.strip():
         items, added = book_import.plan(db, user.id, payload.text), 0
+    else:
+        raise HTTPException(status_code=422, detail="text_or_books")
     return ReadImportOut(
         items=[ReadImportItemOut(n=i.n, line=i.line, title=i.title, author=i.author, status=i.status, known=i.known) for i in items],
         added=added,
