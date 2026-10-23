@@ -60,3 +60,38 @@ def test_the_daily_pass_asks_what_is_due(db, monkeypatch, tmp_path):
     monkeypatch.setattr("app.db.session.get_session_factory", lambda: (lambda: db))
     covers.scheduled()
     assert list(asked) == ["gauhar"]
+
+
+def test_a_title_google_failed_on_comes_back_in_a_few_hours(db):
+    """Google refused 3 of 4 calls on 2026-10-23: an error is asked again after a few hours, not the next day."""
+    _row(db, "error-4h", "error", hours_ago=4)
+    _row(db, "error-1h", "error", hours_ago=1)
+    _row(db, "none-4h", "none", hours_ago=4)
+    assert set(covers.due_again(db, limit=10)) == {"error-4h"}
+
+
+def test_a_refusal_of_the_moment_is_asked_again(monkeypatch):
+    import urllib.error
+
+    monkeypatch.setattr(covers, "_RETRY_WAITS", (0, 0))
+    calls = []
+
+    def flaky():
+        calls.append(1)
+        if len(calls) < 3:
+            raise urllib.error.HTTPError("u", 503, "Service temporarily unavailable", {}, None)
+        return ["found"]
+
+    assert covers._retrying(flaky) == ["found"] and len(calls) == 3
+
+    def refusing():
+        raise urllib.error.HTTPError("u", 403, "Forbidden", {}, None)
+
+    with pytest.raises(urllib.error.HTTPError):
+        covers._retrying(refusing)
+
+
+def test_the_keyed_api_keeps_to_its_day(monkeypatch):
+    monkeypatch.setattr(covers, "_API_DAILY_CAP", 2)
+    monkeypatch.setattr(covers, "_api_used", {})
+    assert [covers._api_turn() for _ in range(3)] == [True, True, False]

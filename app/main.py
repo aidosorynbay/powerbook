@@ -206,13 +206,13 @@ async def lifespan(app: FastAPI):
         coalesce=True,
         next_run_time=datetime.now() + timedelta(seconds=45),
     )
-    # Covers still missing: asked again once a day, a bounded number, so the free Google quota is not used up.
+    # Covers still missing: asked again every two hours, a bounded number, so the free Google quota is not used up.
     from app.services import covers
 
     scheduler.add_job(
         covers.scheduled,
         "interval",
-        days=1,
+        seconds=int(covers._PASS_EVERY.total_seconds()),
         id="covers_daily",
         max_instances=1,
         coalesce=True,

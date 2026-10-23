@@ -73,6 +73,17 @@ _last_request = [0.0]
 # tomorrow and use the feed instead.
 _api_resting_until = [0.0]
 
+# Google Books has been refusing most calls with a 500/503 since 19 Oct 2026
+# (3 of 4 on the 23rd, «Service temporarily unavailable», every query) while
+# the rest go through: a refusal is asked again, after a pause, before a book
+# is given up for the day. The founder (2026-10-23): it has to work without
+# anyone stepping in once readers paste their lists.
+_RETRY_WAITS = (2.0, 5.0)
+# The keyed API's calls a process makes a day, retries counted: the project's
+# free quota is 1000 a day and the site runs two workers. Past it, the feed.
+_API_DAILY_CAP = 450
+_api_used: dict[str, int] = {}
+
 # ---------- what a title is ----------
 
 _ASIDE = re.compile(r"\s*[\(\[\{][^\(\)\[\]\{\}]*[\)\]\}]")
@@ -239,19 +250,54 @@ def _search_feed(query: str) -> list[_Candidate]:
     return found
 
 
+def _api_turn() -> bool:
+    """One of the day's keyed calls, if any are left (_API_DAILY_CAP)."""
+    with _lock:
+        today = time.strftime("%Y-%m-%d")
+        used = _api_used.get(today, 0)
+        if used >= _API_DAILY_CAP:
+            return False
+        _api_used.clear()
+        _api_used[today] = used + 1
+        return True
+
+
+def _transient(exc: Exception) -> bool:
+    """Google down for a moment, not saying no: a 5xx, a dropped or timed-out connection."""
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code >= 500
+    return isinstance(exc, (urllib.error.URLError, TimeoutError, ConnectionError))
+
+
+def _retrying(call: Callable[[], list[_Candidate]], *, turn: Callable[[], bool] | None = None) -> list[_Candidate]:
+    """The call, asked again after a pause while Google is only down for a moment (_RETRY_WAITS)."""
+    for attempt in range(len(_RETRY_WAITS) + 1):
+        if attempt:
+            time.sleep(_RETRY_WAITS[attempt - 1])
+            if turn is not None and not turn():
+                break
+        try:
+            return call()
+        except Exception as exc:
+            if not _transient(exc) or attempt == len(_RETRY_WAITS):
+                raise
+    raise urllib.error.URLError("no turns left")
+
+
 def _search(query: str) -> list[_Candidate]:
     """Google Books: the keyed JSON API when there is a key and quota left,
-    otherwise the public feed — the same catalogue, a thinner interface."""
+    otherwise the public feed — the same catalogue, a thinner interface. A
+    refusal of the moment is asked again before giving up (_RETRY_WAITS)."""
     key = settings.google_books_api_key
-    if key and time.time() > _api_resting_until[0]:
+    if key and time.time() > _api_resting_until[0] and _api_turn():
         try:
-            return _search_api(query, key)
+            return _retrying(lambda: _search_api(query, key), turn=_api_turn)
         except urllib.error.HTTPError as exc:
             if exc.code in (403, 429):
                 _api_resting_until[0] = time.time() + 6 * 3600
         except Exception:
             pass
-    return _search_feed(query)
+    return _retrying(lambda: _search_feed(query))
 
 
 def _search_open_library(query: str) -> list[_Candidate]:
@@ -863,7 +909,7 @@ def _claim(db: Session, wanted: dict[str, tuple[str, str | None]]) -> list[str]:
         # A process that died mid-lookup leaves its rows "working"; after half
         # an hour they are fair game again.
         and_(BookCover.status == "working", BookCover.updated_at < now - timedelta(minutes=30)),
-        and_(BookCover.status == "error", BookCover.checked_at < now - timedelta(days=1), BookCover.attempts < 5),
+        and_(BookCover.status == "error", BookCover.checked_at < now - _ERROR_COOLDOWN, BookCover.attempts < _MAX_ERROR_TRIES),
         and_(BookCover.status == "none", BookCover.checked_at < now - timedelta(days=60)),
     )
     claimed = (
@@ -939,37 +985,52 @@ def wants_lookup(row: BookCover | None) -> bool:
     now = datetime.now(timezone.utc)
     checked = row.checked_at or now
     if row.status == "error":
-        return row.attempts < 5 and checked < now - timedelta(days=1)
+        return row.attempts < _MAX_ERROR_TRIES and checked < now - _ERROR_COOLDOWN
     if row.status == "none":
         return checked < now - timedelta(days=60)
     return False
 
 
-# ---------- every day, a few more ----------
+# ---------- every two hours, a few more ----------
 
 # Google's free quota is per day, and readers' own shelf lookups share it:
-# a daily pass asks for a bounded number of the titles still without a
-# picture, oldest first. The rest wait for tomorrow.
-_DAILY_LOOKUPS = 150
+# a pass every two hours asks for a bounded number of the titles still
+# without a picture, oldest first. A title Google failed on comes back after
+# a few hours rather than the next day, while Google is unreliable
+# (2026-10-23): a reader who pasted a list sees its covers the same day.
+_DAILY_LOOKUPS = 20
+_PASS_EVERY = timedelta(hours=2)
+_ERROR_COOLDOWN = timedelta(hours=3)
+_MAX_ERROR_TRIES = 12
 _DAILY_LOCK = Path(settings.library_storage_dir).parent / ".covers-daily.lock"
 _daily_lock = threading.Lock()
 
 
 def due_again(db: Session, limit: int = _DAILY_LOOKUPS) -> dict[str, tuple[str, str | None]]:
-    """Titles with no picture yet whose last try was over a day ago, oldest
-    first. Each is set back to pending, so fill() asks again."""
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=20)
+    """Titles with no picture yet, oldest first: an error after a few hours
+    (_ERROR_COOLDOWN), anything else after most of a day. Each is set back to
+    pending, so fill() asks again."""
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(hours=20)
     rows = db.execute(
         select(BookCover)
         .where(
             or_(
-                BookCover.status == "none",
-                BookCover.status == "error",
-                # Left waiting by a pass a restart cut short.
-                BookCover.status == "pending",
-                and_(BookCover.status == "found", BookCover.image.is_(None)),
+                and_(
+                    or_(
+                        BookCover.status == "none",
+                        # Left waiting by a pass a restart cut short.
+                        BookCover.status == "pending",
+                        and_(BookCover.status == "found", BookCover.image.is_(None)),
+                    ),
+                    or_(BookCover.checked_at.is_(None), BookCover.checked_at < cutoff),
+                ),
+                and_(
+                    BookCover.status == "error",
+                    BookCover.attempts < _MAX_ERROR_TRIES,
+                    or_(BookCover.checked_at.is_(None), BookCover.checked_at < now - _ERROR_COOLDOWN),
+                ),
             ),
-            or_(BookCover.checked_at.is_(None), BookCover.checked_at < cutoff),
         )
         .order_by(BookCover.checked_at.asc().nulls_first())
         .limit(limit)
